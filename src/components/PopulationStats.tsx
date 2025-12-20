@@ -1,22 +1,26 @@
 import { useState, useEffect } from "react";
 import { useResource } from "../system";
+import { eventKeywords } from "../vocabulary/keywords";
 
 export function PopulationStats() {
   const engine = useResource("engine");
   const config = useResource("config");
   const { useStore } = useResource("runtimeStore");
+  const { subscribe } = useResource("runtimeController");
   const state = useStore((state) => state.state);
 
   // Force re-render every 500ms to update stats in real-time
   const [, setTick] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTick((prev) => prev + 1);
-    }, 500); // Update twice per second
+    const unsubscribe = subscribe((event) => {
+      if (event.type === eventKeywords.time.passage) {
+        setTick((prev) => (prev > 500 ? 0 : prev + 1));
+      }
+    });
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => unsubscribe();
+  }, [subscribe]);
 
   // Calculate statistics
   const allBoids = engine.boids;

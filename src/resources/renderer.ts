@@ -39,7 +39,7 @@ export const renderer = defineResource({
     let fps = 60;
 
     const energyBarEnabled = false;
-    const stanceSymbolEnabled = true;
+    const stanceSymbolEnabled = false;
 
     const draw = () => {
       const { ctx, width, height } = canvas;

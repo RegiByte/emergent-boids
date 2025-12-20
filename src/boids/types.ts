@@ -6,7 +6,12 @@ export type Vector2 = {
 export type BoidRole = "predator" | "prey";
 
 export type PreyStance = "flocking" | "seeking_mate" | "mating" | "fleeing";
-export type PredatorStance = "hunting" | "seeking_mate" | "mating" | "idle" | "eating";
+export type PredatorStance =
+  | "hunting"
+  | "seeking_mate"
+  | "mating"
+  | "idle"
+  | "eating";
 export type BoidStance = PreyStance | PredatorStance;
 
 export type Boid = {

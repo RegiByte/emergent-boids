@@ -37,8 +37,8 @@ export const config = defineResource({
       minReproductionAge: 5, // Phase 2: Can start reproducing at 5 seconds old
       reproductionEnergyThreshold: 0.7, // Phase 2: Need 70% energy to seek mates
       reproductionCooldownTicks: 5, // Phase 2: 5 time passages (~5 seconds) cooldown
-      matingBuildupTicks: 3, // Must stay close to mate for 3 ticks before reproducing
-      eatingCooldownTicks: 3, // Predators must wait 3 ticks after eating before catching again
+      matingBuildupTicks: 2, // Must stay close to mate for 3 ticks before reproducing
+      eatingCooldownTicks: 2, // Predators must wait 3 ticks after eating before catching again
       types: {
         explorer: {
           id: "explorer",
