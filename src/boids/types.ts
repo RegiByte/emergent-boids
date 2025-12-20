@@ -23,7 +23,7 @@ export type Boid = {
   energy: number;
   age: number; // Age in seconds
   reproductionCooldown: number; // Time passages until can reproduce again (0 = ready)
-  seekingMate: boolean; // Is actively seeking a mate
+  seekingMate: boolean; // Cached state: actively seeking mate (updated by energyManager)
   mateId: string | null; // ID of current mate (if paired)
   matingBuildupCounter: number; // Time passages spent close to mate (0-3, reproduce at 3)
   eatingCooldown: number; // Time passages until can catch prey again (predators only)

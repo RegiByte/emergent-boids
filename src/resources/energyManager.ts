@@ -11,9 +11,26 @@ import type { RuntimeController } from "./runtimeController";
 import type { StartedRuntimeStore } from "./runtimeStore";
 import { eventKeywords } from "../vocabulary/keywords";
 import { createBoidOfType } from "../boids/boid";
+import {
+  isReadyToMate,
+  isWithinRadius,
+  hasDiedFromOldAge,
+  hasDiedFromStarvation,
+  shouldStayIdle,
+  shouldEnterIdleStance,
+} from "../boids/predicates";
+import { calculateIdleEnergyGain } from "../boids/calculations";
+import { getPredators, countPrey, countPredators } from "../boids/filters";
+import {
+  processMatingCycle,
+  applyMatingResult,
+  unpairBoids,
+  type MatingContext,
+} from "../boids/mating";
+import { boidsById, lookupBoid } from "../boids/conversions";
 
 /**
- * Pure function: Update prey stance based on current state
+ * Update prey stance based on current state (declarative)
  */
 function updatePreyStance(
   boid: Boid,
@@ -47,15 +64,8 @@ function updatePreyStance(
     return;
   }
 
-  // Check if should be seeking mate
-  const energyThreshold =
-    typeConfig.maxEnergy * config.reproductionEnergyThreshold;
-  const shouldSeekMate =
-    boid.age >= config.minReproductionAge &&
-    boid.energy >= energyThreshold &&
-    boid.reproductionCooldown === 0;
-
-  if (shouldSeekMate) {
+  // Check if should be seeking mate (using pure predicate)
+  if (isReadyToMate(boid, config, typeConfig)) {
     if (currentStance !== "seeking_mate") {
       boid.stance = "seeking_mate";
     }
@@ -69,7 +79,7 @@ function updatePreyStance(
 }
 
 /**
- * Pure function: Update predator stance based on current state
+ * Update predator stance based on current state (declarative)
  */
 function updatePredatorStance(
   boid: Boid,
@@ -94,30 +104,20 @@ function updatePredatorStance(
     return;
   }
 
-  // Priority 3: Seeking mate
-  const energyThreshold =
-    typeConfig.maxEnergy * config.reproductionEnergyThreshold;
-  const shouldSeekMate =
-    boid.age >= config.minReproductionAge &&
-    boid.energy >= energyThreshold &&
-    boid.reproductionCooldown === 0;
-
-  if (shouldSeekMate) {
+  // Priority 3: Seeking mate (using pure predicate)
+  if (isReadyToMate(boid, config, typeConfig)) {
     if (currentStance !== "seeking_mate") {
       boid.stance = "seeking_mate";
     }
     return;
   }
 
-  // Priority 4: Idle (low energy, conserving) - enter idle at <30%, stay until >50%
-  if (currentStance === "idle") {
-    // Stay idle until energy recovers to >50%
-    if (boid.energy < typeConfig.maxEnergy * 0.5) {
-      return; // Stay idle
-    }
-    // Energy recovered, can hunt again
-  } else if (boid.energy < typeConfig.maxEnergy * 0.3) {
-    // Energy too low, enter idle
+  // Priority 4: Idle (low energy, conserving) - hysteresis: enter at 30%, exit at 50%
+  if (shouldStayIdle(boid, typeConfig)) {
+    return; // Stay idle until energy recovers
+  }
+
+  if (shouldEnterIdleStance(boid, typeConfig)) {
     boid.stance = "idle";
     return;
   }
@@ -160,14 +160,13 @@ export const energyManager = defineResource({
         position: { x: number; y: number };
       }> = [];
       const matedBoids = new Set<string>(); // Track boids that already mated this tick
+      const boidsMap = boidsById(engine.boids);
 
       // Get runtime types (these are mutable and updated by UI)
       const runtimeTypes = runtimeStore.store.getState().state.types;
 
-      // Pre-calculate nearby predators for prey stance updates
-      const predators = engine.boids.filter(
-        (b) => runtimeTypes[b.typeId]?.role === "predator"
-      );
+      // Pre-calculate predators for prey stance updates (using pure filter)
+      const predators = getPredators(engine.boids, runtimeTypes);
 
       // Update energy and age for all boids
       for (const boid of engine.boids) {
@@ -181,18 +180,15 @@ export const energyManager = defineResource({
         if (typeConfig.role === "predator") {
           updatePredatorStance(boid, typeConfig, config);
         } else {
-          // Check if predators are nearby for prey
-          const nearbyPredators = predators.filter((p) => {
-            const dx = boid.position.x - p.position.x;
-            const dy = boid.position.y - p.position.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            return distance < config.fearRadius;
-          });
+          // Check if predators are nearby for prey (using pure predicate)
+          const nearbyPredators = predators.filter((p) =>
+            isWithinRadius(boid.position, p.position, config.fearRadius)
+          );
           updatePreyStance(boid, typeConfig, config, nearbyPredators);
         }
 
-        // Check for death from old age
-        if (typeConfig.maxAge > 0 && boid.age >= typeConfig.maxAge) {
+        // Check for death from old age (using pure predicate)
+        if (hasDiedFromOldAge(boid, typeConfig)) {
           boidsToRemove.push(boid.id);
           runtimeController.dispatch({
             type: eventKeywords.boids.died,
@@ -204,8 +200,11 @@ export const energyManager = defineResource({
         if (typeConfig.role === "predator") {
           // Predators: idle stance gains energy (resting), other stances lose energy
           if (boid.stance === "idle") {
-            // Gain energy while idle (resting/conserving)
-            boid.energy += typeConfig.energyGainRate * deltaSeconds * 0.3; // 30% of gain rate
+            // Gain energy while idle (using pure calculation)
+            boid.energy += calculateIdleEnergyGain(
+              typeConfig.energyGainRate,
+              deltaSeconds
+            );
             // Cap at max energy
             if (boid.energy > typeConfig.maxEnergy) {
               boid.energy = typeConfig.maxEnergy;
@@ -215,8 +214,8 @@ export const energyManager = defineResource({
             boid.energy -= typeConfig.energyLossRate * deltaSeconds;
           }
 
-          // Check if predator died
-          if (boid.energy <= 0) {
+          // Check if predator died from starvation (using pure predicate)
+          if (hasDiedFromStarvation(boid)) {
             boidsToRemove.push(boid.id);
             runtimeController.dispatch({
               type: eventKeywords.boids.died,
@@ -235,113 +234,32 @@ export const energyManager = defineResource({
             boid.eatingCooldown -= 1;
           }
 
-          // Check if ready to seek mates (same as prey)
-          const energyThreshold =
-            typeConfig.maxEnergy * config.reproductionEnergyThreshold;
-          const isReadyToMate =
-            boid.age >= config.minReproductionAge &&
-            boid.energy >= energyThreshold &&
-            boid.reproductionCooldown === 0;
+          // Update seeking state (using pure predicate)
+          const ready = isReadyToMate(boid, config, typeConfig);
+          boid.seekingMate = ready;
 
-          // Update seeking state
-          boid.seekingMate = isReadyToMate;
+          // PREDATOR REPRODUCTION: Using pure mating state machine
+          if (ready && !matedBoids.has(boid.id)) {
+            const result = processMatingCycle(
+              boid,
+              engine.boids,
+              config,
+              typeConfig,
+              matedBoids
+            );
 
-          // PREDATOR REPRODUCTION: Sexual reproduction with buildup
-          if (isReadyToMate && !matedBoids.has(boid.id)) {
-            // If already paired, check if close enough to build up mating
-            if (boid.mateId) {
-              const mate = engine.boids.find((b) => b.id === boid.mateId);
-              if (mate) {
-                const dx = boid.position.x - mate.position.x;
-                const dy = boid.position.y - mate.position.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                // If close enough, increment buildup counter
-                if (distance < config.mateRadius) {
-                  // Increment buildup for both (only once per tick)
-                  if (boid.matingBuildupCounter < config.matingBuildupTicks) {
-                    boid.matingBuildupCounter += 1;
-                    mate.matingBuildupCounter += 1;
-                  }
-
-                  // If buildup complete, reproduce!
-                  if (boid.matingBuildupCounter >= config.matingBuildupTicks) {
-                    // Both parents lose 50% energy
-                    boid.energy = typeConfig.maxEnergy * 0.5;
-                    mate.energy = typeConfig.maxEnergy * 0.5;
-
-                    // Set reproduction cooldown
-                    boid.reproductionCooldown = config.reproductionCooldownTicks;
-                    mate.reproductionCooldown = config.reproductionCooldownTicks;
-
-                    // Reset buildup counters
-                    boid.matingBuildupCounter = 0;
-                    mate.matingBuildupCounter = 0;
-
-                    // Clear pairing
-                    boid.mateId = null;
-                    mate.mateId = null;
-                    boid.seekingMate = false;
-                    mate.seekingMate = false;
-
-                    // Mark both as mated this tick
-                    matedBoids.add(boid.id);
-                    matedBoids.add(mate.id);
-
-                    // Spawn offspring between parents
-                    const midpoint = {
-                      x: (boid.position.x + mate.position.x) / 2,
-                      y: (boid.position.y + mate.position.y) / 2,
-                    };
-
-                    boidsToAdd.push({
-                      parent1Id: boid.id,
-                      parent2Id: mate.id,
-                      typeId: boid.typeId,
-                      position: midpoint,
-                    });
-                  }
-                } else {
-                  // Too far apart, reset buildup counter
-                  boid.matingBuildupCounter = 0;
-                  mate.matingBuildupCounter = 0;
-                }
-              } else {
-                // Mate died, clear pairing and reset buildup
-                boid.mateId = null;
-                boid.matingBuildupCounter = 0;
-              }
-            } else {
-              // Not paired yet, find a mate
-              const mate = findNearbyMate(
-                boid,
-                engine.boids,
-                matedBoids,
-                config.mateRadius
-              );
-
-              if (mate) {
-                // Pair up! Set mateId for both
-                boid.mateId = mate.id;
-                mate.mateId = boid.id;
-
-                // Mark as mated this tick (to prevent multiple pairings)
-                matedBoids.add(boid.id);
-                matedBoids.add(mate.id);
-              }
-            }
-          } else if (boid.mateId && !isReadyToMate) {
+            // Apply mating result (all side effects in one place)
+            const context: MatingContext = { boidsMap, matedBoids, boidsToAdd };
+            applyMatingResult(boid, result, context);
+          } else if (boid.mateId && !ready) {
             // No longer ready to mate, clear pairing
-            const mate = engine.boids.find((b) => b.id === boid.mateId);
-            if (mate) {
-              mate.mateId = null;
-            }
-            boid.mateId = null;
+            const mate = lookupBoid(boid.mateId!, boidsMap);
+            unpairBoids(boid, mate);
           }
         } else {
           // Prey gain energy over time
           boid.energy += typeConfig.energyGainRate * deltaSeconds;
-          
+
           // Cap energy at max
           if (boid.energy > typeConfig.maxEnergy) {
             boid.energy = typeConfig.maxEnergy;
@@ -352,137 +270,29 @@ export const energyManager = defineResource({
             boid.reproductionCooldown -= 1;
           }
 
-          // Check if ready to seek mates (Phase 2: age + energy threshold)
-          const energyThreshold = typeConfig.maxEnergy * config.reproductionEnergyThreshold;
-          const isReadyToMate = 
-            boid.age >= config.minReproductionAge &&
-            boid.energy >= energyThreshold &&
-            boid.reproductionCooldown === 0;
+          // Update seeking state (using pure predicate)
+          const ready = isReadyToMate(boid, config, typeConfig);
+          boid.seekingMate = ready;
 
-          // Update seeking state
-          boid.seekingMate = isReadyToMate;
+          // PREY REPRODUCTION: Using pure mating state machine
+          if (ready && !matedBoids.has(boid.id)) {
+            const result = processMatingCycle(
+              boid,
+              engine.boids,
+              config,
+              typeConfig,
+              matedBoids
+            );
 
-          // PROXIMITY-BASED REPRODUCTION: Prey need nearby mate with buildup
-          if (isReadyToMate && !matedBoids.has(boid.id)) {
-            // If already paired, check if close enough to build up mating
-            if (boid.mateId) {
-              const mate = engine.boids.find((b) => b.id === boid.mateId);
-              if (mate) {
-                const dx = boid.position.x - mate.position.x;
-                const dy = boid.position.y - mate.position.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                // If close enough, increment buildup counter
-                if (distance < config.mateRadius) {
-                  // Increment buildup for both (only once per tick)
-                  if (boid.matingBuildupCounter < config.matingBuildupTicks) {
-                    boid.matingBuildupCounter += 1;
-                    mate.matingBuildupCounter += 1;
-                  }
-
-                  // If buildup complete, reproduce!
-                  if (boid.matingBuildupCounter >= config.matingBuildupTicks) {
-                    // Both parents lose 50% energy
-                    boid.energy = typeConfig.maxEnergy * 0.5;
-                    mate.energy = typeConfig.maxEnergy * 0.5;
-
-                    // Set reproduction cooldown
-                    boid.reproductionCooldown = config.reproductionCooldownTicks;
-                    mate.reproductionCooldown = config.reproductionCooldownTicks;
-
-                    // Reset buildup counters
-                    boid.matingBuildupCounter = 0;
-                    mate.matingBuildupCounter = 0;
-
-                    // Clear pairing
-                    boid.mateId = null;
-                    mate.mateId = null;
-                    boid.seekingMate = false;
-                    mate.seekingMate = false;
-
-                    // Mark both as mated this tick
-                    matedBoids.add(boid.id);
-                    matedBoids.add(mate.id);
-
-                    // Spawn offspring between parents
-                    const midpoint = {
-                      x: (boid.position.x + mate.position.x) / 2,
-                      y: (boid.position.y + mate.position.y) / 2,
-                    };
-
-                    boidsToAdd.push({
-                      parent1Id: boid.id,
-                      parent2Id: mate.id,
-                      typeId: boid.typeId,
-                      position: midpoint,
-                    });
-                  }
-                } else {
-                  // Too far apart, reset buildup counter
-                  boid.matingBuildupCounter = 0;
-                  mate.matingBuildupCounter = 0;
-                }
-              } else {
-                // Mate died, clear pairing and reset buildup
-                boid.mateId = null;
-                boid.matingBuildupCounter = 0;
-              }
-            } else {
-              // Not paired yet, find a mate
-              const mate = findNearbyMate(
-                boid,
-                engine.boids,
-                matedBoids,
-                config.mateRadius
-              );
-
-              if (mate) {
-                // Pair up! Set mateId for both
-                boid.mateId = mate.id;
-                mate.mateId = boid.id;
-
-                // Mark as mated this tick (to prevent multiple pairings)
-                matedBoids.add(boid.id);
-                matedBoids.add(mate.id);
-              }
-            }
-          } else if (boid.mateId && !isReadyToMate) {
+            // Apply mating result (all side effects in one place)
+            const context: MatingContext = { boidsMap, matedBoids, boidsToAdd };
+            applyMatingResult(boid, result, context);
+          } else if (boid.mateId && !ready) {
             // No longer ready to mate, clear pairing
-            const mate = engine.boids.find((b) => b.id === boid.mateId);
-            if (mate) {
-              mate.mateId = null;
-            }
-            boid.mateId = null;
+            const mate = lookupBoid(boid.mateId!, boidsMap);
+            unpairBoids(boid, mate);
           }
         }
-      }
-
-      // Helper function to find nearby mate
-      function findNearbyMate(
-        boid: Boid,
-        allBoids: Boid[],
-        alreadyMated: Set<string>,
-        mateRadius: number
-      ) {
-        for (const other of allBoids) {
-          if (
-            other.id !== boid.id &&
-            other.typeId === boid.typeId &&
-            other.seekingMate && // Must be actively seeking (Phase 2)
-            other.reproductionCooldown === 0 && // Must be off cooldown (Phase 2)
-            !alreadyMated.has(other.id)
-          ) {
-            // Calculate distance
-            const dx = boid.position.x - other.position.x;
-            const dy = boid.position.y - other.position.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (distance < mateRadius) {
-              return other;
-            }
-          }
-        }
-        return null;
       }
 
       // Remove dead boids
@@ -494,28 +304,27 @@ export const energyManager = defineResource({
       for (const { parent1Id, parent2Id, typeId, position } of boidsToAdd) {
         const typeConfig = runtimeTypes[typeId];
         const role = typeConfig?.role;
-        
-        // Count current population by role
-        const currentPreyCount = engine.boids.filter(
-          (b) => runtimeTypes[b.typeId]?.role === "prey"
-        ).length;
-        const currentPredatorCount = engine.boids.filter(
-          (b) => runtimeTypes[b.typeId]?.role === "predator"
-        ).length;
-        
+
+        // Count current population by role (using pure filters)
+        const currentPreyCount = countPrey(engine.boids, runtimeTypes);
+        const currentPredatorCount = countPredators(engine.boids, runtimeTypes);
+
         // Check global cap
         if (engine.boids.length >= config.maxBoids) {
           continue; // Skip this offspring
         }
-        
+
         // Check per-role cap
         if (role === "prey" && currentPreyCount >= config.maxPreyBoids) {
           continue; // Prey cap reached
         }
-        if (role === "predator" && currentPredatorCount >= config.maxPredatorBoids) {
+        if (
+          role === "predator" &&
+          currentPredatorCount >= config.maxPredatorBoids
+        ) {
           continue; // Predator cap reached
         }
-        
+
         // All caps passed, spawn offspring
         const newBoid = createBoidOfType(
           position,

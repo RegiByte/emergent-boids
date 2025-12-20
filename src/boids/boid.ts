@@ -1,6 +1,15 @@
 import type { Boid, BoidConfig, BoidTypeConfig, Obstacle } from "./types";
 import * as vec from "./vector";
 import * as rules from "./rules";
+import { getPrey, getPredators } from "./filters";
+import {
+  calculateEnergySpeedFactor,
+  calculateFearSpeedBoost,
+  calculateEatingSpeedFactor,
+  calculatePreyCohesionWeight,
+  calculatePredatorSeparationWeight,
+  calculatePredatorChaseWeight,
+} from "./calculations";
 
 let boidIdCounter = 0;
 
@@ -88,19 +97,20 @@ function updatePredator(
   config: BoidConfig,
   typeConfig: BoidTypeConfig
 ): void {
-  const stance = boid.stance as "hunting" | "seeking_mate" | "mating" | "idle" | "eating";
+  const stance = boid.stance as
+    | "hunting"
+    | "seeking_mate"
+    | "mating"
+    | "idle"
+    | "eating";
 
-  // Find all prey
-  const prey = allBoids.filter((b) => {
-    const otherType = config.types[b.typeId];
-    return otherType && otherType.role === "prey";
-  });
+  // Find all prey (using pure filter)
+  const prey = getPrey(allBoids, config.types);
 
-  // Find other predators
-  const otherPredators = allBoids.filter((b) => {
-    const otherType = config.types[b.typeId];
-    return otherType && otherType.role === "predator" && b.id !== boid.id;
-  });
+  // Find other predators (using pure filter)
+  const otherPredators = getPredators(allBoids, config.types).filter(
+    (b) => b.id !== boid.id
+  );
 
   // Stance-based behavior
   let chaseForce = { x: 0, y: 0 };
@@ -130,9 +140,8 @@ function updatePredator(
     chaseForce = { x: 0, y: 0 };
   }
 
-  // Apply forces with stance-based weights
-  const chaseWeight =
-    stance === "hunting" ? 3.0 : stance === "idle" ? 0.5 : 1.5;
+  // Apply forces with stance-based weights (using pure calculation)
+  const chaseWeight = calculatePredatorChaseWeight(stance);
   const chaseWeighted = vec.multiply(chaseForce, chaseWeight);
   boid.acceleration = vec.add(boid.acceleration, chaseWeighted);
 
@@ -147,11 +156,11 @@ function updatePredator(
   const avoidWeighted = vec.multiply(avoid, config.obstacleAvoidanceWeight);
   boid.acceleration = vec.add(boid.acceleration, avoidWeighted);
 
-  // Separate from other predators (unless mating)
-  const separationWeight =
-    stance === "mating"
-      ? typeConfig.separationWeight * 0.3
-      : typeConfig.separationWeight;
+  // Separate from other predators (unless mating) - using pure calculation
+  const separationWeight = calculatePredatorSeparationWeight(
+    typeConfig.separationWeight,
+    stance
+  );
   const sep = rules.separation(boid, otherPredators, config);
   const sepWeighted = vec.multiply(sep, separationWeight);
   boid.acceleration = vec.add(boid.acceleration, sepWeighted);
@@ -159,16 +168,16 @@ function updatePredator(
   // Update velocity with energy-based speed scaling
   boid.velocity = vec.add(boid.velocity, boid.acceleration);
 
-  // Energy affects speed: well-fed predators are faster, starving ones are slower
-  // Formula: speed scales from 0.5x (near death) to 1.3x (full energy)
-  const energyRatio = boid.energy / typeConfig.maxEnergy;
-  const energySpeedFactor = 0.5 + energyRatio * 0.8; // Range: 0.5 to 1.3
+  // Energy affects speed (using pure calculation)
+  const energySpeedFactor = calculateEnergySpeedFactor(
+    boid.energy,
+    typeConfig.maxEnergy
+  );
   let effectiveMaxSpeed = typeConfig.maxSpeed * energySpeedFactor;
 
-  // Eating stance: reduce max speed (slow drift while distracted)
+  // Eating stance: reduce max speed (using pure calculation)
   if (stance === "eating") {
-    // Reduce max speed to 35% while eating (allows drifting)
-    effectiveMaxSpeed *= 0.35;
+    effectiveMaxSpeed *= calculateEatingSpeedFactor();
   }
 
   boid.velocity = vec.limit(boid.velocity, effectiveMaxSpeed);
@@ -190,11 +199,8 @@ function updatePrey(
   const coh = rules.cohesion(boid, allBoids, config);
   const avoid = rules.avoidObstacles(boid, obstacles, config);
 
-  // Fear of predators
-  const predators = allBoids.filter((b) => {
-    const otherType = config.types[b.typeId];
-    return otherType && otherType.role === "predator";
-  });
+  // Fear of predators (using pure filter)
+  const predators = getPredators(allBoids, config.types);
   const fearResponse = rules.fear(boid, predators, config);
 
   // Mate-seeking behavior (stance-based)
@@ -213,18 +219,11 @@ function updatePrey(
   const sepWeighted = vec.multiply(sep, typeConfig.separationWeight);
   const aliWeighted = vec.multiply(ali, typeConfig.alignmentWeight);
 
-  // Stance-based cohesion adjustment
-  let cohesionWeight = typeConfig.cohesionWeight;
-  if (stance === "seeking_mate") {
-    // Reduce cohesion when seeking mate (focus on mate, not flock)
-    cohesionWeight *= 0.3;
-  } else if (stance === "mating") {
-    // Strong cohesion with mate when mating
-    cohesionWeight *= 1.5;
-  } else if (stance === "fleeing") {
-    // Reduce cohesion when fleeing (scatter!)
-    cohesionWeight *= 0.5;
-  }
+  // Stance-based cohesion adjustment (using pure calculation)
+  const cohesionWeight = calculatePreyCohesionWeight(
+    typeConfig.cohesionWeight,
+    stance
+  );
   const cohWeighted = vec.multiply(coh, cohesionWeight);
 
   const avoidWeighted = vec.multiply(avoid, config.obstacleAvoidanceWeight);
@@ -248,13 +247,11 @@ function updatePrey(
   // Update velocity with fear-induced speed boost
   boid.velocity = vec.add(boid.velocity, boid.acceleration);
 
-  // Apply adrenaline rush: when afraid, prey can run faster than normal
-  // Speed boost scales with fearFactor (higher fear = bigger boost)
+  // Apply adrenaline rush (using pure calculation)
   let effectiveMaxSpeed = typeConfig.maxSpeed;
   if (fearResponse.isAfraid && typeConfig.fearFactor > 0) {
-    // Boost formula: maxSpeed * (1 + fearFactor * 0.5)
-    // Examples: 0.8 fear = 40% boost, 0.5 fear = 25% boost, 0.3 fear = 15% boost
-    effectiveMaxSpeed = typeConfig.maxSpeed * (1 + typeConfig.fearFactor * 0.5);
+    const speedBoost = calculateFearSpeedBoost(typeConfig.fearFactor);
+    effectiveMaxSpeed = typeConfig.maxSpeed * speedBoost;
   }
 
   boid.velocity = vec.limit(boid.velocity, effectiveMaxSpeed);
@@ -321,7 +318,6 @@ function enforceMinimumDistance(
   typeConfig: BoidTypeConfig
 ): void {
   const minDist = config.minDistance;
-  const minDistSq = minDist * minDist;
 
   for (const other of allBoids) {
     if (other.id === boid.id) continue;
@@ -334,31 +330,31 @@ function enforceMinimumDistance(
     if (typeConfig.role === "predator" && otherType.role === "prey") continue;
     if (typeConfig.role === "prey" && otherType.role === "predator") continue;
 
-    // Calculate distance (use toroidal distance for wrapped space)
-    const dx = boid.position.x - other.position.x;
-    const dy = boid.position.y - other.position.y;
-    
-    // Toroidal wrapping
-    const wrappedDx = Math.abs(dx) > config.canvasWidth / 2 
-      ? dx - Math.sign(dx) * config.canvasWidth 
-      : dx;
-    const wrappedDy = Math.abs(dy) > config.canvasHeight / 2 
-      ? dy - Math.sign(dy) * config.canvasHeight 
-      : dy;
-    
-    const distSq = wrappedDx * wrappedDx + wrappedDy * wrappedDy;
+    // Calculate toroidal distance (using existing utility)
+    const dist = vec.toroidalDistance(
+      boid.position,
+      other.position,
+      config.canvasWidth,
+      config.canvasHeight
+    );
 
     // If too close, push apart
-    if (distSq < minDistSq && distSq > 0) {
-      const dist = Math.sqrt(distSq);
+    if (dist < minDist && dist > 0) {
       const overlap = minDist - dist;
-      
-      // Push away from other boid (half the overlap each)
-      const pushX = (wrappedDx / dist) * overlap * 0.5;
-      const pushY = (wrappedDy / dist) * overlap * 0.5;
-      
-      boid.position.x += pushX;
-      boid.position.y += pushY;
+
+      // Get toroidal direction vector
+      const diff = vec.toroidalSubtract(
+        boid.position,
+        other.position,
+        config.canvasWidth,
+        config.canvasHeight
+      );
+
+      // Normalize and scale by half the overlap
+      const pushVector = vec.setMagnitude(diff, overlap * 0.5);
+
+      boid.position.x += pushVector.x;
+      boid.position.y += pushVector.y;
     }
   }
 }

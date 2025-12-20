@@ -13,16 +13,16 @@ export type CanvasResource = {
 function calculateCanvasDimensions() {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  
+
   // Account for header (~80px) and use 75% of viewport width
   const availableWidth = viewportWidth * 0.75;
   const availableHeight = viewportHeight - 100; // Subtract header height
-  
+
   // Calculate dimensions maintaining a reasonable aspect ratio
   // Use the smaller dimension to ensure canvas fits
   const canvasWidth = Math.floor(Math.min(availableWidth - 40, 1400)); // Max 1400px width
   const canvasHeight = Math.floor(Math.min(availableHeight - 40, 1000)); // Max 1000px height
-  
+
   return { canvasWidth, canvasHeight };
 }
 
@@ -30,7 +30,7 @@ export const canvas = defineResource({
   dependencies: ["config"],
   start: ({ config }: { config: BoidConfig }) => {
     const { canvasWidth, canvasHeight } = calculateCanvasDimensions();
-    
+
     // Create canvas element
     const canvas = document.createElement("canvas");
     canvas.width = canvasWidth;
@@ -39,7 +39,9 @@ export const canvas = defineResource({
     canvas.style.display = "block";
     canvas.style.boxShadow = "0 0 20px rgba(0, 255, 136, 0.3)";
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", {
+      willReadFrequently: true,
+    });
     if (!ctx) {
       throw new Error("Failed to get 2D context from canvas");
     }
@@ -56,7 +58,7 @@ export const canvas = defineResource({
         canvas.height = newHeight;
         resource.width = newWidth;
         resource.height = newHeight;
-        
+
         // Update config dimensions so boids know the new boundaries
         config.canvasWidth = newWidth;
         config.canvasHeight = newHeight;
@@ -73,4 +75,3 @@ export const canvas = defineResource({
 
 // Export the calculation function for use in App
 export { calculateCanvasDimensions };
-

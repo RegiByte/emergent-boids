@@ -8,6 +8,7 @@ import {
 } from "../boids/spatialHash";
 import type { StartedRuntimeStore } from "./runtimeStore";
 import * as vec from "../boids/vector";
+import { getPredators, getPrey } from "../boids/filters";
 
 export type CatchEvent = {
   predatorId: string;
@@ -92,15 +93,9 @@ export const engine = defineResource({
         types: runtimeParams.types,
       };
 
-      const predators = boids.filter((b) => {
-        const typeConfig = dynamicConfig.types[b.typeId];
-        return typeConfig && typeConfig.role === "predator";
-      });
-
-      const prey = boids.filter((b) => {
-        const typeConfig = dynamicConfig.types[b.typeId];
-        return typeConfig && typeConfig.role === "prey";
-      });
+      // Use pure filters
+      const predators = getPredators(boids, dynamicConfig.types);
+      const prey = getPrey(boids, dynamicConfig.types);
 
       const catches: CatchEvent[] = [];
       const caughtPreyIds: string[] = [];
