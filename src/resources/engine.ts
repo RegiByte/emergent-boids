@@ -106,6 +106,9 @@ export const engine = defineResource({
       const caughtPreyIds: string[] = [];
 
       for (const predator of predators) {
+        // Skip if predator is still eating (cooldown active)
+        if (predator.eatingCooldown > 0) continue;
+
         for (const preyBoid of prey) {
           // Skip if already caught this frame
           if (caughtPreyIds.includes(preyBoid.id)) continue;
@@ -126,6 +129,9 @@ export const engine = defineResource({
                 predatorType.maxEnergy
               );
             }
+
+            // Set eating cooldown
+            predator.eatingCooldown = dynamicConfig.eatingCooldownTicks;
 
             caughtPreyIds.push(preyBoid.id);
             removeBoid(preyBoid.id);

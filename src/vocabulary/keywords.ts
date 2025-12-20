@@ -61,6 +61,10 @@ export const effectKeywords = {
     addBoid: "engine:addBoid",
     removeBoid: "engine:removeBoid",
   },
+
+  runtime: {
+    dispatch: "runtime:dispatch",
+  },
 } as const;
 
 // ============================================
@@ -240,6 +244,26 @@ export const controlEffectSchemas = {
       reproductionCooldown: z.number(),
       seekingMate: z.boolean(),
       mateId: z.string().nullable(),
+      matingBuildupCounter: z.number(),
+      eatingCooldown: z.number(),
+      stance: z.union([
+        z.literal("flocking"),
+        z.literal("seeking_mate"),
+        z.literal("mating"),
+        z.literal("fleeing"),
+        z.literal("hunting"),
+        z.literal("idle"),
+        z.literal("eating"),
+      ]),
+      previousStance: z.union([
+        z.literal("flocking"),
+        z.literal("seeking_mate"),
+        z.literal("mating"),
+        z.literal("fleeing"),
+        z.literal("hunting"),
+        z.literal("idle"),
+        z.null(),
+      ]),
     }),
   }),
   engineRemoveBoid: z.object({
@@ -257,7 +281,22 @@ export const controlEffectSchema = z.discriminatedUnion("type", [
   controlEffectSchemas.engineRemoveBoid,
 ]);
 
-export const allEffectSchema = z.union([controlEffectSchema]);
+export const runtimeEffectSchemas = {
+  dispatch: z.object({
+    type: z.literal(effectKeywords.runtime.dispatch),
+    event: allEventSchema,
+  }),
+};
+
+// Union of all runtime effects
+export const runtimeEffectSchema = z.discriminatedUnion("type", [
+  runtimeEffectSchemas.dispatch,
+]);
+
+export const allEffectSchema = z.union([
+  controlEffectSchema,
+  runtimeEffectSchema,
+]);
 
 // ============================================
 // Inferred Types
@@ -269,6 +308,6 @@ export type ControlEvent = z.infer<typeof controlEventSchema>;
 export type ObstacleEvent = z.infer<typeof obstacleEventSchema>;
 export type TimeEvent = z.infer<typeof timeEventSchema>;
 export type BoidEvent = z.infer<typeof boidEventSchema>;
-export type AllEvent = z.infer<typeof allEventSchema>;
 export type ControlEffect = z.infer<typeof controlEffectSchema>;
-export type AllEffect = z.infer<typeof allEffectSchema>;
+export type AllEvents = z.infer<typeof allEventSchema>;
+export type AllEffects = z.infer<typeof allEffectSchema>;

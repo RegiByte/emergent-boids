@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useResource } from "../system";
-import { AllEffect, AllEvent } from "../vocabulary/keywords";
+import { AllEffects, AllEvents } from "../vocabulary/keywords";
 
 type EventLogEntry = {
   id: string;
   timestamp: number;
-  event: AllEvent;
-  effects: AllEffect[];
+  event: AllEvents;
+  effects: AllEffects[];
 };
 
 let eventCounter = 0;

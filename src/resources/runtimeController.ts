@@ -4,16 +4,14 @@ import {
   type EventHandlerMap,
   type EffectExecutorMap,
 } from "emergent";
-import type {
-  RuntimeStoreApi,
-  StartedRuntimeStore,
-} from "./runtimeStore";
+import type { RuntimeStoreApi, StartedRuntimeStore } from "./runtimeStore";
 import {
   eventKeywords,
   effectKeywords,
-  type AllEvent,
+  type AllEvents,
   type ControlEffect,
   type RuntimeState,
+  AllEffects,
 } from "../vocabulary/keywords";
 import { produce } from "immer";
 import type { TimerManager } from "./timer";
@@ -79,11 +77,7 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.obstacles.added]: (
-    _state,
-    event,
-    ctx
-  ): ControlEffect[] => {
+  [eventKeywords.obstacles.added]: (_state, event, ctx): ControlEffect[] => {
     return [
       {
         type: effectKeywords.state.update,
@@ -97,11 +91,7 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.obstacles.removed]: (
-    _state,
-    event,
-    ctx
-  ): ControlEffect[] => {
+  [eventKeywords.obstacles.removed]: (_state, event, ctx): ControlEffect[] => {
     return [
       {
         type: effectKeywords.state.update,
@@ -112,11 +102,7 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.obstacles.cleared]: (
-    _state,
-    _event,
-    ctx
-  ): ControlEffect[] => {
+  [eventKeywords.obstacles.cleared]: (_state, _event, ctx): ControlEffect[] => {
     return [
       {
         type: effectKeywords.state.update,
@@ -167,7 +153,7 @@ const handlers = {
     return [];
   },
 } satisfies EventHandlerMap<
-  AllEvent,
+  AllEvents,
   ControlEffect,
   RuntimeState,
   HandlerContext
@@ -182,7 +168,6 @@ type ExecutorContext = {
   timer: TimerManager;
   engine: BoidEngine;
   config: BoidConfig;
-  dispatch: (event: AllEvent) => void;
 };
 
 const executors = {
@@ -212,7 +197,11 @@ const executors = {
   [effectKeywords.engine.removeBoid]: (effect, ctx) => {
     ctx.engine.removeBoid(effect.boidId);
   },
-} satisfies EffectExecutorMap<ControlEffect, AllEvent, ExecutorContext>;
+
+  [effectKeywords.runtime.dispatch]: (effect, ctx) => {
+    ctx.dispatch(effect.event);
+  },
+} satisfies EffectExecutorMap<AllEffects, AllEvents, ExecutorContext>;
 
 // ============================================
 // Runtime Controller Resource
@@ -227,7 +216,7 @@ function createRuntimeController(
   config: BoidConfig
 ) {
   const createControlLoop = emergentSystem<
-    AllEvent,
+    AllEvents,
     ControlEffect,
     RuntimeState,
     HandlerContext,
@@ -248,9 +237,6 @@ function createRuntimeController(
       timer,
       engine,
       config,
-      dispatch: (event: AllEvent) => {
-        runtime.dispatch(event);
-      },
     },
   });
 

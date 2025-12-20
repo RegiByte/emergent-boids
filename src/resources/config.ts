@@ -30,10 +30,15 @@ export const config = defineResource({
       chaseRadius: 150,
       catchRadius: 10,
       mateRadius: 30, // Phase 1: Proximity-based reproduction - must be within 30px
-      maxBoids: 600,
+      minDistance: 10, // Minimum distance between boids (prevents overlap/stacking)
+      maxBoids: 600, // Global safety limit
+      maxPreyBoids: 500, // Per-role cap for prey
+      maxPredatorBoids: 100, // Per-role cap for predators
       minReproductionAge: 5, // Phase 2: Can start reproducing at 5 seconds old
       reproductionEnergyThreshold: 0.7, // Phase 2: Need 70% energy to seek mates
       reproductionCooldownTicks: 5, // Phase 2: 5 time passages (~5 seconds) cooldown
+      matingBuildupTicks: 3, // Must stay close to mate for 3 ticks before reproducing
+      eatingCooldownTicks: 3, // Predators must wait 3 ticks after eating before catching again
       types: {
         explorer: {
           id: "explorer",
@@ -49,7 +54,7 @@ export const config = defineResource({
           maxEnergy: 60, // Phase 1.5: Reduced from 75 - faster reproduction
           energyGainRate: 1.2, // Phase 1: Reduced from 1.0 - reproduce in ~100 seconds
           energyLossRate: 0, // Prey don't lose energy
-          maxAge: 50, // Die of old age after 30 seconds (~1 reproduction cycle)
+          maxAge: 90, // Longer lifespan for multiple reproduction cycles
         },
         social: {
           id: "social",
@@ -57,7 +62,7 @@ export const config = defineResource({
           color: "#ff4488", // Pink
           role: "prey",
           separationWeight: 0.5,
-          alignmentWeight: 1.2,
+          alignmentWeight: 2.4,
           cohesionWeight: 2.5,
           maxSpeed: 3,
           maxForce: 0.08,
@@ -65,7 +70,7 @@ export const config = defineResource({
           maxEnergy: 60, // Phase 1.5: Reduced from 75 - faster reproduction
           energyGainRate: 1.3, // Phase 1: Reduced from 0.8 - reproduce in ~120 seconds
           energyLossRate: 0,
-          maxAge: 50, // Die of old age after 30 seconds (~1 reproduction cycle)
+          maxAge: 90, // Longer lifespan for multiple reproduction cycles
         },
         independent: {
           id: "independent",
@@ -81,7 +86,7 @@ export const config = defineResource({
           maxEnergy: 60, // Phase 1.5: Reduced from 75 - faster reproduction
           energyGainRate: 1.5, // Phase 1: Reduced from 1.2 - reproduce in ~75 seconds (still fastest)
           energyLossRate: 0,
-          maxAge: 50, // Die of old age after 90 seconds (~1 reproduction cycle)
+          maxAge: 90, // Longer lifespan for multiple reproduction cycles
         },
         cautious: {
           id: "cautious",
@@ -97,7 +102,7 @@ export const config = defineResource({
           maxEnergy: 60, // Phase 1.5: Reduced from 75 - faster reproduction
           energyGainRate: 1.6, // Phase 1: Reduced from 0.9 - reproduce in ~109 seconds
           energyLossRate: 0,
-          maxAge: 60, // Die of old age after 30 seconds (~1 reproduction cycle)
+          maxAge: 100, // Longest lifespan - cautious types live longer
         },
         predator: {
           id: "predator",
@@ -113,7 +118,7 @@ export const config = defineResource({
           maxEnergy: 150, // Phase 1: Increased from 100 - need 6 catches to reproduce
           energyGainRate: 25, // Phase 1: Reduced from 35 - less energy per catch
           energyLossRate: 3.0, // Keep same - die in 75 seconds without food
-          maxAge: 20, // Die of old age after 20 seconds (must hunt efficiently!)
+          maxAge: 60, // Die of old age after 50 seconds (must hunt efficiently!)
         },
       },
     };

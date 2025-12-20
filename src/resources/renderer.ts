@@ -38,7 +38,8 @@ export const renderer = defineResource({
     let lastFrameTime = performance.now();
     let fps = 60;
 
-    const energyBarEnabled = true;
+    const energyBarEnabled = false;
+    const stanceSymbolEnabled = true;
 
     const draw = () => {
       const { ctx, width, height } = canvas;
@@ -97,6 +98,73 @@ export const renderer = defineResource({
 
         ctx.restore();
 
+        // Draw stance indicator (letter) on the boid
+        if (typeConfig) {
+          const stance = boid.stance;
+          let stanceSymbol = "";
+          let stanceColor = "#fff";
+
+          if (typeConfig.role === "predator") {
+            // Predator stance symbols
+            switch (stance) {
+              case "hunting":
+                stanceSymbol = "H";
+                stanceColor = "#ff0000";
+                break;
+              case "seeking_mate":
+                stanceSymbol = "S";
+                stanceColor = "#ff69b4";
+                break;
+              case "mating":
+                stanceSymbol = "M";
+                stanceColor = "#ff1493";
+                break;
+              case "idle":
+                stanceSymbol = "I";
+                stanceColor = "#666";
+                break;
+              case "eating":
+                stanceSymbol = "E";
+                stanceColor = "#ff8800";
+                break;
+            }
+          } else {
+            // Prey stance symbols
+            switch (stance) {
+              case "flocking":
+                stanceSymbol = "F";
+                stanceColor = "#00aaff";
+                break;
+              case "seeking_mate":
+                stanceSymbol = "S";
+                stanceColor = "#ff69b4";
+                break;
+              case "mating":
+                stanceSymbol = "M";
+                stanceColor = "#ff1493";
+                break;
+              case "fleeing":
+                stanceSymbol = "!";
+                stanceColor = "#ffaa00";
+                break;
+            }
+          }
+
+          if (stanceSymbol && stanceSymbolEnabled) {
+            ctx.fillStyle = stanceColor;
+            ctx.font = "bold 12px monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "bottom";
+            // Draw above the boid (offset by -12 for prey, -15 for predators)
+            const yOffset = typeConfig.role === "predator" ? -15 : -12;
+            ctx.fillText(
+              stanceSymbol,
+              boid.position.x,
+              boid.position.y + yOffset
+            );
+          }
+        }
+
         // Draw energy bar above boid
         if (typeConfig && energyBarEnabled) {
           const energyPercent = boid.energy / typeConfig.maxEnergy;
@@ -131,14 +199,14 @@ export const renderer = defineResource({
 
       ctx.fillStyle = "#00ff88";
       ctx.font = "16px monospace";
-      ctx.fillText(`FPS: ${Math.round(fps)}`, 10, 20);
-      ctx.fillText(`Total: ${engine.boids.length}`, 10, 40);
+      ctx.fillText(`FPS: ${Math.round(fps)}`, 25, 20);
+      ctx.fillText(`Total: ${engine.boids.length}`, 25, 40);
       ctx.fillStyle = "#00ff88";
-      ctx.fillText(`Prey: ${preyCount}`, 10, 60);
+      ctx.fillText(`Prey: ${preyCount}`, 25, 60);
       ctx.fillStyle = "#ff0000";
-      ctx.fillText(`Predators: ${predatorCount}`, 10, 80);
+      ctx.fillText(`Predators: ${predatorCount}`, 25, 80);
       ctx.fillStyle = "#00ff88";
-      ctx.fillText(`Obstacles: ${state.obstacles.length}`, 10, 100);
+      ctx.fillText(`Obstacles: ${state.obstacles.length}`, 25, 100);
     };
 
     const animate = () => {
