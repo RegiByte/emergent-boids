@@ -16,7 +16,7 @@ export type CatchEvent = {
 
 export type BoidEngine = {
   boids: Boid[];
-  update: () => void;
+  update: (deltaSeconds: number) => void;
   reset: () => void;
   addBoid: (boid: Boid) => void;
   removeBoid: (boidId: string) => void;
@@ -59,7 +59,7 @@ export const engine = defineResource({
       config.perceptionRadius
     );
 
-    const update = () => {
+    const update = (deltaSeconds: number) => {
       // Get current runtime parameters from store
       const runtimeParams = store.getState().state;
 
@@ -77,7 +77,7 @@ export const engine = defineResource({
       // Update each boid with only nearby boids (O(n) instead of O(n²))
       for (const boid of boids) {
         const nearbyBoids = getNearbyBoids(spatialHash, boid.position);
-        updateBoid(boid, nearbyBoids, runtimeParams.obstacles, dynamicConfig);
+        updateBoid(boid, nearbyBoids, runtimeParams.obstacles, dynamicConfig, deltaSeconds);
       }
     };
 

@@ -268,7 +268,8 @@ export function updateBoid(
   boid: Boid,
   allBoids: Boid[],
   obstacles: Obstacle[],
-  config: BoidConfig
+  config: BoidConfig,
+  deltaSeconds: number
 ): void {
   // Get this boid's type config
   const typeConfig = config.types[boid.typeId];
@@ -288,7 +289,9 @@ export function updateBoid(
   }
 
   // Update position (common for all boids)
-  boid.position = vec.add(boid.position, boid.velocity);
+  // Scale velocity by deltaSeconds for frame-rate independent movement
+  const scaledVelocity = vec.multiply(boid.velocity, deltaSeconds * 60); // 60 = reference FPS
+  boid.position = vec.add(boid.position, scaledVelocity);
 
   // Wrap around edges (toroidal space)
   wrapEdges(boid, config.canvasWidth, config.canvasHeight);

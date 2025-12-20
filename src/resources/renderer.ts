@@ -38,6 +38,12 @@ export const renderer = defineResource({
     let lastFrameTime = performance.now();
     let fps = 60;
 
+    // Fixed timestep configuration
+    const FIXED_UPDATE_RATE = 60; // Updates per second (60 UPS)
+    const FIXED_TIMESTEP = 1 / FIXED_UPDATE_RATE; // 0.01667 seconds (16.67ms)
+    const MAX_ACCUMULATED_TIME = FIXED_TIMESTEP * 5; // Prevent spiral of death
+    let accumulator = 0;
+
     const energyBarEnabled = false;
     const stanceSymbolEnabled = false;
 
@@ -210,16 +216,29 @@ export const renderer = defineResource({
     };
 
     const animate = () => {
-      // Calculate FPS
-      const now = performance.now();
-      const deltaTime = now - lastFrameTime;
-      lastFrameTime = now;
-      // Smooth FPS calculation (exponential moving average)
-      fps = fps * 0.9 + (1000 / deltaTime) * 0.1;
+      // Calculate frame time
+      const currentTime = performance.now();
+      const deltaTime = (currentTime - lastFrameTime) / 1000; // Convert to seconds
+      lastFrameTime = currentTime;
 
-      engine.update();
+      // Smooth FPS calculation (exponential moving average) - for display only
+      fps = fps * 0.9 + (1 / deltaTime) * 0.1;
 
-      // Check for catches and dispatch events
+      // Add frame time to accumulator
+      accumulator += deltaTime;
+
+      // Clamp accumulator to prevent spiral of death (if simulation can't keep up)
+      if (accumulator > MAX_ACCUMULATED_TIME) {
+        accumulator = MAX_ACCUMULATED_TIME;
+      }
+
+      // Update simulation at fixed rate (may run 0, 1, or multiple times per frame)
+      while (accumulator >= FIXED_TIMESTEP) {
+        engine.update(FIXED_TIMESTEP); // Always pass fixed 16.67ms timestep
+        accumulator -= FIXED_TIMESTEP;
+      }
+
+      // Check for catches after all updates (once per render frame)
       const catches = engine.checkCatches();
       for (const catchEvent of catches) {
         runtimeController.dispatch({
@@ -229,6 +248,7 @@ export const renderer = defineResource({
         });
       }
 
+      // Render at display rate (always once per frame)
       draw();
       animationId = requestAnimationFrame(animate);
     };
