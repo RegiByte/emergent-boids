@@ -85,25 +85,49 @@ export const energyManager = defineResource({
         } else {
           // Prey gain energy over time
           boid.energy += typeConfig.energyGainRate * deltaSeconds;
+          
+          // Cap energy at max
+          if (boid.energy > typeConfig.maxEnergy) {
+            boid.energy = typeConfig.maxEnergy;
+          }
+
+          // Decrement reproduction cooldown
+          if (boid.reproductionCooldown > 0) {
+            boid.reproductionCooldown -= 1;
+          }
+
+          // Check if ready to seek mates (Phase 2: age + energy threshold)
+          const energyThreshold = typeConfig.maxEnergy * config.reproductionEnergyThreshold;
+          const isReadyToMate = 
+            boid.age >= config.minReproductionAge &&
+            boid.energy >= energyThreshold &&
+            boid.reproductionCooldown === 0;
+
+          // Update seeking state
+          boid.seekingMate = isReadyToMate;
 
           // PROXIMITY-BASED REPRODUCTION: Prey need a nearby mate
-          if (
-            boid.energy >= typeConfig.maxEnergy &&
-            !matedBoids.has(boid.id)
-          ) {
-            // Find nearby mate of same type with enough energy
+          if (isReadyToMate && !matedBoids.has(boid.id)) {
+            // Find nearby mate of same type that's also seeking
             const mate = findNearbyMate(
               boid,
               engine.boids,
-              typeConfig,
               matedBoids,
               config.mateRadius
             );
 
             if (mate) {
-              // Both parents lose 75% energy (reset to 25%)
-              boid.energy = typeConfig.maxEnergy * 0.25;
-              mate.energy = typeConfig.maxEnergy * 0.25;
+              // Both parents lose 50% energy (less harsh than before)
+              boid.energy = typeConfig.maxEnergy * 0.5;
+              mate.energy = typeConfig.maxEnergy * 0.5;
+              
+              // Set reproduction cooldown (Phase 2)
+              boid.reproductionCooldown = config.reproductionCooldownTicks;
+              mate.reproductionCooldown = config.reproductionCooldownTicks;
+              
+              // Clear seeking state
+              boid.seekingMate = false;
+              mate.seekingMate = false;
 
               // Mark both as mated this tick
               matedBoids.add(boid.id);
@@ -122,7 +146,6 @@ export const energyManager = defineResource({
                 position: midpoint,
               });
             }
-            // If no mate found, boid keeps energy and waits
           }
         }
       }
@@ -131,16 +154,15 @@ export const energyManager = defineResource({
       function findNearbyMate(
         boid: any,
         allBoids: any[],
-        typeConfig: any,
         alreadyMated: Set<string>,
         mateRadius: number
       ) {
-
         for (const other of allBoids) {
           if (
             other.id !== boid.id &&
             other.typeId === boid.typeId &&
-            other.energy >= typeConfig.maxEnergy &&
+            other.seekingMate && // Must be actively seeking (Phase 2)
+            other.reproductionCooldown === 0 && // Must be off cooldown (Phase 2)
             !alreadyMated.has(other.id)
           ) {
             // Calculate distance

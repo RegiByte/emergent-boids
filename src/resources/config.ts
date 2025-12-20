@@ -1,19 +1,39 @@
 import { defineResource } from "braided";
 import type { BoidConfig } from "../boids/types";
 
+// Calculate canvas dimensions based on viewport
+function calculateCanvasDimensions() {
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  
+  const availableWidth = viewportWidth * 0.75;
+  const availableHeight = viewportHeight - 100;
+  
+  const canvasWidth = Math.floor(Math.min(availableWidth - 40, 1400));
+  const canvasHeight = Math.floor(Math.min(availableHeight - 40, 1000));
+  
+  return { canvasWidth, canvasHeight };
+}
+
 export const config = defineResource({
   start: (): BoidConfig => {
+    // Calculate initial canvas dimensions from viewport
+    const { canvasWidth, canvasHeight } = calculateCanvasDimensions();
+    
     return {
       count: 50,
       perceptionRadius: 50,
       obstacleAvoidanceWeight: 2.0,
-      canvasWidth: 800,
-      canvasHeight: 600,
+      canvasWidth, // Use calculated dimensions
+      canvasHeight, // Use calculated dimensions
       fearRadius: 150, // Phase 1.5: Increased from 100 - earlier warning system
       chaseRadius: 150,
       catchRadius: 10,
       mateRadius: 30, // Phase 1: Proximity-based reproduction - must be within 30px
       maxBoids: 600,
+      minReproductionAge: 5, // Phase 2: Can start reproducing at 5 seconds old
+      reproductionEnergyThreshold: 0.7, // Phase 2: Need 70% energy to seek mates
+      reproductionCooldownTicks: 5, // Phase 2: 5 time passages (~5 seconds) cooldown
       types: {
         explorer: {
           id: "explorer",

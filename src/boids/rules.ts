@@ -271,3 +271,56 @@ export function chase(
 
   return { x: 0, y: 0 };
 }
+
+/**
+ * Seek Mate: Steer towards nearest eligible mate
+ * Returns a steering force towards the nearest same-type boid ready to mate
+ */
+export function seekMate(
+  boid: Boid,
+  potentialMates: Boid[],
+  config: BoidConfig
+): Vector2 {
+  const typeConfig = config.types[boid.typeId];
+
+  // Find nearest eligible mate
+  let nearestMate: Boid | null = null;
+  let nearestDist = Infinity;
+
+  for (const other of potentialMates) {
+    // Must be same type, different boid, ready to mate
+    if (
+      other.id !== boid.id &&
+      other.typeId === boid.typeId &&
+      other.seekingMate &&
+      other.reproductionCooldown === 0
+    ) {
+      const dist = vec.toroidalDistance(
+        boid.position,
+        other.position,
+        config.canvasWidth,
+        config.canvasHeight
+      );
+
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestMate = other;
+      }
+    }
+  }
+
+  if (nearestMate) {
+    // Strong steering force toward mate
+    const desired = vec.toroidalSubtract(
+      nearestMate.position,
+      boid.position,
+      config.canvasWidth,
+      config.canvasHeight
+    );
+    const desiredVelocity = vec.setMagnitude(desired, typeConfig.maxSpeed);
+    const steer = vec.subtract(desiredVelocity, boid.velocity);
+    return vec.limit(steer, typeConfig.maxForce * 2.0); // Extra strong force!
+  }
+
+  return { x: 0, y: 0 };
+}

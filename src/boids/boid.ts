@@ -31,6 +31,9 @@ export function createBoid(
     typeId,
     energy: typeConfig?.maxEnergy ? typeConfig.maxEnergy / 2 : 50, // Start at half energy
     age: 0, // Born at age 0
+    reproductionCooldown: 0, // Start ready to mate
+    seekingMate: false, // Not seeking initially
+    mateId: null, // No mate initially
   };
 }
 
@@ -60,6 +63,9 @@ export function createBoidOfType(
     typeId,
     energy: typeConfig.maxEnergy / 2, // Start at half energy
     age: 0, // Born at age 0
+    reproductionCooldown: 0, // Start ready to mate
+    seekingMate: false, // Not seeking initially
+    mateId: null, // No mate initially
   };
 }
 
@@ -133,18 +139,36 @@ function updatePrey(
   });
   const fearResponse = rules.fear(boid, predators, config);
 
+  // Mate-seeking behavior (Phase 2)
+  let mateSeekingForce = { x: 0, y: 0 };
+  if (boid.seekingMate) {
+    mateSeekingForce = rules.seekMate(boid, allBoids, config);
+  }
+
   // Apply weights to all forces
   const sepWeighted = vec.multiply(sep, typeConfig.separationWeight);
   const aliWeighted = vec.multiply(ali, typeConfig.alignmentWeight);
-  const cohWeighted = vec.multiply(coh, typeConfig.cohesionWeight);
+  
+  // Reduce cohesion when seeking mate (focus on mate, not flock)
+  const cohesionWeight = boid.seekingMate 
+    ? typeConfig.cohesionWeight * 0.3 
+    : typeConfig.cohesionWeight;
+  const cohWeighted = vec.multiply(coh, cohesionWeight);
+  
   const avoidWeighted = vec.multiply(avoid, config.obstacleAvoidanceWeight);
-  const fearWeighted = vec.multiply(fearResponse.force, typeConfig.fearFactor);
+  const fearWeighted = vec.multiply(fearResponse.force, typeConfig.fearFactor * 3.0);
 
   boid.acceleration = vec.add(boid.acceleration, sepWeighted);
   boid.acceleration = vec.add(boid.acceleration, aliWeighted);
   boid.acceleration = vec.add(boid.acceleration, cohWeighted);
   boid.acceleration = vec.add(boid.acceleration, avoidWeighted);
   boid.acceleration = vec.add(boid.acceleration, fearWeighted);
+  
+  // Mate-seeking is strong but not as strong as fear
+  if (boid.seekingMate) {
+    const mateSeekingWeighted = vec.multiply(mateSeekingForce, 2.5);
+    boid.acceleration = vec.add(boid.acceleration, mateSeekingWeighted);
+  }
 
   // Update velocity with fear-induced speed boost
   boid.velocity = vec.add(boid.velocity, boid.acceleration);

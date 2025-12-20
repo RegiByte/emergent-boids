@@ -237,6 +237,9 @@ export const controlEffectSchemas = {
       typeId: z.string(),
       energy: z.number(),
       age: z.number(),
+      reproductionCooldown: z.number(),
+      seekingMate: z.boolean(),
+      mateId: z.string().nullable(),
     }),
   }),
   engineRemoveBoid: z.object({

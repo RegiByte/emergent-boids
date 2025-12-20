@@ -13,6 +13,9 @@ export type Boid = {
   typeId: string;
   energy: number;
   age: number; // Age in seconds
+  reproductionCooldown: number; // Time passages until can reproduce again (0 = ready)
+  seekingMate: boolean; // Is actively seeking a mate
+  mateId: string | null; // ID of current mate (if paired)
 };
 
 export type Obstacle = {
@@ -48,5 +51,8 @@ export type BoidConfig = {
   catchRadius: number; // How close predator must be to catch prey
   mateRadius: number; // How close prey must be to reproduce
   maxBoids: number; // Population cap
+  minReproductionAge: number; // Minimum age to start reproducing (seconds)
+  reproductionEnergyThreshold: number; // Energy % needed to seek mates (0-1)
+  reproductionCooldownTicks: number; // Time passages before can reproduce again
   types: Record<string, BoidTypeConfig>;
 };
