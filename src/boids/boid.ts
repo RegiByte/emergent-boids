@@ -1,6 +1,8 @@
-import type { Boid, BoidConfig, Obstacle } from "./types";
+import type { Boid, BoidConfig, BoidTypeConfig, Obstacle } from "./types";
 import * as vec from "./vector";
 import * as rules from "./rules";
+
+let boidIdCounter = 0;
 
 /**
  * Create a new boid with random position, velocity, and type
@@ -8,12 +10,15 @@ import * as rules from "./rules";
 export function createBoid(
   width: number,
   height: number,
-  typeIds: string[]
+  typeIds: string[],
+  typeConfigs: Record<string, BoidTypeConfig>
 ): Boid {
   // Pick a random type
   const typeId = typeIds[Math.floor(Math.random() * typeIds.length)];
+  const typeConfig = typeConfigs[typeId];
   
   return {
+    id: `boid-${boidIdCounter++}`,
     position: {
       x: Math.random() * width,
       y: Math.random() * height,
@@ -24,11 +29,141 @@ export function createBoid(
     },
     acceleration: { x: 0, y: 0 },
     typeId,
+    energy: typeConfig?.maxEnergy ? typeConfig.maxEnergy / 2 : 50, // Start at half energy
+    age: 0, // Born at age 0
   };
 }
 
 /**
+ * Create a new boid of a specific type (for reproduction)
+ */
+export function createBoidOfType(
+  position: { x: number; y: number },
+  typeId: string,
+  typeConfig: BoidTypeConfig,
+  width: number,
+  height: number
+): Boid {
+  // Spawn near parent with slight offset
+  const offset = 20;
+  return {
+    id: `boid-${boidIdCounter++}`,
+    position: {
+      x: (position.x + (Math.random() - 0.5) * offset + width) % width,
+      y: (position.y + (Math.random() - 0.5) * offset + height) % height,
+    },
+    velocity: {
+      x: (Math.random() - 0.5) * 4,
+      y: (Math.random() - 0.5) * 4,
+    },
+    acceleration: { x: 0, y: 0 },
+    typeId,
+    energy: typeConfig.maxEnergy / 2, // Start at half energy
+    age: 0, // Born at age 0
+  };
+}
+
+/**
+ * Update a predator boid
+ */
+function updatePredator(
+  boid: Boid,
+  allBoids: Boid[],
+  obstacles: Obstacle[],
+  config: BoidConfig,
+  typeConfig: BoidTypeConfig
+): void {
+  // Find all prey
+  const prey = allBoids.filter((b) => {
+    const otherType = config.types[b.typeId];
+    return otherType && otherType.role === "prey";
+  });
+  
+  // Chase nearest prey
+  const chaseForce = rules.chase(boid, prey, config);
+  const chaseWeighted = vec.multiply(chaseForce, 3.0); // Strong chase force
+  boid.acceleration = vec.add(boid.acceleration, chaseWeighted);
+
+  // Avoid obstacles
+  const avoid = rules.avoidObstacles(boid, obstacles, config);
+  const avoidWeighted = vec.multiply(avoid, config.obstacleAvoidanceWeight);
+  boid.acceleration = vec.add(boid.acceleration, avoidWeighted);
+
+  // Separate from other predators
+  const otherPredators = allBoids.filter((b) => {
+    const otherType = config.types[b.typeId];
+    return otherType && otherType.role === "predator" && b.id !== boid.id;
+  });
+  const sep = rules.separation(boid, otherPredators, config);
+  const sepWeighted = vec.multiply(sep, typeConfig.separationWeight);
+  boid.acceleration = vec.add(boid.acceleration, sepWeighted);
+
+  // Update velocity with energy-based speed scaling
+  boid.velocity = vec.add(boid.velocity, boid.acceleration);
+  
+  // Energy affects speed: well-fed predators are faster, starving ones are slower
+  // Formula: speed scales from 0.5x (near death) to 1.3x (full energy)
+  const energyRatio = boid.energy / typeConfig.maxEnergy;
+  const energySpeedFactor = 0.5 + (energyRatio * 0.8); // Range: 0.5 to 1.3
+  const effectiveMaxSpeed = typeConfig.maxSpeed * energySpeedFactor;
+  
+  boid.velocity = vec.limit(boid.velocity, effectiveMaxSpeed);
+}
+
+/**
+ * Update a prey boid
+ */
+function updatePrey(
+  boid: Boid,
+  allBoids: Boid[],
+  obstacles: Obstacle[],
+  config: BoidConfig,
+  typeConfig: BoidTypeConfig
+): void {
+  // Standard flocking behaviors
+  const sep = rules.separation(boid, allBoids, config);
+  const ali = rules.alignment(boid, allBoids, config);
+  const coh = rules.cohesion(boid, allBoids, config);
+  const avoid = rules.avoidObstacles(boid, obstacles, config);
+
+  // Fear of predators
+  const predators = allBoids.filter((b) => {
+    const otherType = config.types[b.typeId];
+    return otherType && otherType.role === "predator";
+  });
+  const fearResponse = rules.fear(boid, predators, config);
+
+  // Apply weights to all forces
+  const sepWeighted = vec.multiply(sep, typeConfig.separationWeight);
+  const aliWeighted = vec.multiply(ali, typeConfig.alignmentWeight);
+  const cohWeighted = vec.multiply(coh, typeConfig.cohesionWeight);
+  const avoidWeighted = vec.multiply(avoid, config.obstacleAvoidanceWeight);
+  const fearWeighted = vec.multiply(fearResponse.force, typeConfig.fearFactor);
+
+  boid.acceleration = vec.add(boid.acceleration, sepWeighted);
+  boid.acceleration = vec.add(boid.acceleration, aliWeighted);
+  boid.acceleration = vec.add(boid.acceleration, cohWeighted);
+  boid.acceleration = vec.add(boid.acceleration, avoidWeighted);
+  boid.acceleration = vec.add(boid.acceleration, fearWeighted);
+
+  // Update velocity with fear-induced speed boost
+  boid.velocity = vec.add(boid.velocity, boid.acceleration);
+  
+  // Apply adrenaline rush: when afraid, prey can run faster than normal
+  // Speed boost scales with fearFactor (higher fear = bigger boost)
+  let effectiveMaxSpeed = typeConfig.maxSpeed;
+  if (fearResponse.isAfraid && typeConfig.fearFactor > 0) {
+    // Boost formula: maxSpeed * (1 + fearFactor * 0.5)
+    // Examples: 0.8 fear = 40% boost, 0.5 fear = 25% boost, 0.3 fear = 15% boost
+    effectiveMaxSpeed = typeConfig.maxSpeed * (1 + typeConfig.fearFactor * 0.5);
+  }
+  
+  boid.velocity = vec.limit(boid.velocity, effectiveMaxSpeed);
+}
+
+/**
  * Update a single boid based on its neighbors and obstacles
+ * Dispatches to role-specific update functions
  */
 export function updateBoid(
   boid: Boid,
@@ -46,29 +181,14 @@ export function updateBoid(
   // Reset acceleration
   boid.acceleration = { x: 0, y: 0 };
 
-  // Calculate the four forces
-  const sep = rules.separation(boid, allBoids, config);
-  const ali = rules.alignment(boid, allBoids, config);
-  const coh = rules.cohesion(boid, allBoids, config);
-  const avoid = rules.avoidObstacles(boid, obstacles, config);
+  // Dispatch to role-specific update function
+  if (typeConfig.role === "predator") {
+    updatePredator(boid, allBoids, obstacles, config, typeConfig);
+  } else {
+    updatePrey(boid, allBoids, obstacles, config, typeConfig);
+  }
 
-  // Apply weights from boid's type config
-  const sepWeighted = vec.multiply(sep, typeConfig.separationWeight);
-  const aliWeighted = vec.multiply(ali, typeConfig.alignmentWeight);
-  const cohWeighted = vec.multiply(coh, typeConfig.cohesionWeight);
-  const avoidWeighted = vec.multiply(avoid, config.obstacleAvoidanceWeight);
-
-  // Apply forces to acceleration
-  boid.acceleration = vec.add(boid.acceleration, sepWeighted);
-  boid.acceleration = vec.add(boid.acceleration, aliWeighted);
-  boid.acceleration = vec.add(boid.acceleration, cohWeighted);
-  boid.acceleration = vec.add(boid.acceleration, avoidWeighted);
-
-  // Update velocity (using type's max speed)
-  boid.velocity = vec.add(boid.velocity, boid.acceleration);
-  boid.velocity = vec.limit(boid.velocity, typeConfig.maxSpeed);
-
-  // Update position
+  // Update position (common for all boids)
   boid.position = vec.add(boid.position, boid.velocity);
 
   // Wrap around edges (toroidal space)

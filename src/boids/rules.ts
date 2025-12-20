@@ -179,3 +179,95 @@ export function avoidObstacles(
 
   return steering;
 }
+
+/**
+ * Fear: Steer away from predators
+ * Returns a steering force away from nearby predators and whether fear is active
+ */
+export function fear(
+  boid: Boid,
+  predators: Boid[],
+  config: BoidConfig
+): { force: Vector2; isAfraid: boolean } {
+  const typeConfig = config.types[boid.typeId];
+  const steering: Vector2 = { x: 0, y: 0 };
+  let total = 0;
+
+  for (const predator of predators) {
+    const dist = vec.toroidalDistance(
+      boid.position,
+      predator.position,
+      config.canvasWidth,
+      config.canvasHeight
+    );
+
+    if (dist > 0 && dist < config.fearRadius) {
+      // Flee away from predator
+      let diff = vec.toroidalSubtract(
+        boid.position,
+        predator.position,
+        config.canvasWidth,
+        config.canvasHeight
+      );
+      // Weight by distance (closer = stronger fear)
+      diff = vec.divide(diff, dist * dist);
+      steering.x += diff.x;
+      steering.y += diff.y;
+      total++;
+    }
+  }
+
+  if (total > 0) {
+    const avg = vec.divide(steering, total);
+    const desired = vec.setMagnitude(avg, typeConfig.maxSpeed);
+    const steer = vec.subtract(desired, boid.velocity);
+    return { force: vec.limit(steer, typeConfig.maxForce), isAfraid: true };
+  }
+
+  return { force: steering, isAfraid: false };
+}
+
+/**
+ * Chase: Steer towards nearest prey
+ * Returns a steering force towards the nearest prey boid
+ */
+export function chase(
+  predator: Boid,
+  prey: Boid[],
+  config: BoidConfig
+): Vector2 {
+  const typeConfig = config.types[predator.typeId];
+
+  // Find nearest prey
+  let nearestPrey: Boid | null = null;
+  let nearestDist = Infinity;
+
+  for (const boid of prey) {
+    const dist = vec.toroidalDistance(
+      predator.position,
+      boid.position,
+      config.canvasWidth,
+      config.canvasHeight
+    );
+
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearestPrey = boid;
+    }
+  }
+
+  if (nearestPrey && nearestDist < config.chaseRadius) {
+    // Steer toward nearest prey
+    const desired = vec.toroidalSubtract(
+      nearestPrey.position,
+      predator.position,
+      config.canvasWidth,
+      config.canvasHeight
+    );
+    const desiredVelocity = vec.setMagnitude(desired, typeConfig.maxSpeed);
+    const steer = vec.subtract(desiredVelocity, predator.velocity);
+    return vec.limit(steer, typeConfig.maxForce);
+  }
+
+  return { x: 0, y: 0 };
+}

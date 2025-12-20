@@ -29,6 +29,17 @@ export const eventKeywords = {
     removed: "obstacles/obstacleRemoved",
     cleared: "obstacles/obstaclesCleared",
   },
+  // Time events
+  time: {
+    passage: "time/passage",
+  },
+  // Boid lifecycle events
+  boids: {
+    caught: "boids/caught",
+    died: "boids/died",
+    reproduced: "boids/reproduced",
+    spawnPredator: "boids/spawnPredator",
+  },
 } as const;
 
 // ============================================
@@ -39,6 +50,16 @@ export const effectKeywords = {
   // State effects
   state: {
     update: "state:update",
+  },
+  // Timer effects
+  timer: {
+    schedule: "timer:schedule",
+    cancel: "timer:cancel",
+  },
+  // Engine effects
+  engine: {
+    addBoid: "engine:addBoid",
+    removeBoid: "engine:removeBoid",
   },
 } as const;
 
@@ -85,6 +106,36 @@ export const obstacleEventSchemas = {
   }),
 };
 
+export const timeEventSchemas = {
+  passage: z.object({
+    type: z.literal(eventKeywords.time.passage),
+    deltaMs: z.number(),
+  }),
+};
+
+export const boidEventSchemas = {
+  caught: z.object({
+    type: z.literal(eventKeywords.boids.caught),
+    predatorId: z.string(),
+    preyId: z.string(),
+  }),
+  died: z.object({
+    type: z.literal(eventKeywords.boids.died),
+    boidId: z.string(),
+  }),
+  reproduced: z.object({
+    type: z.literal(eventKeywords.boids.reproduced),
+    parentId: z.string(),
+    childId: z.string(),
+    typeId: z.string(),
+  }),
+  spawnPredator: z.object({
+    type: z.literal(eventKeywords.boids.spawnPredator),
+    x: z.number(),
+    y: z.number(),
+  }),
+};
+
 // Union of all control events
 export const controlEventSchema = z.discriminatedUnion("type", [
   controlEventSchemas.setTypeConfig,
@@ -99,10 +150,25 @@ export const obstacleEventSchema = z.discriminatedUnion("type", [
   obstacleEventSchemas.clearObstacles,
 ]);
 
+// Union of all time events
+export const timeEventSchema = z.discriminatedUnion("type", [
+  timeEventSchemas.passage,
+]);
+
+// Union of all boid events
+export const boidEventSchema = z.discriminatedUnion("type", [
+  boidEventSchemas.caught,
+  boidEventSchemas.died,
+  boidEventSchemas.reproduced,
+  boidEventSchemas.spawnPredator,
+]);
+
 // Union of all events
 export const allEventSchema = z.union([
   controlEventSchema,
   obstacleEventSchema,
+  timeEventSchema,
+  boidEventSchema,
 ]);
 
 // ============================================
@@ -114,11 +180,17 @@ export const boidTypeConfigSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string(),
+  role: z.enum(["predator", "prey"]),
   separationWeight: z.number(),
   alignmentWeight: z.number(),
   cohesionWeight: z.number(),
   maxSpeed: z.number(),
   maxForce: z.number(),
+  fearFactor: z.number(),
+  maxEnergy: z.number(),
+  energyGainRate: z.number(),
+  energyLossRate: z.number(),
+  maxAge: z.number(),
 });
 
 export const runtimeStateSchema = z.object({
@@ -145,12 +217,44 @@ export const controlEffectSchemas = {
     type: z.literal(effectKeywords.state.update),
     state: partialRuntimeStateSchema,
   }),
+  timerSchedule: z.object({
+    type: z.literal(effectKeywords.timer.schedule),
+    id: z.string(),
+    delayMs: z.number(),
+    onExpire: allEventSchema,
+  }),
+  timerCancel: z.object({
+    type: z.literal(effectKeywords.timer.cancel),
+    id: z.string(),
+  }),
+  engineAddBoid: z.object({
+    type: z.literal(effectKeywords.engine.addBoid),
+    boid: z.object({
+      id: z.string(),
+      position: z.object({ x: z.number(), y: z.number() }),
+      velocity: z.object({ x: z.number(), y: z.number() }),
+      acceleration: z.object({ x: z.number(), y: z.number() }),
+      typeId: z.string(),
+      energy: z.number(),
+      age: z.number(),
+    }),
+  }),
+  engineRemoveBoid: z.object({
+    type: z.literal(effectKeywords.engine.removeBoid),
+    boidId: z.string(),
+  }),
 };
 
 // Union of all control effects
 export const controlEffectSchema = z.discriminatedUnion("type", [
   controlEffectSchemas.stateUpdate,
+  controlEffectSchemas.timerSchedule,
+  controlEffectSchemas.timerCancel,
+  controlEffectSchemas.engineAddBoid,
+  controlEffectSchemas.engineRemoveBoid,
 ]);
+
+export const allEffectSchema = z.union([controlEffectSchema]);
 
 // ============================================
 // Inferred Types
@@ -160,5 +264,8 @@ export type RuntimeState = z.infer<typeof runtimeStateSchema>;
 export type PartialRuntimeState = z.infer<typeof partialRuntimeStateSchema>;
 export type ControlEvent = z.infer<typeof controlEventSchema>;
 export type ObstacleEvent = z.infer<typeof obstacleEventSchema>;
+export type TimeEvent = z.infer<typeof timeEventSchema>;
+export type BoidEvent = z.infer<typeof boidEventSchema>;
 export type AllEvent = z.infer<typeof allEventSchema>;
 export type ControlEffect = z.infer<typeof controlEffectSchema>;
+export type AllEffect = z.infer<typeof allEffectSchema>;

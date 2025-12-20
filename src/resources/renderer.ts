@@ -3,6 +3,8 @@ import { CanvasResource } from "./canvas";
 import { BoidEngine } from "./engine";
 import type { StartedRuntimeStore } from "./runtimeStore";
 import type { BoidConfig } from "../boids/types";
+import type { RuntimeController } from "./runtimeController";
+import { eventKeywords } from "../vocabulary/keywords";
 
 export type Renderer = {
   start: () => void;
@@ -11,22 +13,32 @@ export type Renderer = {
 };
 
 export const renderer = defineResource({
-  dependencies: ["canvas", "engine", "runtimeStore", "config"],
+  dependencies: [
+    "canvas",
+    "engine",
+    "runtimeStore",
+    "config",
+    "runtimeController",
+  ],
   start: ({
     canvas,
     engine,
     runtimeStore,
     config,
+    runtimeController,
   }: {
     canvas: CanvasResource;
     engine: BoidEngine;
     runtimeStore: StartedRuntimeStore;
     config: BoidConfig;
+    runtimeController: RuntimeController;
   }) => {
     let animationId: number | null = null;
     let isRunning = false;
     let lastFrameTime = performance.now();
     let fps = 60;
+
+    const energyBarEnabled = true;
 
     const draw = () => {
       const { ctx, width, height } = canvas;
@@ -68,21 +80,65 @@ export const renderer = defineResource({
         // Use type's color
         ctx.fillStyle = typeConfig?.color || "#00ff88";
         ctx.beginPath();
-        ctx.moveTo(8, 0);
-        ctx.lineTo(-4, 4);
-        ctx.lineTo(-4, -4);
+
+        // Predators are larger
+        if (typeConfig?.role === "predator") {
+          ctx.moveTo(12, 0);
+          ctx.lineTo(-6, 6);
+          ctx.lineTo(-6, -6);
+        } else {
+          ctx.moveTo(8, 0);
+          ctx.lineTo(-4, 4);
+          ctx.lineTo(-4, -4);
+        }
+
         ctx.closePath();
         ctx.fill();
 
         ctx.restore();
+
+        // Draw energy bar above boid
+        if (typeConfig && energyBarEnabled) {
+          const energyPercent = boid.energy / typeConfig.maxEnergy;
+          const barWidth = 20;
+          const barHeight = 3;
+          const barX = boid.position.x - barWidth / 2;
+          const barY = boid.position.y - 12;
+
+          // Background
+          ctx.fillStyle = "#333";
+          ctx.fillRect(barX, barY, barWidth, barHeight);
+
+          // Energy fill
+          const energyColor =
+            typeConfig.role === "predator" ? "#ff0000" : "#00ff88";
+          ctx.fillStyle = energyColor;
+          ctx.fillRect(barX, barY, barWidth * energyPercent, barHeight);
+
+          // Border
+          ctx.strokeStyle = "#666";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(barX, barY, barWidth, barHeight);
+        }
       }
 
       // Draw FPS counter and stats
+      const predatorCount = engine.boids.filter((b) => {
+        const typeConfig = config.types[b.typeId];
+        return typeConfig && typeConfig.role === "predator";
+      }).length;
+      const preyCount = engine.boids.length - predatorCount;
+
       ctx.fillStyle = "#00ff88";
       ctx.font = "16px monospace";
       ctx.fillText(`FPS: ${Math.round(fps)}`, 10, 20);
-      ctx.fillText(`Boids: ${engine.boids.length}`, 10, 40);
-      ctx.fillText(`Obstacles: ${state.obstacles.length}`, 10, 60);
+      ctx.fillText(`Total: ${engine.boids.length}`, 10, 40);
+      ctx.fillStyle = "#00ff88";
+      ctx.fillText(`Prey: ${preyCount}`, 10, 60);
+      ctx.fillStyle = "#ff0000";
+      ctx.fillText(`Predators: ${predatorCount}`, 10, 80);
+      ctx.fillStyle = "#00ff88";
+      ctx.fillText(`Obstacles: ${state.obstacles.length}`, 10, 100);
     };
 
     const animate = () => {
@@ -94,6 +150,17 @@ export const renderer = defineResource({
       fps = fps * 0.9 + (1000 / deltaTime) * 0.1;
 
       engine.update();
+
+      // Check for catches and dispatch events
+      const catches = engine.checkCatches();
+      for (const catchEvent of catches) {
+        runtimeController.dispatch({
+          type: eventKeywords.boids.caught,
+          predatorId: catchEvent.predatorId,
+          preyId: catchEvent.preyId,
+        });
+      }
+
       draw();
       animationId = requestAnimationFrame(animate);
     };

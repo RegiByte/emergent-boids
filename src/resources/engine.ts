@@ -7,11 +7,21 @@ import {
   getNearbyBoids,
 } from "../boids/spatialHash";
 import type { StartedRuntimeStore } from "./runtimeStore";
+import * as vec from "../boids/vector";
+
+export type CatchEvent = {
+  predatorId: string;
+  preyId: string;
+};
 
 export type BoidEngine = {
   boids: Boid[];
   update: () => void;
   reset: () => void;
+  addBoid: (boid: Boid) => void;
+  removeBoid: (boidId: string) => void;
+  getBoidById: (boidId: string) => Boid | undefined;
+  checkCatches: () => CatchEvent[]; // Returns list of catches, doesn't dispatch
 };
 
 export const engine = defineResource({
@@ -24,17 +34,20 @@ export const engine = defineResource({
     runtimeStore: StartedRuntimeStore;
   }) => {
     const store = runtimeStore.store;
-    // Get available type IDs
-    const typeIds = Object.keys(config.types);
+    // Get available type IDs (only prey types for initial spawn)
+    const preyTypeIds = Object.keys(config.types).filter(
+      (id) => config.types[id].role === "prey"
+    );
 
-    // Initialize boids with random types
+    // Initialize boids with random prey types
     const boids: Boid[] = [];
     for (let i = 0; i < config.count; i++) {
       boids.push(
         createBoid(
           config.canvasWidth,
           config.canvasHeight,
-          typeIds
+          preyTypeIds,
+          config.types
         )
       );
     }
@@ -68,6 +81,68 @@ export const engine = defineResource({
       }
     };
 
+    // Check for catches - returns list of catches without side effects
+    // Called by renderer which will dispatch events
+    const checkCatches = (): CatchEvent[] => {
+      const runtimeParams = store.getState().state;
+      const dynamicConfig: BoidConfig = {
+        ...config,
+        perceptionRadius: runtimeParams.perceptionRadius,
+        obstacleAvoidanceWeight: runtimeParams.obstacleAvoidanceWeight,
+        types: runtimeParams.types,
+      };
+
+      const predators = boids.filter((b) => {
+        const typeConfig = dynamicConfig.types[b.typeId];
+        return typeConfig && typeConfig.role === "predator";
+      });
+
+      const prey = boids.filter((b) => {
+        const typeConfig = dynamicConfig.types[b.typeId];
+        return typeConfig && typeConfig.role === "prey";
+      });
+
+      const catches: CatchEvent[] = [];
+      const caughtPreyIds: string[] = [];
+
+      for (const predator of predators) {
+        for (const preyBoid of prey) {
+          // Skip if already caught this frame
+          if (caughtPreyIds.includes(preyBoid.id)) continue;
+
+          const dist = vec.toroidalDistance(
+            predator.position,
+            preyBoid.position,
+            dynamicConfig.canvasWidth,
+            dynamicConfig.canvasHeight
+          );
+
+          if (dist < dynamicConfig.catchRadius) {
+            // Caught! Give predator energy (capped at max)
+            const predatorType = dynamicConfig.types[predator.typeId];
+            if (predatorType) {
+              predator.energy = Math.min(
+                predator.energy + predatorType.energyGainRate,
+                predatorType.maxEnergy
+              );
+            }
+
+            caughtPreyIds.push(preyBoid.id);
+            removeBoid(preyBoid.id);
+
+            catches.push({
+              predatorId: predator.id,
+              preyId: preyBoid.id,
+            });
+
+            break; // Predator can only catch one prey per frame
+          }
+        }
+      }
+
+      return catches;
+    };
+
     const reset = () => {
       boids.length = 0;
       for (let i = 0; i < config.count; i++) {
@@ -75,13 +150,37 @@ export const engine = defineResource({
           createBoid(
             config.canvasWidth,
             config.canvasHeight,
-            typeIds
+            preyTypeIds,
+            config.types
           )
         );
       }
     };
 
-    return { boids, update, reset } satisfies BoidEngine;
+    const addBoid = (boid: Boid) => {
+      boids.push(boid);
+    };
+
+    const removeBoid = (boidId: string) => {
+      const index = boids.findIndex((b) => b.id === boidId);
+      if (index !== -1) {
+        boids.splice(index, 1);
+      }
+    };
+
+    const getBoidById = (boidId: string) => {
+      return boids.find((b) => b.id === boidId);
+    };
+
+    return {
+      boids,
+      update,
+      reset,
+      addBoid,
+      removeBoid,
+      getBoidById,
+      checkCatches,
+    } satisfies BoidEngine;
   },
   halt: () => {
     // No cleanup needed

@@ -16,6 +16,9 @@ import {
   type RuntimeState,
 } from "../vocabulary/keywords";
 import { produce } from "immer";
+import type { TimerManager } from "./timer";
+import type { BoidEngine } from "./engine";
+import type { BoidConfig } from "../boids/types";
 
 // ============================================
 // Event Handlers (Pure Functions)
@@ -123,6 +126,46 @@ const handlers = {
       },
     ];
   },
+
+  [eventKeywords.time.passage]: (): ControlEffect[] => {
+    // This handler schedules the next tick
+    // Energy updates are handled in energyManager
+    const effects: ControlEffect[] = [];
+
+    // Schedule next tick
+    effects.push({
+      type: effectKeywords.timer.schedule,
+      id: "energy-tick",
+      delayMs: 1000,
+      onExpire: {
+        type: eventKeywords.time.passage,
+        deltaMs: 1000,
+      },
+    });
+
+    return effects;
+  },
+
+  [eventKeywords.boids.caught]: (): ControlEffect[] => {
+    // Handled in energyManager - just pass through
+    return [];
+  },
+
+  [eventKeywords.boids.died]: (): ControlEffect[] => {
+    // Handled in energyManager - just pass through
+    return [];
+  },
+
+  [eventKeywords.boids.reproduced]: (): ControlEffect[] => {
+    // Handled in energyManager - just pass through
+    return [];
+  },
+
+  [eventKeywords.boids.spawnPredator]: (): ControlEffect[] => {
+    // Spawn a predator at the specified position
+    // This is handled in energyManager
+    return [];
+  },
 } satisfies EventHandlerMap<
   AllEvent,
   ControlEffect,
@@ -136,6 +179,10 @@ const handlers = {
 
 type ExecutorContext = {
   store: RuntimeStoreApi;
+  timer: TimerManager;
+  engine: BoidEngine;
+  config: BoidConfig;
+  dispatch: (event: AllEvent) => void;
 };
 
 const executors = {
@@ -147,6 +194,24 @@ const executors = {
       },
     });
   },
+
+  [effectKeywords.timer.schedule]: (effect, ctx) => {
+    ctx.timer.schedule(effect.id, effect.delayMs, () => {
+      ctx.dispatch(effect.onExpire);
+    });
+  },
+
+  [effectKeywords.timer.cancel]: (effect, ctx) => {
+    ctx.timer.cancel(effect.id);
+  },
+
+  [effectKeywords.engine.addBoid]: (effect, ctx) => {
+    ctx.engine.addBoid(effect.boid);
+  },
+
+  [effectKeywords.engine.removeBoid]: (effect, ctx) => {
+    ctx.engine.removeBoid(effect.boidId);
+  },
 } satisfies EffectExecutorMap<ControlEffect, AllEvent, ExecutorContext>;
 
 // ============================================
@@ -155,7 +220,12 @@ const executors = {
 
 export type RuntimeController = ReturnType<typeof createRuntimeController>;
 
-function createRuntimeController(store: RuntimeStoreApi) {
+function createRuntimeController(
+  store: RuntimeStoreApi,
+  timer: TimerManager,
+  engine: BoidEngine,
+  config: BoidConfig
+) {
   const createControlLoop = emergentSystem<
     AllEvent,
     ControlEffect,
@@ -175,6 +245,12 @@ function createRuntimeController(store: RuntimeStoreApi) {
     },
     executorContext: {
       store,
+      timer,
+      engine,
+      config,
+      dispatch: (event: AllEvent) => {
+        runtime.dispatch(event);
+      },
     },
   });
 
@@ -182,11 +258,34 @@ function createRuntimeController(store: RuntimeStoreApi) {
 }
 
 export const runtimeController = defineResource({
-  dependencies: ["runtimeStore"],
-  start: ({ runtimeStore }: { runtimeStore: StartedRuntimeStore }) => {
-    return createRuntimeController(runtimeStore.store);
+  dependencies: ["runtimeStore", "timer", "engine", "config"],
+  start: ({
+    runtimeStore,
+    timer,
+    engine,
+    config,
+  }: {
+    runtimeStore: StartedRuntimeStore;
+    timer: TimerManager;
+    engine: BoidEngine;
+    config: BoidConfig;
+  }) => {
+    const controller = createRuntimeController(
+      runtimeStore.store,
+      timer,
+      engine,
+      config
+    );
+
+    // Start the energy tick timer
+    controller.dispatch({
+      type: eventKeywords.time.passage,
+      deltaMs: 1000,
+    });
+
+    return controller;
   },
-  halt: () => {
-    // Runtime cleanup handled automatically
+  halt: (controller) => {
+    controller.dispose();
   },
 });

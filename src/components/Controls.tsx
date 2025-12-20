@@ -2,7 +2,14 @@ import { useState } from "react";
 import { useResource } from "../system";
 import { eventKeywords } from "../vocabulary/keywords";
 
-export function Controls() {
+export type SpawnMode = "obstacle" | "predator";
+
+type ControlsProps = {
+  spawnMode: SpawnMode;
+  onSpawnModeChange: (mode: SpawnMode) => void;
+};
+
+export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
   const { useStore } = useResource("runtimeStore");
   const state = useStore((state) => state.state);
   const runtimeController = useResource("runtimeController");
@@ -19,14 +26,8 @@ export function Controls() {
         flexDirection: "column",
         gap: "16px",
         padding: "20px",
-        background: "#1a1a1a",
-        borderRadius: "8px",
-        minWidth: "300px",
-        maxHeight: "90vh",
-        overflowY: "auto",
       }}
     >
-      <h3 style={{ margin: 0, color: "#00ff88" }}>Controls</h3>
 
       {/* Type Tabs */}
       <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
@@ -203,6 +204,64 @@ export function Controls() {
         />
       </div>
 
+      {/* Spawn Mode Section */}
+      <div
+        style={{
+          padding: "12px",
+          background: "#222",
+          borderRadius: "4px",
+        }}
+      >
+        <h4
+          style={{
+            margin: "0 0 8px 0",
+            color: "#00ff88",
+            fontSize: "14px",
+          }}
+        >
+          Canvas Click Mode
+        </h4>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button
+            onClick={() => onSpawnModeChange("obstacle")}
+            style={{
+              flex: 1,
+              padding: "8px",
+              background: spawnMode === "obstacle" ? "#ff4444" : "#333",
+              color: "white",
+              border: spawnMode === "obstacle" ? "2px solid #ff6666" : "2px solid #444",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "12px",
+              fontWeight: "bold",
+            }}
+          >
+            🚧 Obstacle
+          </button>
+          <button
+            onClick={() => onSpawnModeChange("predator")}
+            style={{
+              flex: 1,
+              padding: "8px",
+              background: spawnMode === "predator" ? "#ff0000" : "#333",
+              color: "white",
+              border: spawnMode === "predator" ? "2px solid #ff3333" : "2px solid #444",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "12px",
+              fontWeight: "bold",
+            }}
+          >
+            🦅 Predator
+          </button>
+        </div>
+        <p style={{ margin: "8px 0 0 0", color: "#888", fontSize: "11px" }}>
+          {spawnMode === "obstacle" 
+            ? "Click canvas to place obstacles" 
+            : "Click canvas to spawn predators"}
+        </p>
+      </div>
+
       {/* Obstacles Section */}
       <div
         style={{
@@ -220,9 +279,6 @@ export function Controls() {
         >
           Obstacles ({state.obstacles.length})
         </h4>
-        <p style={{ margin: "0 0 12px 0", color: "#888", fontSize: "12px" }}>
-          Click on the canvas to place obstacles
-        </p>
         <button
           onClick={() =>
             runtimeController.dispatch({
