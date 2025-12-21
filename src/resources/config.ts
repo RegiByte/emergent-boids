@@ -35,7 +35,7 @@ export const config = defineResource({
       maxPreyBoids: 500, // Per-role cap for prey
       maxPredatorBoids: 100, // Per-role cap for predators
       minReproductionAge: 5, // Phase 2: Can start reproducing at 5 seconds old
-      reproductionEnergyThreshold: 0.7, // Phase 2: Need 70% energy to seek mates
+      reproductionEnergyThreshold: 0.5, // Phase 2: Need 50% energy to seek mates (REDUCED from 0.7 for food system)
       reproductionCooldownTicks: 5, // Phase 2: 5 time passages (~5 seconds) cooldown
       matingBuildupTicks: 2, // Must stay close to mate for 3 ticks before reproducing
       eatingCooldownTicks: 2, // Predators must wait 3 ticks after eating before catching again

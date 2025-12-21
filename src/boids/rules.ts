@@ -398,3 +398,175 @@ export function avoidDeathMarkers(
 
   return steering;
 }
+
+/**
+ * Seek Food: Steer towards nearest compatible food source
+ * Returns a steering force towards the nearest food source and its ID
+ * Prey seek prey food, predators seek predator food
+ */
+export function seekFood(
+  boid: Boid,
+  foodSources: Array<{
+    id: string;
+    position: Vector2;
+    energy: number;
+    maxEnergy: number;
+    sourceType: "prey" | "predator";
+    createdTick: number;
+  }>,
+  config: BoidConfig,
+  detectionRadius: number
+): { force: Vector2; targetFoodId: string | null } {
+  const typeConfig = config.types[boid.typeId];
+  const role = typeConfig.role;
+
+  // Filter food sources by type
+  const compatibleFood = foodSources.filter((food) => {
+    if (role === "prey") return food.sourceType === "prey";
+    if (role === "predator") return food.sourceType === "predator";
+    return false;
+  });
+
+  // Find nearest food within detection radius
+  let nearestFood: typeof foodSources[0] | null = null;
+  let nearestDist = Infinity;
+
+  for (const food of compatibleFood) {
+    if (food.energy <= 0) continue; // Skip exhausted sources
+
+    const dist = vec.toroidalDistance(
+      boid.position,
+      food.position,
+      config.canvasWidth,
+      config.canvasHeight
+    );
+
+    if (dist < detectionRadius && dist < nearestDist) {
+      nearestDist = dist;
+      nearestFood = food;
+    }
+  }
+
+  if (nearestFood) {
+    // Steer toward food
+    const desired = vec.toroidalSubtract(
+      nearestFood.position,
+      boid.position,
+      config.canvasWidth,
+      config.canvasHeight
+    );
+    const desiredVelocity = vec.setMagnitude(desired, typeConfig.maxSpeed);
+    const steer = vec.subtract(desiredVelocity, boid.velocity);
+    return {
+      force: vec.limit(steer, typeConfig.maxForce),
+      targetFoodId: nearestFood.id,
+    };
+  }
+
+  return { force: { x: 0, y: 0 }, targetFoodId: null };
+}
+
+/**
+ * Orbit Food: Circle around food source while eating
+ * Returns a steering force to maintain orbit at eating radius
+ * Boids move closer if too far, orbit if at correct distance
+ */
+export function orbitFood(
+  boid: Boid,
+  foodPosition: Vector2,
+  config: BoidConfig,
+  eatingRadius: number
+): Vector2 {
+  const typeConfig = config.types[boid.typeId];
+
+  // Calculate vector to food
+  const toFood = vec.toroidalSubtract(
+    foodPosition,
+    boid.position,
+    config.canvasWidth,
+    config.canvasHeight
+  );
+
+  const dist = vec.magnitude(toFood);
+
+  // If too far, move closer
+  if (dist > eatingRadius * 1.2) {
+    const desired = vec.setMagnitude(toFood, typeConfig.maxSpeed);
+    const steer = vec.subtract(desired, boid.velocity);
+    return vec.limit(steer, typeConfig.maxForce);
+  }
+
+  // If close enough, orbit (perpendicular to radius)
+  const tangent = { x: -toFood.y, y: toFood.x }; // 90° rotation
+  const desired = vec.setMagnitude(tangent, typeConfig.maxSpeed * 0.5);
+  const steer = vec.subtract(desired, boid.velocity);
+  return vec.limit(steer, typeConfig.maxForce * 0.8);
+}
+
+/**
+ * Avoid Predator Food: Prey avoid predator food sources (death sites)
+ * Returns a steering force away from predator food sources
+ * Only affects prey - predators ignore this
+ */
+export function avoidPredatorFood(
+  boid: Boid,
+  foodSources: Array<{
+    id: string;
+    position: Vector2;
+    energy: number;
+    maxEnergy: number;
+    sourceType: "prey" | "predator";
+    createdTick: number;
+  }>,
+  config: BoidConfig,
+  fearRadius: number,
+  fearWeight: number
+): Vector2 {
+  const typeConfig = config.types[boid.typeId];
+
+  // Only prey avoid predator food
+  if (typeConfig.role !== "prey") {
+    return { x: 0, y: 0 };
+  }
+
+  const predatorFood = foodSources.filter((f) => f.sourceType === "predator");
+
+  const steering: Vector2 = { x: 0, y: 0 };
+  let count = 0;
+
+  for (const food of predatorFood) {
+    const dist = vec.toroidalDistance(
+      boid.position,
+      food.position,
+      config.canvasWidth,
+      config.canvasHeight
+    );
+
+    if (dist < fearRadius) {
+      // Flee away from predator food
+      const away = vec.toroidalSubtract(
+        boid.position,
+        food.position,
+        config.canvasWidth,
+        config.canvasHeight
+      );
+
+      // Weight by distance (closer = stronger)
+      const weight = 1 / (dist * dist);
+      const weighted = vec.multiply(away, weight);
+
+      steering.x += weighted.x;
+      steering.y += weighted.y;
+      count++;
+    }
+  }
+
+  if (count > 0) {
+    const avg = vec.divide(steering, count);
+    const desired = vec.setMagnitude(avg, typeConfig.maxSpeed);
+    const steer = vec.subtract(desired, boid.velocity);
+    return vec.limit(steer, typeConfig.maxForce * fearWeight);
+  }
+
+  return { x: 0, y: 0 };
+}

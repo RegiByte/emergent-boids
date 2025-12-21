@@ -13,6 +13,8 @@ import { getPredators, getPrey } from "../boids/filters";
 export type CatchEvent = {
   predatorId: string;
   preyId: string;
+  preyEnergy: number;
+  preyPosition: { x: number; y: number };
 };
 
 export type BoidEngine = {
@@ -83,6 +85,7 @@ export const engine = defineResource({
           nearbyBoids,
           runtimeParams.obstacles,
           runtimeParams.deathMarkers,
+          runtimeParams.foodSources,
           dynamicConfig,
           deltaSeconds
         );
@@ -135,16 +138,14 @@ export const engine = defineResource({
           );
 
           if (dist < dynamicConfig.catchRadius) {
-            // Caught! Give predator energy (capped at max)
-            const predatorType = dynamicConfig.types[predator.typeId];
-            if (predatorType) {
-              predator.energy = Math.min(
-                predator.energy + predatorType.energyGainRate,
-                predatorType.maxEnergy
-              );
-            }
+            // Caught! Food source will be created by lifecycleManager
+            // No instant energy gain - predator must eat from food source
 
-            // Set eating cooldown
+            // Store prey data BEFORE removing it
+            const preyEnergy = preyBoid.energy;
+            const preyPosition = { x: preyBoid.position.x, y: preyBoid.position.y };
+
+            // Set eating cooldown (prevents monopolizing food)
             predator.eatingCooldown = dynamicConfig.eatingCooldownTicks;
 
             caughtPreyIds.push(preyBoid.id);
@@ -153,6 +154,8 @@ export const engine = defineResource({
             catches.push({
               predatorId: predator.id,
               preyId: preyBoid.id,
+              preyEnergy,
+              preyPosition,
             });
 
             break; // Predator can only catch one prey per frame

@@ -16,6 +16,7 @@ import {
   calculatePredatorSeparationWeight,
   calculatePredatorChaseWeight,
 } from "./calculations";
+import { FOOD_CONSTANTS } from "./food";
 
 let boidIdCounter = 0;
 
@@ -110,6 +111,14 @@ function updatePredator(
   boid: Boid,
   allBoids: Boid[],
   obstacles: Obstacle[],
+  foodSources: Array<{
+    id: string;
+    position: Vector2;
+    energy: number;
+    maxEnergy: number;
+    sourceType: "prey" | "predator";
+    createdTick: number;
+  }>,
   config: BoidConfig,
   typeConfig: BoidTypeConfig
 ): void {
@@ -130,36 +139,91 @@ function updatePredator(
 
   // Stance-based behavior
   let chaseForce = { x: 0, y: 0 };
+  let foodSeekingForce = { x: 0, y: 0 };
   let mateSeekingForce = { x: 0, y: 0 };
 
   if (stance === "eating") {
-    // Eating: stationary, no movement (busy consuming prey)
-    chaseForce = { x: 0, y: 0 };
+    // Find food source we're eating from and orbit it
+    const targetFood = foodSources.find((food) => {
+      if (food.sourceType !== "predator" || food.energy <= 0) return false;
+      const dx = boid.position.x - food.position.x;
+      const dy = boid.position.y - food.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      return dist < FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5;
+    });
+
+    if (targetFood) {
+      chaseForce = rules.orbitFood(
+        boid,
+        targetFood.position,
+        config,
+        FOOD_CONSTANTS.FOOD_EATING_RADIUS
+      );
+    }
   } else if (stance === "hunting") {
-    // Actively hunt prey
-    chaseForce = rules.chase(boid, prey, config);
+    // Check if predator food sources are at cap
+    const predatorFoodCount = foodSources.filter(
+      (f) => f.sourceType === "predator"
+    ).length;
+    const atFoodCap = predatorFoodCount >= FOOD_CONSTANTS.MAX_PREDATOR_FOOD_SOURCES;
+
+    // Priority: Seek nearby food over hunting (energy conservation)
+    const foodSeek = rules.seekFood(
+      boid,
+      foodSources,
+      config,
+      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
+    );
+    if (foodSeek.targetFoodId) {
+      foodSeekingForce = foodSeek.force;
+    } else if (atFoodCap) {
+      // Food sources at cap: seek ANY predator food source (even distant ones)
+      // This ensures predators deplete existing food before creating more
+      const anyFoodSeek = rules.seekFood(
+        boid,
+        foodSources,
+        config,
+        Infinity // No distance limit - seek any food
+      );
+      if (anyFoodSeek.targetFoodId) {
+        foodSeekingForce = anyFoodSeek.force;
+      }
+    } else {
+      // No food nearby and not at cap, hunt prey
+      chaseForce = rules.chase(boid, prey, config);
+    }
   } else if (stance === "seeking_mate" || stance === "mating") {
     // Seek predator mates, not prey
     mateSeekingForce = rules.seekMate(boid, otherPredators, config);
-    // Opportunistic hunting: only chase very close prey
-    const veryClosePrey = prey.filter((p) => {
-      const dx = boid.position.x - p.position.x;
-      const dy = boid.position.y - p.position.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      return distance < config.catchRadius * 3; // 3x catch radius
-    });
-    if (veryClosePrey.length > 0) {
-      chaseForce = rules.chase(boid, veryClosePrey, config);
+    // Opportunistic food seeking
+    const foodSeek = rules.seekFood(
+      boid,
+      foodSources,
+      config,
+      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
+    );
+    if (foodSeek.targetFoodId) {
+      foodSeekingForce = vec.multiply(foodSeek.force, 0.5);
     }
   } else if (stance === "idle") {
-    // Low energy, conserve - minimal movement
-    chaseForce = { x: 0, y: 0 };
+    // Seek food to recover energy
+    const foodSeek = rules.seekFood(
+      boid,
+      foodSources,
+      config,
+      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
+    );
+    if (foodSeek.targetFoodId) {
+      foodSeekingForce = foodSeek.force;
+    }
   }
 
-  // Apply forces with stance-based weights (using pure calculation)
+  // Apply forces with stance-based weights
   const chaseWeight = calculatePredatorChaseWeight(stance);
   const chaseWeighted = vec.multiply(chaseForce, chaseWeight);
+  const foodWeighted = vec.multiply(foodSeekingForce, 2.5); // Strong food seeking
   boid.acceleration = vec.add(boid.acceleration, chaseWeighted);
+  boid.acceleration = vec.add(boid.acceleration, foodWeighted);
 
   // Mate-seeking force (strong when seeking/mating)
   if (stance === "seeking_mate" || stance === "mating") {
@@ -172,26 +236,28 @@ function updatePredator(
   const avoidWeighted = vec.multiply(avoid, config.obstacleAvoidanceWeight);
   boid.acceleration = vec.add(boid.acceleration, avoidWeighted);
 
-  // Separate from other predators (unless mating) - using pure calculation
-  const separationWeight = calculatePredatorSeparationWeight(
-    typeConfig.separationWeight,
-    stance
-  );
-  const sep = rules.separation(boid, otherPredators, config);
-  const sepWeighted = vec.multiply(sep, separationWeight);
-  boid.acceleration = vec.add(boid.acceleration, sepWeighted);
+  // Separate from other predators (unless mating or eating)
+  if (stance !== "eating") {
+    const separationWeight = calculatePredatorSeparationWeight(
+      typeConfig.separationWeight,
+      stance
+    );
+    const sep = rules.separation(boid, otherPredators, config);
+    const sepWeighted = vec.multiply(sep, separationWeight);
+    boid.acceleration = vec.add(boid.acceleration, sepWeighted);
+  }
 
   // Update velocity with energy-based speed scaling
   boid.velocity = vec.add(boid.velocity, boid.acceleration);
 
-  // Energy affects speed (using pure calculation)
+  // Energy affects speed
   const energySpeedFactor = calculateEnergySpeedFactor(
     boid.energy,
     typeConfig.maxEnergy
   );
   let effectiveMaxSpeed = typeConfig.maxSpeed * energySpeedFactor;
 
-  // Eating stance: reduce max speed (using pure calculation)
+  // Eating stance: reduce max speed
   if (stance === "eating") {
     effectiveMaxSpeed *= calculateEatingSpeedFactor();
   }
@@ -213,9 +279,24 @@ function updatePrey(
     maxLifetimeTicks: number;
     typeId: string;
   }>,
+  foodSources: Array<{
+    id: string;
+    position: Vector2;
+    energy: number;
+    maxEnergy: number;
+    sourceType: "prey" | "predator";
+    createdTick: number;
+  }>,
   config: BoidConfig,
   typeConfig: BoidTypeConfig
 ): void {
+  const stance = boid.stance as
+    | "flocking"
+    | "seeking_mate"
+    | "mating"
+    | "fleeing"
+    | "eating";
+
   // Standard flocking behaviors
   const sep = rules.separation(boid, allBoids, config);
   const ali = rules.alignment(boid, allBoids, config);
@@ -229,14 +310,55 @@ function updatePrey(
   // Avoid death markers (natural deaths create danger zones)
   const deathAvoidance = rules.avoidDeathMarkers(boid, deathMarkers, config);
 
+  // Avoid predator food sources (death sites)
+  const predatorFoodAvoidance = rules.avoidPredatorFood(
+    boid,
+    foodSources,
+    config,
+    FOOD_CONSTANTS.PREDATOR_FOOD_FEAR_RADIUS,
+    FOOD_CONSTANTS.PREDATOR_FOOD_FEAR_WEIGHT
+  );
+
+  // Food seeking and eating
+  let foodSeekingForce = { x: 0, y: 0 };
+  let orbitForce = { x: 0, y: 0 };
+
+  if (stance === "eating") {
+    // Find food source we're eating from
+    const targetFood = foodSources.find((food) => {
+      if (food.sourceType !== "prey" || food.energy <= 0) return false;
+      const dx = boid.position.x - food.position.x;
+      const dy = boid.position.y - food.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      return dist < FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5;
+    });
+
+    if (targetFood) {
+      orbitForce = rules.orbitFood(
+        boid,
+        targetFood.position,
+        config,
+        FOOD_CONSTANTS.FOOD_EATING_RADIUS
+      );
+    }
+  } else if (
+    stance === "flocking" &&
+    boid.energy < typeConfig.maxEnergy * 0.7
+  ) {
+    // Seek food when hungry
+    const foodSeek = rules.seekFood(
+      boid,
+      foodSources,
+      config,
+      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
+    );
+    if (foodSeek.targetFoodId) {
+      foodSeekingForce = foodSeek.force;
+    }
+  }
+
   // Mate-seeking behavior (stance-based)
   let mateSeekingForce = { x: 0, y: 0 };
-  const stance = boid.stance as
-    | "flocking"
-    | "seeking_mate"
-    | "mating"
-    | "fleeing";
-
   if (stance === "seeking_mate" || stance === "mating") {
     mateSeekingForce = rules.seekMate(boid, allBoids, config);
   }
@@ -245,7 +367,7 @@ function updatePrey(
   const sepWeighted = vec.multiply(sep, typeConfig.separationWeight);
   const aliWeighted = vec.multiply(ali, typeConfig.alignmentWeight);
 
-  // Stance-based cohesion adjustment (using pure calculation)
+  // Stance-based cohesion adjustment
   const cohesionWeight = calculatePreyCohesionWeight(
     typeConfig.cohesionWeight,
     stance
@@ -257,11 +379,16 @@ function updatePrey(
     fearResponse.force,
     typeConfig.fearFactor * 3.0
   );
-  // Death marker avoidance - moderate strength (weighted by fear factor)
   const deathAvoidanceWeighted = vec.multiply(
     deathAvoidance,
     typeConfig.fearFactor * 1.5
   );
+  const predatorFoodAvoidanceWeighted = vec.multiply(
+    predatorFoodAvoidance,
+    typeConfig.fearFactor * 2.5
+  );
+  const foodSeekingWeighted = vec.multiply(foodSeekingForce, 2.0);
+  const orbitWeighted = vec.multiply(orbitForce, 3.0); // Strong orbit when eating
 
   boid.acceleration = vec.add(boid.acceleration, sepWeighted);
   boid.acceleration = vec.add(boid.acceleration, aliWeighted);
@@ -269,6 +396,9 @@ function updatePrey(
   boid.acceleration = vec.add(boid.acceleration, avoidWeighted);
   boid.acceleration = vec.add(boid.acceleration, fearWeighted);
   boid.acceleration = vec.add(boid.acceleration, deathAvoidanceWeighted);
+  boid.acceleration = vec.add(boid.acceleration, predatorFoodAvoidanceWeighted);
+  boid.acceleration = vec.add(boid.acceleration, foodSeekingWeighted);
+  boid.acceleration = vec.add(boid.acceleration, orbitWeighted);
 
   // Mate-seeking is strong but not as strong as fear (stance-based)
   if (stance === "seeking_mate" || stance === "mating") {
@@ -304,6 +434,14 @@ export function updateBoid(
     maxLifetimeTicks: number;
     typeId: string;
   }>,
+  foodSources: Array<{
+    id: string;
+    position: Vector2;
+    energy: number;
+    maxEnergy: number;
+    sourceType: "prey" | "predator";
+    createdTick: number;
+  }>,
   config: BoidConfig,
   deltaSeconds: number
 ): void {
@@ -319,9 +457,17 @@ export function updateBoid(
 
   // Dispatch to role-specific update function
   if (typeConfig.role === "predator") {
-    updatePredator(boid, allBoids, obstacles, config, typeConfig);
+    updatePredator(boid, allBoids, obstacles, foodSources, config, typeConfig);
   } else {
-    updatePrey(boid, allBoids, obstacles, deathMarkers, config, typeConfig);
+    updatePrey(
+      boid,
+      allBoids,
+      obstacles,
+      deathMarkers,
+      foodSources,
+      config,
+      typeConfig
+    );
   }
 
   // Update position (common for all boids)

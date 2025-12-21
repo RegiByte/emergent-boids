@@ -106,6 +106,19 @@ export const renderer = defineResource({
           });
           console.log("Death markers:", !currentSettings.deathMarkersEnabled);
           break;
+        case "f":
+          // Toggle food sources
+          runtimeStore.store.setState({
+            state: {
+              ...state,
+              visualSettings: {
+                ...currentSettings,
+                foodSourcesEnabled: !currentSettings.foodSourcesEnabled,
+              },
+            },
+          });
+          console.log("Food sources:", !currentSettings.foodSourcesEnabled);
+          break;
         case " ":
           // Toggle pause (space bar)
           e.preventDefault();
@@ -129,6 +142,7 @@ export const renderer = defineResource({
 ║ H - Toggle mating hearts               ║
 ║ S - Toggle stance symbols              ║
 ║ D - Toggle death markers               ║
+║ F - Toggle food sources                ║
 ║ Space - Pause/Resume simulation        ║
 ║ K or / - Show this help                ║
 ╚════════════════════════════════════════╝
@@ -204,29 +218,35 @@ export const renderer = defineResource({
           // Calculate visual properties based on strength and remaining ticks
           const strengthRatio = marker.strength / 5.0; // Max strength is 5.0
           const tickRatio = marker.remainingTicks / marker.maxLifetimeTicks;
-          
+
           // Opacity based on remaining ticks (fades as it expires)
           const opacity = Math.max(0.3, tickRatio);
-          
+
           // Size based on strength (stronger = larger)
           const baseSize = 20;
-          const fontSize = baseSize + (strengthRatio * 10); // 20-30px
-          const circleRadius = 12 + (strengthRatio * 8); // 12-20px
-          
+          const fontSize = baseSize + strengthRatio * 10; // 20-30px
+          const circleRadius = 12 + strengthRatio * 8; // 12-20px
+
           // Glow intensity based on strength
-          const glowIntensity = 8 + (strengthRatio * 12); // 8-20px blur
-          
+          const glowIntensity = 8 + strengthRatio * 12; // 8-20px blur
+
           ctx.save();
-          
+
           // Draw colored circle behind skull (intensity shows danger level)
           ctx.globalAlpha = opacity * 0.4 * strengthRatio;
           ctx.fillStyle = typeConfig.color;
           ctx.shadowColor = typeConfig.color;
           ctx.shadowBlur = glowIntensity;
           ctx.beginPath();
-          ctx.arc(marker.position.x, marker.position.y, circleRadius, 0, Math.PI * 2);
+          ctx.arc(
+            marker.position.x,
+            marker.position.y,
+            circleRadius,
+            0,
+            Math.PI * 2
+          );
           ctx.fill();
-          
+
           // Draw skull emoji with strength-based size
           ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
           ctx.shadowBlur = 8;
@@ -235,7 +255,48 @@ export const renderer = defineResource({
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText("💀", marker.position.x, marker.position.y);
-          
+
+          ctx.restore();
+        }
+      }
+
+      // Draw food sources
+      if (visualSettings.foodSourcesEnabled && state.foodSources.length > 0) {
+        for (const food of state.foodSources) {
+          if (food.energy <= 0) continue;
+
+          const energyRatio = food.energy / food.maxEnergy; // 0.0 to 1.0
+
+          // Size scales with energy (10-25px radius)
+          const radius = 10 + energyRatio * 15;
+
+          // Opacity scales with energy (30-100%)
+          const opacity = Math.max(0.3, energyRatio);
+
+          // Color based on type
+          const color = food.sourceType === "prey" ? "#4CAF50" : "#F44336"; // Green for prey, red for predator
+
+          ctx.save();
+
+          // Draw circle
+          ctx.globalAlpha = opacity;
+          ctx.fillStyle = color;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(food.position.x, food.position.y, radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Draw emoji
+          const emoji = food.sourceType === "prey" ? "🌿" : "🥩";
+          const fontSize = 16 + energyRatio * 8; // 16-24px
+          ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+          ctx.shadowBlur = 4;
+          ctx.font = `${fontSize}px Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(emoji, food.position.x, food.position.y);
+
           ctx.restore();
         }
       }
@@ -545,6 +606,8 @@ export const renderer = defineResource({
           type: eventKeywords.boids.caught,
           predatorId: catchEvent.predatorId,
           preyId: catchEvent.preyId,
+          preyEnergy: catchEvent.preyEnergy,
+          preyPosition: catchEvent.preyPosition,
         });
       }
 

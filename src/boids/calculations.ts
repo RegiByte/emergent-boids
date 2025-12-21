@@ -100,7 +100,7 @@ export function calculateNearbySpawnPosition(
  */
 export function calculatePreyCohesionWeight(
   baseWeight: number,
-  stance: "flocking" | "seeking_mate" | "mating" | "fleeing"
+  stance: "flocking" | "seeking_mate" | "mating" | "fleeing" | "eating"
 ): number {
   switch (stance) {
     case "seeking_mate":
@@ -109,6 +109,8 @@ export function calculatePreyCohesionWeight(
       return baseWeight * 1.5; // Strong cohesion with mate
     case "fleeing":
       return baseWeight * 0.5; // Reduce cohesion when fleeing (scatter!)
+    case "eating":
+      return baseWeight * 0.7; // Reduce cohesion when eating (focused on food)
     case "flocking":
     default:
       return baseWeight;

@@ -152,6 +152,11 @@ const handlers = {
     // This is handled in lifecycleManager
     return [];
   },
+
+  [eventKeywords.boids.foodSourceCreated]: (): ControlEffect[] => {
+    // Food source creation is handled in lifecycleManager
+    return [];
+  },
 } satisfies EventHandlerMap<
   AllEvents,
   ControlEffect,

@@ -9,6 +9,8 @@ import { updateBoidEnergy } from "./energy";
 import { updateBoidAge, checkBoidDeath } from "./aging";
 import { updateBoidCooldowns } from "./cooldowns";
 import { processBoidReproduction } from "./reproduction";
+import { FOOD_CONSTANTS } from "../food";
+import type { FoodSource } from "../../vocabulary/keywords";
 
 /**
  * Update prey stance based on current state (declarative)
@@ -17,15 +19,17 @@ function updatePreyStance(
   boid: Boid,
   typeConfig: BoidTypeConfig,
   config: BoidConfig,
-  nearbyPredators: Boid[]
+  nearbyPredators: Boid[],
+  foodSources: FoodSource[]
 ): void {
   const currentStance = boid.stance as
     | "flocking"
     | "seeking_mate"
     | "mating"
-    | "fleeing";
+    | "fleeing"
+    | "eating";
 
-  // Fear overrides everything - if predators nearby, flee!
+  // Priority 1: Fear overrides everything - if predators nearby, flee!
   if (nearbyPredators.length > 0) {
     if (currentStance !== "fleeing") {
       boid.previousStance = currentStance;
@@ -41,7 +45,27 @@ function updatePreyStance(
     return;
   }
 
-  // Check if currently mating (has a mate)
+  // Priority 2: Eating (near food source with low energy)
+  if (boid.energy < typeConfig.maxEnergy * 0.7) {
+    // Eat when below 70%
+    const nearbyFood = foodSources.find((food) => {
+      if (food.sourceType !== "prey" || food.energy <= 0) return false;
+      const dx = boid.position.x - food.position.x;
+      const dy = boid.position.y - food.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      return dist < FOOD_CONSTANTS.FOOD_EATING_RADIUS;
+    });
+
+    if (nearbyFood) {
+      if (currentStance !== "eating") {
+        boid.previousStance = currentStance;
+        boid.stance = "eating";
+      }
+      return;
+    }
+  }
+
+  // Priority 3: Mating (has a mate)
   if (boid.mateId) {
     if (currentStance !== "mating") {
       boid.stance = "mating";
@@ -49,7 +73,7 @@ function updatePreyStance(
     return;
   }
 
-  // Check if should be seeking mate (using pure predicate)
+  // Priority 4: Seeking mate
   if (isReadyToMate(boid, config, typeConfig)) {
     if (currentStance !== "seeking_mate") {
       boid.stance = "seeking_mate";
@@ -57,7 +81,7 @@ function updatePreyStance(
     return;
   }
 
-  // Default to flocking
+  // Default: Flocking
   if (currentStance !== "flocking") {
     boid.stance = "flocking";
   }
@@ -69,7 +93,8 @@ function updatePreyStance(
 function updatePredatorStance(
   boid: Boid,
   typeConfig: BoidTypeConfig,
-  config: BoidConfig
+  config: BoidConfig,
+  foodSources: FoodSource[]
 ): void {
   const currentStance = boid.stance as
     | "hunting"
@@ -78,8 +103,17 @@ function updatePredatorStance(
     | "idle"
     | "eating";
 
-  // Priority 1: Eating (has cooldown from recent catch)
-  if (boid.eatingCooldown > 0) {
+  // Priority 1: Eating (near food source OR has eating cooldown)
+  // Check if near food source
+  const nearbyFood = foodSources.find((food) => {
+    if (food.sourceType !== "predator" || food.energy <= 0) return false;
+    const dx = boid.position.x - food.position.x;
+    const dy = boid.position.y - food.position.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return dist < FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5;
+  });
+
+  if (nearbyFood || boid.eatingCooldown > 0) {
     if (currentStance !== "eating") {
       boid.stance = "eating";
     }
@@ -94,7 +128,7 @@ function updatePredatorStance(
     return;
   }
 
-  // Priority 3: Seeking mate (using pure predicate)
+  // Priority 3: Seeking mate
   if (isReadyToMate(boid, config, typeConfig)) {
     if (currentStance !== "seeking_mate") {
       boid.stance = "seeking_mate";
@@ -116,7 +150,10 @@ function updatePredatorStance(
     }
   }
 
-  // Default to hunting
+  // Default: Hunting
+  // BUT: If predator food sources are at cap, we want predators to seek existing food
+  // instead of hunting and creating more. This is handled in the boid movement logic
+  // by checking food source count, so we still set stance to "hunting" here.
   if (currentStance !== "hunting") {
     boid.stance = "hunting";
   }
@@ -130,7 +167,8 @@ export function processLifecycleUpdates(
   boids: Boid[],
   config: BoidConfig,
   runtimeTypes: Record<string, BoidTypeConfig>,
-  deltaSeconds: number
+  deltaSeconds: number,
+  foodSources: FoodSource[] = []
 ): {
   boidsToRemove: string[];
   boidsToAdd: OffspringData[];
@@ -168,12 +206,12 @@ export function processLifecycleUpdates(
 
     // 2. Update stance based on current state
     if (typeConfig.role === "predator") {
-      updatePredatorStance(boid, typeConfig, config);
+      updatePredatorStance(boid, typeConfig, config, foodSources);
     } else {
       const nearbyPredators = predators.filter((p) =>
         isWithinRadius(boid.position, p.position, config.fearRadius)
       );
-      updatePreyStance(boid, typeConfig, config, nearbyPredators);
+      updatePreyStance(boid, typeConfig, config, nearbyPredators, foodSources);
     }
 
     // 3. Check for death

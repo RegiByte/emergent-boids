@@ -39,6 +39,7 @@ export const eventKeywords = {
     died: "boids/died",
     reproduced: "boids/reproduced",
     spawnPredator: "boids/spawnPredator",
+    foodSourceCreated: "boids/foodSourceCreated",
   },
 } as const;
 
@@ -66,6 +67,21 @@ export const effectKeywords = {
     dispatch: "runtime:dispatch",
   },
 } as const;
+
+// ============================================
+// Shared Schemas (used by events and state)
+// ============================================
+
+// Food source schema - consumable energy sources for boids
+// Prey food spawns periodically, predator food spawns from catches
+export const foodSourceSchema = z.object({
+  id: z.string(), // Unique identifier
+  position: z.object({ x: z.number(), y: z.number() }),
+  energy: z.number(), // Current energy remaining
+  maxEnergy: z.number(), // Initial energy (for visual scaling)
+  sourceType: z.enum(["prey", "predator"]), // What type of boid can eat this
+  createdTick: z.number(), // When created (for tracking age)
+});
 
 // ============================================
 // Event Schemas
@@ -122,6 +138,8 @@ export const boidEventSchemas = {
     type: z.literal(eventKeywords.boids.caught),
     predatorId: z.string(),
     preyId: z.string(),
+    preyEnergy: z.number(), // Energy of prey at time of catch
+    preyPosition: z.object({ x: z.number(), y: z.number() }), // Position where prey was caught
   }),
   died: z.object({
     type: z.literal(eventKeywords.boids.died),
@@ -137,6 +155,10 @@ export const boidEventSchemas = {
     type: z.literal(eventKeywords.boids.spawnPredator),
     x: z.number(),
     y: z.number(),
+  }),
+  foodSourceCreated: z.object({
+    type: z.literal(eventKeywords.boids.foodSourceCreated),
+    foodSource: foodSourceSchema,
   }),
 };
 
@@ -165,6 +187,7 @@ export const boidEventSchema = z.discriminatedUnion("type", [
   boidEventSchemas.died,
   boidEventSchemas.reproduced,
   boidEventSchemas.spawnPredator,
+  boidEventSchemas.foodSourceCreated,
 ]);
 
 // Union of all events
@@ -204,6 +227,7 @@ export const visualSettingsSchema = z.object({
   matingHeartsEnabled: z.boolean(),
   stanceSymbolsEnabled: z.boolean(),
   deathMarkersEnabled: z.boolean(),
+  foodSourcesEnabled: z.boolean(),
 });
 
 // Death marker schema - marks locations where boids died from starvation or old age
@@ -228,6 +252,7 @@ export const runtimeStateSchema = z.object({
   types: z.record(z.string(), boidTypeConfigSchema),
   visualSettings: visualSettingsSchema,
   deathMarkers: z.array(deathMarkerSchema), // Markers for natural deaths (starvation/old age)
+  foodSources: z.array(foodSourceSchema), // Consumable energy sources for boids
   // Canvas dimensions (for toroidal calculations in renderer)
   canvasWidth: z.number(),
   canvasHeight: z.number(),
@@ -350,3 +375,5 @@ export type BoidEvent = z.infer<typeof boidEventSchema>;
 export type ControlEffect = z.infer<typeof controlEffectSchema>;
 export type AllEvents = z.infer<typeof allEventSchema>;
 export type AllEffects = z.infer<typeof allEffectSchema>;
+export type FoodSource = z.infer<typeof foodSourceSchema>;
+export type DeathMarker = z.infer<typeof deathMarkerSchema>;
