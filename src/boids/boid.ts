@@ -1,9 +1,6 @@
-import {
-  DeathMarker,
-  FoodSource,
+import type {
   SimulationParameters,
   SpeciesConfig,
-  WorldConfig,
 } from "../vocabulary/schemas/prelude.ts";
 import {
   calculateEatingSpeedFactor,
@@ -13,27 +10,36 @@ import {
   calculatePredatorSeparationWeight,
   calculatePreyCohesionWeight,
 } from "./calculations";
+import type { BoidUpdateContext } from "./context";
 import { getPredators, getPrey } from "./filters";
 import { FOOD_CONSTANTS } from "./food";
 import * as rules from "./rules";
-import type { Boid, Obstacle } from "./types";
+import type { Boid, PredatorStance } from "./types";
 import * as vec from "./vector";
 
 let boidIdCounter = 0;
 
 /**
+ * Boid creation context - provides world and species configuration
+ */
+export type BoidCreationContext = {
+  world: { canvasWidth: number; canvasHeight: number };
+  species: Record<string, SpeciesConfig>;
+};
+
+/**
  * Create a new boid with random position, velocity, and type
  */
 export function createBoid(
-  width: number,
-  height: number,
   typeIds: string[],
-  speciesConfigs: Record<string, SpeciesConfig>,
+  context: BoidCreationContext,
   age: number | null = null
 ): Boid {
+  const { world, species } = context;
+
   // Pick a random type
   const typeId = typeIds[Math.floor(Math.random() * typeIds.length)];
-  const speciesConfig = speciesConfigs[typeId];
+  const speciesConfig = species[typeId];
 
   const role = speciesConfig?.role || "prey";
 
@@ -46,8 +52,8 @@ export function createBoid(
   return {
     id: `boid-${boidIdCounter++}`,
     position: {
-      x: Math.random() * width,
-      y: Math.random() * height,
+      x: Math.random() * world.canvasWidth,
+      y: Math.random() * world.canvasHeight,
     },
     velocity: {
       x: (Math.random() - 0.5) * 4, // Default initial speed
@@ -76,11 +82,12 @@ export function createBoid(
 export function createBoidOfType(
   position: { x: number; y: number },
   typeId: string,
-  speciesConfig: SpeciesConfig,
-  width: number,
-  height: number,
+  context: BoidCreationContext,
   energyBonus: number = 0 // Optional energy bonus for offspring (0-1)
 ): Boid {
+  const { world, species } = context;
+  const speciesConfig = species[typeId];
+
   // Spawn near parent with slight offset
   const offset = 20;
 
@@ -95,8 +102,12 @@ export function createBoidOfType(
   return {
     id: `boid-${boidIdCounter++}`,
     position: {
-      x: (position.x + (Math.random() - 0.5) * offset + width) % width,
-      y: (position.y + (Math.random() - 0.5) * offset + height) % height,
+      x:
+        (position.x + (Math.random() - 0.5) * offset + world.canvasWidth) %
+        world.canvasWidth,
+      y:
+        (position.y + (Math.random() - 0.5) * offset + world.canvasHeight) %
+        world.canvasHeight,
     },
     velocity: {
       x: (Math.random() - 0.5) * 4,
@@ -123,18 +134,13 @@ export function createBoidOfType(
 function updatePredator(
   boid: Boid,
   allBoids: Boid[],
-  obstacles: Obstacle[],
-  foodSources: Array<FoodSource>,
-  parameters: SimulationParameters,
-  world: WorldConfig,
-  speciesTypes: Record<string, SpeciesConfig>
+  context: BoidUpdateContext
 ): void {
-  const stance = boid.stance as
-    | "hunting"
-    | "seeking_mate"
-    | "mating"
-    | "idle"
-    | "eating";
+  // Extract context for convenience
+  const { simulation, config } = context;
+  const { obstacles, foodSources } = simulation;
+  const { parameters, world, species: speciesTypes } = config;
+  const stance = boid.stance as PredatorStance;
 
   // Find all prey (using pure filter)
   const prey = getPrey(allBoids, speciesTypes);
@@ -307,13 +313,12 @@ function updatePredator(
 function updatePrey(
   boid: Boid,
   allBoids: Boid[],
-  obstacles: Obstacle[],
-  deathMarkers: Array<DeathMarker>,
-  foodSources: Array<FoodSource>,
-  parameters: SimulationParameters,
-  world: WorldConfig,
-  speciesTypes: Record<string, SpeciesConfig>
+  context: BoidUpdateContext
 ): void {
+  // Extract context for convenience
+  const { simulation, config } = context;
+  const { obstacles, deathMarkers, foodSources } = simulation;
+  const { parameters, world, species: speciesTypes } = config;
   const stance = boid.stance as
     | "flocking"
     | "seeking_mate"
@@ -492,16 +497,10 @@ function updatePrey(
 export function updateBoid(
   boid: Boid,
   allBoids: Boid[],
-  obstacles: Obstacle[],
-  deathMarkers: Array<DeathMarker>,
-  foodSources: Array<FoodSource>,
-  parameters: SimulationParameters,
-  world: WorldConfig,
-  speciesTypes: Record<string, SpeciesConfig>,
-  deltaSeconds: number
+  context: BoidUpdateContext
 ): void {
   // Get this boid's type config
-  const speciesConfig = speciesTypes[boid.typeId];
+  const speciesConfig = context.config.species[boid.typeId];
   if (!speciesConfig) {
     console.warn(`Unknown boid type: ${boid.typeId}`);
     return;
@@ -512,43 +511,33 @@ export function updateBoid(
 
   // Dispatch to role-specific update function
   if (speciesConfig.role === "predator") {
-    updatePredator(
-      boid,
-      allBoids,
-      obstacles,
-      foodSources,
-      parameters,
-      world,
-      speciesTypes
-    );
+    updatePredator(boid, allBoids, context);
   } else {
-    updatePrey(
-      boid,
-      allBoids,
-      obstacles,
-      deathMarkers,
-      foodSources,
-      parameters,
-      world,
-      speciesTypes
-    );
+    updatePrey(boid, allBoids, context);
   }
 
   // Update position (common for all boids)
   // Scale velocity by deltaSeconds for frame-rate independent movement
-  const scaledVelocity = vec.multiply(boid.velocity, deltaSeconds * 60); // 60 = reference FPS
+  const scaledVelocity = vec.multiply(boid.velocity, context.deltaSeconds * 60); // 60 = reference FPS
   boid.position = vec.add(boid.position, scaledVelocity);
 
   // Wrap around edges (toroidal space)
-  wrapEdges(boid, world.canvasWidth, world.canvasHeight);
+  wrapEdges(
+    boid,
+    context.config.world.canvasWidth,
+    context.config.world.canvasHeight
+  );
 
   // Enforce minimum distance (prevent overlap/stacking)
   enforceMinimumDistance(
     boid,
     allBoids,
-    { width: world.canvasWidth, height: world.canvasHeight },
-    parameters,
-    speciesTypes
+    {
+      width: context.config.world.canvasWidth,
+      height: context.config.world.canvasHeight,
+    },
+    context.config.parameters,
+    context.config.species
   );
 }
 

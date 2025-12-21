@@ -1,5 +1,6 @@
 import { defineResource } from "braided";
 import { createBoid, updateBoid } from "../boids/boid";
+import type { BoidUpdateContext } from "../boids/context";
 import { getPredators, getPrey } from "../boids/filters";
 import {
   createSpatialHash,
@@ -48,28 +49,23 @@ export const engine = defineResource({
     // Initialize boids with prey and predators from profile
     const boids: Boid[] = [];
 
+    // Build creation context
+    const creationContext = {
+      world: {
+        canvasWidth: initialWorld.canvasWidth,
+        canvasHeight: initialWorld.canvasHeight,
+      },
+      species: initialSpecies,
+    };
+
     // Spawn initial prey
     for (let i = 0; i < initialWorld.initialPreyCount; i++) {
-      boids.push(
-        createBoid(
-          initialWorld.canvasWidth,
-          initialWorld.canvasHeight,
-          preyTypeIds,
-          initialSpecies
-        )
-      );
+      boids.push(createBoid(preyTypeIds, creationContext));
     }
 
     // Spawn initial predators (if any)
     for (let i = 0; i < (initialWorld.initialPredatorCount || 0); i++) {
-      boids.push(
-        createBoid(
-          initialWorld.canvasWidth,
-          initialWorld.canvasHeight,
-          predatorTypeIds,
-          initialSpecies
-        )
-      );
+      boids.push(createBoid(predatorTypeIds, creationContext));
     }
 
     // Create spatial hash (cell size = perception radius for optimal performance)
@@ -81,8 +77,22 @@ export const engine = defineResource({
 
     const update = (deltaSeconds: number) => {
       // Get current runtime state from store
-      const { config: cfg, simulation } = runtimeStore.store.getState();
-      const { parameters, species: speciesTypes, world } = cfg;
+      const { config, simulation } = runtimeStore.store.getState();
+
+      // Build update context from state slices
+      const context: BoidUpdateContext = {
+        simulation: {
+          obstacles: simulation.obstacles,
+          deathMarkers: simulation.deathMarkers,
+          foodSources: simulation.foodSources,
+        },
+        config: {
+          parameters: config.parameters,
+          world: config.world,
+          species: config.species,
+        },
+        deltaSeconds,
+      };
 
       // Insert all boids into spatial hash for efficient neighbor queries
       insertBoids(spatialHash, boids);
@@ -90,20 +100,10 @@ export const engine = defineResource({
       // Update each boid with only nearby boids (O(n) instead of O(n²))
       for (const boid of boids) {
         const nearbyBoids = getNearbyBoids(spatialHash, boid.position);
-        updateBoid(
-          boid,
-          nearbyBoids,
-          simulation.obstacles,
-          simulation.deathMarkers,
-          simulation.foodSources,
-          parameters,
-          world,
-          speciesTypes,
-          deltaSeconds
-        );
+        updateBoid(boid, nearbyBoids, context);
 
         // Update position history for motion trails
-        const speciesConfig = speciesTypes[boid.typeId];
+        const speciesConfig = config.species[boid.typeId];
         if (speciesConfig) {
           // Add current position to history
           boid.positionHistory.push({ x: boid.position.x, y: boid.position.y });
@@ -186,28 +186,23 @@ export const engine = defineResource({
 
       boids.length = 0;
 
+      // Build creation context
+      const creationContext = {
+        world: {
+          canvasWidth: world.canvasWidth,
+          canvasHeight: world.canvasHeight,
+        },
+        species,
+      };
+
       // Respawn prey
       for (let i = 0; i < world.initialPreyCount; i++) {
-        boids.push(
-          createBoid(
-            world.canvasWidth,
-            world.canvasHeight,
-            preyTypeIds,
-            species
-          )
-        );
+        boids.push(createBoid(preyTypeIds, creationContext));
       }
 
       // Respawn predators (if any)
       for (let i = 0; i < (world.initialPredatorCount || 0); i++) {
-        boids.push(
-          createBoid(
-            world.canvasWidth,
-            world.canvasHeight,
-            predatorTypeIds,
-            species
-          )
-        );
+        boids.push(createBoid(predatorTypeIds, creationContext));
       }
     };
 

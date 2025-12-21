@@ -125,7 +125,7 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.time.passage]: (): ControlEffect[] => {
+  [eventKeywords.time.passed]: (): ControlEffect[] => {
     // This handler schedules the next tick
     // Energy updates are handled in lifecycleManager
     const effects: ControlEffect[] = [];
@@ -136,7 +136,7 @@ const handlers = {
       id: "energy-tick",
       delayMs: 1000,
       onExpire: {
-        type: eventKeywords.time.passage,
+        type: eventKeywords.time.passed,
         deltaMs: 1000,
       },
     });
@@ -282,7 +282,7 @@ export const runtimeController = defineResource({
 
     // Start the energy tick timer
     controller.dispatch({
-      type: eventKeywords.time.passage,
+      type: eventKeywords.time.passed,
       deltaMs: 1000,
     });
 

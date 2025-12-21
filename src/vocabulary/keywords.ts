@@ -29,7 +29,7 @@ export const eventKeywords = {
   },
   // Time events
   time: {
-    passage: "time/passage",
+    passed: "time/passed",
   },
   // Boid lifecycle events
   boids: {
@@ -66,23 +66,18 @@ export const effectKeywords = {
   },
 } as const;
 
-// ============================================
-// Shared Schemas (used by events and state)
-// ============================================
+export const stanceKeywords = {
+  flocking: "flocking",
+  seeking_mate: "seeking_mate",
+  mating: "mating",
+  fleeing: "fleeing",
+  hunting: "hunting",
+  idle: "idle",
+  eating: "eating",
+} as const;
 
-// ============================================
-// Event Schemas
-// ============================================
-
-// ============================================
-// Runtime State Schema (Single Source of Truth)
-// ============================================
-
-// ============================================
-// Effect Schemas
-// ============================================
-
-// ============================================
-// Inferred Types
-// ============================================
-
+export const deathCauseKeywords = {
+  old_age: "old_age",
+  starvation: "starvation",
+  predation: "predation",
+} as const;

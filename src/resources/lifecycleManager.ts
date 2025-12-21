@@ -4,12 +4,20 @@ import type { RuntimeController } from "./runtimeController";
 import type { StartedRuntimeStore } from "./runtimeStore";
 import { eventKeywords } from "../vocabulary/keywords";
 import { createBoidOfType } from "../boids/boid";
+import type { BoidUpdateContext } from "../boids/context";
 import { countPrey, countPredators } from "../boids/filters";
 import { processLifecycleUpdates } from "../boids/lifecycle/orchestration";
 import { canSpawnOffspring } from "../boids/lifecycle/population";
 import { FOOD_CONSTANTS } from "../boids/food";
-
-import {FoodSource} from "../vocabulary/schemas/prelude.ts";
+import {
+  createPredatorFood,
+  canCreatePredatorFood,
+  generatePreyFood,
+  processFoodConsumption,
+  applyEnergyGains,
+  haveFoodSourcesChanged,
+} from "../boids/foodManager";
+import { processDeathMarkers, fadeDeathMarkers } from "../boids/deathMarkers";
 
 /**
  * Lifecycle Manager
@@ -39,7 +47,7 @@ export const lifecycleManager = defineResource({
 
     // Subscribe to events
     const unsubscribe = runtimeController.subscribe((event) => {
-      if (event.type === eventKeywords.time.passage) {
+      if (event.type === eventKeywords.time.passed) {
         handleLifecycleUpdate(event.deltaMs);
       } else if (event.type === eventKeywords.boids.spawnPredator) {
         handleSpawnPredator(event.x, event.y);
@@ -58,22 +66,30 @@ export const lifecycleManager = defineResource({
       tickCounter++;
       const deltaSeconds = deltaMs / 1000;
       const { config, simulation } = store.getState();
-      const speciesTypes = config.species;
+
+      // Build update context from state slices
+      const context: BoidUpdateContext = {
+        simulation: {
+          obstacles: simulation.obstacles,
+          deathMarkers: simulation.deathMarkers,
+          foodSources: simulation.foodSources,
+        },
+        config: {
+          parameters: config.parameters,
+          world: config.world,
+          species: config.species,
+        },
+        deltaSeconds,
+      };
 
       // Process all lifecycle updates (pure logic)
-      const changes = processLifecycleUpdates(
-        engine.boids,
-        config.parameters,
-        speciesTypes,
-        deltaSeconds,
-        simulation.foodSources
-      );
+      const changes = processLifecycleUpdates(engine.boids, context);
 
       // Apply changes (side effects)
       applyLifecycleChanges(changes);
 
       // Fade death markers over time
-      fadeDeathMarkers();
+      applyDeathMarkersFade();
 
       // Consume food sources
       consumeFoodSources();
@@ -84,29 +100,22 @@ export const lifecycleManager = defineResource({
       }
     };
 
-    const fadeDeathMarkers = () => {
+    const applyDeathMarkersFade = () => {
       const { simulation } = runtimeStore.store.getState();
 
-      // Skip if no markers
-      if (simulation.deathMarkers.length === 0) {
-        return;
+      // Fade markers (pure function)
+      const { markers: updatedMarkers, shouldUpdate } = fadeDeathMarkers(
+        simulation.deathMarkers
+      );
+
+      if (shouldUpdate) {
+        runtimeStore.store.setState({
+          simulation: {
+            ...simulation,
+            deathMarkers: updatedMarkers,
+          },
+        });
       }
-
-      // Decrement remainingTicks for all markers and filter out expired ones
-      const updatedMarkers = simulation.deathMarkers
-        .map((marker) => ({
-          ...marker,
-          remainingTicks: marker.remainingTicks - 1,
-        }))
-        .filter((marker) => marker.remainingTicks > 0);
-
-      // Always update store (ticks change even if length doesn't)
-      runtimeStore.store.setState({
-        simulation: {
-          ...simulation,
-          deathMarkers: updatedMarkers,
-        },
-      });
     };
 
     const applyLifecycleChanges = (changes: {
@@ -127,78 +136,18 @@ export const lifecycleManager = defineResource({
       const { config, simulation } = runtimeStore.store.getState();
       const speciesTypes = config.species;
 
-      // Create death markers for natural deaths (starvation/old age only)
-      // Predator catches will create food sources in next session
-      // Consolidate nearby markers (100px radius) to prevent flooding
-      const CONSOLIDATION_RADIUS = 100;
-      const INITIAL_STRENGTH = 1.0;
-      const STRENGTH_INCREMENT = 0.5;
-      const MAX_STRENGTH = 5.0;
-      const INITIAL_TICKS = 10;
-      const MAX_LIFETIME_TICKS = 20;
-
-      const currentState = runtimeStore.store.getState();
-      const updatedMarkers = [...simulation.deathMarkers];
-
-      for (const { boidId, reason } of changes.deathEvents) {
-        // Only create markers for starvation and old age
-        if (reason !== "starvation" && reason !== "old_age") {
-          continue;
-        }
-
-        const boid = engine.getBoidById(boidId);
-        if (!boid) continue;
-
-        // Check if there's an existing marker nearby (within 100px)
-        const nearbyMarkersIndexes = [];
-        for (let i = 0; i < updatedMarkers.length; i++) {
-          const marker = updatedMarkers[i];
-          const dx = Math.abs(marker.position.x - boid.position.x);
-          const dy = Math.abs(marker.position.y - boid.position.y);
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          if (dist < CONSOLIDATION_RADIUS) {
-            // within consolidation radius?
-            // increase strength
-            nearbyMarkersIndexes.push(i);
-          }
-        }
-
-        if (nearbyMarkersIndexes.length > 0) {
-          // Strengthen existing markers and restore ticks
-          for (const nearbyMarkerIndex of nearbyMarkersIndexes) {
-            const existingMarker = updatedMarkers[nearbyMarkerIndex];
-            updatedMarkers[nearbyMarkerIndex] = {
-              ...existingMarker,
-              strength: Math.min(
-                existingMarker.strength + STRENGTH_INCREMENT,
-                MAX_STRENGTH
-              ),
-              remainingTicks: Math.min(
-                existingMarker.remainingTicks + INITIAL_TICKS,
-                existingMarker.maxLifetimeTicks
-              ),
-            };
-          }
-        } else {
-          // Create new marker
-          updatedMarkers.push({
-            position: { x: boid.position.x, y: boid.position.y },
-            remainingTicks: INITIAL_TICKS,
-            strength: INITIAL_STRENGTH,
-            maxLifetimeTicks: MAX_LIFETIME_TICKS,
-            typeId: boid.typeId,
-          });
-        }
-      }
+      // Process death markers (pure function)
+      const { markers: updatedMarkers, shouldUpdate } = processDeathMarkers(
+        simulation.deathMarkers,
+        changes.deathEvents,
+        (id) => engine.getBoidById(id)
+      );
 
       // Update store if markers changed
-      if (
-        updatedMarkers.length !== currentState.simulation.deathMarkers.length
-      ) {
+      if (shouldUpdate) {
         runtimeStore.store.setState({
           simulation: {
-            ...currentState.simulation,
+            ...simulation,
             deathMarkers: updatedMarkers,
           },
         });
@@ -257,12 +206,17 @@ export const lifecycleManager = defineResource({
           );
 
           if (canSpawn) {
+            const creationContext = {
+              world: {
+                canvasWidth: store.getState().config.world.canvasWidth,
+                canvasHeight: store.getState().config.world.canvasHeight,
+              },
+              species: speciesTypes,
+            };
             const newBoid = createBoidOfType(
               offspring.position,
               offspring.typeId,
-              speciesConfig,
-              store.getState().config.world.canvasWidth,
-              store.getState().config.world.canvasHeight,
+              creationContext,
               energyBonus // Apply energy bonus
             );
             engine.addBoid(newBoid);
@@ -320,13 +274,17 @@ export const lifecycleManager = defineResource({
         return;
       }
 
-      const speciesConfig = runtimeTypes[predatorTypeId];
+      const creationContext = {
+        world: {
+          canvasWidth: store.getState().config.world.canvasWidth,
+          canvasHeight: store.getState().config.world.canvasHeight,
+        },
+        species: runtimeTypes,
+      };
       const newPredator = createBoidOfType(
         { x, y },
         predatorTypeId,
-        speciesConfig,
-        store.getState().config.world.canvasWidth,
-        store.getState().config.world.canvasHeight
+        creationContext
       );
 
       engine.addBoid(newPredator);
@@ -341,32 +299,19 @@ export const lifecycleManager = defineResource({
     ) => {
       const { simulation } = runtimeStore.store.getState();
 
-      // Count existing predator food sources
-      const existingPredatorFoodCount = simulation.foodSources.filter(
-        (food) => food.sourceType === "predator"
-      ).length;
-
-      // Don't create food if we're at or above the cap
-      if (
-        existingPredatorFoodCount >= FOOD_CONSTANTS.MAX_PREDATOR_FOOD_SOURCES
-      ) {
+      // Check if we can create food (pure function)
+      if (!canCreatePredatorFood(simulation.foodSources)) {
         return;
       }
 
-      // Create predator food source from caught prey
-      const foodEnergy =
-        preyEnergy * FOOD_CONSTANTS.PREDATOR_FOOD_FROM_PREY_MULTIPLIER;
+      // Create food source (pure function)
+      const foodSource = createPredatorFood(
+        preyEnergy,
+        preyPosition,
+        tickCounter
+      );
 
-      const foodSource: FoodSource = {
-        id: `food-predator-${Date.now()}-${Math.random()}`,
-        position: preyPosition,
-        energy: foodEnergy,
-        maxEnergy: foodEnergy,
-        sourceType: "predator",
-        createdTick: tickCounter,
-      };
-
-      // Add to runtime state
+      // Apply side effects
       runtimeStore.store.setState({
         simulation: {
           ...simulation,
@@ -374,7 +319,6 @@ export const lifecycleManager = defineResource({
         },
       });
 
-      // Dispatch event
       runtimeController.dispatch({
         type: eventKeywords.boids.foodSourceCreated,
         foodSource,
@@ -382,134 +326,54 @@ export const lifecycleManager = defineResource({
     };
 
     const spawnPreyFoodSources = () => {
-      const { simulation } = runtimeStore.store.getState();
+      const { simulation, config } = runtimeStore.store.getState();
 
-      // Count existing prey food sources
-      const existingPreyFoodCount = simulation.foodSources.filter(
-        (food) => food.sourceType === "prey"
-      ).length;
+      // Generate new prey food (pure function)
+      const { newFoodSources, shouldUpdate } = generatePreyFood(
+        simulation.foodSources,
+        config.world,
+        tickCounter
+      );
 
-      // Don't spawn if we're at or above the cap
-      if (existingPreyFoodCount >= FOOD_CONSTANTS.MAX_PREY_FOOD_SOURCES) {
+      if (!shouldUpdate) {
         return;
       }
 
-      const newFoodSources = [...simulation.foodSources];
+      // Apply side effects
+      const updatedFoodSources = [...simulation.foodSources, ...newFoodSources];
 
-      // Calculate how many we can spawn without exceeding the cap
-      const maxToSpawn = Math.min(
-        FOOD_CONSTANTS.PREY_FOOD_SPAWN_COUNT,
-        FOOD_CONSTANTS.MAX_PREY_FOOD_SOURCES - existingPreyFoodCount
-      );
+      runtimeStore.store.setState({
+        simulation: {
+          ...simulation,
+          foodSources: updatedFoodSources,
+        },
+      });
 
-      for (let i = 0; i < maxToSpawn; i++) {
-        const foodSource: FoodSource = {
-          id: `food-prey-${Date.now()}-${Math.random()}-${i}`,
-          position: {
-            x: Math.random() * store.getState().config.world.canvasWidth,
-            y: Math.random() * store.getState().config.world.canvasHeight,
-          },
-          energy: FOOD_CONSTANTS.PREY_FOOD_INITIAL_ENERGY,
-          maxEnergy: FOOD_CONSTANTS.PREY_FOOD_INITIAL_ENERGY,
-          sourceType: "prey",
-          createdTick: tickCounter,
-        };
-
-        newFoodSources.push(foodSource);
-
+      // Dispatch events for each new food source
+      for (const foodSource of newFoodSources) {
         runtimeController.dispatch({
           type: eventKeywords.boids.foodSourceCreated,
           foodSource,
         });
       }
-
-      runtimeStore.store.setState({
-        simulation: {
-          ...simulation,
-          foodSources: newFoodSources,
-        },
-      });
     };
 
     const consumeFoodSources = () => {
       const { simulation, config } = runtimeStore.store.getState();
-      const runtimeTypes = config.species;
-      const updatedFoodSources = [...simulation.foodSources];
 
-      // For each food source, find nearby eating boids
-      for (let i = updatedFoodSources.length - 1; i >= 0; i--) {
-        const food = updatedFoodSources[i];
+      // Process food consumption (pure function)
+      const { foodSources: updatedFoodSources, boidsToUpdate } =
+        processFoodConsumption(
+          simulation.foodSources,
+          engine.boids,
+          config.species
+        );
 
-        if (food.energy <= 0) {
-          // Remove exhausted food
-          updatedFoodSources.splice(i, 1);
-          continue;
-        }
-
-        // Find boids eating from this source
-        const eatingBoids = engine.boids.filter((boid) => {
-          const speciesConfig = runtimeTypes[boid.typeId];
-          if (!speciesConfig) return false;
-
-          // Must be correct role
-          if (food.sourceType === "prey" && speciesConfig.role !== "prey")
-            return false;
-          if (
-            food.sourceType === "predator" &&
-            speciesConfig.role !== "predator"
-          )
-            return false;
-
-          // Must be in eating stance
-          if (boid.stance !== "eating") return false;
-
-          // Must NOT have eating cooldown (respects turn-taking)
-          if (boid.eatingCooldown > 0) return false;
-
-          // Must be close enough
-          const dx = boid.position.x - food.position.x;
-          const dy = boid.position.y - food.position.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          return dist < FOOD_CONSTANTS.FOOD_CONSUMPTION_RADIUS;
-        });
-
-        if (eatingBoids.length > 0) {
-          // Distribute energy among eating boids
-          const consumptionRate =
-            food.sourceType === "prey"
-              ? FOOD_CONSTANTS.PREY_FOOD_CONSUMPTION_RATE
-              : FOOD_CONSTANTS.PREDATOR_FOOD_CONSUMPTION_RATE;
-
-          const totalConsumption = consumptionRate * eatingBoids.length;
-          const actualConsumption = Math.min(totalConsumption, food.energy);
-          const perBoidGain = actualConsumption / eatingBoids.length;
-
-          // Give energy to boids
-          for (const boid of eatingBoids) {
-            const speciesConfig = runtimeTypes[boid.typeId];
-            if (speciesConfig) {
-              boid.energy = Math.min(
-                boid.energy + perBoidGain,
-                speciesConfig.lifecycle.maxEnergy
-              );
-            }
-          }
-
-          // Reduce food energy
-          updatedFoodSources[i] = {
-            ...food,
-            energy: food.energy - actualConsumption,
-          };
-        }
-      }
+      // Apply energy gains to boids (impure but isolated)
+      applyEnergyGains(boidsToUpdate, config.species);
 
       // Update store if food sources changed
-      if (
-        updatedFoodSources.length !== simulation.foodSources.length ||
-        updatedFoodSources.some(
-          (food, idx) => food.energy !== simulation.foodSources[idx]?.energy
-        )
-      ) {
+      if (haveFoodSourcesChanged(simulation.foodSources, updatedFoodSources)) {
         runtimeStore.store.setState({
           simulation: {
             ...simulation,

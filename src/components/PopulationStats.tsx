@@ -15,7 +15,7 @@ export function PopulationStats() {
 
   useEffect(() => {
     const unsubscribe = subscribe((event) => {
-      if (event.type === eventKeywords.time.passage) {
+      if (event.type === eventKeywords.time.passed) {
         setTick((prev) => (prev > 500 ? 0 : prev + 1));
       }
     });

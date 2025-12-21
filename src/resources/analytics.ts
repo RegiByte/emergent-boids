@@ -60,7 +60,7 @@ export const analytics = defineResource({
           eventCounters.catches[typeId] =
             (eventCounters.catches[typeId] || 0) + 1;
         }
-      } else if (event.type === eventKeywords.time.passage) {
+      } else if (event.type === eventKeywords.time.passed) {
         // Capture snapshot every N ticks
         tickCounter++;
         if (tickCounter % SNAPSHOT_INTERVAL === 0) {

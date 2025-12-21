@@ -1,5 +1,5 @@
-
 import { boidsById, lookupBoid } from "../conversions";
+import type { BoidUpdateContext } from "../context";
 import { getPredators } from "../filters";
 import { FOOD_CONSTANTS } from "../food";
 import type { MatingContext, OffspringData } from "../mating";
@@ -10,7 +10,11 @@ import { checkBoidDeath, updateBoidAge } from "./aging";
 import { updateBoidCooldowns } from "./cooldowns";
 import { updateBoidEnergy } from "./energy";
 import { processBoidReproduction } from "./reproduction";
-import {FoodSource, SimulationParameters, SpeciesConfig} from "../../vocabulary/schemas/prelude.ts";
+import type {
+  FoodSource,
+  SimulationParameters,
+  SpeciesConfig,
+} from "../../vocabulary/schemas/prelude.ts";
 
 /**
  * Update prey stance based on current state (declarative)
@@ -191,10 +195,7 @@ function updatePredatorStance(
  */
 export function processLifecycleUpdates(
   boids: Boid[],
-  parameters: SimulationParameters,
-  speciesTypes: Record<string, SpeciesConfig>,
-  deltaSeconds: number,
-  foodSources: FoodSource[] = []
+  context: BoidUpdateContext
 ): {
   boidsToRemove: string[];
   boidsToAdd: OffspringData[];
@@ -205,6 +206,11 @@ export function processLifecycleUpdates(
     typeId: string;
   }>;
 } {
+  // Extract context for convenience
+  const { config, simulation, deltaSeconds } = context;
+  const { parameters, species: speciesTypes } = config;
+  const { foodSources } = simulation;
+
   const boidsToRemove: string[] = [];
   const boidsToAdd: OffspringData[] = [];
   const deathEvents: Array<{

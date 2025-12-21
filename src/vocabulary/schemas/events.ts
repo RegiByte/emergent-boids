@@ -1,113 +1,168 @@
-import {z} from "zod";
-import {eventKeywords} from "../keywords.ts";
-import {foodSourceSchemas} from "./prelude.ts";
+import { z } from "zod";
+import { eventKeywords } from "../keywords.ts";
+import { deathCauseSchema, foodSourceSchemas } from "./prelude.ts";
+
+/**
+ * Event Schemas - Messages that trigger state changes
+ *
+ * Events are dispatched by:
+ * - User interactions (UI controls)
+ * - Simulation logic (lifecycle events)
+ * - Timer expirations (periodic updates)
+ *
+ * Events flow through the emergent system to produce effects.
+ */
+
+// ============================================
+// Control Events - User interactions
+// ============================================
 
 export const controlEventSchemas = {
-	setTypeConfig: z.object({
-		type: z.literal(eventKeywords.controls.typeConfigChanged),
-		typeId: z.string(),
-		field: z.enum([
-			"separationWeight",
-			"alignmentWeight",
-			"cohesionWeight",
-			"maxSpeed",
-			"maxForce",
-		]),
-		value: z.number(),
-	}),
-	setPerceptionRadius: z.object({
-		type: z.literal(eventKeywords.controls.perceptionRadiusChanged),
-		value: z.number(),
-	}),
-	setObstacleAvoidance: z.object({
-		type: z.literal(eventKeywords.controls.obstacleAvoidanceChanged),
-		value: z.number(),
-	}),
+  // User adjusts species movement parameters via sliders
+  setTypeConfig: z.object({
+    type: z.literal(eventKeywords.controls.typeConfigChanged),
+    typeId: z.string(), // Which species to modify
+    field: z.enum([
+      "separationWeight",
+      "alignmentWeight",
+      "cohesionWeight",
+      "maxSpeed",
+      "maxForce",
+    ]),
+    value: z.number(), // New value for the field
+  }),
+  // User adjusts global perception radius
+  setPerceptionRadius: z.object({
+    type: z.literal(eventKeywords.controls.perceptionRadiusChanged),
+    value: z.number(),
+  }),
+  // User adjusts obstacle avoidance strength
+  setObstacleAvoidance: z.object({
+    type: z.literal(eventKeywords.controls.obstacleAvoidanceChanged),
+    value: z.number(),
+  }),
 };
+
+// ============================================
+// Obstacle Events - Environment manipulation
+// ============================================
+
 export const obstacleEventSchemas = {
-	addObstacle: z.object({
-		type: z.literal(eventKeywords.obstacles.added),
-		x: z.number(),
-		y: z.number(),
-		radius: z.number(),
-	}),
-	removeObstacle: z.object({
-		type: z.literal(eventKeywords.obstacles.removed),
-		index: z.number(),
-	}),
-	clearObstacles: z.object({
-		type: z.literal(eventKeywords.obstacles.cleared),
-	}),
+  // User clicks to add an obstacle
+  addObstacle: z.object({
+    type: z.literal(eventKeywords.obstacles.added),
+    x: z.number(), // Click position X
+    y: z.number(), // Click position Y
+    radius: z.number(), // Obstacle size
+  }),
+  // User removes a specific obstacle
+  removeObstacle: z.object({
+    type: z.literal(eventKeywords.obstacles.removed),
+    index: z.number(), // Index in obstacles array
+  }),
+  // User clears all obstacles
+  clearObstacles: z.object({
+    type: z.literal(eventKeywords.obstacles.cleared),
+  }),
 };
+
+// ============================================
+// Time Events - Periodic updates
+// ============================================
+
 export const timeEventSchemas = {
-	passage: z.object({
-		type: z.literal(eventKeywords.time.passage),
-		deltaMs: z.number(),
-	}),
+  // Timer tick for lifecycle updates (every 1 second)
+  passed: z.object({
+    type: z.literal(eventKeywords.time.passed),
+    deltaMs: z.number(), // Time since last tick (milliseconds)
+  }),
 };
+
+// ============================================
+// Boid Events - Lifecycle and interactions
+// ============================================
+
 export const boidEventSchemas = {
-	caught: z.object({
-		type: z.literal(eventKeywords.boids.caught),
-		predatorId: z.string(),
-		preyId: z.string(),
-		preyTypeId: z.string(), // Type of prey that was caught (for death tracking)
-		preyEnergy: z.number(), // Energy of prey at time of catch
-		preyPosition: z.object({x: z.number(), y: z.number()}), // Position where prey was caught
-	}),
-	died: z.object({
-		type: z.literal(eventKeywords.boids.died),
-		boidId: z.string(),
-		typeId: z.string(), // Include typeId so analytics can track deaths by species
-		reason: z.enum(["old_age", "starvation", "predation"]), // How the boid died
-	}),
-	reproduced: z.object({
-		type: z.literal(eventKeywords.boids.reproduced),
-		parentId: z.string(),
-		childId: z.string(),
-		typeId: z.string(),
-		offspringCount: z.number(), // Total offspring spawned (1-2 for twins)
-	}),
-	spawnPredator: z.object({
-		type: z.literal(eventKeywords.boids.spawnPredator),
-		x: z.number(),
-		y: z.number(),
-	}),
-	foodSourceCreated: z.object({
-		type: z.literal(eventKeywords.boids.foodSourceCreated),
-		foodSource: foodSourceSchemas,
-	}),
+  // Predator catches prey
+  caught: z.object({
+    type: z.literal(eventKeywords.boids.caught),
+    predatorId: z.string(),
+    preyId: z.string(),
+    preyTypeId: z.string(), // Species of prey (for analytics)
+    preyEnergy: z.number(), // Energy to convert to food
+    preyPosition: z.object({ x: z.number(), y: z.number() }), // Where to place food
+  }),
+  // Boid dies (any reason)
+  died: z.object({
+    type: z.literal(eventKeywords.boids.died),
+    boidId: z.string(),
+    typeId: z.string(), // Species (for analytics)
+    reason: deathCauseSchema, // Cause of death
+  }),
+  // Boid successfully reproduces
+  reproduced: z.object({
+    type: z.literal(eventKeywords.boids.reproduced),
+    parentId: z.string(),
+    childId: z.string(), // First offspring ID
+    typeId: z.string(), // Species
+    offspringCount: z.number(), // Total offspring (1-2 for twins)
+  }),
+  // User manually spawns a predator
+  spawnPredator: z.object({
+    type: z.literal(eventKeywords.boids.spawnPredator),
+    x: z.number(), // Spawn position X
+    y: z.number(), // Spawn position Y
+  }),
+  // Food source created (from catch or periodic spawn)
+  foodSourceCreated: z.object({
+    type: z.literal(eventKeywords.boids.foodSourceCreated),
+    foodSource: foodSourceSchemas, // Complete food source data
+  }),
 };
+// ============================================
+// Event Union Types
+// ============================================
+
 // Union of all control events
 export const controlEventSchema = z.discriminatedUnion("type", [
-	controlEventSchemas.setTypeConfig,
-	controlEventSchemas.setPerceptionRadius,
-	controlEventSchemas.setObstacleAvoidance,
+  controlEventSchemas.setTypeConfig,
+  controlEventSchemas.setPerceptionRadius,
+  controlEventSchemas.setObstacleAvoidance,
 ]);
+
 // Union of all obstacle events
 export const obstacleEventSchema = z.discriminatedUnion("type", [
-	obstacleEventSchemas.addObstacle,
-	obstacleEventSchemas.removeObstacle,
-	obstacleEventSchemas.clearObstacles,
+  obstacleEventSchemas.addObstacle,
+  obstacleEventSchemas.removeObstacle,
+  obstacleEventSchemas.clearObstacles,
 ]);
+
 // Union of all time events
 export const timeEventSchema = z.discriminatedUnion("type", [
-	timeEventSchemas.passage,
+  timeEventSchemas.passed,
 ]);
+
 // Union of all boid events
 export const boidEventSchema = z.discriminatedUnion("type", [
-	boidEventSchemas.caught,
-	boidEventSchemas.died,
-	boidEventSchemas.reproduced,
-	boidEventSchemas.spawnPredator,
-	boidEventSchemas.foodSourceCreated,
+  boidEventSchemas.caught,
+  boidEventSchemas.died,
+  boidEventSchemas.reproduced,
+  boidEventSchemas.spawnPredator,
+  boidEventSchemas.foodSourceCreated,
 ]);
-// Union of all events
+
+// Union of all events (for runtime controller)
 export const allEventSchema = z.union([
-	controlEventSchema,
-	obstacleEventSchema,
-	timeEventSchema,
-	boidEventSchema,
+  controlEventSchema,
+  obstacleEventSchema,
+  timeEventSchema,
+  boidEventSchema,
 ]);
+
+// ============================================
+// Type Exports
+// ============================================
+
 export type ControlEvent = z.infer<typeof controlEventSchema>;
 export type ObstacleEvent = z.infer<typeof obstacleEventSchema>;
 export type TimeEvent = z.infer<typeof timeEventSchema>;
