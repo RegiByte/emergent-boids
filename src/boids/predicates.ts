@@ -137,7 +137,7 @@ export function isSeekingMate(boid: Boid): boolean {
 
 /**
  * Check if boid is eligible as a mate for another boid
- * Note: We check seekingMate flag which is set by energyManager based on isReadyToMate
+ * Note: We check seekingMate flag which is set by lifecycleManager based on isReadyToMate
  * This is intentional - seekingMate acts as a cached state for performance
  */
 export function isEligibleMate(
@@ -148,7 +148,7 @@ export function isEligibleMate(
   return (
     boid.id !== otherBoid.id &&
     boid.typeId === otherBoid.typeId &&
-    boid.seekingMate && // Cached state, updated by energyManager
+    boid.seekingMate && // Cached state, updated by lifecycleManager
     boid.reproductionCooldown === 0 &&
     !alreadyMated.has(boid.id)
   );

@@ -29,7 +29,7 @@ export const config = defineResource({
       fearRadius: 150, // Phase 1.5: Increased from 100 - earlier warning system
       chaseRadius: 150,
       catchRadius: 10,
-      mateRadius: 30, // Phase 1: Proximity-based reproduction - must be within 30px
+      mateRadius: 20, // Phase 1: Proximity-based reproduction - must be within 30px
       minDistance: 10, // Minimum distance between boids (prevents overlap/stacking)
       maxBoids: 600, // Global safety limit
       maxPreyBoids: 500, // Per-role cap for prey
@@ -55,6 +55,7 @@ export const config = defineResource({
           energyGainRate: 1.2, // Phase 1: Reduced from 1.0 - reproduce in ~100 seconds
           energyLossRate: 0, // Prey don't lose energy
           maxAge: 90, // Longer lifespan for multiple reproduction cycles
+          trailLength: 15, // Medium trail length
         },
         social: {
           id: "social",
@@ -71,6 +72,7 @@ export const config = defineResource({
           energyGainRate: 1.3, // Phase 1: Reduced from 0.8 - reproduce in ~120 seconds
           energyLossRate: 0,
           maxAge: 90, // Longer lifespan for multiple reproduction cycles
+          trailLength: 12, // Shorter trail (slower movement)
         },
         independent: {
           id: "independent",
@@ -87,6 +89,7 @@ export const config = defineResource({
           energyGainRate: 1.5, // Phase 1: Reduced from 1.2 - reproduce in ~75 seconds (still fastest)
           energyLossRate: 0,
           maxAge: 90, // Longer lifespan for multiple reproduction cycles
+          trailLength: 20, // Longer trail (fastest movement)
         },
         cautious: {
           id: "cautious",
@@ -103,6 +106,7 @@ export const config = defineResource({
           energyGainRate: 1.6, // Phase 1: Reduced from 0.9 - reproduce in ~109 seconds
           energyLossRate: 0,
           maxAge: 100, // Longest lifespan - cautious types live longer
+          trailLength: 10, // Short trail (slowest movement)
         },
         predator: {
           id: "predator",
@@ -119,6 +123,7 @@ export const config = defineResource({
           energyGainRate: 25, // Phase 1: Reduced from 35 - less energy per catch
           energyLossRate: 3.0, // Keep same - die in 75 seconds without food
           maxAge: 60, // Die of old age after 50 seconds (must hunt efficiently!)
+          trailLength: 25, // Longest trail (hunting paths are interesting)
         },
       },
     };

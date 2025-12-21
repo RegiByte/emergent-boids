@@ -5,7 +5,7 @@ import { runtimeStore } from "./resources/runtimeStore";
 import { runtimeController } from "./resources/runtimeController";
 import { canvas } from "./resources/canvas";
 import { engine } from "./resources/engine";
-import { energyManager } from "./resources/energyManager";
+import { lifecycleManager } from "./resources/lifecycleManager";
 import { renderer } from "./resources/renderer";
 
 export const systemConfig = {
@@ -15,7 +15,7 @@ export const systemConfig = {
   runtimeController,
   canvas,
   engine,
-  energyManager,
+  lifecycleManager,
   renderer,
 };
 

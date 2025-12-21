@@ -79,6 +79,18 @@ export const engine = defineResource({
       for (const boid of boids) {
         const nearbyBoids = getNearbyBoids(spatialHash, boid.position);
         updateBoid(boid, nearbyBoids, runtimeParams.obstacles, dynamicConfig, deltaSeconds);
+        
+        // Update position history for motion trails
+        const typeConfig = dynamicConfig.types[boid.typeId];
+        if (typeConfig) {
+          // Add current position to history
+          boid.positionHistory.push({ x: boid.position.x, y: boid.position.y });
+          
+          // Keep only the last N positions based on type config
+          if (boid.positionHistory.length > typeConfig.trailLength) {
+            boid.positionHistory.shift(); // Remove oldest position
+          }
+        }
       }
     };
 

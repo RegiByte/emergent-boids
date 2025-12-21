@@ -23,12 +23,13 @@ export type Boid = {
   energy: number;
   age: number; // Age in seconds
   reproductionCooldown: number; // Time passages until can reproduce again (0 = ready)
-  seekingMate: boolean; // Cached state: actively seeking mate (updated by energyManager)
+  seekingMate: boolean; // Cached state: actively seeking mate (updated by lifecycleManager)
   mateId: string | null; // ID of current mate (if paired)
   matingBuildupCounter: number; // Time passages spent close to mate (0-3, reproduce at 3)
   eatingCooldown: number; // Time passages until can catch prey again (predators only)
   stance: BoidStance; // Current behavioral stance
   previousStance: BoidStance | null; // Previous stance (for returning from fleeing)
+  positionHistory: Vector2[]; // Trail of recent positions for rendering motion trails
 };
 
 export type Obstacle = {
@@ -51,6 +52,7 @@ export type BoidTypeConfig = {
   energyGainRate: number; // Energy gained per second (prey) or per catch (predator)
   energyLossRate: number; // Energy lost per second (predators only)
   maxAge: number; // Maximum lifespan in seconds (0 = immortal)
+  trailLength: number; // Number of positions to keep in history for motion trails
 };
 
 export type BoidConfig = {

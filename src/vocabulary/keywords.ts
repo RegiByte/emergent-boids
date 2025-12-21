@@ -195,6 +195,14 @@ export const boidTypeConfigSchema = z.object({
   energyGainRate: z.number(),
   energyLossRate: z.number(),
   maxAge: z.number(),
+  trailLength: z.number(),
+});
+
+export const visualSettingsSchema = z.object({
+  trailsEnabled: z.boolean(),
+  energyBarsEnabled: z.boolean(),
+  matingHeartsEnabled: z.boolean(),
+  stanceSymbolsEnabled: z.boolean(),
 });
 
 export const runtimeStateSchema = z.object({
@@ -207,6 +215,24 @@ export const runtimeStateSchema = z.object({
     })
   ),
   types: z.record(z.string(), boidTypeConfigSchema),
+  visualSettings: visualSettingsSchema,
+  // Canvas dimensions (for toroidal calculations in renderer)
+  canvasWidth: z.number(),
+  canvasHeight: z.number(),
+  // Global simulation parameters
+  fearRadius: z.number(),
+  chaseRadius: z.number(),
+  catchRadius: z.number(),
+  mateRadius: z.number(),
+  minDistance: z.number(),
+  maxBoids: z.number(),
+  maxPreyBoids: z.number(),
+  maxPredatorBoids: z.number(),
+  minReproductionAge: z.number(),
+  reproductionEnergyThreshold: z.number(),
+  reproductionCooldownTicks: z.number(),
+  matingBuildupTicks: z.number(),
+  eatingCooldownTicks: z.number(),
 });
 
 // Partial version for state updates (all fields optional)

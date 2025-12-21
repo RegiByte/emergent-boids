@@ -115,7 +115,7 @@ const handlers = {
 
   [eventKeywords.time.passage]: (): ControlEffect[] => {
     // This handler schedules the next tick
-    // Energy updates are handled in energyManager
+    // Energy updates are handled in lifecycleManager
     const effects: ControlEffect[] = [];
 
     // Schedule next tick
@@ -133,23 +133,23 @@ const handlers = {
   },
 
   [eventKeywords.boids.caught]: (): ControlEffect[] => {
-    // Handled in energyManager - just pass through
+    // Handled in lifecycleManager - just pass through
     return [];
   },
 
   [eventKeywords.boids.died]: (): ControlEffect[] => {
-    // Handled in energyManager - just pass through
+    // Handled in lifecycleManager - just pass through
     return [];
   },
 
   [eventKeywords.boids.reproduced]: (): ControlEffect[] => {
-    // Handled in energyManager - just pass through
+    // Handled in lifecycleManager - just pass through
     return [];
   },
 
   [eventKeywords.boids.spawnPredator]: (): ControlEffect[] => {
     // Spawn a predator at the specified position
-    // This is handled in energyManager
+    // This is handled in lifecycleManager
     return [];
   },
 } satisfies EventHandlerMap<

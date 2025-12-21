@@ -48,6 +48,7 @@ export function createBoid(
     eatingCooldown: 0, // Not eating initially
     stance: role === "predator" ? "hunting" : "flocking", // Initial stance based on role
     previousStance: null, // No previous stance
+    positionHistory: [], // Empty trail initially
   };
 }
 
@@ -84,6 +85,7 @@ export function createBoidOfType(
     eatingCooldown: 0, // Not eating initially
     stance: typeConfig.role === "predator" ? "hunting" : "flocking", // Initial stance based on role
     previousStance: null, // No previous stance
+    positionHistory: [], // Empty trail initially
   };
 }
 
