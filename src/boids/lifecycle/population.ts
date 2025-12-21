@@ -9,7 +9,8 @@ export function canSpawnOffspring(
   currentPreyCount: number,
   currentPredatorCount: number,
   config: BoidConfig,
-  typeConfigs: Record<string, BoidTypeConfig>
+  typeConfigs: Record<string, BoidTypeConfig>,
+  currentTypeCount: number = 0 // NEW: Current count of this specific type
 ): boolean {
   const typeConfig = typeConfigs[typeId];
   if (!typeConfig) return false;
@@ -27,6 +28,11 @@ export function canSpawnOffspring(
     typeConfig.role === "predator" &&
     currentPredatorCount >= config.maxPredatorBoids
   ) {
+    return false;
+  }
+
+  // Check per-type cap (if specified)
+  if (typeConfig.maxPopulation !== undefined && currentTypeCount >= typeConfig.maxPopulation) {
     return false;
   }
 

@@ -219,6 +219,9 @@ export const boidTypeConfigSchema = z.object({
   energyLossRate: z.number(),
   maxAge: z.number(),
   trailLength: z.number(),
+  reproductionType: z.enum(["sexual", "asexual"]),
+  offspringCount: z.number(),
+  offspringEnergyBonus: z.number(),
 });
 
 export const visualSettingsSchema = z.object({

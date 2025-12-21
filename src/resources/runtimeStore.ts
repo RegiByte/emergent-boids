@@ -5,8 +5,40 @@ import type { StoreApi } from "zustand/vanilla";
 import type { BoidConfig } from "../boids/types";
 import type { RuntimeState } from "../vocabulary/keywords";
 
+/**
+ * Evolution Snapshot - captures ecosystem state at a point in time
+ * Used for time-series analysis and CSV export
+ */
+export type EvolutionSnapshot = {
+  tick: number;
+  timestamp: number;
+  populations: Record<string, number>; // Population count per type
+  births: Record<string, number>; // Births since last snapshot per type
+  deaths: Record<string, number>; // Deaths since last snapshot per type
+  catches: Record<string, number>; // Prey caught since last snapshot per type
+  avgEnergy: Record<string, number>; // Average energy per type
+  foodSources: {
+    prey: number;
+    predator: number;
+  };
+};
+
+/**
+ * Analytics State - time-series data and metrics
+ * Managed by analytics resource, read by components
+ */
+export type AnalyticsState = {
+  evolutionHistory: EvolutionSnapshot[];
+  currentSnapshot: EvolutionSnapshot | null;
+};
+
+/**
+ * Runtime Store - centralized state management
+ * Organized in slices for separation of concerns
+ */
 export type RuntimeStore = {
-  state: RuntimeState;
+  state: RuntimeState; // Core simulation state
+  analytics: AnalyticsState; // Time-series data and metrics
 };
 
 export type RuntimeStoreApi = StoreApi<RuntimeStore>;
@@ -54,6 +86,10 @@ export const runtimeStore = defineResource({
         reproductionCooldownTicks: config.reproductionCooldownTicks,
         matingBuildupTicks: config.matingBuildupTicks,
         eatingCooldownTicks: config.eatingCooldownTicks,
+      },
+      analytics: {
+        evolutionHistory: [],
+        currentSnapshot: null,
       },
     }));
 

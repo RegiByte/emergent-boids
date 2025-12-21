@@ -219,40 +219,55 @@ export const lifecycleManager = defineResource({
 
       // Add new boids (check population caps)
       for (const offspring of changes.boidsToAdd) {
-        const canSpawn = canSpawnOffspring(
-          offspring.typeId,
-          engine.boids.length,
-          currentPreyCount,
-          currentPredatorCount,
-          config,
-          runtimeTypes
-        );
+        const typeConfig = runtimeTypes[offspring.typeId];
+        const offspringCount = typeConfig.offspringCount || 1;
+        const energyBonus = typeConfig.offspringEnergyBonus || 0;
 
-        if (canSpawn) {
-          const typeConfig = runtimeTypes[offspring.typeId];
-          const newBoid = createBoidOfType(
-            offspring.position,
+        // Spawn multiple offspring if configured
+        for (let i = 0; i < offspringCount; i++) {
+          // Count current population of this specific type
+          const currentTypeCount = engine.boids.filter(
+            (b) => b.typeId === offspring.typeId
+          ).length;
+
+          const canSpawn = canSpawnOffspring(
             offspring.typeId,
-            typeConfig,
-            config.canvasWidth,
-            config.canvasHeight
+            engine.boids.length,
+            currentPreyCount,
+            currentPredatorCount,
+            config,
+            runtimeTypes,
+            currentTypeCount // Pass current type count
           );
-          engine.addBoid(newBoid);
 
-          // Dispatch reproduction event
-          const reproductionEvent = changes.reproductionEvents.find(
-            (e) => e.parent1Id === offspring.parent1Id
-          );
-          if (reproductionEvent) {
-            runtimeController.dispatch({
-              type: eventKeywords.boids.reproduced,
-              parentId: reproductionEvent.parent1Id,
-              childId: newBoid.id,
-              typeId: reproductionEvent.typeId,
-              ...(reproductionEvent.parent2Id && {
-                parent2Id: reproductionEvent.parent2Id,
-              }),
-            });
+          if (canSpawn) {
+            const newBoid = createBoidOfType(
+              offspring.position,
+              offspring.typeId,
+              typeConfig,
+              config.canvasWidth,
+              config.canvasHeight,
+              energyBonus // Apply energy bonus
+            );
+            engine.addBoid(newBoid);
+
+            // Dispatch reproduction event (only for first offspring to avoid spam)
+            if (i === 0) {
+              const reproductionEvent = changes.reproductionEvents.find(
+                (e) => e.parent1Id === offspring.parent1Id
+              );
+              if (reproductionEvent) {
+                runtimeController.dispatch({
+                  type: eventKeywords.boids.reproduced,
+                  parentId: reproductionEvent.parent1Id,
+                  childId: newBoid.id,
+                  typeId: reproductionEvent.typeId,
+                  ...(reproductionEvent.parent2Id && {
+                    parent2Id: reproductionEvent.parent2Id,
+                  }),
+                });
+              }
+            }
           }
         }
       }
@@ -312,7 +327,9 @@ export const lifecycleManager = defineResource({
       ).length;
 
       // Don't create food if we're at or above the cap
-      if (existingPredatorFoodCount >= FOOD_CONSTANTS.MAX_PREDATOR_FOOD_SOURCES) {
+      if (
+        existingPredatorFoodCount >= FOOD_CONSTANTS.MAX_PREDATOR_FOOD_SOURCES
+      ) {
         return;
       }
 
@@ -346,7 +363,7 @@ export const lifecycleManager = defineResource({
 
     const spawnPreyFoodSources = () => {
       const currentState = runtimeStore.store.getState().state;
-      
+
       // Count existing prey food sources
       const existingPreyFoodCount = currentState.foodSources.filter(
         (food) => food.sourceType === "prey"

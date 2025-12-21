@@ -75,10 +75,17 @@ export function createBoidOfType(
   typeId: string,
   typeConfig: BoidTypeConfig,
   width: number,
-  height: number
+  height: number,
+  energyBonus: number = 0 // Optional energy bonus for offspring (0-1)
 ): Boid {
   // Spawn near parent with slight offset
   const offset = 20;
+  
+  // Calculate starting energy with bonus
+  const baseEnergy = typeConfig.maxEnergy / 2; // Start at half energy
+  const bonusEnergy = typeConfig.maxEnergy * energyBonus;
+  const startingEnergy = Math.min(baseEnergy + bonusEnergy, typeConfig.maxEnergy);
+  
   return {
     id: `boid-${boidIdCounter++}`,
     position: {
@@ -91,7 +98,7 @@ export function createBoidOfType(
     },
     acceleration: { x: 0, y: 0 },
     typeId,
-    energy: typeConfig.maxEnergy / 2, // Start at half energy
+    energy: startingEnergy, // Start with base + bonus energy
     age: 0, // Born at age 0
     reproductionCooldown: 0, // Start ready to mate
     seekingMate: false, // Not seeking initially

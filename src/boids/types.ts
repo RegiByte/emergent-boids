@@ -42,6 +42,8 @@ export type Obstacle = {
   radius: number;
 };
 
+export type ReproductionType = "sexual" | "asexual";
+
 export type BoidTypeConfig = {
   id: string;
   name: string;
@@ -58,6 +60,12 @@ export type BoidTypeConfig = {
   energyLossRate: number; // Energy lost per second (predators only)
   maxAge: number; // Maximum lifespan in seconds (0 = immortal)
   trailLength: number; // Number of positions to keep in history for motion trails
+  reproductionType: ReproductionType; // Sexual (needs mate) or asexual (solo)
+  offspringCount: number; // Number of offspring per reproduction (1-2)
+  offspringEnergyBonus: number; // Extra energy % for offspring (0-1)
+  fearRadius?: number; // Optional: Override global fear radius for this type
+  reproductionCooldownTicks?: number; // Optional: Override global reproduction cooldown
+  maxPopulation?: number; // Optional: Maximum population for this specific type
 };
 
 export type BoidConfig = {

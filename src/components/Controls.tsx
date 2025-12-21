@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useResource } from "../system";
 import { eventKeywords } from "../vocabulary/keywords";
+import {
+  exportCurrentStats,
+  exportEvolutionCSV,
+  copyToClipboard,
+} from "../utils/exportData";
 
 export type SpawnMode = "obstacle" | "predator";
 
@@ -12,7 +17,10 @@ type ControlsProps = {
 export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
   const { useStore } = useResource("runtimeStore");
   const state = useStore((state) => state.state);
+  const analytics = useStore((state) => state.analytics);
   const runtimeController = useResource("runtimeController");
+  const engine = useResource("engine");
+  const config = useResource("config");
 
   const typeIds = Object.keys(state.types);
   const [activeTab, setActiveTab] = useState(typeIds[0] || "explorer");
@@ -299,6 +307,83 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
         >
           Clear All Obstacles
         </button>
+      </div>
+
+      {/* Data Export Section */}
+      <div
+        style={{
+          padding: "12px",
+          background: "#222",
+          borderRadius: "4px",
+          border: "2px solid #00ff88",
+        }}
+      >
+        <h4
+          style={{
+            margin: "0 0 12px 0",
+            color: "#00ff88",
+            fontSize: "14px",
+          }}
+        >
+          📊 Data Export
+        </h4>
+
+        {/* Current Stats Export */}
+        <button
+          onClick={() => {
+            const json = exportCurrentStats(engine, config, state);
+            copyToClipboard(json, "Current Stats (JSON)");
+          }}
+          style={{
+            width: "100%",
+            padding: "10px",
+            background: "#00ff88",
+            color: "#000",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontSize: "13px",
+            fontWeight: "bold",
+            marginBottom: "8px",
+          }}
+        >
+          📋 Copy Current Stats (JSON)
+        </button>
+
+        {/* Evolution History Export */}
+        <button
+          onClick={() => {
+            const csv = exportEvolutionCSV(analytics.evolutionHistory);
+            copyToClipboard(csv, "Evolution Data (CSV)");
+          }}
+          style={{
+            width: "100%",
+            padding: "10px",
+            background: "#00aaff",
+            color: "#000",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontSize: "13px",
+            fontWeight: "bold",
+          }}
+        >
+          📈 Copy Evolution Data (CSV)
+        </button>
+
+        {/* Info Text */}
+        <p
+          style={{
+            margin: "12px 0 0 0",
+            color: "#888",
+            fontSize: "11px",
+            lineHeight: "1.4",
+          }}
+        >
+          Current Stats: Instant snapshot (JSON)
+          <br />
+          Evolution: {analytics.evolutionHistory.length} snapshots (CSV)
+        </p>
       </div>
     </div>
   );

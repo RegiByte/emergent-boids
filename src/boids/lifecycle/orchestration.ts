@@ -29,7 +29,28 @@ function updatePreyStance(
     | "fleeing"
     | "eating";
 
-  // Priority 1: Fear overrides everything - if predators nearby, flee!
+  // Priority 0: Desperate eating overrides fear (when critically low energy)
+  // This creates risk/reward: starving boids will eat near predators
+  const desperateThreshold = typeConfig.maxEnergy * 0.3; // Below 30% = desperate
+  if (boid.energy < desperateThreshold) {
+    const nearbyFood = foodSources.find((food) => {
+      if (food.sourceType !== "prey" || food.energy <= 0) return false;
+      const dx = boid.position.x - food.position.x;
+      const dy = boid.position.y - food.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      return dist < FOOD_CONSTANTS.FOOD_EATING_RADIUS;
+    });
+
+    if (nearbyFood) {
+      if (currentStance !== "eating") {
+        boid.previousStance = currentStance;
+        boid.stance = "eating";
+      }
+      return; // Eating overrides fleeing when desperate!
+    }
+  }
+
+  // Priority 1: Fear overrides everything (unless desperate) - if predators nearby, flee!
   if (nearbyPredators.length > 0) {
     if (currentStance !== "fleeing") {
       boid.previousStance = currentStance;
@@ -65,21 +86,24 @@ function updatePreyStance(
     }
   }
 
-  // Priority 3: Mating (has a mate)
-  if (boid.mateId) {
-    if (currentStance !== "mating") {
-      boid.stance = "mating";
+  // Priority 3: Mating (has a mate) - only for sexual reproduction
+  if (typeConfig.reproductionType === "sexual") {
+    if (boid.mateId) {
+      if (currentStance !== "mating") {
+        boid.stance = "mating";
+      }
+      return;
     }
-    return;
-  }
 
-  // Priority 4: Seeking mate
-  if (isReadyToMate(boid, config, typeConfig)) {
-    if (currentStance !== "seeking_mate") {
-      boid.stance = "seeking_mate";
+    // Priority 4: Seeking mate - only for sexual reproduction
+    if (isReadyToMate(boid, config, typeConfig)) {
+      if (currentStance !== "seeking_mate") {
+        boid.stance = "seeking_mate";
+      }
+      return;
     }
-    return;
   }
+  // Note: Asexual boids skip mate-seeking and reproduce instantly when ready
 
   // Default: Flocking
   if (currentStance !== "flocking") {
@@ -120,20 +144,22 @@ function updatePredatorStance(
     return;
   }
 
-  // Priority 2: Mating (has a mate)
-  if (boid.mateId) {
-    if (currentStance !== "mating") {
-      boid.stance = "mating";
+  // Priority 2: Mating (has a mate) - only for sexual reproduction
+  if (typeConfig.reproductionType === "sexual") {
+    if (boid.mateId) {
+      if (currentStance !== "mating") {
+        boid.stance = "mating";
+      }
+      return;
     }
-    return;
-  }
 
-  // Priority 3: Seeking mate
-  if (isReadyToMate(boid, config, typeConfig)) {
-    if (currentStance !== "seeking_mate") {
-      boid.stance = "seeking_mate";
+    // Priority 3: Seeking mate - only for sexual reproduction
+    if (isReadyToMate(boid, config, typeConfig)) {
+      if (currentStance !== "seeking_mate") {
+        boid.stance = "seeking_mate";
+      }
+      return;
     }
-    return;
   }
 
   // Priority 4: Idle (low energy, conserving) - hysteresis: enter at 30%, exit at 50%
@@ -208,8 +234,10 @@ export function processLifecycleUpdates(
     if (typeConfig.role === "predator") {
       updatePredatorStance(boid, typeConfig, config, foodSources);
     } else {
+      // Use type-specific fear radius if available, otherwise use global
+      const fearRadius = typeConfig.fearRadius ?? config.fearRadius;
       const nearbyPredators = predators.filter((p) =>
-        isWithinRadius(boid.position, p.position, config.fearRadius)
+        isWithinRadius(boid.position, p.position, fearRadius)
       );
       updatePreyStance(boid, typeConfig, config, nearbyPredators, foodSources);
     }

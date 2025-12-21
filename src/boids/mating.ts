@@ -78,6 +78,49 @@ export function findNearbyMate(
 }
 
 /**
+ * Process asexual reproduction for a boid
+ * Returns the result of asexual reproduction without side effects
+ */
+export function processAsexualReproduction(
+  boid: Boid,
+  config: BoidConfig,
+  typeConfig: BoidTypeConfig
+): MatingResult {
+  // Asexual reproduction is instant - no mate needed, no buildup
+  const reproductionEnergy = calculateReproductionEnergyCost(
+    typeConfig.maxEnergy
+  );
+
+  // Use type-specific cooldown if available, otherwise use global
+  const cooldownTicks = typeConfig.reproductionCooldownTicks ?? config.reproductionCooldownTicks;
+
+  return {
+    type: "reproduction_complete",
+    offspring: {
+      parent1Id: boid.id,
+      parent2Id: undefined, // No second parent for asexual
+      typeId: boid.typeId,
+      position: boid.position, // Spawn at parent's position
+    },
+    boidUpdates: {
+      energy: reproductionEnergy,
+      reproductionCooldown: cooldownTicks, // Use type-specific or global cooldown
+      matingBuildupCounter: 0,
+      mateId: null,
+      seekingMate: false,
+    },
+    mateUpdates: {
+      // No mate, but we need to provide this for type compatibility
+      energy: 0,
+      reproductionCooldown: 0,
+      matingBuildupCounter: 0,
+      mateId: null,
+      seekingMate: false,
+    },
+  };
+}
+
+/**
  * Process mating cycle for a boid
  * Returns the result of the mating attempt without side effects
  */
@@ -88,6 +131,12 @@ export function processMatingCycle(
   typeConfig: BoidTypeConfig,
   matedBoids: Set<string>
 ): MatingResult {
+  // Check if this type uses asexual reproduction
+  if (typeConfig.reproductionType === "asexual") {
+    return processAsexualReproduction(boid, config, typeConfig);
+  }
+
+  // Sexual reproduction logic below
   // If already paired, check mating progress
   if (boid.mateId) {
     const mate = findBoidById(allBoids, boid.mateId);
@@ -121,6 +170,9 @@ export function processMatingCycle(
           typeConfig.maxEnergy
         );
 
+        // Use type-specific cooldown if available, otherwise use global
+        const cooldownTicks = typeConfig.reproductionCooldownTicks ?? config.reproductionCooldownTicks;
+
         return {
           type: "reproduction_complete",
           offspring: {
@@ -131,14 +183,14 @@ export function processMatingCycle(
           },
           boidUpdates: {
             energy: reproductionEnergy,
-            reproductionCooldown: config.reproductionCooldownTicks,
+            reproductionCooldown: cooldownTicks, // Use type-specific or global cooldown
             matingBuildupCounter: 0,
             mateId: null,
             seekingMate: false,
           },
           mateUpdates: {
             energy: reproductionEnergy,
-            reproductionCooldown: config.reproductionCooldownTicks,
+            reproductionCooldown: cooldownTicks, // Use type-specific or global cooldown
             matingBuildupCounter: 0,
             mateId: null,
             seekingMate: false,
@@ -262,16 +314,20 @@ export function applyMatingResult(
 
   switch (result.type) {
     case "reproduction_complete": {
-      // Apply updates to both parents
+      // Apply updates to parent(s)
       applyBoidUpdates(boid, result.boidUpdates);
-      const mate = boidsMap[result.offspring.parent2Id!];
-      if (mate) {
-        applyBoidUpdates(mate, result.mateUpdates);
+      
+      // For sexual reproduction, update mate
+      if (result.offspring.parent2Id) {
+        const mate = boidsMap[result.offspring.parent2Id];
+        if (mate) {
+          applyBoidUpdates(mate, result.mateUpdates);
+          matedBoids.add(result.offspring.parent2Id);
+        }
       }
 
-      // Mark both as mated and add offspring to spawn queue
+      // Mark parent as mated and add offspring to spawn queue
       matedBoids.add(boid.id);
-      matedBoids.add(result.offspring.parent2Id!);
       boidsToAdd.push(result.offspring);
       break;
     }

@@ -6,6 +6,7 @@ import { runtimeController } from "./resources/runtimeController";
 import { canvas } from "./resources/canvas";
 import { engine } from "./resources/engine";
 import { lifecycleManager } from "./resources/lifecycleManager";
+import { analytics } from "./resources/analytics";
 import { renderer } from "./resources/renderer";
 
 export const systemConfig = {
@@ -16,6 +17,7 @@ export const systemConfig = {
   canvas,
   engine,
   lifecycleManager,
+  analytics,
   renderer,
 };
 
