@@ -13,9 +13,11 @@
   "dependencies": {
     "braided": "^0.0.4",
     "braided-react": "^0.1.0",
+    "chart.js": "^4.5.1",
     "emergent": "^1.1.0",
     "immer": "^11.0.1",
     "react": "^19.2.0",
+    "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.0",
     "zod": "^4.2.1",
     "zustand": "^5.0.9"

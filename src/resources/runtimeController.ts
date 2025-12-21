@@ -132,34 +132,45 @@ const handlers = {
     return effects;
   },
 
-  [eventKeywords.boids.caught]: (): ControlEffect[] => {
+  [eventKeywords.boids.caught]: (_state, event) => {
+    // Handled in lifecycleManager - just pass through
+    return [
+      // Boid got caught? He died! :( (predation death)
+      {
+        type: effectKeywords.runtime.dispatch,
+        event: {
+          type: eventKeywords.boids.died,
+          boidId: event.preyId,
+          typeId: event.preyTypeId,
+          reason: "predation",
+        },
+      },
+    ];
+  },
+
+  [eventKeywords.boids.died]: () => {
     // Handled in lifecycleManager - just pass through
     return [];
   },
 
-  [eventKeywords.boids.died]: (): ControlEffect[] => {
+  [eventKeywords.boids.reproduced]: () => {
     // Handled in lifecycleManager - just pass through
     return [];
   },
 
-  [eventKeywords.boids.reproduced]: (): ControlEffect[] => {
-    // Handled in lifecycleManager - just pass through
-    return [];
-  },
-
-  [eventKeywords.boids.spawnPredator]: (): ControlEffect[] => {
+  [eventKeywords.boids.spawnPredator]: () => {
     // Spawn a predator at the specified position
     // This is handled in lifecycleManager
     return [];
   },
 
-  [eventKeywords.boids.foodSourceCreated]: (): ControlEffect[] => {
+  [eventKeywords.boids.foodSourceCreated]: () => {
     // Food source creation is handled in lifecycleManager
     return [];
   },
 } satisfies EventHandlerMap<
   AllEvents,
-  ControlEffect,
+  AllEffects,
   RuntimeState,
   HandlerContext
 >;
@@ -222,7 +233,7 @@ function createRuntimeController(
 ) {
   const createControlLoop = emergentSystem<
     AllEvents,
-    ControlEffect,
+    AllEffects,
     RuntimeState,
     HandlerContext,
     ExecutorContext

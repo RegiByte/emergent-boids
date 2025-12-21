@@ -2,21 +2,28 @@ import { useState } from "react";
 import { Controls, type SpawnMode } from "./Controls";
 import { EventsPanel } from "./EventsPanel";
 import { PopulationStats } from "./PopulationStats";
+import { PopulationGraph } from "./PopulationGraph";
+import { EnergyGraph } from "./EnergyGraph";
+import { EventsGraph } from "./EventsGraph";
 
 type SimulationPanelProps = {
   spawnMode: SpawnMode;
   onSpawnModeChange: (mode: SpawnMode) => void;
 };
 
-type TabId = "controls" | "events" | "stats";
+type TabId = "controls" | "events" | "stats" | "graphs";
 
-export function SimulationPanel({ spawnMode, onSpawnModeChange }: SimulationPanelProps) {
+export function SimulationPanel({
+  spawnMode,
+  onSpawnModeChange,
+}: SimulationPanelProps) {
   const [activeTab, setActiveTab] = useState<TabId>("controls");
 
   const tabs: { id: TabId; label: string; icon: string }[] = [
     { id: "controls", label: "Controls", icon: "🎛️" },
     { id: "events", label: "Events", icon: "📡" },
     { id: "stats", label: "Stats", icon: "📊" },
+    { id: "graphs", label: "Graphs", icon: "📈" },
   ];
 
   return (
@@ -47,7 +54,10 @@ export function SimulationPanel({ spawnMode, onSpawnModeChange }: SimulationPane
               background: activeTab === tab.id ? "#1a1a1a" : "transparent",
               color: activeTab === tab.id ? "#00ff88" : "#666",
               border: "none",
-              borderBottom: activeTab === tab.id ? "3px solid #00ff88" : "3px solid transparent",
+              borderBottom:
+                activeTab === tab.id
+                  ? "3px solid #00ff88"
+                  : "3px solid transparent",
               cursor: "pointer",
               fontSize: "14px",
               fontWeight: "bold",
@@ -85,12 +95,21 @@ export function SimulationPanel({ spawnMode, onSpawnModeChange }: SimulationPane
         }}
       >
         {activeTab === "controls" && (
-          <Controls spawnMode={spawnMode} onSpawnModeChange={onSpawnModeChange} />
+          <Controls
+            spawnMode={spawnMode}
+            onSpawnModeChange={onSpawnModeChange}
+          />
         )}
         {activeTab === "events" && <EventsPanel />}
         {activeTab === "stats" && <PopulationStats />}
+        {activeTab === "graphs" && (
+          <div style={{ padding: "16px" }}>
+            <PopulationGraph />
+            <EnergyGraph />
+            <EventsGraph />
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

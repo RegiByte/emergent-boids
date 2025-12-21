@@ -606,6 +606,7 @@ export const renderer = defineResource({
           type: eventKeywords.boids.caught,
           predatorId: catchEvent.predatorId,
           preyId: catchEvent.preyId,
+          preyTypeId: catchEvent.preyTypeId, // Include prey type for death tracking
           preyEnergy: catchEvent.preyEnergy,
           preyPosition: catchEvent.preyPosition,
         });

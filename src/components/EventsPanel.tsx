@@ -43,6 +43,24 @@ export function EventsPanel() {
 
   const highEnergyPredators = predators.filter((p) => p.energy >= 90);
 
+  const copyEventsToClipboard = () => {
+    const eventsText = eventLog
+      .map((entry) => {
+        const time = new Date(entry.timestamp).toLocaleTimeString();
+        const eventData = JSON.stringify(entry.event, null, 2);
+        return `[${time}] ${entry.event.type}\n${eventData}\n`;
+      })
+      .join("\n---\n\n");
+
+    navigator.clipboard
+      .writeText(eventsText)
+      .then(() => {
+        console.log("✅ Events copied to clipboard!");
+        console.log(`Copied ${eventLog.length} events`);
+      })
+      .catch((err) => console.error("❌ Failed to copy events:", err));
+  };
+
   return (
     <div
       style={{
@@ -52,9 +70,33 @@ export function EventsPanel() {
         fontFamily: "monospace",
       }}
     >
-      <h3 style={{ margin: "0 0 16px 0", color: "#00ff88", fontSize: "16px" }}>
-        📡 Event Stream
-      </h3>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "16px",
+        }}
+      >
+        <h3 style={{ margin: 0, color: "#00ff88", fontSize: "16px" }}>
+          📡 Event Stream
+        </h3>
+        <button
+          onClick={copyEventsToClipboard}
+          style={{
+            padding: "8px 16px",
+            background: "#00ff88",
+            color: "#000",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontSize: "12px",
+            fontWeight: "bold",
+          }}
+        >
+          📋 Copy Events ({eventLog.length})
+        </button>
+      </div>
 
       {/* Energy Status */}
       <div
@@ -66,11 +108,14 @@ export function EventsPanel() {
           border: "1px solid #333",
         }}
       >
-        <div style={{ color: "#ffaa00", marginBottom: "8px", fontSize: "12px" }}>
+        <div
+          style={{ color: "#ffaa00", marginBottom: "8px", fontSize: "12px" }}
+        >
           <strong>High Energy Predators:</strong>
         </div>
         <div style={{ color: "#aaa" }}>
-          {predators.length} total | {highEnergyPredators.length} with ≥90 energy
+          {predators.length} total | {highEnergyPredators.length} with ≥90
+          energy
         </div>
         {highEnergyPredators.length > 0 && (
           <div style={{ marginTop: "8px", fontSize: "10px" }}>
@@ -85,11 +130,20 @@ export function EventsPanel() {
 
       {/* Event Log */}
       <div style={{ fontSize: "10px" }}>
-        <div style={{ marginBottom: "12px", fontSize: "12px", color: "#00ff88" }}>
+        <div
+          style={{ marginBottom: "12px", fontSize: "12px", color: "#00ff88" }}
+        >
           <strong>Recent Events ({eventLog.length}):</strong>
         </div>
         {eventLog.length === 0 && (
-          <div style={{ color: "#666", marginTop: "8px", textAlign: "center", padding: "20px" }}>
+          <div
+            style={{
+              color: "#666",
+              marginTop: "8px",
+              textAlign: "center",
+              padding: "20px",
+            }}
+          >
             No events yet...
           </div>
         )}
@@ -113,12 +167,25 @@ export function EventsPanel() {
               </div>
               {Object.keys(entry.event).length > 1 && (
                 <div
-                  style={{ marginLeft: "8px", marginTop: "4px", color: "#aaa", fontSize: "9px" }}
+                  style={{
+                    marginLeft: "8px",
+                    marginTop: "4px",
+                    color: "#aaa",
+                    fontSize: "9px",
+                  }}
                 >
-                  <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                  <pre
+                    style={{
+                      margin: 0,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}
+                  >
                     {JSON.stringify(
                       Object.fromEntries(
-                        Object.entries(entry.event).filter(([k]) => k !== "type")
+                        Object.entries(entry.event).filter(
+                          ([k]) => k !== "type"
+                        )
                       ),
                       null,
                       2
@@ -152,4 +219,3 @@ export function EventsPanel() {
     </div>
   );
 }
-

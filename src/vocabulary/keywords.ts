@@ -138,18 +138,22 @@ export const boidEventSchemas = {
     type: z.literal(eventKeywords.boids.caught),
     predatorId: z.string(),
     preyId: z.string(),
+    preyTypeId: z.string(), // Type of prey that was caught (for death tracking)
     preyEnergy: z.number(), // Energy of prey at time of catch
     preyPosition: z.object({ x: z.number(), y: z.number() }), // Position where prey was caught
   }),
   died: z.object({
     type: z.literal(eventKeywords.boids.died),
     boidId: z.string(),
+    typeId: z.string(), // Include typeId so analytics can track deaths by species
+    reason: z.enum(["old_age", "starvation", "predation"]), // How the boid died
   }),
   reproduced: z.object({
     type: z.literal(eventKeywords.boids.reproduced),
     parentId: z.string(),
     childId: z.string(),
     typeId: z.string(),
+    offspringCount: z.number(), // Total offspring spawned (1-2 for twins)
   }),
   spawnPredator: z.object({
     type: z.literal(eventKeywords.boids.spawnPredator),

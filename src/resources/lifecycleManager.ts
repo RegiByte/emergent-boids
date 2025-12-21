@@ -47,6 +47,7 @@ export const lifecycleManager = defineResource({
         handlePreyCaught(
           event.predatorId,
           event.preyId,
+          event.preyTypeId,
           event.preyEnergy,
           event.preyPosition
         );
@@ -200,17 +201,22 @@ export const lifecycleManager = defineResource({
         });
       }
 
-      // Remove dead boids
-      for (const boidId of changes.boidsToRemove) {
-        engine.removeBoid(boidId);
+      // Dispatch death events BEFORE removing boids (so we can get typeId)
+      for (const { boidId, reason } of changes.deathEvents) {
+        const boid = engine.getBoidById(boidId);
+        if (boid) {
+          runtimeController.dispatch({
+            type: eventKeywords.boids.died,
+            boidId,
+            typeId: boid.typeId, // Include typeId for analytics tracking
+            reason, // Include death reason (old_age, starvation, predation)
+          });
+        }
       }
 
-      // Dispatch death events
-      for (const { boidId } of changes.deathEvents) {
-        runtimeController.dispatch({
-          type: eventKeywords.boids.died,
-          boidId,
-        });
+      // Remove dead boids AFTER dispatching events
+      for (const boidId of changes.boidsToRemove) {
+        engine.removeBoid(boidId);
       }
 
       // Count current populations for cap checking
@@ -262,6 +268,7 @@ export const lifecycleManager = defineResource({
                   parentId: reproductionEvent.parent1Id,
                   childId: newBoid.id,
                   typeId: reproductionEvent.typeId,
+                  offspringCount, // Include actual offspring count (1-2)
                   ...(reproductionEvent.parent2Id && {
                     parent2Id: reproductionEvent.parent2Id,
                   }),
@@ -316,6 +323,7 @@ export const lifecycleManager = defineResource({
     const handlePreyCaught = (
       _predatorId: string,
       _preyId: string,
+      _preyTypeId: string,
       preyEnergy: number,
       preyPosition: { x: number; y: number }
     ) => {

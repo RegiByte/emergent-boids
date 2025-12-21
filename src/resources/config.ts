@@ -21,7 +21,7 @@ export const config = defineResource({
     const { canvasWidth, canvasHeight } = calculateCanvasDimensions();
 
     return {
-      count: 300,
+      count: 50,
       perceptionRadius: 50,
       obstacleAvoidanceWeight: 2.0,
       canvasWidth, // Use calculated dimensions
@@ -111,8 +111,8 @@ export const config = defineResource({
           role: "prey" as const,
           separationWeight: 2.0,
           alignmentWeight: 1.5,
-          cohesionWeight: 1.5,
-          maxSpeed: 3.6, // -10% speed (slower, defensive)
+          cohesionWeight: 2,
+          maxSpeed: 3.9, // (slower, defensive)
           maxForce: 0.12,
           fearFactor: 0.6, // Medium-high fear, coordinated escape
           maxEnergy: 60, // -10% energy (90 * 0.6 scaled to food system)

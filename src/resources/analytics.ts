@@ -44,14 +44,14 @@ export const analytics = defineResource({
       // Track lifecycle events
       if (event.type === eventKeywords.boids.reproduced) {
         const typeId = event.typeId;
-        eventCounters.births[typeId] = (eventCounters.births[typeId] || 0) + 1;
+        // Count actual offspring spawned (handles twins: offspringCount = 2)
+        const offspringCount = event.offspringCount || 1;
+        eventCounters.births[typeId] =
+          (eventCounters.births[typeId] || 0) + offspringCount;
       } else if (event.type === eventKeywords.boids.died) {
-        // Find boid type from boid list (before it's removed)
-        const boid = engine.boids.find((b) => b.id === event.boidId);
-        if (boid) {
-          const typeId = boid.typeId;
-          eventCounters.deaths[typeId] = (eventCounters.deaths[typeId] || 0) + 1;
-        }
+        // TypeId now included in event (no need to search)
+        const typeId = event.typeId;
+        eventCounters.deaths[typeId] = (eventCounters.deaths[typeId] || 0) + 1;
       } else if (event.type === eventKeywords.boids.caught) {
         // Find prey type from boid list
         const prey = engine.boids.find((b) => b.id === event.preyId);
@@ -138,4 +138,3 @@ export const analytics = defineResource({
     unsubscribe();
   },
 });
-

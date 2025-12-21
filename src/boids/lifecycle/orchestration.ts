@@ -245,6 +245,7 @@ export function processLifecycleUpdates(
     // 3. Check for death
     const deathReason = checkBoidDeath(boid, typeConfig);
     if (deathReason) {
+      console.log("detected death during processing", boid.id, deathReason);
       boidsToRemove.push(boid.id);
       deathEvents.push({ boidId: boid.id, reason: deathReason });
       continue; // Skip remaining updates for dead boid
@@ -290,4 +291,3 @@ export function processLifecycleUpdates(
 
   return { boidsToRemove, boidsToAdd, deathEvents, reproductionEvents };
 }
-

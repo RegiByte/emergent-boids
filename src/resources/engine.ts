@@ -13,6 +13,7 @@ import { getPredators, getPrey } from "../boids/filters";
 export type CatchEvent = {
   predatorId: string;
   preyId: string;
+  preyTypeId: string; // Type of prey that was caught
   preyEnergy: number;
   preyPosition: { x: number; y: number };
 };
@@ -144,6 +145,7 @@ export const engine = defineResource({
             // Store prey data BEFORE removing it
             const preyEnergy = preyBoid.energy;
             const preyPosition = { x: preyBoid.position.x, y: preyBoid.position.y };
+            const preyTypeId = preyBoid.typeId; // Capture typeId before removal
 
             // Set eating cooldown (prevents monopolizing food)
             predator.eatingCooldown = dynamicConfig.eatingCooldownTicks;
@@ -154,6 +156,7 @@ export const engine = defineResource({
             catches.push({
               predatorId: predator.id,
               preyId: preyBoid.id,
+              preyTypeId, // Include prey type for death tracking
               preyEnergy,
               preyPosition,
             });
