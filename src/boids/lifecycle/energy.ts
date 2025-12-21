@@ -22,9 +22,12 @@ export function updateBoidEnergy(
       return boid.energy - typeConfig.energyLossRate * deltaSeconds;
     }
   } else {
-    // Prey gain energy over time
+    if (boid.stance === "fleeing") {
+      // loses double energy when fleeing from predator
+      return boid.energy - typeConfig.energyLossRate * deltaSeconds * 2;
+    }
+    // gain energy over time
     const gained = boid.energy + typeConfig.energyGainRate * deltaSeconds;
     return Math.min(gained, typeConfig.maxEnergy);
   }
 }
-

@@ -324,3 +324,77 @@ export function seekMate(
 
   return { x: 0, y: 0 };
 }
+
+/**
+ * Avoid Death Markers: Steer away from locations where boids died
+ * Returns a steering force away from nearby death markers
+ * Only affects prey - predators ignore death markers
+ * Strength accumulates with repeated deaths in the same area
+ */
+export function avoidDeathMarkers(
+  boid: Boid,
+  deathMarkers: Array<{
+    position: Vector2;
+    remainingTicks: number;
+    strength: number;
+    maxLifetimeTicks: number;
+    typeId: string;
+  }>,
+  config: BoidConfig
+): Vector2 {
+  const typeConfig = config.types[boid.typeId];
+  const steering: Vector2 = { x: 0, y: 0 };
+  let total = 0;
+
+  // Avoidance radius scales with marker strength
+  const baseAvoidanceRadius = 60;
+
+  for (const marker of deathMarkers) {
+    // Stronger markers have larger avoidance radius (up to 100px)
+    const strengthRatio = marker.strength / 5.0; // Max strength is 5.0
+    const avoidanceRadius = baseAvoidanceRadius + (strengthRatio * 50); // 60-100px
+    
+    const dist = vec.toroidalDistance(
+      boid.position,
+      marker.position,
+      config.canvasWidth,
+      config.canvasHeight
+    );
+
+    if (dist > 0 && dist < avoidanceRadius) {
+      // Flee away from death marker
+      let diff = vec.toroidalSubtract(
+        boid.position,
+        marker.position,
+        config.canvasWidth,
+        config.canvasHeight
+      );
+      
+      // Weight by distance (closer = stronger avoidance)
+      const distanceWeight = 1 / (dist * dist);
+      
+      // Weight by marker strength (more deaths = stronger repulsion)
+      const strengthWeight = marker.strength;
+      
+      // Weight by remaining lifetime (fresher = stronger)
+      const freshnessWeight = marker.remainingTicks / marker.maxLifetimeTicks;
+      
+      const totalWeight = distanceWeight * strengthWeight * freshnessWeight;
+      
+      diff = vec.multiply(diff, totalWeight);
+      steering.x += diff.x;
+      steering.y += diff.y;
+      total++;
+    }
+  }
+
+  if (total > 0) {
+    const avg = vec.divide(steering, total);
+    const desired = vec.setMagnitude(avg, typeConfig.maxSpeed);
+    const steer = vec.subtract(desired, boid.velocity);
+    // Moderate force - less than fear but still significant
+    return vec.limit(steer, typeConfig.maxForce * 0.85);
+  }
+
+  return steering;
+}

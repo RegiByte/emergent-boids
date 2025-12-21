@@ -1,4 +1,10 @@
-import type { Boid, BoidConfig, BoidTypeConfig, Obstacle } from "./types";
+import type {
+  Boid,
+  BoidConfig,
+  BoidTypeConfig,
+  Obstacle,
+  Vector2,
+} from "./types";
 import * as vec from "./vector";
 import * as rules from "./rules";
 import { getPrey, getPredators } from "./filters";
@@ -20,13 +26,21 @@ export function createBoid(
   width: number,
   height: number,
   typeIds: string[],
-  typeConfigs: Record<string, BoidTypeConfig>
+  typeConfigs: Record<string, BoidTypeConfig>,
+  age: number | null = null
 ): Boid {
   // Pick a random type
   const typeId = typeIds[Math.floor(Math.random() * typeIds.length)];
   const typeConfig = typeConfigs[typeId];
 
   const role = typeConfig?.role || "prey";
+
+  // Randomize initial age to prevent synchronized deaths
+  // Start between 0 and 30% of max age to create age diversity
+  const maxAge = typeConfig?.maxAge || 90;
+  const randomAge = Math.random() * (maxAge * 0.3);
+  const effectiveAge = age !== null ? age : randomAge;
+
   return {
     id: `boid-${boidIdCounter++}`,
     position: {
@@ -40,7 +54,7 @@ export function createBoid(
     acceleration: { x: 0, y: 0 },
     typeId,
     energy: typeConfig?.maxEnergy ? typeConfig.maxEnergy / 2 : 50, // Start at half energy
-    age: 0, // Born at age 0
+    age: effectiveAge, // Randomized initial age (0-30% of max age)
     reproductionCooldown: 0, // Start ready to mate
     seekingMate: false, // Not seeking initially
     mateId: null, // No mate initially
@@ -192,6 +206,13 @@ function updatePrey(
   boid: Boid,
   allBoids: Boid[],
   obstacles: Obstacle[],
+  deathMarkers: Array<{
+    position: Vector2;
+    remainingTicks: number;
+    strength: number;
+    maxLifetimeTicks: number;
+    typeId: string;
+  }>,
   config: BoidConfig,
   typeConfig: BoidTypeConfig
 ): void {
@@ -204,6 +225,9 @@ function updatePrey(
   // Fear of predators (using pure filter)
   const predators = getPredators(allBoids, config.types);
   const fearResponse = rules.fear(boid, predators, config);
+
+  // Avoid death markers (natural deaths create danger zones)
+  const deathAvoidance = rules.avoidDeathMarkers(boid, deathMarkers, config);
 
   // Mate-seeking behavior (stance-based)
   let mateSeekingForce = { x: 0, y: 0 };
@@ -233,12 +257,18 @@ function updatePrey(
     fearResponse.force,
     typeConfig.fearFactor * 3.0
   );
+  // Death marker avoidance - moderate strength (weighted by fear factor)
+  const deathAvoidanceWeighted = vec.multiply(
+    deathAvoidance,
+    typeConfig.fearFactor * 1.5
+  );
 
   boid.acceleration = vec.add(boid.acceleration, sepWeighted);
   boid.acceleration = vec.add(boid.acceleration, aliWeighted);
   boid.acceleration = vec.add(boid.acceleration, cohWeighted);
   boid.acceleration = vec.add(boid.acceleration, avoidWeighted);
   boid.acceleration = vec.add(boid.acceleration, fearWeighted);
+  boid.acceleration = vec.add(boid.acceleration, deathAvoidanceWeighted);
 
   // Mate-seeking is strong but not as strong as fear (stance-based)
   if (stance === "seeking_mate" || stance === "mating") {
@@ -267,6 +297,13 @@ export function updateBoid(
   boid: Boid,
   allBoids: Boid[],
   obstacles: Obstacle[],
+  deathMarkers: Array<{
+    position: Vector2;
+    remainingTicks: number;
+    strength: number;
+    maxLifetimeTicks: number;
+    typeId: string;
+  }>,
   config: BoidConfig,
   deltaSeconds: number
 ): void {
@@ -284,7 +321,7 @@ export function updateBoid(
   if (typeConfig.role === "predator") {
     updatePredator(boid, allBoids, obstacles, config, typeConfig);
   } else {
-    updatePrey(boid, allBoids, obstacles, config, typeConfig);
+    updatePrey(boid, allBoids, obstacles, deathMarkers, config, typeConfig);
   }
 
   // Update position (common for all boids)

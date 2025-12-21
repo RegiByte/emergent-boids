@@ -203,6 +203,17 @@ export const visualSettingsSchema = z.object({
   energyBarsEnabled: z.boolean(),
   matingHeartsEnabled: z.boolean(),
   stanceSymbolsEnabled: z.boolean(),
+  deathMarkersEnabled: z.boolean(),
+});
+
+// Death marker schema - marks locations where boids died from starvation or old age
+// Markers consolidate nearby deaths (100px radius) and accumulate strength
+export const deathMarkerSchema = z.object({
+  position: z.object({ x: z.number(), y: z.number() }),
+  remainingTicks: z.number(), // Countdown timer (decreases each time:passage)
+  strength: z.number(), // Repulsive force strength (increases with nearby deaths)
+  maxLifetimeTicks: z.number(), // Maximum lifetime (20 ticks, prevents immortal markers)
+  typeId: z.string(), // Type of boid that died (for color)
 });
 
 export const runtimeStateSchema = z.object({
@@ -216,6 +227,7 @@ export const runtimeStateSchema = z.object({
   ),
   types: z.record(z.string(), boidTypeConfigSchema),
   visualSettings: visualSettingsSchema,
+  deathMarkers: z.array(deathMarkerSchema), // Markers for natural deaths (starvation/old age)
   // Canvas dimensions (for toroidal calculations in renderer)
   canvasWidth: z.number(),
   canvasHeight: z.number(),
@@ -290,6 +302,7 @@ export const controlEffectSchemas = {
         z.literal("idle"),
         z.null(),
       ]),
+      positionHistory: z.array(z.object({ x: z.number(), y: z.number() })),
     }),
   }),
   engineRemoveBoid: z.object({

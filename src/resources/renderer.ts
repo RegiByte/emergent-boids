@@ -93,6 +93,19 @@ export const renderer = defineResource({
           });
           console.log("Stance symbols:", !currentSettings.stanceSymbolsEnabled);
           break;
+        case "d":
+          // Toggle death markers
+          runtimeStore.store.setState({
+            state: {
+              ...state,
+              visualSettings: {
+                ...currentSettings,
+                deathMarkersEnabled: !currentSettings.deathMarkersEnabled,
+              },
+            },
+          });
+          console.log("Death markers:", !currentSettings.deathMarkersEnabled);
+          break;
         case " ":
           // Toggle pause (space bar)
           e.preventDefault();
@@ -115,6 +128,7 @@ export const renderer = defineResource({
 ║ E - Toggle energy bars (prey)          ║
 ║ H - Toggle mating hearts               ║
 ║ S - Toggle stance symbols              ║
+║ D - Toggle death markers               ║
 ║ Space - Pause/Resume simulation        ║
 ║ K or / - Show this help                ║
 ╚════════════════════════════════════════╝
@@ -179,6 +193,51 @@ export const renderer = defineResource({
         ctx.strokeStyle = "#ff8888";
         ctx.lineWidth = 2;
         ctx.stroke();
+      }
+
+      // Draw death markers (after obstacles, before boids)
+      if (visualSettings.deathMarkersEnabled && state.deathMarkers.length > 0) {
+        for (const marker of state.deathMarkers) {
+          const typeConfig = state.types[marker.typeId];
+          if (!typeConfig) continue;
+
+          // Calculate visual properties based on strength and remaining ticks
+          const strengthRatio = marker.strength / 5.0; // Max strength is 5.0
+          const tickRatio = marker.remainingTicks / marker.maxLifetimeTicks;
+          
+          // Opacity based on remaining ticks (fades as it expires)
+          const opacity = Math.max(0.3, tickRatio);
+          
+          // Size based on strength (stronger = larger)
+          const baseSize = 20;
+          const fontSize = baseSize + (strengthRatio * 10); // 20-30px
+          const circleRadius = 12 + (strengthRatio * 8); // 12-20px
+          
+          // Glow intensity based on strength
+          const glowIntensity = 8 + (strengthRatio * 12); // 8-20px blur
+          
+          ctx.save();
+          
+          // Draw colored circle behind skull (intensity shows danger level)
+          ctx.globalAlpha = opacity * 0.4 * strengthRatio;
+          ctx.fillStyle = typeConfig.color;
+          ctx.shadowColor = typeConfig.color;
+          ctx.shadowBlur = glowIntensity;
+          ctx.beginPath();
+          ctx.arc(marker.position.x, marker.position.y, circleRadius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Draw skull emoji with strength-based size
+          ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+          ctx.shadowBlur = 8;
+          ctx.globalAlpha = opacity;
+          ctx.font = `${fontSize}px Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("💀", marker.position.x, marker.position.y);
+          
+          ctx.restore();
+        }
       }
 
       // Draw each boid

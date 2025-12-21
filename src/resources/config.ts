@@ -21,7 +21,7 @@ export const config = defineResource({
     const { canvasWidth, canvasHeight } = calculateCanvasDimensions();
     
     return {
-      count: 50,
+      count: 300,
       perceptionRadius: 50,
       obstacleAvoidanceWeight: 2.0,
       canvasWidth, // Use calculated dimensions

@@ -11,7 +11,7 @@ import { canSpawnOffspring } from "../boids/lifecycle/population";
 
 /**
  * Lifecycle Manager
- * 
+ *
  * Manages the full lifecycle of boids:
  * - Energy updates (gain/loss)
  * - Aging and death (old age, starvation)
@@ -56,6 +56,34 @@ export const lifecycleManager = defineResource({
 
       // Apply changes (side effects)
       applyLifecycleChanges(changes);
+
+      // Fade death markers over time
+      fadeDeathMarkers();
+    };
+
+    const fadeDeathMarkers = () => {
+      const currentState = runtimeStore.store.getState().state;
+
+      // Skip if no markers
+      if (currentState.deathMarkers.length === 0) {
+        return;
+      }
+
+      // Decrement remainingTicks for all markers and filter out expired ones
+      const updatedMarkers = currentState.deathMarkers
+        .map((marker) => ({
+          ...marker,
+          remainingTicks: marker.remainingTicks - 1,
+        }))
+        .filter((marker) => marker.remainingTicks > 0);
+
+      // Always update store (ticks change even if length doesn't)
+      runtimeStore.store.setState({
+        state: {
+          ...currentState,
+          deathMarkers: updatedMarkers,
+        },
+      });
     };
 
     const applyLifecycleChanges = (changes: {
@@ -74,6 +102,81 @@ export const lifecycleManager = defineResource({
       }>;
     }) => {
       const runtimeTypes = runtimeStore.store.getState().state.types;
+
+      // Create death markers for natural deaths (starvation/old age only)
+      // Predator catches will create food sources in next session
+      // Consolidate nearby markers (100px radius) to prevent flooding
+      const CONSOLIDATION_RADIUS = 100;
+      const INITIAL_STRENGTH = 1.0;
+      const STRENGTH_INCREMENT = 0.5;
+      const MAX_STRENGTH = 5.0;
+      const INITIAL_TICKS = 10;
+      const MAX_LIFETIME_TICKS = 20;
+
+      const currentState = runtimeStore.store.getState().state;
+      const updatedMarkers = [...currentState.deathMarkers];
+
+      for (const { boidId, reason } of changes.deathEvents) {
+        // Only create markers for starvation and old age
+        if (reason !== "starvation" && reason !== "old_age") {
+          continue;
+        }
+
+        const boid = engine.getBoidById(boidId);
+        if (!boid) continue;
+
+        // Check if there's an existing marker nearby (within 100px)
+        const nearbyMarkersIndexes = [];
+        for (let i = 0; i < updatedMarkers.length; i++) {
+          const marker = updatedMarkers[i];
+          const dx = Math.abs(marker.position.x - boid.position.x);
+          const dy = Math.abs(marker.position.y - boid.position.y);
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < CONSOLIDATION_RADIUS) {
+            // within consolidation radius?
+            // increase strength
+            nearbyMarkersIndexes.push(i);
+          }
+        }
+
+        if (nearbyMarkersIndexes.length > 0) {
+          // Strengthen existing markers and restore ticks
+          for (const nearbyMarkerIndex of nearbyMarkersIndexes) {
+            const existingMarker = updatedMarkers[nearbyMarkerIndex];
+            updatedMarkers[nearbyMarkerIndex] = {
+              ...existingMarker,
+              strength: Math.min(
+                existingMarker.strength + STRENGTH_INCREMENT,
+                MAX_STRENGTH
+              ),
+              remainingTicks: Math.min(
+                existingMarker.remainingTicks + INITIAL_TICKS,
+                existingMarker.maxLifetimeTicks
+              ),
+            };
+          }
+        } else {
+          // Create new marker
+          updatedMarkers.push({
+            position: { x: boid.position.x, y: boid.position.y },
+            remainingTicks: INITIAL_TICKS,
+            strength: INITIAL_STRENGTH,
+            maxLifetimeTicks: MAX_LIFETIME_TICKS,
+            typeId: boid.typeId,
+          });
+        }
+      }
+
+      // Update store if markers changed
+      if (updatedMarkers.length !== currentState.deathMarkers.length) {
+        runtimeStore.store.setState({
+          state: {
+            ...currentState,
+            deathMarkers: updatedMarkers,
+          },
+        });
+      }
 
       // Remove dead boids
       for (const boidId of changes.boidsToRemove) {
@@ -179,4 +282,3 @@ export const lifecycleManager = defineResource({
     unsubscribe();
   },
 });
-

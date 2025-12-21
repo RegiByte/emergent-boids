@@ -30,7 +30,10 @@ export const runtimeStore = defineResource({
           energyBarsEnabled: false,
           matingHeartsEnabled: true,
           stanceSymbolsEnabled: false,
+          deathMarkersEnabled: true,
         },
+        // Death markers (natural deaths only: starvation/old age)
+        deathMarkers: [],
         // Canvas dimensions
         canvasWidth: config.canvasWidth,
         canvasHeight: config.canvasHeight,
