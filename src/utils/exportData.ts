@@ -1,7 +1,8 @@
 import type { BoidEngine } from "../resources/engine";
-import type { BoidConfig } from "../boids/types";
-import type { RuntimeState } from "../vocabulary/keywords";
 import type { EvolutionSnapshot } from "../resources/runtimeStore";
+
+
+import {RuntimeStore} from "../vocabulary/schemas/state.ts";
 
 /**
  * Export Utilities
@@ -17,9 +18,10 @@ import type { EvolutionSnapshot } from "../resources/runtimeStore";
  */
 export function exportCurrentStats(
   engine: BoidEngine,
-  config: BoidConfig,
-  state: RuntimeState
+  runtimeStore: RuntimeStore
 ): string {
+  const { config, simulation } = runtimeStore;
+
   // Calculate populations per type
   const populations: Record<string, number> = {};
   const populationsByRole: Record<string, number> = { prey: 0, predator: 0 };
@@ -28,7 +30,7 @@ export function exportCurrentStats(
     const typeId = boid.typeId;
     populations[typeId] = (populations[typeId] || 0) + 1;
 
-    const typeConfig = state.types[typeId];
+    const typeConfig = config.species[typeId];
     if (typeConfig) {
       populationsByRole[typeConfig.role] =
         (populationsByRole[typeConfig.role] || 0) + 1;
@@ -62,7 +64,7 @@ export function exportCurrentStats(
     const count = populations[typeId] || 1;
     energyStats[typeId].avg = energyStats[typeId].total / count;
     // Clean up total (not needed in output)
-    delete (energyStats[typeId] as any).total;
+    delete (energyStats[typeId] as Record<string, number>).total;
   });
 
   // Calculate stance distribution
@@ -79,9 +81,10 @@ export function exportCurrentStats(
 
   // Count food sources
   const foodSources = {
-    prey: state.foodSources.filter((f) => f.sourceType === "prey").length,
-    predator: state.foodSources.filter((f) => f.sourceType === "predator").length,
-    total: state.foodSources.length,
+    prey: simulation.foodSources.filter((f) => f.sourceType === "prey").length,
+    predator: simulation.foodSources.filter((f) => f.sourceType === "predator")
+      .length,
+    total: simulation.foodSources.length,
   };
 
   // Build export object
@@ -101,12 +104,12 @@ export function exportCurrentStats(
     stances: stancesByType,
     foodSources,
     config: {
-      maxBoids: config.maxBoids,
-      maxPreyBoids: config.maxPreyBoids,
-      maxPredatorBoids: config.maxPredatorBoids,
+      maxBoids: config.parameters.maxBoids,
+      maxPreyBoids: config.parameters.maxPreyBoids,
+      maxPredatorBoids: config.parameters.maxPredatorBoids,
       canvasSize: {
-        width: config.canvasWidth,
-        height: config.canvasHeight,
+        width: config.world.canvasWidth,
+        height: config.world.canvasHeight,
       },
     },
   };
@@ -191,11 +194,12 @@ export function copyToClipboard(text: string, label: string = "Data"): void {
     .writeText(text)
     .then(() => {
       console.log(`✅ ${label} copied to clipboard!`);
-      console.log(`📊 Preview (first 500 chars):\n${text.substring(0, 500)}...`);
+      console.log(
+        `📊 Preview (first 500 chars):\n${text.substring(0, 500)}...`
+      );
     })
     .catch((err) => {
       console.error("❌ Failed to copy to clipboard:", err);
       console.log("📋 Data output:\n", text);
     });
 }
-

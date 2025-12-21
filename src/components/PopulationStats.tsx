@@ -4,10 +4,11 @@ import { eventKeywords } from "../vocabulary/keywords";
 
 export function PopulationStats() {
   const engine = useResource("engine");
-  const config = useResource("config");
   const { useStore } = useResource("runtimeStore");
+  const species = useStore((state) => state.config.species);
   const { subscribe } = useResource("runtimeController");
-  const state = useStore((state) => state.state);
+  const simulation = useStore((state) => state.simulation);
+  const parameters = useStore((state) => state.config.parameters);
 
   // Force re-render every 500ms to update stats in real-time
   const [, setTick] = useState(0);
@@ -27,22 +28,22 @@ export function PopulationStats() {
 
   // Separate by role
   const prey = allBoids.filter((b) => {
-    const typeConfig = config.types[b.typeId];
+    const typeConfig = species[b.typeId];
     return typeConfig && typeConfig.role === "prey";
   });
 
   const predators = allBoids.filter((b) => {
-    const typeConfig = config.types[b.typeId];
+    const typeConfig = species[b.typeId];
     return typeConfig && typeConfig.role === "predator";
   });
 
   // Group prey by type
-  const preyByType: Record<string, typeof prey> = {};
+  const preyBySpecies: Record<string, typeof prey> = {};
   prey.forEach((boid) => {
-    if (!preyByType[boid.typeId]) {
-      preyByType[boid.typeId] = [];
+    if (!preyBySpecies[boid.typeId]) {
+      preyBySpecies[boid.typeId] = [];
     }
-    preyByType[boid.typeId].push(boid);
+    preyBySpecies[boid.typeId].push(boid);
   });
 
   // Calculate averages
@@ -166,11 +167,11 @@ export function PopulationStats() {
         />
       </StatSection>
 
-      {/* Prey by Type */}
+      {/* Prey by Species */}
       <StatSection title="Prey by Type">
-        {Object.entries(preyByType).map(([typeId, boids]) => {
-          const typeConfig = state.types[typeId];
-          if (!typeConfig) return null;
+        {Object.entries(preyBySpecies).map(([typeId, boids]) => {
+          const speciesConfig = species[typeId];
+          if (!speciesConfig) return null;
 
           const energies = boids.map((b) => b.energy);
           const ages = boids.map((b) => b.age);
@@ -185,18 +186,18 @@ export function PopulationStats() {
                 padding: "8px",
                 background: "#0a0a0a",
                 borderRadius: "4px",
-                borderLeft: `3px solid ${typeConfig.color}`,
+                borderLeft: `3px solid ${speciesConfig.color}`,
               }}
             >
               <div
                 style={{
-                  color: typeConfig.color,
+                  color: speciesConfig.color,
                   fontWeight: "bold",
                   marginBottom: "6px",
                   fontSize: "13px",
                 }}
               >
-                {typeConfig.name} ({boids.length})
+                {speciesConfig.name} ({boids.length})
               </div>
               <div style={{ fontSize: "11px", color: "#aaa" }}>
                 <div>
@@ -211,7 +212,7 @@ export function PopulationStats() {
             </div>
           );
         })}
-        {Object.keys(preyByType).length === 0 && (
+        {Object.keys(preyBySpecies).length === 0 && (
           <div
             style={{
               color: "#666",
@@ -304,15 +305,15 @@ export function PopulationStats() {
       <StatSection title="Environment">
         <StatRow
           label="Obstacles"
-          value={state.obstacles.length}
+          value={simulation.obstacles.length}
           color="#ff4444"
         />
         <StatRow
           label="Perception Radius"
-          value={state.perceptionRadius}
+          value={parameters.perceptionRadius}
           color="#888"
         />
-        <StatRow label="Max Boids" value={config.maxBoids} color="#888" />
+        <StatRow label="Max Boids" value={parameters.maxBoids} color="#888" />
       </StatSection>
     </div>
   );

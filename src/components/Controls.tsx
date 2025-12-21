@@ -16,16 +16,15 @@ type ControlsProps = {
 
 export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
   const { useStore } = useResource("runtimeStore");
-  const state = useStore((state) => state.state);
+  const runtimeStore = useStore((state) => state);
+  const { config, simulation } = runtimeStore;
   const analytics = useStore((state) => state.analytics);
   const runtimeController = useResource("runtimeController");
   const engine = useResource("engine");
-  const config = useResource("config");
+  const speciesIds = Object.keys(config.species);
+  const [activeTab, setActiveTab] = useState(speciesIds[0] || "explorer");
 
-  const typeIds = Object.keys(state.types);
-  const [activeTab, setActiveTab] = useState(typeIds[0] || "explorer");
-
-  const activeType = state.types[activeTab];
+  const activeSpecies = config.species[activeTab];
 
   return (
     <div
@@ -36,18 +35,17 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
         padding: "20px",
       }}
     >
-
-      {/* Type Tabs */}
+      {/* Species Tabs */}
       <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-        {typeIds.map((typeId) => {
-          const type = state.types[typeId];
+        {speciesIds.map((typeId) => {
+          const species = config.species[typeId];
           return (
             <button
               key={typeId}
               onClick={() => setActiveTab(typeId)}
               style={{
                 padding: "8px 12px",
-                background: activeTab === typeId ? type.color : "#2a2a2a",
+                background: activeTab === typeId ? species.color : "#2a2a2a",
                 color: activeTab === typeId ? "#000" : "#aaa",
                 border: "none",
                 borderRadius: "4px",
@@ -57,35 +55,35 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
                 transition: "all 0.2s",
               }}
             >
-              {type.name}
+              {species.name}
             </button>
           );
         })}
       </div>
 
       {/* Per-Type Controls */}
-      {activeType && (
+      {activeSpecies && (
         <div
           style={{
             padding: "12px",
             background: "#222",
             borderRadius: "4px",
-            border: `2px solid ${activeType.color}`,
+            border: `2px solid ${activeSpecies.color}`,
           }}
         >
           <h4
             style={{
               margin: "0 0 12px 0",
-              color: activeType.color,
+              color: activeSpecies.color,
               fontSize: "14px",
             }}
           >
-            {activeType.name} Settings
+            {activeSpecies.name} Settings
           </h4>
 
           <ControlSlider
             label="Separation"
-            value={activeType.separationWeight}
+            value={activeSpecies.movement.separationWeight}
             min={0}
             max={3}
             step={0.1}
@@ -101,7 +99,7 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
 
           <ControlSlider
             label="Alignment"
-            value={activeType.alignmentWeight}
+            value={activeSpecies.movement.alignmentWeight}
             min={0}
             max={3}
             step={0.1}
@@ -117,7 +115,7 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
 
           <ControlSlider
             label="Cohesion"
-            value={activeType.cohesionWeight}
+            value={activeSpecies.movement.cohesionWeight}
             min={0}
             max={3}
             step={0.1}
@@ -133,7 +131,7 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
 
           <ControlSlider
             label="Max Speed"
-            value={activeType.maxSpeed}
+            value={activeSpecies.movement.maxSpeed}
             min={1}
             max={10}
             step={0.5}
@@ -149,7 +147,7 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
 
           <ControlSlider
             label="Max Force"
-            value={activeType.maxForce}
+            value={activeSpecies.movement.maxForce}
             min={0.01}
             max={0.5}
             step={0.01}
@@ -185,7 +183,7 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
 
         <ControlSlider
           label="Perception Radius"
-          value={state.perceptionRadius}
+          value={config.parameters.perceptionRadius}
           min={10}
           max={150}
           step={5}
@@ -199,7 +197,7 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
 
         <ControlSlider
           label="Obstacle Avoidance"
-          value={state.obstacleAvoidanceWeight}
+          value={config.parameters.obstacleAvoidanceWeight}
           min={0}
           max={5}
           step={0.1}
@@ -237,7 +235,10 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
               padding: "8px",
               background: spawnMode === "obstacle" ? "#ff4444" : "#333",
               color: "white",
-              border: spawnMode === "obstacle" ? "2px solid #ff6666" : "2px solid #444",
+              border:
+                spawnMode === "obstacle"
+                  ? "2px solid #ff6666"
+                  : "2px solid #444",
               borderRadius: "4px",
               cursor: "pointer",
               fontSize: "12px",
@@ -253,7 +254,10 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
               padding: "8px",
               background: spawnMode === "predator" ? "#ff0000" : "#333",
               color: "white",
-              border: spawnMode === "predator" ? "2px solid #ff3333" : "2px solid #444",
+              border:
+                spawnMode === "predator"
+                  ? "2px solid #ff3333"
+                  : "2px solid #444",
               borderRadius: "4px",
               cursor: "pointer",
               fontSize: "12px",
@@ -264,8 +268,8 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
           </button>
         </div>
         <p style={{ margin: "8px 0 0 0", color: "#888", fontSize: "11px" }}>
-          {spawnMode === "obstacle" 
-            ? "Click canvas to place obstacles" 
+          {spawnMode === "obstacle"
+            ? "Click canvas to place obstacles"
             : "Click canvas to spawn predators"}
         </p>
       </div>
@@ -285,7 +289,7 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
             fontSize: "14px",
           }}
         >
-          Obstacles ({state.obstacles.length})
+          Obstacles ({simulation.obstacles.length})
         </h4>
         <button
           onClick={() =>
@@ -331,7 +335,7 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
         {/* Current Stats Export */}
         <button
           onClick={() => {
-            const json = exportCurrentStats(engine, config, state);
+            const json = exportCurrentStats(engine, runtimeStore);
             copyToClipboard(json, "Current Stats (JSON)");
           }}
           style={{
@@ -407,7 +411,14 @@ function ControlSlider({
   onChange,
 }: ControlSliderProps) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "12px" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "4px",
+        marginBottom: "12px",
+      }}
+    >
       <div
         style={{
           display: "flex",

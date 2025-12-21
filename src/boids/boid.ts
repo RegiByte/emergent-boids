@@ -1,22 +1,23 @@
-import type {
-  Boid,
-  BoidConfig,
-  BoidTypeConfig,
-  Obstacle,
-  Vector2,
-} from "./types";
-import * as vec from "./vector";
-import * as rules from "./rules";
-import { getPrey, getPredators } from "./filters";
 import {
+  DeathMarker,
+  FoodSource,
+  SimulationParameters,
+  SpeciesConfig,
+  WorldConfig,
+} from "../vocabulary/schemas/prelude.ts";
+import {
+  calculateEatingSpeedFactor,
   calculateEnergySpeedFactor,
   calculateFearSpeedBoost,
-  calculateEatingSpeedFactor,
-  calculatePreyCohesionWeight,
-  calculatePredatorSeparationWeight,
   calculatePredatorChaseWeight,
+  calculatePredatorSeparationWeight,
+  calculatePreyCohesionWeight,
 } from "./calculations";
+import { getPredators, getPrey } from "./filters";
 import { FOOD_CONSTANTS } from "./food";
+import * as rules from "./rules";
+import type { Boid, Obstacle } from "./types";
+import * as vec from "./vector";
 
 let boidIdCounter = 0;
 
@@ -27,18 +28,18 @@ export function createBoid(
   width: number,
   height: number,
   typeIds: string[],
-  typeConfigs: Record<string, BoidTypeConfig>,
+  speciesConfigs: Record<string, SpeciesConfig>,
   age: number | null = null
 ): Boid {
   // Pick a random type
   const typeId = typeIds[Math.floor(Math.random() * typeIds.length)];
-  const typeConfig = typeConfigs[typeId];
+  const speciesConfig = speciesConfigs[typeId];
 
-  const role = typeConfig?.role || "prey";
+  const role = speciesConfig?.role || "prey";
 
   // Randomize initial age to prevent synchronized deaths
   // Start between 0 and 30% of max age to create age diversity
-  const maxAge = typeConfig?.maxAge || 90;
+  const maxAge = speciesConfig?.lifecycle?.maxAge || 90;
   const randomAge = Math.random() * (maxAge * 0.3);
   const effectiveAge = age !== null ? age : randomAge;
 
@@ -54,7 +55,9 @@ export function createBoid(
     },
     acceleration: { x: 0, y: 0 },
     typeId,
-    energy: typeConfig?.maxEnergy ? typeConfig.maxEnergy / 2 : 50, // Start at half energy
+    energy: speciesConfig?.lifecycle?.maxEnergy
+      ? speciesConfig.lifecycle.maxEnergy / 2
+      : 50, // Start at half energy
     age: effectiveAge, // Randomized initial age (0-30% of max age)
     reproductionCooldown: 0, // Start ready to mate
     seekingMate: false, // Not seeking initially
@@ -73,19 +76,22 @@ export function createBoid(
 export function createBoidOfType(
   position: { x: number; y: number },
   typeId: string,
-  typeConfig: BoidTypeConfig,
+  speciesConfig: SpeciesConfig,
   width: number,
   height: number,
   energyBonus: number = 0 // Optional energy bonus for offspring (0-1)
 ): Boid {
   // Spawn near parent with slight offset
   const offset = 20;
-  
+
   // Calculate starting energy with bonus
-  const baseEnergy = typeConfig.maxEnergy / 2; // Start at half energy
-  const bonusEnergy = typeConfig.maxEnergy * energyBonus;
-  const startingEnergy = Math.min(baseEnergy + bonusEnergy, typeConfig.maxEnergy);
-  
+  const baseEnergy = speciesConfig.lifecycle.maxEnergy / 2; // Start at half energy
+  const bonusEnergy = speciesConfig.lifecycle.maxEnergy * energyBonus;
+  const startingEnergy = Math.min(
+    baseEnergy + bonusEnergy,
+    speciesConfig.lifecycle.maxEnergy
+  );
+
   return {
     id: `boid-${boidIdCounter++}`,
     position: {
@@ -105,7 +111,7 @@ export function createBoidOfType(
     mateId: null, // No mate initially
     matingBuildupCounter: 0, // No buildup initially
     eatingCooldown: 0, // Not eating initially
-    stance: typeConfig.role === "predator" ? "hunting" : "flocking", // Initial stance based on role
+    stance: speciesConfig.role === "predator" ? "hunting" : "flocking", // Initial stance based on role
     previousStance: null, // No previous stance
     positionHistory: [], // Empty trail initially
   };
@@ -118,16 +124,10 @@ function updatePredator(
   boid: Boid,
   allBoids: Boid[],
   obstacles: Obstacle[],
-  foodSources: Array<{
-    id: string;
-    position: Vector2;
-    energy: number;
-    maxEnergy: number;
-    sourceType: "prey" | "predator";
-    createdTick: number;
-  }>,
-  config: BoidConfig,
-  typeConfig: BoidTypeConfig
+  foodSources: Array<FoodSource>,
+  parameters: SimulationParameters,
+  world: WorldConfig,
+  speciesTypes: Record<string, SpeciesConfig>
 ): void {
   const stance = boid.stance as
     | "hunting"
@@ -137,10 +137,15 @@ function updatePredator(
     | "eating";
 
   // Find all prey (using pure filter)
-  const prey = getPrey(allBoids, config.types);
+  const prey = getPrey(allBoids, speciesTypes);
+  const speciesConfig = speciesTypes[boid.typeId];
+  if (!speciesConfig) {
+    console.warn(`Unknown species: ${boid.typeId}`);
+    return;
+  }
 
   // Find other predators (using pure filter)
-  const otherPredators = getPredators(allBoids, config.types).filter(
+  const otherPredators = getPredators(allBoids, speciesTypes).filter(
     (b) => b.id !== boid.id
   );
 
@@ -163,7 +168,8 @@ function updatePredator(
       chaseForce = rules.orbitFood(
         boid,
         targetFood.position,
-        config,
+        speciesConfig,
+        world,
         FOOD_CONSTANTS.FOOD_EATING_RADIUS
       );
     }
@@ -172,13 +178,15 @@ function updatePredator(
     const predatorFoodCount = foodSources.filter(
       (f) => f.sourceType === "predator"
     ).length;
-    const atFoodCap = predatorFoodCount >= FOOD_CONSTANTS.MAX_PREDATOR_FOOD_SOURCES;
+    const atFoodCap =
+      predatorFoodCount >= FOOD_CONSTANTS.MAX_PREDATOR_FOOD_SOURCES;
 
     // Priority: Seek nearby food over hunting (energy conservation)
     const foodSeek = rules.seekFood(
       boid,
       foodSources,
-      config,
+      speciesConfig,
+      world,
       FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
     );
     if (foodSeek.targetFoodId) {
@@ -189,7 +197,8 @@ function updatePredator(
       const anyFoodSeek = rules.seekFood(
         boid,
         foodSources,
-        config,
+        speciesConfig,
+        world,
         Infinity // No distance limit - seek any food
       );
       if (anyFoodSeek.targetFoodId) {
@@ -197,16 +206,23 @@ function updatePredator(
       }
     } else {
       // No food nearby and not at cap, hunt prey
-      chaseForce = rules.chase(boid, prey, config);
+      chaseForce = rules.chase(boid, prey, parameters, speciesConfig, world);
     }
   } else if (stance === "seeking_mate" || stance === "mating") {
     // Seek predator mates, not prey
-    mateSeekingForce = rules.seekMate(boid, otherPredators, config);
+    mateSeekingForce = rules.seekMate(
+      boid,
+      otherPredators,
+      parameters,
+      speciesConfig,
+      world
+    );
     // Opportunistic food seeking
     const foodSeek = rules.seekFood(
       boid,
       foodSources,
-      config,
+      speciesConfig,
+      world,
       FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
     );
     if (foodSeek.targetFoodId) {
@@ -217,7 +233,8 @@ function updatePredator(
     const foodSeek = rules.seekFood(
       boid,
       foodSources,
-      config,
+      speciesConfig,
+      world,
       FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
     );
     if (foodSeek.targetFoodId) {
@@ -239,17 +256,29 @@ function updatePredator(
   }
 
   // Avoid obstacles
-  const avoid = rules.avoidObstacles(boid, obstacles, config);
-  const avoidWeighted = vec.multiply(avoid, config.obstacleAvoidanceWeight);
+  const avoid = rules.avoidObstacles(
+    boid,
+    obstacles,
+    parameters,
+    speciesConfig,
+    world
+  );
+  const avoidWeighted = vec.multiply(avoid, parameters.obstacleAvoidanceWeight);
   boid.acceleration = vec.add(boid.acceleration, avoidWeighted);
 
   // Separate from other predators (unless mating or eating)
   if (stance !== "eating") {
     const separationWeight = calculatePredatorSeparationWeight(
-      typeConfig.separationWeight,
+      speciesConfig.movement.separationWeight,
       stance
     );
-    const sep = rules.separation(boid, otherPredators, config);
+    const sep = rules.separation(
+      boid,
+      otherPredators,
+      parameters,
+      speciesConfig,
+      world
+    );
     const sepWeighted = vec.multiply(sep, separationWeight);
     boid.acceleration = vec.add(boid.acceleration, sepWeighted);
   }
@@ -260,9 +289,9 @@ function updatePredator(
   // Energy affects speed
   const energySpeedFactor = calculateEnergySpeedFactor(
     boid.energy,
-    typeConfig.maxEnergy
+    speciesConfig.lifecycle.maxEnergy
   );
-  let effectiveMaxSpeed = typeConfig.maxSpeed * energySpeedFactor;
+  let effectiveMaxSpeed = speciesConfig.movement.maxSpeed * energySpeedFactor;
 
   // Eating stance: reduce max speed
   if (stance === "eating") {
@@ -279,23 +308,11 @@ function updatePrey(
   boid: Boid,
   allBoids: Boid[],
   obstacles: Obstacle[],
-  deathMarkers: Array<{
-    position: Vector2;
-    remainingTicks: number;
-    strength: number;
-    maxLifetimeTicks: number;
-    typeId: string;
-  }>,
-  foodSources: Array<{
-    id: string;
-    position: Vector2;
-    energy: number;
-    maxEnergy: number;
-    sourceType: "prey" | "predator";
-    createdTick: number;
-  }>,
-  config: BoidConfig,
-  typeConfig: BoidTypeConfig
+  deathMarkers: Array<DeathMarker>,
+  foodSources: Array<FoodSource>,
+  parameters: SimulationParameters,
+  world: WorldConfig,
+  speciesTypes: Record<string, SpeciesConfig>
 ): void {
   const stance = boid.stance as
     | "flocking"
@@ -303,27 +320,56 @@ function updatePrey(
     | "mating"
     | "fleeing"
     | "eating";
+  const speciesConfig = speciesTypes[boid.typeId];
+  if (!speciesConfig) {
+    console.warn(`Unknown species: ${boid.typeId}`);
+    return;
+  }
 
   // Standard flocking behaviors
-  const sep = rules.separation(boid, allBoids, config);
-  const ali = rules.alignment(boid, allBoids, config);
-  const coh = rules.cohesion(boid, allBoids, config);
-  const avoid = rules.avoidObstacles(boid, obstacles, config);
+  const sep = rules.separation(
+    boid,
+    allBoids,
+    parameters,
+    speciesConfig,
+    world
+  );
+  const ali = rules.alignment(boid, allBoids, parameters, speciesConfig, world);
+  const coh = rules.cohesion(boid, allBoids, parameters, speciesConfig, world);
+  const avoid = rules.avoidObstacles(
+    boid,
+    obstacles,
+    parameters,
+    speciesConfig,
+    world
+  );
 
   // Fear of predators (using pure filter)
-  const predators = getPredators(allBoids, config.types);
-  const fearResponse = rules.fear(boid, predators, config);
+  const predators = getPredators(allBoids, speciesTypes);
+  const fearResponse = rules.fear(
+    boid,
+    predators,
+    parameters,
+    speciesConfig,
+    world
+  );
 
   // Avoid death markers (natural deaths create danger zones)
-  const deathAvoidance = rules.avoidDeathMarkers(boid, deathMarkers, config);
+  const deathAvoidance = rules.avoidDeathMarkers(
+    boid,
+    deathMarkers,
+    parameters,
+    speciesConfig,
+    world
+  );
 
   // Avoid predator food sources (death sites)
   const predatorFoodAvoidance = rules.avoidPredatorFood(
     boid,
     foodSources,
-    config,
-    FOOD_CONSTANTS.PREDATOR_FOOD_FEAR_RADIUS,
-    FOOD_CONSTANTS.PREDATOR_FOOD_FEAR_WEIGHT
+    parameters,
+    speciesConfig,
+    world
   );
 
   // Food seeking and eating
@@ -344,19 +390,21 @@ function updatePrey(
       orbitForce = rules.orbitFood(
         boid,
         targetFood.position,
-        config,
+        speciesConfig,
+        world,
         FOOD_CONSTANTS.FOOD_EATING_RADIUS
       );
     }
   } else if (
     stance === "flocking" &&
-    boid.energy < typeConfig.maxEnergy * 0.7
+    boid.energy < speciesConfig.lifecycle.maxEnergy * 0.7
   ) {
     // Seek food when hungry
     const foodSeek = rules.seekFood(
       boid,
       foodSources,
-      config,
+      speciesConfig,
+      world,
       FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
     );
     if (foodSeek.targetFoodId) {
@@ -367,32 +415,41 @@ function updatePrey(
   // Mate-seeking behavior (stance-based)
   let mateSeekingForce = { x: 0, y: 0 };
   if (stance === "seeking_mate" || stance === "mating") {
-    mateSeekingForce = rules.seekMate(boid, allBoids, config);
+    mateSeekingForce = rules.seekMate(
+      boid,
+      allBoids,
+      parameters,
+      speciesConfig,
+      world
+    );
   }
 
   // Apply weights to all forces (stance-dependent)
-  const sepWeighted = vec.multiply(sep, typeConfig.separationWeight);
-  const aliWeighted = vec.multiply(ali, typeConfig.alignmentWeight);
+  const sepWeighted = vec.multiply(
+    sep,
+    speciesConfig.movement.separationWeight
+  );
+  const aliWeighted = vec.multiply(ali, speciesConfig.movement.alignmentWeight);
 
   // Stance-based cohesion adjustment
   const cohesionWeight = calculatePreyCohesionWeight(
-    typeConfig.cohesionWeight,
+    speciesConfig.movement.cohesionWeight,
     stance
   );
   const cohWeighted = vec.multiply(coh, cohesionWeight);
 
-  const avoidWeighted = vec.multiply(avoid, config.obstacleAvoidanceWeight);
+  const avoidWeighted = vec.multiply(avoid, parameters.obstacleAvoidanceWeight);
   const fearWeighted = vec.multiply(
     fearResponse.force,
-    typeConfig.fearFactor * 3.0
+    speciesConfig.lifecycle.fearFactor * 3.0
   );
   const deathAvoidanceWeighted = vec.multiply(
     deathAvoidance,
-    typeConfig.fearFactor * 1.5
+    speciesConfig.lifecycle.fearFactor * 1.5
   );
   const predatorFoodAvoidanceWeighted = vec.multiply(
     predatorFoodAvoidance,
-    typeConfig.fearFactor * 2.5
+    speciesConfig.lifecycle.fearFactor * 2.5
   );
   const foodSeekingWeighted = vec.multiply(foodSeekingForce, 2.0);
   const orbitWeighted = vec.multiply(orbitForce, 3.0); // Strong orbit when eating
@@ -417,10 +474,12 @@ function updatePrey(
   boid.velocity = vec.add(boid.velocity, boid.acceleration);
 
   // Apply adrenaline rush (using pure calculation)
-  let effectiveMaxSpeed = typeConfig.maxSpeed;
-  if (fearResponse.isAfraid && typeConfig.fearFactor > 0) {
-    const speedBoost = calculateFearSpeedBoost(typeConfig.fearFactor);
-    effectiveMaxSpeed = typeConfig.maxSpeed * speedBoost;
+  let effectiveMaxSpeed = speciesConfig.movement.maxSpeed;
+  if (fearResponse.isAfraid && speciesConfig.lifecycle.fearFactor > 0) {
+    const speedBoost = calculateFearSpeedBoost(
+      speciesConfig.lifecycle.fearFactor
+    );
+    effectiveMaxSpeed = speciesConfig.movement.maxSpeed * speedBoost;
   }
 
   boid.velocity = vec.limit(boid.velocity, effectiveMaxSpeed);
@@ -434,27 +493,16 @@ export function updateBoid(
   boid: Boid,
   allBoids: Boid[],
   obstacles: Obstacle[],
-  deathMarkers: Array<{
-    position: Vector2;
-    remainingTicks: number;
-    strength: number;
-    maxLifetimeTicks: number;
-    typeId: string;
-  }>,
-  foodSources: Array<{
-    id: string;
-    position: Vector2;
-    energy: number;
-    maxEnergy: number;
-    sourceType: "prey" | "predator";
-    createdTick: number;
-  }>,
-  config: BoidConfig,
+  deathMarkers: Array<DeathMarker>,
+  foodSources: Array<FoodSource>,
+  parameters: SimulationParameters,
+  world: WorldConfig,
+  speciesTypes: Record<string, SpeciesConfig>,
   deltaSeconds: number
 ): void {
   // Get this boid's type config
-  const typeConfig = config.types[boid.typeId];
-  if (!typeConfig) {
+  const speciesConfig = speciesTypes[boid.typeId];
+  if (!speciesConfig) {
     console.warn(`Unknown boid type: ${boid.typeId}`);
     return;
   }
@@ -463,8 +511,16 @@ export function updateBoid(
   boid.acceleration = { x: 0, y: 0 };
 
   // Dispatch to role-specific update function
-  if (typeConfig.role === "predator") {
-    updatePredator(boid, allBoids, obstacles, foodSources, config, typeConfig);
+  if (speciesConfig.role === "predator") {
+    updatePredator(
+      boid,
+      allBoids,
+      obstacles,
+      foodSources,
+      parameters,
+      world,
+      speciesTypes
+    );
   } else {
     updatePrey(
       boid,
@@ -472,8 +528,9 @@ export function updateBoid(
       obstacles,
       deathMarkers,
       foodSources,
-      config,
-      typeConfig
+      parameters,
+      world,
+      speciesTypes
     );
   }
 
@@ -483,10 +540,16 @@ export function updateBoid(
   boid.position = vec.add(boid.position, scaledVelocity);
 
   // Wrap around edges (toroidal space)
-  wrapEdges(boid, config.canvasWidth, config.canvasHeight);
+  wrapEdges(boid, world.canvasWidth, world.canvasHeight);
 
   // Enforce minimum distance (prevent overlap/stacking)
-  enforceMinimumDistance(boid, allBoids, config, typeConfig);
+  enforceMinimumDistance(
+    boid,
+    allBoids,
+    { width: world.canvasWidth, height: world.canvasHeight },
+    parameters,
+    speciesTypes
+  );
 }
 
 /**
@@ -506,28 +569,39 @@ function wrapEdges(boid: Boid, width: number, height: number): void {
 function enforceMinimumDistance(
   boid: Boid,
   allBoids: Boid[],
-  config: BoidConfig,
-  typeConfig: BoidTypeConfig
+  worldSize: { width: number; height: number },
+  parameters: SimulationParameters,
+  speciesTypes: Record<string, SpeciesConfig>
 ): void {
-  const minDist = config.minDistance;
+  const speciesConfig = speciesTypes[boid.typeId];
+  const minDist = speciesConfig.movement.minDistance || parameters.minDistance;
+  if (!speciesConfig) {
+    console.warn(`Unknown species: ${boid.typeId}`);
+    return;
+  }
 
   for (const other of allBoids) {
     if (other.id === boid.id) continue;
 
     // Get other boid's type
-    const otherType = config.types[other.typeId];
-    if (!otherType) continue;
+    const otherSpeciesConfig = speciesTypes[other.typeId];
+    if (!otherSpeciesConfig) {
+      console.warn(`Unknown species: ${other.typeId}`);
+      continue;
+    }
 
     // Allow predators to overlap with prey (for catching)
-    if (typeConfig.role === "predator" && otherType.role === "prey") continue;
-    if (typeConfig.role === "prey" && otherType.role === "predator") continue;
+    if (speciesConfig.role === "predator" && otherSpeciesConfig.role === "prey")
+      continue;
+    if (speciesConfig.role === "prey" && otherSpeciesConfig.role === "predator")
+      continue;
 
     // Calculate toroidal distance (using existing utility)
     const dist = vec.toroidalDistance(
       boid.position,
       other.position,
-      config.canvasWidth,
-      config.canvasHeight
+      worldSize.width,
+      worldSize.height
     );
 
     // If too close, push apart
@@ -538,8 +612,8 @@ function enforceMinimumDistance(
       const diff = vec.toroidalSubtract(
         boid.position,
         other.position,
-        config.canvasWidth,
-        config.canvasHeight
+        worldSize.width,
+        worldSize.height
       );
 
       // Normalize and scale by half the overlap

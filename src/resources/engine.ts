@@ -1,14 +1,14 @@
 import { defineResource } from "braided";
-import type { Boid, BoidConfig } from "../boids/types";
 import { createBoid, updateBoid } from "../boids/boid";
+import { getPredators, getPrey } from "../boids/filters";
 import {
   createSpatialHash,
-  insertBoids,
   getNearbyBoids,
+  insertBoids,
 } from "../boids/spatialHash";
-import type { StartedRuntimeStore } from "./runtimeStore";
+import type { Boid } from "../boids/types";
 import * as vec from "../boids/vector";
-import { getPredators, getPrey } from "../boids/filters";
+import type { StartedRuntimeStore } from "./runtimeStore";
 
 export type CatchEvent = {
   predatorId: string;
@@ -29,51 +29,60 @@ export type BoidEngine = {
 };
 
 export const engine = defineResource({
-  dependencies: ["config", "runtimeStore"],
-  start: ({
-    config,
-    runtimeStore,
-  }: {
-    config: BoidConfig;
-    runtimeStore: StartedRuntimeStore;
-  }) => {
-    const store = runtimeStore.store;
-    // Get available type IDs (only prey types for initial spawn)
-    const preyTypeIds = Object.keys(config.types).filter(
-      (id) => config.types[id].role === "prey"
+  dependencies: ["runtimeStore"],
+  start: ({ runtimeStore }: { runtimeStore: StartedRuntimeStore }) => {
+    const { config: initialConfig } = runtimeStore.store.getState();
+    const { world: initialWorld, species: initialSpecies } = initialConfig;
+
+    // Convert species configs to flat BoidTypeConfig for backwards compatibility
+    // const flatTypes = convertSpeciesConfigs(initialState.config.species);
+
+    // Get available type IDs (prey for initial spawn, predators from profile)
+    const preyTypeIds = Object.keys(initialSpecies).filter(
+      (id) => initialSpecies[id].role === "prey"
+    );
+    const predatorTypeIds = Object.keys(initialSpecies).filter(
+      (id) => initialSpecies[id].role === "predator"
     );
 
-    // Initialize boids with random prey types
+    // Initialize boids with prey and predators from profile
     const boids: Boid[] = [];
-    for (let i = 0; i < config.count; i++) {
+
+    // Spawn initial prey
+    for (let i = 0; i < initialWorld.initialPreyCount; i++) {
       boids.push(
         createBoid(
-          config.canvasWidth,
-          config.canvasHeight,
+          initialWorld.canvasWidth,
+          initialWorld.canvasHeight,
           preyTypeIds,
-          config.types
+          initialSpecies
+        )
+      );
+    }
+
+    // Spawn initial predators (if any)
+    for (let i = 0; i < (initialWorld.initialPredatorCount || 0); i++) {
+      boids.push(
+        createBoid(
+          initialWorld.canvasWidth,
+          initialWorld.canvasHeight,
+          predatorTypeIds,
+          initialSpecies
         )
       );
     }
 
     // Create spatial hash (cell size = perception radius for optimal performance)
     const spatialHash = createSpatialHash(
-      config.canvasWidth,
-      config.canvasHeight,
-      config.perceptionRadius
+      initialWorld.canvasWidth,
+      initialWorld.canvasHeight,
+      initialConfig.parameters.perceptionRadius
     );
 
     const update = (deltaSeconds: number) => {
-      // Get current runtime parameters from store
-      const runtimeParams = store.getState().state;
-
-      // Build dynamic config with runtime parameters
-      const dynamicConfig: BoidConfig = {
-        ...config,
-        perceptionRadius: runtimeParams.perceptionRadius,
-        obstacleAvoidanceWeight: runtimeParams.obstacleAvoidanceWeight,
-        types: runtimeParams.types, // Use runtime type configs (mutable)
-      };
+      // Get current runtime state from store
+      const { config: cfg, simulation } = runtimeStore.store.getState();
+      const { parameters, species: speciesTypes, world } = cfg;
 
       // Insert all boids into spatial hash for efficient neighbor queries
       insertBoids(spatialHash, boids);
@@ -84,21 +93,25 @@ export const engine = defineResource({
         updateBoid(
           boid,
           nearbyBoids,
-          runtimeParams.obstacles,
-          runtimeParams.deathMarkers,
-          runtimeParams.foodSources,
-          dynamicConfig,
+          simulation.obstacles,
+          simulation.deathMarkers,
+          simulation.foodSources,
+          parameters,
+          world,
+          speciesTypes,
           deltaSeconds
         );
 
         // Update position history for motion trails
-        const typeConfig = dynamicConfig.types[boid.typeId];
-        if (typeConfig) {
+        const speciesConfig = speciesTypes[boid.typeId];
+        if (speciesConfig) {
           // Add current position to history
           boid.positionHistory.push({ x: boid.position.x, y: boid.position.y });
 
           // Keep only the last N positions based on type config
-          if (boid.positionHistory.length > typeConfig.trailLength) {
+          if (
+            boid.positionHistory.length > speciesConfig.movement.trailLength
+          ) {
             boid.positionHistory.shift(); // Remove oldest position
           }
         }
@@ -108,17 +121,12 @@ export const engine = defineResource({
     // Check for catches - returns list of catches without side effects
     // Called by renderer which will dispatch events
     const checkCatches = (): CatchEvent[] => {
-      const runtimeParams = store.getState().state;
-      const dynamicConfig: BoidConfig = {
-        ...config,
-        perceptionRadius: runtimeParams.perceptionRadius,
-        obstacleAvoidanceWeight: runtimeParams.obstacleAvoidanceWeight,
-        types: runtimeParams.types,
-      };
+      const { config: cfg } = runtimeStore.store.getState();
+      const { parameters } = cfg;
 
       // Use pure filters
-      const predators = getPredators(boids, dynamicConfig.types);
-      const prey = getPrey(boids, dynamicConfig.types);
+      const predators = getPredators(boids, cfg.species);
+      const prey = getPrey(boids, cfg.species);
 
       const catches: CatchEvent[] = [];
       const caughtPreyIds: string[] = [];
@@ -134,21 +142,24 @@ export const engine = defineResource({
           const dist = vec.toroidalDistance(
             predator.position,
             preyBoid.position,
-            dynamicConfig.canvasWidth,
-            dynamicConfig.canvasHeight
+            cfg.world.canvasWidth,
+            cfg.world.canvasHeight
           );
 
-          if (dist < dynamicConfig.catchRadius) {
+          if (dist < parameters.catchRadius) {
             // Caught! Food source will be created by lifecycleManager
             // No instant energy gain - predator must eat from food source
 
             // Store prey data BEFORE removing it
             const preyEnergy = preyBoid.energy;
-            const preyPosition = { x: preyBoid.position.x, y: preyBoid.position.y };
+            const preyPosition = {
+              x: preyBoid.position.x,
+              y: preyBoid.position.y,
+            };
             const preyTypeId = preyBoid.typeId; // Capture typeId before removal
 
             // Set eating cooldown (prevents monopolizing food)
-            predator.eatingCooldown = dynamicConfig.eatingCooldownTicks;
+            predator.eatingCooldown = parameters.eatingCooldownTicks;
 
             caughtPreyIds.push(preyBoid.id);
             removeBoid(preyBoid.id);
@@ -170,14 +181,31 @@ export const engine = defineResource({
     };
 
     const reset = () => {
+      const { config: cfg } = runtimeStore.store.getState();
+      const { world, species } = cfg;
+
       boids.length = 0;
-      for (let i = 0; i < config.count; i++) {
+
+      // Respawn prey
+      for (let i = 0; i < world.initialPreyCount; i++) {
         boids.push(
           createBoid(
-            config.canvasWidth,
-            config.canvasHeight,
+            world.canvasWidth,
+            world.canvasHeight,
             preyTypeIds,
-            config.types
+            species
+          )
+        );
+      }
+
+      // Respawn predators (if any)
+      for (let i = 0; i < (world.initialPredatorCount || 0); i++) {
+        boids.push(
+          createBoid(
+            world.canvasWidth,
+            world.canvasHeight,
+            predatorTypeIds,
+            species
           )
         );
       }

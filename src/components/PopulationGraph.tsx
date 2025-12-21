@@ -26,7 +26,7 @@ ChartJS.register(
 
 export function PopulationGraph() {
   const { useStore } = useResource("runtimeStore");
-  const config = useResource("config");
+  const species = useStore((state) => state.config.species);
   const analytics = useStore((state) => state.analytics);
 
   // Force re-render when analytics updates
@@ -61,12 +61,12 @@ export function PopulationGraph() {
   // Build labels (tick numbers or time)
   const labels = snapshots.map((snap) => snap.tick.toString());
 
-  // Get all type IDs from config
-  const typeIds = Object.keys(config.types);
+  // Get all type IDs from species config
+  const typeIds = Object.keys(species);
 
   // Build datasets for each species
   const datasets = typeIds.map((typeId) => {
-    const typeConfig = config.types[typeId];
+    const typeConfig = species[typeId];
     return {
       label: typeConfig.name,
       data: snapshots.map((snap) => snap.populations[typeId] || 0),

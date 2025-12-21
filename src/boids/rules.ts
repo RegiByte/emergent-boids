@@ -1,5 +1,12 @@
-import { Boid, Vector2, BoidConfig, Obstacle } from "./types";
+import { Boid, Vector2, Obstacle } from "./types";
 import * as vec from "./vector";
+import {
+	DeathMarker,
+	FoodSource,
+	SimulationParameters,
+	SpeciesConfig,
+	WorldConfig
+} from "../vocabulary/schemas/prelude.ts";
 
 /**
  * Separation: Steer to avoid crowding local flockmates
@@ -8,9 +15,10 @@ import * as vec from "./vector";
 export function separation(
   boid: Boid,
   neighbors: Boid[],
-  config: BoidConfig
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig,
+  world: WorldConfig
 ): Vector2 {
-  const typeConfig = config.types[boid.typeId];
   const steering: Vector2 = { x: 0, y: 0 };
   let total = 0;
 
@@ -19,18 +27,18 @@ export function separation(
     const dist = vec.toroidalDistance(
       boid.position,
       other.position,
-      config.canvasWidth,
-      config.canvasHeight
+      world.canvasWidth,
+      world.canvasHeight
     );
 
     // Only consider boids within perception radius
-    if (dist > 0 && dist < config.perceptionRadius) {
+    if (dist > 0 && dist < parameters.perceptionRadius) {
       // Calculate vector pointing away from neighbor (toroidal)
       let diff = vec.toroidalSubtract(
         boid.position,
         other.position,
-        config.canvasWidth,
-        config.canvasHeight
+        world.canvasWidth,
+        world.canvasHeight
       );
       // Weight by distance (closer = stronger force)
       diff = vec.divide(diff, dist * dist);
@@ -42,9 +50,9 @@ export function separation(
 
   if (total > 0) {
     const avg = vec.divide(steering, total);
-    const desired = vec.setMagnitude(avg, typeConfig.maxSpeed);
+    const desired = vec.setMagnitude(avg, speciesConfig.movement.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
-    return vec.limit(steer, typeConfig.maxForce);
+    return vec.limit(steer, speciesConfig.movement.maxForce);
   }
 
   return steering;
@@ -57,9 +65,10 @@ export function separation(
 export function alignment(
   boid: Boid,
   neighbors: Boid[],
-  config: BoidConfig
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig,
+  world: WorldConfig
 ): Vector2 {
-  const typeConfig = config.types[boid.typeId];
   const steering: Vector2 = { x: 0, y: 0 };
   let total = 0;
 
@@ -68,11 +77,11 @@ export function alignment(
     const dist = vec.toroidalDistance(
       boid.position,
       other.position,
-      config.canvasWidth,
-      config.canvasHeight
+      world.canvasWidth,
+      world.canvasHeight
     );
 
-    if (dist > 0 && dist < config.perceptionRadius) {
+    if (dist > 0 && dist < parameters.perceptionRadius) {
       steering.x += other.velocity.x;
       steering.y += other.velocity.y;
       total++;
@@ -81,9 +90,9 @@ export function alignment(
 
   if (total > 0) {
     const avg = vec.divide(steering, total);
-    const desired = vec.setMagnitude(avg, typeConfig.maxSpeed);
+    const desired = vec.setMagnitude(avg, speciesConfig.movement.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
-    return vec.limit(steer, typeConfig.maxForce);
+    return vec.limit(steer, speciesConfig.movement.maxForce);
   }
 
   return steering;
@@ -96,9 +105,10 @@ export function alignment(
 export function cohesion(
   boid: Boid,
   neighbors: Boid[],
-  config: BoidConfig
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig,
+  world: WorldConfig
 ): Vector2 {
-  const typeConfig = config.types[boid.typeId];
   const steering: Vector2 = { x: 0, y: 0 };
   let total = 0;
 
@@ -107,11 +117,11 @@ export function cohesion(
     const dist = vec.toroidalDistance(
       boid.position,
       other.position,
-      config.canvasWidth,
-      config.canvasHeight
+      world.canvasWidth,
+      world.canvasHeight
     );
 
-    if (dist > 0 && dist < config.perceptionRadius) {
+    if (dist > 0 && dist < parameters.perceptionRadius) {
       steering.x += other.position.x;
       steering.y += other.position.y;
       total++;
@@ -124,12 +134,15 @@ export function cohesion(
     const desired = vec.toroidalSubtract(
       avg,
       boid.position,
-      config.canvasWidth,
-      config.canvasHeight
+      world.canvasWidth,
+      world.canvasHeight
     );
-    const desiredVelocity = vec.setMagnitude(desired, typeConfig.maxSpeed);
+    const desiredVelocity = vec.setMagnitude(
+      desired,
+      speciesConfig.movement.maxSpeed
+    );
     const steer = vec.subtract(desiredVelocity, boid.velocity);
-    return vec.limit(steer, typeConfig.maxForce);
+    return vec.limit(steer, speciesConfig.movement.maxForce);
   }
 
   return steering;
@@ -142,15 +155,16 @@ export function cohesion(
 export function avoidObstacles(
   boid: Boid,
   obstacles: Obstacle[],
-  config: BoidConfig
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig,
+  world: WorldConfig
 ): Vector2 {
-  const typeConfig = config.types[boid.typeId];
   const steering: Vector2 = { x: 0, y: 0 };
   let total = 0;
 
   for (const obstacle of obstacles) {
     const dist = vec.distance(boid.position, obstacle.position);
-    const avoidanceRadius = obstacle.radius + config.perceptionRadius;
+    const avoidanceRadius = obstacle.radius + parameters.perceptionRadius;
 
     // Only consider obstacles within avoidance radius
     if (dist > 0 && dist < avoidanceRadius) {
@@ -172,9 +186,9 @@ export function avoidObstacles(
 
   if (total > 0) {
     const avg = vec.divide(steering, total);
-    const desired = vec.setMagnitude(avg, typeConfig.maxSpeed);
+    const desired = vec.setMagnitude(avg, speciesConfig.movement.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
-    return vec.limit(steer, typeConfig.maxForce);
+    return vec.limit(steer, speciesConfig.movement.maxForce);
   }
 
   return steering;
@@ -187,9 +201,10 @@ export function avoidObstacles(
 export function fear(
   boid: Boid,
   predators: Boid[],
-  config: BoidConfig
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig,
+  world: WorldConfig
 ): { force: Vector2; isAfraid: boolean } {
-  const typeConfig = config.types[boid.typeId];
   const steering: Vector2 = { x: 0, y: 0 };
   let total = 0;
 
@@ -197,17 +212,17 @@ export function fear(
     const dist = vec.toroidalDistance(
       boid.position,
       predator.position,
-      config.canvasWidth,
-      config.canvasHeight
+      world.canvasWidth,
+      world.canvasHeight
     );
 
-    if (dist > 0 && dist < config.fearRadius) {
+    if (dist > 0 && dist < parameters.fearRadius) {
       // Flee away from predator
       let diff = vec.toroidalSubtract(
         boid.position,
         predator.position,
-        config.canvasWidth,
-        config.canvasHeight
+        world.canvasWidth,
+        world.canvasHeight
       );
       // Weight by distance (closer = stronger fear)
       diff = vec.divide(diff, dist * dist);
@@ -219,9 +234,12 @@ export function fear(
 
   if (total > 0) {
     const avg = vec.divide(steering, total);
-    const desired = vec.setMagnitude(avg, typeConfig.maxSpeed);
+    const desired = vec.setMagnitude(avg, speciesConfig.movement.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
-    return { force: vec.limit(steer, typeConfig.maxForce), isAfraid: true };
+    return {
+      force: vec.limit(steer, speciesConfig.movement.maxForce),
+      isAfraid: true,
+    };
   }
 
   return { force: steering, isAfraid: false };
@@ -234,10 +252,10 @@ export function fear(
 export function chase(
   predator: Boid,
   prey: Boid[],
-  config: BoidConfig
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig,
+  world: WorldConfig
 ): Vector2 {
-  const typeConfig = config.types[predator.typeId];
-
   // Find nearest prey
   let nearestPrey: Boid | null = null;
   let nearestDist = Infinity;
@@ -246,8 +264,8 @@ export function chase(
     const dist = vec.toroidalDistance(
       predator.position,
       boid.position,
-      config.canvasWidth,
-      config.canvasHeight
+      world.canvasWidth,
+      world.canvasHeight
     );
 
     if (dist < nearestDist) {
@@ -256,17 +274,20 @@ export function chase(
     }
   }
 
-  if (nearestPrey && nearestDist < config.chaseRadius) {
+  if (nearestPrey && nearestDist < parameters.chaseRadius) {
     // Steer toward nearest prey
     const desired = vec.toroidalSubtract(
       nearestPrey.position,
       predator.position,
-      config.canvasWidth,
-      config.canvasHeight
+      world.canvasWidth,
+      world.canvasHeight
     );
-    const desiredVelocity = vec.setMagnitude(desired, typeConfig.maxSpeed);
+    const desiredVelocity = vec.setMagnitude(
+      desired,
+      speciesConfig.movement.maxSpeed
+    );
     const steer = vec.subtract(desiredVelocity, predator.velocity);
-    return vec.limit(steer, typeConfig.maxForce);
+    return vec.limit(steer, speciesConfig.movement.maxForce);
   }
 
   return { x: 0, y: 0 };
@@ -279,10 +300,10 @@ export function chase(
 export function seekMate(
   boid: Boid,
   potentialMates: Boid[],
-  config: BoidConfig
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig,
+  world: WorldConfig
 ): Vector2 {
-  const typeConfig = config.types[boid.typeId];
-
   // Find nearest eligible mate
   let nearestMate: Boid | null = null;
   let nearestDist = Infinity;
@@ -298,8 +319,8 @@ export function seekMate(
       const dist = vec.toroidalDistance(
         boid.position,
         other.position,
-        config.canvasWidth,
-        config.canvasHeight
+        world.canvasWidth,
+        world.canvasHeight
       );
 
       if (dist < nearestDist) {
@@ -314,12 +335,15 @@ export function seekMate(
     const desired = vec.toroidalSubtract(
       nearestMate.position,
       boid.position,
-      config.canvasWidth,
-      config.canvasHeight
+      world.canvasWidth,
+      world.canvasHeight
     );
-    const desiredVelocity = vec.setMagnitude(desired, typeConfig.maxSpeed);
+    const desiredVelocity = vec.setMagnitude(
+      desired,
+      speciesConfig.movement.maxSpeed
+    );
     const steer = vec.subtract(desiredVelocity, boid.velocity);
-    return vec.limit(steer, typeConfig.maxForce * 2.0); // Extra strong force!
+    return vec.limit(steer, speciesConfig.movement.maxForce * 2.0); // Extra strong force!
   }
 
   return { x: 0, y: 0 };
@@ -333,16 +357,11 @@ export function seekMate(
  */
 export function avoidDeathMarkers(
   boid: Boid,
-  deathMarkers: Array<{
-    position: Vector2;
-    remainingTicks: number;
-    strength: number;
-    maxLifetimeTicks: number;
-    typeId: string;
-  }>,
-  config: BoidConfig
+  deathMarkers: Array<DeathMarker>,
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig,
+  world: WorldConfig
 ): Vector2 {
-  const typeConfig = config.types[boid.typeId];
   const steering: Vector2 = { x: 0, y: 0 };
   let total = 0;
 
@@ -352,13 +371,13 @@ export function avoidDeathMarkers(
   for (const marker of deathMarkers) {
     // Stronger markers have larger avoidance radius (up to 100px)
     const strengthRatio = marker.strength / 5.0; // Max strength is 5.0
-    const avoidanceRadius = baseAvoidanceRadius + (strengthRatio * 50); // 60-100px
-    
+    const avoidanceRadius = baseAvoidanceRadius + strengthRatio * 50; // 60-100px
+
     const dist = vec.toroidalDistance(
       boid.position,
       marker.position,
-      config.canvasWidth,
-      config.canvasHeight
+      world.canvasWidth,
+      world.canvasHeight
     );
 
     if (dist > 0 && dist < avoidanceRadius) {
@@ -366,21 +385,21 @@ export function avoidDeathMarkers(
       let diff = vec.toroidalSubtract(
         boid.position,
         marker.position,
-        config.canvasWidth,
-        config.canvasHeight
+        world.canvasWidth,
+        world.canvasHeight
       );
-      
+
       // Weight by distance (closer = stronger avoidance)
       const distanceWeight = 1 / (dist * dist);
-      
+
       // Weight by marker strength (more deaths = stronger repulsion)
       const strengthWeight = marker.strength;
-      
+
       // Weight by remaining lifetime (fresher = stronger)
       const freshnessWeight = marker.remainingTicks / marker.maxLifetimeTicks;
-      
+
       const totalWeight = distanceWeight * strengthWeight * freshnessWeight;
-      
+
       diff = vec.multiply(diff, totalWeight);
       steering.x += diff.x;
       steering.y += diff.y;
@@ -390,10 +409,10 @@ export function avoidDeathMarkers(
 
   if (total > 0) {
     const avg = vec.divide(steering, total);
-    const desired = vec.setMagnitude(avg, typeConfig.maxSpeed);
+    const desired = vec.setMagnitude(avg, speciesConfig.movement.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
     // Moderate force - less than fear but still significant
-    return vec.limit(steer, typeConfig.maxForce * 0.85);
+    return vec.limit(steer, speciesConfig.movement.maxForce * 0.85);
   }
 
   return steering;
@@ -406,19 +425,12 @@ export function avoidDeathMarkers(
  */
 export function seekFood(
   boid: Boid,
-  foodSources: Array<{
-    id: string;
-    position: Vector2;
-    energy: number;
-    maxEnergy: number;
-    sourceType: "prey" | "predator";
-    createdTick: number;
-  }>,
-  config: BoidConfig,
+  foodSources: Array<FoodSource>,
+  speciesConfig: SpeciesConfig,
+  world: WorldConfig,
   detectionRadius: number
 ): { force: Vector2; targetFoodId: string | null } {
-  const typeConfig = config.types[boid.typeId];
-  const role = typeConfig.role;
+  const role = speciesConfig.role;
 
   // Filter food sources by type
   const compatibleFood = foodSources.filter((food) => {
@@ -428,7 +440,7 @@ export function seekFood(
   });
 
   // Find nearest food within detection radius
-  let nearestFood: typeof foodSources[0] | null = null;
+  let nearestFood: (typeof foodSources)[0] | null = null;
   let nearestDist = Infinity;
 
   for (const food of compatibleFood) {
@@ -437,8 +449,8 @@ export function seekFood(
     const dist = vec.toroidalDistance(
       boid.position,
       food.position,
-      config.canvasWidth,
-      config.canvasHeight
+      world.canvasWidth,
+      world.canvasHeight
     );
 
     if (dist < detectionRadius && dist < nearestDist) {
@@ -452,13 +464,16 @@ export function seekFood(
     const desired = vec.toroidalSubtract(
       nearestFood.position,
       boid.position,
-      config.canvasWidth,
-      config.canvasHeight
+      world.canvasWidth,
+      world.canvasHeight
     );
-    const desiredVelocity = vec.setMagnitude(desired, typeConfig.maxSpeed);
+    const desiredVelocity = vec.setMagnitude(
+      desired,
+      speciesConfig.movement.maxSpeed
+    );
     const steer = vec.subtract(desiredVelocity, boid.velocity);
     return {
-      force: vec.limit(steer, typeConfig.maxForce),
+      force: vec.limit(steer, speciesConfig.movement.maxForce),
       targetFoodId: nearestFood.id,
     };
   }
@@ -474,33 +489,35 @@ export function seekFood(
 export function orbitFood(
   boid: Boid,
   foodPosition: Vector2,
-  config: BoidConfig,
+  speciesConfig: SpeciesConfig,
+  world: WorldConfig,
   eatingRadius: number
 ): Vector2 {
-  const typeConfig = config.types[boid.typeId];
-
   // Calculate vector to food
   const toFood = vec.toroidalSubtract(
     foodPosition,
     boid.position,
-    config.canvasWidth,
-    config.canvasHeight
+    world.canvasWidth,
+    world.canvasHeight
   );
 
   const dist = vec.magnitude(toFood);
 
   // If too far, move closer
   if (dist > eatingRadius * 1.2) {
-    const desired = vec.setMagnitude(toFood, typeConfig.maxSpeed);
+    const desired = vec.setMagnitude(toFood, speciesConfig.movement.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
-    return vec.limit(steer, typeConfig.maxForce);
+    return vec.limit(steer, speciesConfig.movement.maxForce);
   }
 
   // If close enough, orbit (perpendicular to radius)
   const tangent = { x: -toFood.y, y: toFood.x }; // 90° rotation
-  const desired = vec.setMagnitude(tangent, typeConfig.maxSpeed * 0.5);
+  const desired = vec.setMagnitude(
+    tangent,
+    speciesConfig.movement.maxSpeed * 0.5
+  );
   const steer = vec.subtract(desired, boid.velocity);
-  return vec.limit(steer, typeConfig.maxForce * 0.8);
+  return vec.limit(steer, speciesConfig.movement.maxForce * 0.8);
 }
 
 /**
@@ -510,22 +527,13 @@ export function orbitFood(
  */
 export function avoidPredatorFood(
   boid: Boid,
-  foodSources: Array<{
-    id: string;
-    position: Vector2;
-    energy: number;
-    maxEnergy: number;
-    sourceType: "prey" | "predator";
-    createdTick: number;
-  }>,
-  config: BoidConfig,
-  fearRadius: number,
-  fearWeight: number
+  foodSources: Array<FoodSource>,
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig,
+  world: WorldConfig
 ): Vector2 {
-  const typeConfig = config.types[boid.typeId];
-
   // Only prey avoid predator food
-  if (typeConfig.role !== "prey") {
+  if (speciesConfig.role !== "prey") {
     return { x: 0, y: 0 };
   }
 
@@ -538,17 +546,17 @@ export function avoidPredatorFood(
     const dist = vec.toroidalDistance(
       boid.position,
       food.position,
-      config.canvasWidth,
-      config.canvasHeight
+      world.canvasWidth,
+      world.canvasHeight
     );
 
-    if (dist < fearRadius) {
+    if (dist < parameters.fearRadius) {
       // Flee away from predator food
       const away = vec.toroidalSubtract(
         boid.position,
         food.position,
-        config.canvasWidth,
-        config.canvasHeight
+        world.canvasWidth,
+        world.canvasHeight
       );
 
       // Weight by distance (closer = stronger)
@@ -563,9 +571,9 @@ export function avoidPredatorFood(
 
   if (count > 0) {
     const avg = vec.divide(steering, count);
-    const desired = vec.setMagnitude(avg, typeConfig.maxSpeed);
+    const desired = vec.setMagnitude(avg, speciesConfig.movement.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
-    return vec.limit(steer, typeConfig.maxForce * fearWeight);
+    return vec.limit(steer, speciesConfig.movement.maxForce);
   }
 
   return { x: 0, y: 0 };

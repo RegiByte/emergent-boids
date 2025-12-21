@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useResource } from "../system";
-import { AllEffects, AllEvents } from "../vocabulary/keywords";
+import {AllEvents} from "../vocabulary/schemas/events.ts";
+import {AllEffects} from "../vocabulary/schemas/effects.ts";
 
 type EventLogEntry = {
   id: string;
@@ -16,7 +17,8 @@ export function DebugPanel() {
   const engine = useResource("engine");
   const [eventLog, setEventLog] = useState<EventLogEntry[]>([]);
   const [maxEntries] = useState(20);
-  const config = useResource("config");
+  const { useStore: useRuntimeStore } = useResource("runtimeStore");
+  const species = useRuntimeStore((state) => state.config.species);
 
   useEffect(() => {
     // Subscribe to all events
@@ -37,7 +39,7 @@ export function DebugPanel() {
 
   // Count predators with high energy
   const predators = engine.boids.filter((b) => {
-    const typeConfig = config.types[b.typeId];
+    const typeConfig = species[b.typeId];
     return typeConfig && typeConfig.role === "predator";
   });
 

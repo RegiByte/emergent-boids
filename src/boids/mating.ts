@@ -1,11 +1,13 @@
-import type { Boid, BoidConfig, BoidTypeConfig, Vector2 } from "./types";
+
 import {
   calculateDistance,
   calculateOffspringPosition,
   calculateReproductionEnergyCost,
 } from "./calculations";
-import { isEligibleMate } from "./predicates";
 import { findBoidById } from "./filters";
+import { isEligibleMate } from "./predicates";
+import type { Boid, Vector2 } from "./types";
+import {SimulationParameters, SpeciesConfig} from "../vocabulary/schemas/prelude.ts";
 
 /**
  * Pure mating state machine
@@ -83,16 +85,18 @@ export function findNearbyMate(
  */
 export function processAsexualReproduction(
   boid: Boid,
-  config: BoidConfig,
-  typeConfig: BoidTypeConfig
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig
 ): MatingResult {
   // Asexual reproduction is instant - no mate needed, no buildup
   const reproductionEnergy = calculateReproductionEnergyCost(
-    typeConfig.maxEnergy
+    speciesConfig.lifecycle.maxEnergy
   );
 
   // Use type-specific cooldown if available, otherwise use global
-  const cooldownTicks = typeConfig.reproductionCooldownTicks ?? config.reproductionCooldownTicks;
+  const cooldownTicks =
+    speciesConfig.reproduction.cooldownTicks ??
+    parameters.reproductionCooldownTicks;
 
   return {
     type: "reproduction_complete",
@@ -127,13 +131,13 @@ export function processAsexualReproduction(
 export function processMatingCycle(
   boid: Boid,
   allBoids: Boid[],
-  config: BoidConfig,
-  typeConfig: BoidTypeConfig,
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig,
   matedBoids: Set<string>
 ): MatingResult {
   // Check if this type uses asexual reproduction
-  if (typeConfig.reproductionType === "asexual") {
-    return processAsexualReproduction(boid, config, typeConfig);
+  if (speciesConfig.reproduction.type === "asexual") {
+    return processAsexualReproduction(boid, parameters, speciesConfig);
   }
 
   // Sexual reproduction logic below
@@ -158,20 +162,22 @@ export function processMatingCycle(
     const distance = calculateDistance(boid.position, mate.position);
 
     // Close enough to build up mating
-    if (distance < config.mateRadius) {
+    if (distance < parameters.mateRadius) {
       const newBuildup = Math.min(
         boid.matingBuildupCounter + 1,
-        config.matingBuildupTicks
+        parameters.matingBuildupTicks
       );
 
       // Buildup complete - reproduce!
-      if (newBuildup >= config.matingBuildupTicks) {
+      if (newBuildup >= parameters.matingBuildupTicks) {
         const reproductionEnergy = calculateReproductionEnergyCost(
-          typeConfig.maxEnergy
+          speciesConfig.lifecycle.maxEnergy
         );
 
         // Use type-specific cooldown if available, otherwise use global
-        const cooldownTicks = typeConfig.reproductionCooldownTicks ?? config.reproductionCooldownTicks;
+        const cooldownTicks =
+          speciesConfig.reproduction.cooldownTicks ??
+          parameters.reproductionCooldownTicks;
 
         return {
           type: "reproduction_complete",
@@ -218,7 +224,12 @@ export function processMatingCycle(
     }
   } else {
     // Not paired yet - find a mate
-    const mate = findNearbyMate(boid, allBoids, matedBoids, config.mateRadius);
+    const mate = findNearbyMate(
+      boid,
+      allBoids,
+      matedBoids,
+      parameters.mateRadius
+    );
 
     if (mate) {
       return {
@@ -316,7 +327,7 @@ export function applyMatingResult(
     case "reproduction_complete": {
       // Apply updates to parent(s)
       applyBoidUpdates(boid, result.boidUpdates);
-      
+
       // For sexual reproduction, update mate
       if (result.offspring.parent2Id) {
         const mate = boidsMap[result.offspring.parent2Id];

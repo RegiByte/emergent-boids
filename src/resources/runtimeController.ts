@@ -8,15 +8,14 @@ import type { RuntimeStoreApi, StartedRuntimeStore } from "./runtimeStore";
 import {
   eventKeywords,
   effectKeywords,
-  type AllEvents,
-  type ControlEffect,
-  type RuntimeState,
-  AllEffects,
+
 } from "../vocabulary/keywords";
 import { produce } from "immer";
 import type { TimerManager } from "./timer";
 import type { BoidEngine } from "./engine";
-import type { BoidConfig } from "../boids/types";
+import {RuntimeStore} from "../vocabulary/schemas/state.ts";
+import {AllEvents} from "../vocabulary/schemas/events.ts";
+import {AllEffects, ControlEffect} from "../vocabulary/schemas/effects.ts";
 
 // ============================================
 // Event Handlers (Pure Functions)
@@ -24,23 +23,24 @@ import type { BoidConfig } from "../boids/types";
 
 type HandlerContext = {
   nextState: (
-    current: RuntimeState,
-    mutation: (draft: RuntimeState) => void
-  ) => RuntimeState;
+    current: RuntimeStore,
+    mutation: (draft: RuntimeStore) => void
+  ) => RuntimeStore;
 };
 
 const handlers = {
   [eventKeywords.controls.typeConfigChanged]: (
-    _state,
+    state: RuntimeStore,
     event,
     ctx
-  ): ControlEffect[] => {
+  ) => {
     return [
       {
         type: effectKeywords.state.update,
-        state: ctx.nextState(_state, (draft) => {
-          if (draft.types[event.typeId]) {
-            draft.types[event.typeId][event.field] = event.value;
+        state: ctx.nextState(state, (draft) => {
+          if (draft.config.species[event.typeId]) {
+            draft.config.species[event.typeId].movement[event.field] =
+              event.value;
           }
         }),
       },
@@ -48,41 +48,45 @@ const handlers = {
   },
 
   [eventKeywords.controls.perceptionRadiusChanged]: (
-    _state,
+    state: RuntimeStore,
     event,
     ctx
-  ): ControlEffect[] => {
+  ) => {
     return [
       {
         type: effectKeywords.state.update,
-        state: ctx.nextState(_state, (draft) => {
-          draft.perceptionRadius = event.value;
+        state: ctx.nextState(state, (draft) => {
+          draft.config.parameters.perceptionRadius = event.value;
         }),
       },
     ];
   },
 
   [eventKeywords.controls.obstacleAvoidanceChanged]: (
-    _state,
+    state: RuntimeStore,
     event,
     ctx
   ): ControlEffect[] => {
     return [
       {
         type: effectKeywords.state.update,
-        state: ctx.nextState(_state, (draft) => {
-          draft.obstacleAvoidanceWeight = event.value;
+        state: ctx.nextState(state, (draft) => {
+          draft.config.parameters.obstacleAvoidanceWeight = event.value;
         }),
       },
     ];
   },
 
-  [eventKeywords.obstacles.added]: (_state, event, ctx): ControlEffect[] => {
+  [eventKeywords.obstacles.added]: (
+    state: RuntimeStore,
+    event,
+    ctx
+  ): ControlEffect[] => {
     return [
       {
         type: effectKeywords.state.update,
-        state: ctx.nextState(_state, (draft) => {
-          draft.obstacles.push({
+        state: ctx.nextState(state, (draft) => {
+          draft.simulation.obstacles.push({
             position: { x: event.x, y: event.y },
             radius: event.radius,
           });
@@ -91,23 +95,31 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.obstacles.removed]: (_state, event, ctx): ControlEffect[] => {
+  [eventKeywords.obstacles.removed]: (
+    state: RuntimeStore,
+    event,
+    ctx
+  ): ControlEffect[] => {
     return [
       {
         type: effectKeywords.state.update,
-        state: ctx.nextState(_state, (draft) => {
-          draft.obstacles.splice(event.index, 1);
+        state: ctx.nextState(state, (draft) => {
+          draft.simulation.obstacles.splice(event.index, 1);
         }),
       },
     ];
   },
 
-  [eventKeywords.obstacles.cleared]: (_state, _event, ctx): ControlEffect[] => {
+  [eventKeywords.obstacles.cleared]: (
+    state: RuntimeStore,
+    _event,
+    ctx
+  ): ControlEffect[] => {
     return [
       {
         type: effectKeywords.state.update,
-        state: ctx.nextState(_state, (draft) => {
-          draft.obstacles = [];
+        state: ctx.nextState(state, (draft) => {
+          draft.simulation.obstacles = [];
         }),
       },
     ];
@@ -171,7 +183,7 @@ const handlers = {
 } satisfies EventHandlerMap<
   AllEvents,
   AllEffects,
-  RuntimeState,
+  RuntimeStore,
   HandlerContext
 >;
 
@@ -183,17 +195,11 @@ type ExecutorContext = {
   store: RuntimeStoreApi;
   timer: TimerManager;
   engine: BoidEngine;
-  config: BoidConfig;
 };
 
 const executors = {
   [effectKeywords.state.update]: (effect, ctx) => {
-    ctx.store.setState({
-      state: {
-        ...ctx.store.getState().state,
-        ...effect.state,
-      },
-    });
+    ctx.store.setState(effect.state);
   },
 
   [effectKeywords.timer.schedule]: (effect, ctx) => {
@@ -228,19 +234,18 @@ export type RuntimeController = ReturnType<typeof createRuntimeController>;
 function createRuntimeController(
   store: RuntimeStoreApi,
   timer: TimerManager,
-  engine: BoidEngine,
-  config: BoidConfig
+  engine: BoidEngine
 ) {
   const createControlLoop = emergentSystem<
     AllEvents,
     AllEffects,
-    RuntimeState,
+    RuntimeStore,
     HandlerContext,
     ExecutorContext
   >();
 
   const runtime = createControlLoop({
-    getState: () => store.getState().state,
+    getState: () => store.getState(),
     handlers,
     executors: executors,
     handlerContext: {
@@ -252,7 +257,6 @@ function createRuntimeController(
       store,
       timer,
       engine,
-      config,
     },
   });
 
@@ -260,23 +264,20 @@ function createRuntimeController(
 }
 
 export const runtimeController = defineResource({
-  dependencies: ["runtimeStore", "timer", "engine", "config"],
+  dependencies: ["runtimeStore", "timer", "engine"],
   start: ({
     runtimeStore,
     timer,
     engine,
-    config,
   }: {
     runtimeStore: StartedRuntimeStore;
     timer: TimerManager;
     engine: BoidEngine;
-    config: BoidConfig;
   }) => {
     const controller = createRuntimeController(
       runtimeStore.store,
       timer,
-      engine,
-      config
+      engine
     );
 
     // Start the energy tick timer

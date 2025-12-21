@@ -1,5 +1,5 @@
 import { defineResource } from "braided";
-import { BoidConfig } from "../boids/types";
+import type { StartedRuntimeStore } from "./runtimeStore";
 
 export type CanvasResource = {
   canvas: HTMLCanvasElement;
@@ -27,9 +27,12 @@ function calculateCanvasDimensions() {
 }
 
 export const canvas = defineResource({
-  dependencies: ["config"],
-  start: ({ config }: { config: BoidConfig }) => {
-    const { canvasWidth, canvasHeight } = calculateCanvasDimensions();
+  dependencies: ["runtimeStore"],
+  start: ({ runtimeStore }: { runtimeStore: StartedRuntimeStore }) => {
+    const store = runtimeStore.store;
+    const state = store.getState();
+    const canvasWidth = state.config.world.canvasWidth;
+    const canvasHeight = state.config.world.canvasHeight;
 
     // Create canvas element
     const canvas = document.createElement("canvas");
@@ -59,9 +62,17 @@ export const canvas = defineResource({
         resource.width = newWidth;
         resource.height = newHeight;
 
-        // Update config dimensions so boids know the new boundaries
-        config.canvasWidth = newWidth;
-        config.canvasHeight = newHeight;
+        // Update runtime store dimensions so boids know the new boundaries
+        store.setState({
+          config: {
+            ...store.getState().config,
+            world: {
+              ...store.getState().config.world,
+              canvasWidth: newWidth,
+              canvasHeight: newHeight,
+            },
+          },
+        });
       },
     };
 

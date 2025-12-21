@@ -1,5 +1,8 @@
-import type { Boid, BoidTypeConfig } from "./types";
+import type { Boid } from "./types";
 import { isPrey, isPredator } from "./predicates";
+
+
+import {SpeciesConfig} from "../vocabulary/schemas/prelude.ts";
 
 /**
  * Pure filter functions for boid collections
@@ -15,9 +18,9 @@ import { isPrey, isPredator } from "./predicates";
  */
 export function getPrey(
   boids: Boid[],
-  types: Record<string, BoidTypeConfig>
+  speciesTypes: Record<string, SpeciesConfig>
 ): Boid[] {
-  return boids.filter((boid) => isPrey(boid, types));
+  return boids.filter((boid) => isPrey(boid, speciesTypes));
 }
 
 /**
@@ -25,9 +28,9 @@ export function getPrey(
  */
 export function getPredators(
   boids: Boid[],
-  types: Record<string, BoidTypeConfig>
+  speciesTypes: Record<string, SpeciesConfig>
 ): Boid[] {
-  return boids.filter((boid) => isPredator(boid, types));
+  return boids.filter((boid) => isPredator(boid, speciesTypes));
 }
 
 /**
@@ -36,11 +39,11 @@ export function getPredators(
 export function getBoidsOfRole(
   boids: Boid[],
   role: "prey" | "predator",
-  types: Record<string, BoidTypeConfig>
+  speciesTypes: Record<string, SpeciesConfig>
 ): Boid[] {
   return boids.filter((boid) => {
-    const typeConfig = types[boid.typeId];
-    return typeConfig?.role === role;
+    const speciesConfig = speciesTypes[boid.typeId];
+    return speciesConfig?.role === role;
   });
 }
 
@@ -61,7 +64,10 @@ export function getBoidsOfSameType(boids: Boid[], typeId: string): Boid[] {
 /**
  * Find a boid by id
  */
-export function findBoidById(boids: Boid[], id: string | undefined | null): Boid | undefined {
+export function findBoidById(
+  boids: Boid[],
+  id: string | undefined | null
+): Boid | undefined {
   return boids.find((boid) => boid.id === id);
 }
 
@@ -75,9 +81,9 @@ export function findBoidById(boids: Boid[], id: string | undefined | null): Boid
 export function countByRole(
   boids: Boid[],
   role: "prey" | "predator",
-  types: Record<string, BoidTypeConfig>
+  speciesTypes: Record<string, SpeciesConfig>
 ): number {
-  return getBoidsOfRole(boids, role, types).length;
+  return getBoidsOfRole(boids, role, speciesTypes).length;
 }
 
 /**
@@ -85,9 +91,9 @@ export function countByRole(
  */
 export function countPrey(
   boids: Boid[],
-  types: Record<string, BoidTypeConfig>
+  speciesTypes: Record<string, SpeciesConfig>
 ): number {
-  return countByRole(boids, "prey", types);
+  return countByRole(boids, "prey", speciesTypes);
 }
 
 /**
@@ -95,7 +101,7 @@ export function countPrey(
  */
 export function countPredators(
   boids: Boid[],
-  types: Record<string, BoidTypeConfig>
+  speciesTypes: Record<string, SpeciesConfig>
 ): number {
-  return countByRole(boids, "predator", types);
+  return countByRole(boids, "predator", speciesTypes);
 }

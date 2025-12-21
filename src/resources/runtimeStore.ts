@@ -1,9 +1,11 @@
 import { defineResource, StartedResource } from "braided";
-import { createStore } from "zustand/vanilla";
 import { useStore as useZustandStore } from "zustand";
 import type { StoreApi } from "zustand/vanilla";
-import type { BoidConfig } from "../boids/types";
-import type { RuntimeState } from "../vocabulary/keywords";
+import { createStore } from "zustand/vanilla";
+import { defaultProfileId, getProfile } from "../profiles";
+
+
+import {RuntimeStore} from "../vocabulary/schemas/state.ts";
 
 /**
  * Evolution Snapshot - captures ecosystem state at a point in time
@@ -33,30 +35,67 @@ export type AnalyticsState = {
 };
 
 /**
- * Runtime Store - centralized state management
- * Organized in slices for separation of concerns
+ * Visual Settings - UI preferences for rendering
+ * Toggleable via keyboard shortcuts
  */
-export type RuntimeStore = {
-  state: RuntimeState; // Core simulation state
-  analytics: AnalyticsState; // Time-series data and metrics
+export type VisualSettings = {
+  trailsEnabled: boolean;
+  energyBarsEnabled: boolean;
+  matingHeartsEnabled: boolean;
+  stanceSymbolsEnabled: boolean;
+  deathMarkersEnabled: boolean;
+  foodSourcesEnabled: boolean;
 };
 
 export type RuntimeStoreApi = StoreApi<RuntimeStore>;
 
+/**
+ * Calculate canvas dimensions based on viewport
+ * TODO: In the future, this will be replaced by a viewport system
+ * where the canvas is larger than the visible area
+ */
+function calculateCanvasDimensions() {
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  const availableWidth = viewportWidth * 0.75;
+  const availableHeight = viewportHeight - 100;
+
+  const canvasWidth = Math.floor(Math.min(availableWidth - 40, 1400));
+  const canvasHeight = Math.floor(Math.min(availableHeight - 40, 1000));
+
+  return { canvasWidth, canvasHeight };
+}
+
 export const runtimeStore = defineResource({
-  dependencies: ["config"],
-  start: ({ config }: { config: BoidConfig }) => {
-    // Create zustand store with initial values from config
+  dependencies: [],
+  start: () => {
+    // Load default profile
+    const profile = getProfile(defaultProfileId);
+
+    // Calculate canvas dimensions dynamically from viewport
+    const { canvasWidth, canvasHeight } = calculateCanvasDimensions();
+
+    // Create zustand store with initial values from profile
     // This becomes the single source of truth - all runtime code should read from here
     const store = createStore<RuntimeStore>()(() => ({
-      state: {
-        // Perception and avoidance
-        perceptionRadius: config.perceptionRadius,
-        obstacleAvoidanceWeight: config.obstacleAvoidanceWeight,
+      config: {
+        profileId: profile.id,
+        world: {
+          canvasWidth,
+          canvasHeight,
+          initialPreyCount: profile.world.initialPreyCount,
+          initialPredatorCount: profile.world.initialPredatorCount,
+        },
+        species: profile.species,
+        parameters: profile.parameters,
+      },
+      simulation: {
         obstacles: [],
-        // Store mutable copies of type configs
-        types: { ...config.types },
-        // Visual settings (toggleable via keyboard shortcuts)
+        foodSources: [],
+        deathMarkers: [],
+      },
+      ui: {
         visualSettings: {
           trailsEnabled: true,
           energyBarsEnabled: false,
@@ -65,27 +104,6 @@ export const runtimeStore = defineResource({
           deathMarkersEnabled: true,
           foodSourcesEnabled: true,
         },
-        // Death markers (natural deaths only: starvation/old age)
-        deathMarkers: [],
-        // Food sources (consumable energy for boids)
-        foodSources: [],
-        // Canvas dimensions
-        canvasWidth: config.canvasWidth,
-        canvasHeight: config.canvasHeight,
-        // Global simulation parameters
-        fearRadius: config.fearRadius,
-        chaseRadius: config.chaseRadius,
-        catchRadius: config.catchRadius,
-        mateRadius: config.mateRadius,
-        minDistance: config.minDistance,
-        maxBoids: config.maxBoids,
-        maxPreyBoids: config.maxPreyBoids,
-        maxPredatorBoids: config.maxPredatorBoids,
-        minReproductionAge: config.minReproductionAge,
-        reproductionEnergyThreshold: config.reproductionEnergyThreshold,
-        reproductionCooldownTicks: config.reproductionCooldownTicks,
-        matingBuildupTicks: config.matingBuildupTicks,
-        eatingCooldownTicks: config.eatingCooldownTicks,
       },
       analytics: {
         evolutionHistory: [],
@@ -97,7 +115,37 @@ export const runtimeStore = defineResource({
       return useZustandStore(store, selector);
     }
 
-    return { store, useStore };
+    /**
+     * Load a different profile (resets simulation state)
+     * TODO: Add UI control to switch profiles
+     */
+    function loadProfile(profileId: string) {
+      const profile = getProfile(profileId);
+
+      store.setState({
+        config: {
+          profileId: profile.id,
+          world: store.getState().config.world, // Keep canvas size
+          species: profile.species,
+          parameters: profile.parameters,
+        },
+        // Reset simulation state
+        simulation: {
+          obstacles: [],
+          foodSources: [],
+          deathMarkers: [],
+        },
+        // Keep UI preferences
+        ui: store.getState().ui,
+        // Reset analytics
+        analytics: {
+          evolutionHistory: [],
+          currentSnapshot: null,
+        },
+      });
+    }
+
+    return { store, useStore, loadProfile };
   },
   halt: () => {
     // No cleanup needed for zustand store

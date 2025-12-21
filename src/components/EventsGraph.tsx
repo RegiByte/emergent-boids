@@ -24,7 +24,7 @@ ChartJS.register(
 
 export function EventsGraph() {
   const { useStore } = useResource("runtimeStore");
-  const config = useResource("config");
+  const species = useStore((state) => state.config.species);
   const analytics = useStore((state) => state.analytics);
 
   // Force re-render when analytics updates
@@ -60,15 +60,15 @@ export function EventsGraph() {
   // Build labels (tick numbers)
   const labels = snapshots.map((snap) => snap.tick.toString());
 
-  // Get all type IDs from config
-  const typeIds = Object.keys(config.types);
+  // Get all type IDs from species config
+  const speciesIds = Object.keys(species);
 
   // Build datasets - TRUE GROUPED BARS
   // Strategy: Create one dataset per species per event type
   // Use different stacks for births vs deaths to group them separately
-  
-  const birthDatasets = typeIds.map((typeId) => {
-    const typeConfig = config.types[typeId];
+
+  const birthDatasets = speciesIds.map((typeId) => {
+    const typeConfig = species[typeId];
     return {
       label: `${typeConfig.name} Births`,
       data: snapshots.map((snap) => snap.births[typeId] || 0),
@@ -79,8 +79,8 @@ export function EventsGraph() {
     };
   });
 
-  const deathDatasets = typeIds.map((typeId) => {
-    const typeConfig = config.types[typeId];
+  const deathDatasets = speciesIds.map((typeId) => {
+    const typeConfig = species[typeId];
     return {
       label: `${typeConfig.name} Deaths`,
       data: snapshots.map((snap) => snap.deaths[typeId] || 0), // Positive values
@@ -241,4 +241,3 @@ export function EventsGraph() {
     </div>
   );
 }
-

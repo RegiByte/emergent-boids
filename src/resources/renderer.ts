@@ -1,9 +1,9 @@
 import { defineResource } from "braided";
+import { eventKeywords } from "../vocabulary/keywords";
 import { CanvasResource } from "./canvas";
 import { BoidEngine } from "./engine";
-import type { StartedRuntimeStore } from "./runtimeStore";
 import type { RuntimeController } from "./runtimeController";
-import { eventKeywords } from "../vocabulary/keywords";
+import type { StartedRuntimeStore } from "./runtimeStore";
 
 export type Renderer = {
   start: () => void;
@@ -37,15 +37,15 @@ export const renderer = defineResource({
 
     // Keyboard shortcuts for visual toggles
     const handleKeyPress = (e: KeyboardEvent) => {
-      const state = runtimeStore.store.getState().state;
-      const currentSettings = state.visualSettings;
+      const { ui } = runtimeStore.store.getState();
+      const currentSettings = ui.visualSettings;
 
       switch (e.key.toLowerCase()) {
         case "t":
           // Toggle trails
           runtimeStore.store.setState({
-            state: {
-              ...state,
+            ui: {
+              ...ui,
               visualSettings: {
                 ...currentSettings,
                 trailsEnabled: !currentSettings.trailsEnabled,
@@ -57,8 +57,8 @@ export const renderer = defineResource({
         case "e":
           // Toggle energy bars
           runtimeStore.store.setState({
-            state: {
-              ...state,
+            ui: {
+              ...ui,
               visualSettings: {
                 ...currentSettings,
                 energyBarsEnabled: !currentSettings.energyBarsEnabled,
@@ -70,8 +70,8 @@ export const renderer = defineResource({
         case "h":
           // Toggle mating hearts
           runtimeStore.store.setState({
-            state: {
-              ...state,
+            ui: {
+              ...ui,
               visualSettings: {
                 ...currentSettings,
                 matingHeartsEnabled: !currentSettings.matingHeartsEnabled,
@@ -83,8 +83,8 @@ export const renderer = defineResource({
         case "s":
           // Toggle stance symbols
           runtimeStore.store.setState({
-            state: {
-              ...state,
+            ui: {
+              ...ui,
               visualSettings: {
                 ...currentSettings,
                 stanceSymbolsEnabled: !currentSettings.stanceSymbolsEnabled,
@@ -96,8 +96,8 @@ export const renderer = defineResource({
         case "d":
           // Toggle death markers
           runtimeStore.store.setState({
-            state: {
-              ...state,
+            ui: {
+              ...ui,
               visualSettings: {
                 ...currentSettings,
                 deathMarkersEnabled: !currentSettings.deathMarkersEnabled,
@@ -109,8 +109,8 @@ export const renderer = defineResource({
         case "f":
           // Toggle food sources
           runtimeStore.store.setState({
-            state: {
-              ...state,
+            ui: {
+              ...ui,
               visualSettings: {
                 ...currentSettings,
                 foodSourcesEnabled: !currentSettings.foodSourcesEnabled,
@@ -183,15 +183,14 @@ export const renderer = defineResource({
 
     const draw = () => {
       const { ctx, width, height } = canvas;
-      const state = runtimeStore.store.getState().state;
-      const visualSettings = state.visualSettings;
+      const { simulation, ui, config } = runtimeStore.store.getState();
 
       // Clear canvas
       ctx.fillStyle = "#0a0a0a";
       ctx.fillRect(0, 0, width, height);
 
       // Draw obstacles first (behind boids)
-      for (const obstacle of state.obstacles) {
+      for (const obstacle of simulation.obstacles) {
         ctx.fillStyle = "#ff4444";
         ctx.beginPath();
         ctx.arc(
@@ -210,10 +209,13 @@ export const renderer = defineResource({
       }
 
       // Draw death markers (after obstacles, before boids)
-      if (visualSettings.deathMarkersEnabled && state.deathMarkers.length > 0) {
-        for (const marker of state.deathMarkers) {
-          const typeConfig = state.types[marker.typeId];
-          if (!typeConfig) continue;
+      if (
+        ui.visualSettings.deathMarkersEnabled &&
+        simulation.deathMarkers.length > 0
+      ) {
+        for (const marker of simulation.deathMarkers) {
+          const speciesConfig = config.species[marker.typeId];
+          if (!speciesConfig) continue;
 
           // Calculate visual properties based on strength and remaining ticks
           const strengthRatio = marker.strength / 5.0; // Max strength is 5.0
@@ -234,8 +236,8 @@ export const renderer = defineResource({
 
           // Draw colored circle behind skull (intensity shows danger level)
           ctx.globalAlpha = opacity * 0.4 * strengthRatio;
-          ctx.fillStyle = typeConfig.color;
-          ctx.shadowColor = typeConfig.color;
+          ctx.fillStyle = speciesConfig.color;
+          ctx.shadowColor = speciesConfig.color;
           ctx.shadowBlur = glowIntensity;
           ctx.beginPath();
           ctx.arc(
@@ -261,8 +263,11 @@ export const renderer = defineResource({
       }
 
       // Draw food sources
-      if (visualSettings.foodSourcesEnabled && state.foodSources.length > 0) {
-        for (const food of state.foodSources) {
+      if (
+        ui.visualSettings.foodSourcesEnabled &&
+        simulation.foodSources.length > 0
+      ) {
+        for (const food of simulation.foodSources) {
           if (food.energy <= 0) continue;
 
           const energyRatio = food.energy / food.maxEnergy; // 0.0 to 1.0
@@ -304,21 +309,22 @@ export const renderer = defineResource({
       // Draw each boid
       for (const boid of engine.boids) {
         const angle = Math.atan2(boid.velocity.y, boid.velocity.x);
-        const typeConfig = state.types[boid.typeId];
+        const speciesConfig = config.species[boid.typeId];
+        if (!speciesConfig) continue;
 
         // Draw motion trail first (behind the boid)
         if (
-          visualSettings.trailsEnabled &&
-          typeConfig &&
+          ui.visualSettings.trailsEnabled &&
+          speciesConfig &&
           boid.positionHistory.length > 1
         ) {
           // Calculate energy ratio for trail visibility
-          const energyRatio = boid.energy / typeConfig.maxEnergy;
+          const energyRatio = boid.energy / speciesConfig.lifecycle.maxEnergy;
           // Higher energy = more visible trail (0.3 to 0.8 alpha range)
           const baseAlpha = 0.3 + energyRatio * 0.5;
 
-          ctx.strokeStyle = typeConfig.color;
-          ctx.lineWidth = typeConfig.role === "predator" ? 2 : 1.5;
+          ctx.strokeStyle = speciesConfig.color;
+          ctx.lineWidth = speciesConfig.role === "predator" ? 2 : 1.5;
           ctx.lineCap = "round";
           ctx.lineJoin = "round";
 
@@ -342,7 +348,7 @@ export const renderer = defineResource({
             const alpha = baseAlpha * segmentRatio;
 
             // Extract RGB from hex color and apply alpha
-            const color = typeConfig.color;
+            const color = speciesConfig.color;
             const r = parseInt(color.slice(1, 3), 16);
             const g = parseInt(color.slice(3, 5), 16);
             const b = parseInt(color.slice(5, 7), 16);
@@ -362,10 +368,10 @@ export const renderer = defineResource({
 
         // Draw triangle pointing in direction of velocity
         // Use energy-based color brightness
-        if (typeConfig) {
-          const energyRatio = boid.energy / typeConfig.maxEnergy;
+        if (speciesConfig) {
+          const energyRatio = boid.energy / speciesConfig.lifecycle.maxEnergy;
           const dynamicColor = adjustColorBrightness(
-            typeConfig.color,
+            speciesConfig.color,
             energyRatio
           );
           ctx.fillStyle = dynamicColor;
@@ -376,7 +382,7 @@ export const renderer = defineResource({
         ctx.beginPath();
 
         // Predators are larger
-        if (typeConfig?.role === "predator") {
+        if (speciesConfig?.role === "predator") {
           ctx.moveTo(12, 0);
           ctx.lineTo(-6, 6);
           ctx.lineTo(-6, -6);
@@ -397,12 +403,12 @@ export const renderer = defineResource({
         ctx.restore();
 
         // Draw stance indicator (letter) on the boid
-        if (typeConfig) {
+        if (speciesConfig) {
           const stance = boid.stance;
           let stanceSymbol = "";
           let stanceColor = "#fff";
 
-          if (typeConfig.role === "predator") {
+          if (speciesConfig.role === "predator") {
             // Predator stance symbols
             switch (stance) {
               case "hunting":
@@ -448,13 +454,13 @@ export const renderer = defineResource({
             }
           }
 
-          if (stanceSymbol && visualSettings.stanceSymbolsEnabled) {
+          if (stanceSymbol && ui.visualSettings.stanceSymbolsEnabled) {
             ctx.fillStyle = stanceColor;
             ctx.font = "bold 12px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "bottom";
             // Draw below the boid (offset by -12 for prey, -15 for predators)
-            const yOffset = typeConfig.role === "predator" ? -15 : -12;
+            const yOffset = speciesConfig.role === "predator" ? -15 : -12;
             ctx.fillText(
               stanceSymbol,
               boid.position.x,
@@ -466,10 +472,11 @@ export const renderer = defineResource({
         // Draw energy bar above boid
         // Always show for predators, toggleable for prey
         const showEnergyBar =
-          typeConfig &&
-          (typeConfig.role === "predator" || visualSettings.energyBarsEnabled);
+          speciesConfig &&
+          (speciesConfig.role === "predator" ||
+            ui.visualSettings.energyBarsEnabled);
         if (showEnergyBar) {
-          const energyPercent = boid.energy / typeConfig.maxEnergy;
+          const energyPercent = boid.energy / speciesConfig.lifecycle.maxEnergy;
           const barWidth = 20;
           const barHeight = 3;
           const barX = boid.position.x - barWidth / 2;
@@ -481,7 +488,7 @@ export const renderer = defineResource({
 
           // Energy fill
           const energyColor =
-            typeConfig.role === "predator" ? "#ff0000" : "#00ff88";
+            speciesConfig.role === "predator" ? "#ff0000" : "#00ff88";
           ctx.fillStyle = energyColor;
           ctx.fillRect(barX, barY, barWidth * energyPercent, barHeight);
 
@@ -493,7 +500,7 @@ export const renderer = defineResource({
       }
 
       // Draw mating hearts (one per pair, centered between mates)
-      if (visualSettings.matingHeartsEnabled) {
+      if (ui.visualSettings.matingHeartsEnabled) {
         const drawnMatingPairs = new Set<string>();
 
         for (const boid of engine.boids) {
@@ -559,8 +566,8 @@ export const renderer = defineResource({
 
       // Draw FPS counter and stats
       const predatorCount = engine.boids.filter((b) => {
-        const typeConfig = state.types[b.typeId];
-        return typeConfig && typeConfig.role === "predator";
+        const speciesConfig = config.species[b.typeId];
+        return speciesConfig && speciesConfig.role === "predator";
       }).length;
       const preyCount = engine.boids.length - predatorCount;
 
@@ -573,7 +580,7 @@ export const renderer = defineResource({
       ctx.fillStyle = "#ff0000";
       ctx.fillText(`Predators: ${predatorCount}`, 25, 80);
       ctx.fillStyle = "#00ff88";
-      ctx.fillText(`Obstacles: ${state.obstacles.length}`, 25, 100);
+      ctx.fillText(`Obstacles: ${simulation.obstacles.length}`, 25, 100);
     };
 
     const animate = () => {

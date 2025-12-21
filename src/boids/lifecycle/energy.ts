@@ -1,4 +1,7 @@
-import type { Boid, BoidTypeConfig } from "../types";
+import type { Boid } from "../types";
+
+
+import {SpeciesConfig} from "../../vocabulary/schemas/prelude.ts";
 
 /**
  * Update energy for a single boid based on its role and stance
@@ -6,22 +9,26 @@ import type { Boid, BoidTypeConfig } from "../types";
  */
 export function updateBoidEnergy(
   boid: Boid,
-  typeConfig: BoidTypeConfig,
+  speciesConfig: SpeciesConfig,
   deltaSeconds: number
 ): number {
-  if (typeConfig.role === "predator") {
+  if (speciesConfig.role === "predator") {
     if (boid.stance === "idle" || boid.stance === "eating") {
       // No energy change when idle or eating (eating gains from food sources)
       return boid.energy;
     } else {
       // Lose energy while active (hunting, seeking mate, mating)
-      return boid.energy - typeConfig.energyLossRate * deltaSeconds;
+      return (
+        boid.energy - speciesConfig.lifecycle.energyLossRate * deltaSeconds
+      );
     }
   } else {
     // Prey no longer gain passive energy - must eat from food sources
     if (boid.stance === "fleeing") {
       // Lose double energy when fleeing from predator
-      return boid.energy - typeConfig.energyLossRate * deltaSeconds * 2;
+      return (
+        boid.energy - speciesConfig.lifecycle.energyLossRate * deltaSeconds * 2
+      );
     } else if (boid.stance === "eating") {
       // No passive change, only from food sources
       return boid.energy;

@@ -70,7 +70,8 @@ export const analytics = defineResource({
     });
 
     const captureSnapshot = () => {
-      const currentState = runtimeStore.store.getState();
+      const { simulation, analytics: analyticsState } =
+        runtimeStore.store.getState();
       const timestamp = Date.now();
 
       // Calculate populations per type
@@ -90,10 +91,10 @@ export const analytics = defineResource({
       });
 
       // Count food sources by type
-      const preyFoodCount = currentState.state.foodSources.filter(
+      const preyFoodCount = simulation.foodSources.filter(
         (f) => f.sourceType === "prey"
       ).length;
-      const predatorFoodCount = currentState.state.foodSources.filter(
+      const predatorFoodCount = simulation.foodSources.filter(
         (f) => f.sourceType === "predator"
       ).length;
 
@@ -113,13 +114,12 @@ export const analytics = defineResource({
       };
 
       // Update store with new snapshot
-      const currentSnapshots = currentState.analytics.evolutionHistory;
+      const currentSnapshots = analyticsState.evolutionHistory;
       const newSnapshots = [...currentSnapshots, snapshot].slice(
         -MAX_SNAPSHOTS
       );
 
       runtimeStore.store.setState({
-        ...currentState,
         analytics: {
           evolutionHistory: newSnapshots,
           currentSnapshot: snapshot,

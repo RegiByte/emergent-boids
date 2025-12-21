@@ -1,5 +1,6 @@
-import type { Boid, BoidConfig, BoidTypeConfig, Vector2 } from "./types";
+import type { Boid, Vector2 } from "./types";
 import * as vec from "./vector";
+import {SimulationParameters, SpeciesConfig} from "../vocabulary/schemas/prelude.ts";
 
 /**
  * Pure predicates for boid state and behavior
@@ -47,10 +48,10 @@ export function isWithinToroidalRadius(
  */
 export function isPrey(
   boid: Boid,
-  types: Record<string, BoidTypeConfig>
+  speciesTypes: Record<string, SpeciesConfig>
 ): boolean {
-  const typeConfig = types[boid.typeId];
-  return typeConfig?.role === "prey";
+  const speciesConfig = speciesTypes[boid.typeId];
+  return speciesConfig?.role === "prey";
 }
 
 /**
@@ -58,10 +59,10 @@ export function isPrey(
  */
 export function isPredator(
   boid: Boid,
-  types: Record<string, BoidTypeConfig>
+  speciesTypes: Record<string, SpeciesConfig>
 ): boolean {
-  const typeConfig = types[boid.typeId];
-  return typeConfig?.role === "predator";
+  const speciesConfig = speciesTypes[boid.typeId];
+  return speciesConfig?.role === "predator";
 }
 
 /**
@@ -81,9 +82,9 @@ export function isSameType(boid1: Boid, boid2: Boid): boolean {
  */
 export function isEnergyBelowIdleThreshold(
   boid: Boid,
-  typeConfig: BoidTypeConfig
+  speciesConfig: SpeciesConfig
 ): boolean {
-  return boid.energy < typeConfig.maxEnergy * 0.3;
+  return boid.energy < speciesConfig.lifecycle.maxEnergy * 0.3;
 }
 
 /**
@@ -92,9 +93,9 @@ export function isEnergyBelowIdleThreshold(
  */
 export function isEnergyAboveActiveThreshold(
   boid: Boid,
-  typeConfig: BoidTypeConfig
+  speciesConfig: SpeciesConfig
 ): boolean {
-  return boid.energy >= typeConfig.maxEnergy * 0.5;
+  return boid.energy >= speciesConfig.lifecycle.maxEnergy * 0.5;
 }
 
 /**
@@ -102,10 +103,11 @@ export function isEnergyAboveActiveThreshold(
  */
 export function hasReproductionEnergy(
   boid: Boid,
-  config: BoidConfig,
-  typeConfig: BoidTypeConfig
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig
 ): boolean {
-  const threshold = typeConfig.maxEnergy * config.reproductionEnergyThreshold;
+  const threshold =
+    speciesConfig.lifecycle.maxEnergy * parameters.reproductionEnergyThreshold;
   return boid.energy >= threshold;
 }
 
@@ -118,12 +120,12 @@ export function hasReproductionEnergy(
  */
 export function isReadyToMate(
   boid: Boid,
-  config: BoidConfig,
-  typeConfig: BoidTypeConfig
+  parameters: SimulationParameters,
+  speciesConfig: SpeciesConfig
 ): boolean {
   return (
-    boid.age >= config.minReproductionAge &&
-    hasReproductionEnergy(boid, config, typeConfig) &&
+    boid.age >= parameters.minReproductionAge &&
+    hasReproductionEnergy(boid, parameters, speciesConfig) &&
     boid.reproductionCooldown === 0
   );
 }
@@ -163,9 +165,11 @@ export function isEligibleMate(
  */
 export function shouldEnterIdleStance(
   boid: Boid,
-  typeConfig: BoidTypeConfig
+  speciesConfig: SpeciesConfig
 ): boolean {
-  return boid.stance !== "idle" && isEnergyBelowIdleThreshold(boid, typeConfig);
+  return (
+    boid.stance !== "idle" && isEnergyBelowIdleThreshold(boid, speciesConfig)
+  );
 }
 
 /**
@@ -173,10 +177,10 @@ export function shouldEnterIdleStance(
  */
 export function shouldExitIdleStance(
   boid: Boid,
-  typeConfig: BoidTypeConfig
+  speciesConfig: SpeciesConfig
 ): boolean {
   return (
-    boid.stance === "idle" && isEnergyAboveActiveThreshold(boid, typeConfig)
+    boid.stance === "idle" && isEnergyAboveActiveThreshold(boid, speciesConfig)
   );
 }
 
@@ -185,9 +189,9 @@ export function shouldExitIdleStance(
  */
 export function shouldStayIdle(
   boid: Boid,
-  typeConfig: BoidTypeConfig
+  speciesConfig: SpeciesConfig
 ): boolean {
-  return boid.stance === "idle" && !shouldExitIdleStance(boid, typeConfig);
+  return boid.stance === "idle" && !shouldExitIdleStance(boid, speciesConfig);
 }
 
 // ============================================================================
@@ -199,9 +203,12 @@ export function shouldStayIdle(
  */
 export function hasDiedFromOldAge(
   boid: Boid,
-  typeConfig: BoidTypeConfig
+  speciesConfig: SpeciesConfig
 ): boolean {
-  return typeConfig.maxAge > 0 && boid.age >= typeConfig.maxAge;
+  return (
+    speciesConfig.lifecycle.maxAge > 0 &&
+    boid.age >= speciesConfig.lifecycle.maxAge
+  );
 }
 
 /**
