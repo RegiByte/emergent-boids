@@ -5,7 +5,7 @@ import { createStore } from "zustand/vanilla";
 import { defaultProfileId, getProfile } from "../profiles";
 
 
-import {RuntimeStore} from "../vocabulary/schemas/state.ts";
+import {RuntimeStore} from "../boids/vocabulary/schemas/state.ts";
 
 /**
  * Evolution Snapshot - captures ecosystem state at a point in time

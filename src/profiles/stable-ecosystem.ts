@@ -1,4 +1,4 @@
-import {SimulationProfile} from "../vocabulary/schemas/prelude.ts";
+import { SimulationProfile } from "../boids/vocabulary/schemas/prelude.ts";
 
 /**
  * Stable Ecosystem Profile
@@ -20,8 +20,8 @@ export const stableEcosystemProfile: SimulationProfile = {
   world: {
     canvasWidth: 1400,
     canvasHeight: 1000,
-    initialPreyCount: 50,
-    initialPredatorCount: 0, // Predators emerge from prey evolution
+    initialPreyCount: 100,
+    initialPredatorCount: 10, // Predators emerge from prey evolution
   },
 
   species: {
@@ -38,6 +38,8 @@ export const stableEcosystemProfile: SimulationProfile = {
         maxSpeed: 4.4, // +10% speed (endurance specialist)
         maxForce: 0.1,
         trailLength: 8, // Reduced for performance (was 15)
+        crowdAversionThreshold: 20, // Moderate tolerance for groups
+        crowdAversionWeight: 1.5, // Moderate avoidance when crowded
       },
 
       lifecycle: {
@@ -57,6 +59,15 @@ export const stableEcosystemProfile: SimulationProfile = {
       limits: {
         maxPopulation: 150, // Cap at 150 explorers (30% of prey cap)
       },
+
+      // Affinity System: Inter-species relationships
+      affinities: {
+        explorer: 1.0, // High affinity with own species
+        social: 0.65, // Medium-high affinity (comfortable together, but not tight)
+        cautious: 0.55, // Medium affinity (tolerate each other)
+        independent: 0.2, // Low affinity (independents prefer solitude)
+        predator: -0.5, // Negative (fear overrides this anyway)
+      },
     },
 
     social: {
@@ -72,6 +83,8 @@ export const stableEcosystemProfile: SimulationProfile = {
         maxSpeed: 4.0, // Baseline speed
         maxForce: 0.08,
         trailLength: 6, // Reduced for performance (was 12)
+        crowdAversionThreshold: 40, // High tolerance (loves groups)
+        crowdAversionWeight: 1.0, // Mild avoidance when very crowded
       },
 
       lifecycle: {
@@ -89,7 +102,16 @@ export const stableEcosystemProfile: SimulationProfile = {
       },
 
       limits: {
-        maxPopulation: 150, // Cap at 150 socials (30% of prey cap)
+        maxPopulation: 200, // Cap at 200 socials (30% of prey cap)
+      },
+
+      // Affinity System: Ultra-social species
+      affinities: {
+        social: 1.0, // Ultra-high affinity with own species
+        cautious: 0.75, // High affinity (both prefer groups, safety in numbers)
+        explorer: 0.65, // Medium-high affinity (like explorers, both are social)
+        independent: 0.15, // Very low (independents avoid groups)
+        predator: -0.5,
       },
     },
 
@@ -100,12 +122,14 @@ export const stableEcosystemProfile: SimulationProfile = {
       role: "prey",
 
       movement: {
-        separationWeight: 2.5,
+        separationWeight: 2.3,
         alignmentWeight: 0.5,
         cohesionWeight: 0.5,
         maxSpeed: 5.0, // +25% speed (fast solo hunters)
         maxForce: 0.15,
         trailLength: 10, // Reduced for performance (was 20)
+        crowdAversionThreshold: 8, // Very low tolerance (solitary)
+        crowdAversionWeight: 2.0, // Strong avoidance when crowded
       },
 
       lifecycle: {
@@ -124,7 +148,16 @@ export const stableEcosystemProfile: SimulationProfile = {
       },
 
       limits: {
-        maxPopulation: 150, // Cap at 150 independents (30% of prey cap) - CRITICAL for diversity!
+        maxPopulation: 100, // Cap at 100 independents (30% of prey cap) - CRITICAL for diversity!
+      },
+
+      // Affinity System: Solitary species
+      affinities: {
+        independent: 0.6, // Even independents tolerate their own kind somewhat
+        explorer: 0.52, // Low affinity but not zero (prefer solitude)
+        social: 0.15, // Very low (avoid crowds)
+        cautious: 0.25, // Low affinity (different strategies)
+        predator: -0.5,
       },
     },
 
@@ -141,6 +174,8 @@ export const stableEcosystemProfile: SimulationProfile = {
         maxSpeed: 3.9, // Slower, defensive
         maxForce: 0.12,
         trailLength: 5, // Reduced for performance (was 10)
+        crowdAversionThreshold: 50, // Very high tolerance (safety in numbers)
+        crowdAversionWeight: 0.8, // Weak avoidance (prefer staying together)
       },
 
       lifecycle: {
@@ -161,6 +196,15 @@ export const stableEcosystemProfile: SimulationProfile = {
         maxPopulation: 150, // Cap at 150 cautious (30% of prey cap)
         fearRadius: 175, // +33% detection range (150 → 175)
       },
+
+      // Affinity System: Defensive group-oriented species
+      affinities: {
+        cautious: 1.0, // High affinity with own species
+        social: 0.75, // High affinity (both prefer groups, safety in numbers)
+        explorer: 0.55, // Medium affinity (different strategies but compatible)
+        independent: 0.25, // Low affinity (independents don't fit defensive strategy)
+        predator: -0.5,
+      },
     },
 
     predator: {
@@ -176,6 +220,8 @@ export const stableEcosystemProfile: SimulationProfile = {
         maxSpeed: 3.2, // Faster than socials, slower than independents
         maxForce: 0.2, // High turning ability
         trailLength: 12, // Reduced for performance (was 25)
+        crowdAversionThreshold: 15, // Moderate tolerance (territorial)
+        crowdAversionWeight: 1.8, // Strong avoidance (maintain hunting territory)
       },
 
       lifecycle: {
@@ -192,7 +238,15 @@ export const stableEcosystemProfile: SimulationProfile = {
         offspringEnergyBonus: 0, // Standard offspring
       },
 
-      limits: {},
+      limits: {
+        maxPopulation: 50, // Cap at 50 predators
+      },
+
+      // Affinity System: Solitary hunters
+      affinities: {
+        predator: 0.7, // Moderate affinity with other predators (tolerate but compete)
+        // Prey affinities don't matter (chase/fear overrides flocking)
+      },
     },
   },
 
@@ -205,10 +259,11 @@ export const stableEcosystemProfile: SimulationProfile = {
     catchRadius: 10,
     mateRadius: 20, // Proximity-based reproduction
     minDistance: 10, // Prevents overlap/stacking
+    fearFactor: 0.5, // Baseline fear factor for all species
 
     // Population limits
     maxBoids: 600, // Global safety limit
-    maxPreyBoids: 500, // Per-role cap for prey
+    maxPreyBoids: 550, // Per-role cap for prey
     maxPredatorBoids: 50, // Per-role cap for predators
 
     // Lifecycle parameters
@@ -219,4 +274,3 @@ export const stableEcosystemProfile: SimulationProfile = {
     eatingCooldownTicks: 2, // Predators must wait 3 ticks after eating
   },
 };
-

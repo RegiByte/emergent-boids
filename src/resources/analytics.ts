@@ -2,7 +2,7 @@ import { defineResource } from "braided";
 import type { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
 import type { StartedRuntimeStore, EvolutionSnapshot } from "./runtimeStore";
-import { eventKeywords } from "../vocabulary/keywords";
+import { eventKeywords } from "../boids/vocabulary/keywords";
 
 /**
  * Analytics Resource

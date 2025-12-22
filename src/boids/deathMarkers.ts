@@ -1,6 +1,6 @@
-import type { DeathMarker } from "../vocabulary/schemas/prelude";
+import type { DeathMarker } from "./vocabulary/schemas/prelude.ts";
 import { calculateDistance } from "./calculations";
-import type { Boid } from "./types";
+import type { Boid } from "./vocabulary/schemas/prelude.ts";
 
 /**
  * Death Marker Management System

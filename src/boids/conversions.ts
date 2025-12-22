@@ -1,4 +1,4 @@
-import { Boid } from "./types";
+import { Boid } from "./vocabulary/schemas/prelude.ts";
 
 export function boidsById(boids: Boid[]): Record<string, Boid> {
   return boids.reduce((acc, boid) => {

@@ -2,7 +2,7 @@ import { defineResource } from "braided";
 import type { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
 import type { StartedRuntimeStore } from "./runtimeStore";
-import { eventKeywords } from "../vocabulary/keywords";
+import { eventKeywords } from "../boids/vocabulary/keywords";
 import type { Profiler } from "./profiler";
 import { createBoidOfType } from "../boids/boid";
 import type { BoidUpdateContext } from "../boids/context";

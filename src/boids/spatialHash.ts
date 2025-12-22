@@ -1,4 +1,5 @@
-import type { Boid, Vector2 } from "./types";
+import type { Boid } from "./vocabulary/schemas/prelude.ts";
+import type { Vector2 } from "./vocabulary/schemas/prelude.ts";
 
 export type SpatialHash = {
   cellSize: number;
@@ -56,10 +57,14 @@ export function insertBoids(hash: SpatialHash, boids: Boid[]): void {
 /**
  * Get all boids in the same cell and adjacent cells (9 cells total)
  * Handles toroidal wrapping by checking wrapped cell coordinates
+ *
+ * Performance optimization: Caps neighbors at maxNeighbors to prevent
+ * concentration bottleneck when many boids cluster in one area
  */
 export function getNearbyBoids(
   hash: SpatialHash,
-  position: Vector2
+  position: Vector2,
+  maxNeighbors: number = 60
 ): Boid[] {
   const nearby: Boid[] = [];
   const col = Math.floor(position.x / hash.cellSize);
@@ -71,11 +76,11 @@ export function getNearbyBoids(
       // Wrap cell coordinates for toroidal space
       let checkCol = col + i;
       let checkRow = row + j;
-      
+
       // Handle wrapping (modulo with proper handling of negatives)
       checkCol = ((checkCol % hash.cols) + hash.cols) % hash.cols;
       checkRow = ((checkRow % hash.rows) + hash.rows) % hash.rows;
-      
+
       const key = `${checkCol},${checkRow}`;
       const cell = hash.grid.get(key);
       if (cell) {
@@ -84,6 +89,23 @@ export function getNearbyBoids(
     }
   }
 
+  // If too many neighbors (concentration scenario), limit to closest ones
+  if (nearby.length > maxNeighbors) {
+    // Sort by squared distance (avoid sqrt for performance)
+    nearby.sort((a, b) => {
+      const dxA = a.position.x - position.x;
+      const dyA = a.position.y - position.y;
+      const distSqA = dxA * dxA + dyA * dyA;
+
+      const dxB = b.position.x - position.x;
+      const dyB = b.position.y - position.y;
+      const distSqB = dxB * dxB + dyB * dyB;
+
+      return distSqA - distSqB;
+    });
+
+    return nearby.slice(0, maxNeighbors);
+  }
+
   return nearby;
 }
-

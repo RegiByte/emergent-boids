@@ -1,5 +1,5 @@
 import { defineResource } from "braided";
-import { eventKeywords } from "../vocabulary/keywords";
+import { eventKeywords } from "../boids/vocabulary/keywords";
 import { CanvasResource } from "./canvas";
 import { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
@@ -430,7 +430,7 @@ export const renderer = defineResource({
         ctx.lineJoin = "round";
 
         for (const [batchKey, batch] of trailBatches) {
-          const [colorPart, alphaPart, _lineWidthPart] = batchKey.split("|");
+          const [colorPart, alphaPart] = batchKey.split("|");
           const [r, g, b] = colorPart.split(",").map(Number);
           const alpha = parseFloat(alphaPart);
 

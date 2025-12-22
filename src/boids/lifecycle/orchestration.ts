@@ -5,7 +5,8 @@ import { FOOD_CONSTANTS } from "../food";
 import type { MatingContext, OffspringData } from "../mating";
 import { applyMatingResult, unpairBoids } from "../mating";
 import { isReadyToMate, isWithinRadius } from "../predicates";
-import type { Boid } from "../types";
+import type { Boid } from "../vocabulary/schemas/prelude.ts";
+import { PreyStance } from "../vocabulary/schemas/prelude.ts";
 import { checkBoidDeath, updateBoidAge } from "./aging";
 import { updateBoidCooldowns } from "./cooldowns";
 import { updateBoidEnergy } from "./energy";
@@ -14,7 +15,7 @@ import type {
   FoodSource,
   SimulationParameters,
   SpeciesConfig,
-} from "../../vocabulary/schemas/prelude.ts";
+} from "../vocabulary/schemas/prelude.ts";
 
 /**
  * Update prey stance based on current state (declarative)
@@ -26,12 +27,7 @@ function updatePreyStance(
   nearbyPredators: Boid[],
   foodSources: FoodSource[]
 ): void {
-  const currentStance = boid.stance as
-    | "flocking"
-    | "seeking_mate"
-    | "mating"
-    | "fleeing"
-    | "eating";
+  const currentStance = boid.stance as PreyStance;
 
   // Priority 0: Desperate eating overrides fear (when critically low energy)
   // This creates risk/reward: starving boids will eat near predators
@@ -242,7 +238,7 @@ export function processLifecycleUpdates(
     } else {
       // Use type-specific fear radius if available, otherwise use global
       const fearRadius =
-        speciesConfig.lifecycle.fearFactor ?? parameters.fearRadius;
+        speciesConfig.limits.fearRadius ?? parameters.fearRadius;
       const nearbyPredators = predators.filter((p) =>
         isWithinRadius(boid.position, p.position, fearRadius)
       );

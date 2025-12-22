@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useResource } from "../system";
-import { eventKeywords } from "../vocabulary/keywords";
+import { eventKeywords } from "../boids/vocabulary/keywords";
 
 export function PopulationStats() {
   const engine = useResource("engine");

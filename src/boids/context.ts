@@ -4,8 +4,9 @@ import type {
   WorldConfig,
   FoodSource,
   DeathMarker,
-} from "../vocabulary/schemas/prelude";
-import type { Obstacle } from "./types";
+} from "./vocabulary/schemas/prelude.ts";
+import type { Obstacle } from "./vocabulary/schemas/prelude.ts";
+import type { Profiler } from "../resources/profiler";
 
 /**
  * Simulation state context - dynamic world state that changes every frame
@@ -33,4 +34,5 @@ export type BoidUpdateContext = {
   simulation: SimulationContext;
   config: ConfigContext;
   deltaSeconds: number;
+  profiler?: Profiler;
 };

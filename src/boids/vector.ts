@@ -1,4 +1,4 @@
-import { Vector2 } from "./types";
+import { Vector2 } from "./vocabulary/schemas/prelude.ts";
 
 export function add(a: Vector2, b: Vector2): Vector2 {
   return { x: a.x + b.x, y: a.y + b.y };

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useResource } from "../system";
-import { AllEvents } from "../vocabulary/schemas/events.ts";
-import { AllEffects } from "../vocabulary/schemas/effects.ts";
+import { AllEvents } from "../boids/vocabulary/schemas/events.ts";
+import { AllEffects } from "../boids/vocabulary/schemas/effects.ts";
 
 type EventLogEntry = {
   id: string;

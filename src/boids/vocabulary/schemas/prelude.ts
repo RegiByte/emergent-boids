@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { deathCauseKeywords, stanceKeywords } from "../keywords";
+import {
+  deathCauseKeywords,
+  stanceKeywords,
+  roleKeywords,
+  reproductionTypeKeywords,
+} from "../keywords";
 
 export const vectorSchema = z.object({
   x: z.number(),
@@ -7,20 +12,35 @@ export const vectorSchema = z.object({
 });
 
 /**
+ * Role Schema - Indicates the role of a boid
+ *
+ * Used to determine the behavior of a boid in the simulation.
+ */
+export const roleSchema = z.enum([roleKeywords.prey, roleKeywords.predator]);
+
+const preyStanceSchema = z.enum([
+  stanceKeywords.flocking, // Prey: Normal flocking behavior
+  stanceKeywords.seeking_mate, // Looking for a mate
+  stanceKeywords.mating, // Currently mating
+  stanceKeywords.fleeing, // Prey: Running from predator
+  stanceKeywords.eating, // Orbiting food source
+]);
+
+const predatorStanceSchema = z.enum([
+  stanceKeywords.hunting, // Predator: Chasing prey
+  stanceKeywords.seeking_mate, // Looking for a mate
+  stanceKeywords.mating, // Currently mating
+  stanceKeywords.idle, // Predator: Low energy, conserving
+  stanceKeywords.eating, // Predator: Eating prey / Orbiting food source
+]);
+
+/**
  * Stance Schema - Indicates the current behavior of a boid
  *
  * Used to determine how a boid should behave in its current state.
  */
 
-export const stanceSchema = z.enum([
-  stanceKeywords.flocking, // Prey: Normal flocking behavior
-  stanceKeywords.seeking_mate, // Looking for a mate
-  stanceKeywords.mating, // Currently mating
-  stanceKeywords.fleeing, // Prey: Running from predator
-  stanceKeywords.hunting, // Predator: Chasing prey
-  stanceKeywords.idle, // Predator: Low energy, conserving
-  stanceKeywords.eating, // Orbiting food source
-]);
+export const stanceSchema = z.union([preyStanceSchema, predatorStanceSchema]);
 
 /**
  * Death Cause Schema - Indicates the cause of a boid's death
@@ -65,15 +85,15 @@ export const foodSourceSchemas = z.object({
 
 export type FoodSource = z.infer<typeof foodSourceSchemas>;
 
-// ============================================
-// Species Enums
-// ============================================
+const speciesRoleSchema = z.enum([
+  roleKeywords.predator, // Hunts prey
+  roleKeywords.prey, // Eats plants, escapes predators
+]);
 
-const speciesRoleSchema = z.enum(["predator", "prey"]);
-const reproductionTypeSchema = z.enum(["sexual", "asexual"]);
-// ============================================
-// Species Configuration Schema
-// ============================================
+export const reproductionTypeSchema = z.enum([
+  reproductionTypeKeywords.sexual, // Sexual reproduction needs a mate
+  reproductionTypeKeywords.asexual, // Asexual reproduction does not need a mate
+]);
 
 /**
  * Species Configuration - Defines behavior and characteristics of a species
@@ -101,6 +121,8 @@ export const speciesConfigSchema = z.object({
     maxSpeed: z.number(), // Maximum velocity magnitude
     maxForce: z.number(), // Maximum steering force (affects turning speed)
     trailLength: z.number(), // Number of positions to keep for motion trails
+    crowdAversionThreshold: z.number(), // Max nearby boids before avoiding crowded areas
+    crowdAversionWeight: z.number(), // Strength of crowd avoidance force (0-3)
   }),
 
   // Lifecycle - Energy, aging, and survival
@@ -125,12 +147,41 @@ export const speciesConfigSchema = z.object({
     maxPopulation: z.number().optional(), // Maximum population for this species
     fearRadius: z.number().optional(), // How far this species can sense predators (overrides global)
   }),
+
+  // Affinities - Inter-species relationships (optional)
+  // Maps species ID to affinity value (-1.0 to 1.0)
+  // - 1.0: Strong attraction (flock together)
+  // - 0.5: Neutral (default if not specified)
+  // - 0.0: Indifferent (minimal interaction)
+  // - -0.5: Repulsion (actively avoid)
+  // Same species always defaults to 1.0 if not specified
+  affinities: z.record(z.string(), z.number().min(-1).max(1)).optional(),
 });
 
 export const speciesRecordSchema = z.record(z.string(), speciesConfigSchema);
-// ============================================
-// Death Marker Schema
-// ============================================
+
+/**
+ * Boid Schema - Defines the structure of a boid in the simulation
+ *
+ * Used to define the structure of a boid in the simulation.
+ */
+export const boidSchema = z.object({
+  id: z.string(),
+  position: vectorSchema,
+  velocity: vectorSchema,
+  acceleration: vectorSchema,
+  typeId: z.string(),
+  energy: z.number(),
+  age: z.number(), // Age in seconds
+  reproductionCooldown: z.number(), // Time passages until can reproduce again (0 = ready)
+  seekingMate: z.boolean(), // Cached state: actively seeking mate (updated by lifecycleManager)
+  mateId: z.string().nullable(), // ID of current mate (if paired)
+  matingBuildupCounter: z.number(), // Time passages spent close to mate (0-3, reproduce at 3)
+  eatingCooldown: z.number(), // Time passages until can catch prey again (predators only)
+  stance: stanceSchema, // Current behavioral stance
+  previousStance: stanceSchema.nullable(), // Previous stance (for returning from fleeing)
+  positionHistory: z.array(vectorSchema), // Trail of recent positions for rendering motion trails
+});
 
 /**
  * Death Marker - Marks dangerous locations where boids died
@@ -148,6 +199,18 @@ export const deathMarkerSchema = z.object({
   maxLifetimeTicks: z.number(), // Maximum lifetime (20 ticks, prevents immortal markers)
   typeId: z.string(), // Species ID of boid that died (determines marker color)
 });
+
+/**
+ * Obstacle - Physical barrier in the environment
+ *
+ * All boids avoid obstacles using steering forces.
+ * Obstacles are circular and immovable.
+ */
+export const obstacleSchema = z.object({
+  position: z.object({ x: z.number(), y: z.number() }),
+  radius: z.number(), // Obstacle radius in pixels
+});
+
 // ============================================
 // Simulation Parameters Schema
 // ============================================
@@ -163,6 +226,7 @@ export const simulationParametersSchema = z.object({
   perceptionRadius: z.number(), // How far boids can see neighbors for flocking
   obstacleAvoidanceWeight: z.number(), // Steering force strength for avoiding obstacles
   fearRadius: z.number(), // How far prey can sense predators
+  fearFactor: z.number(), // Baseline fear factor for all species
   chaseRadius: z.number(), // How far predators can sense prey
   catchRadius: z.number(), // How close predator must be to catch prey
   mateRadius: z.number(), // How close boids must be to initiate mating
@@ -180,12 +244,9 @@ export const simulationParametersSchema = z.object({
   matingBuildupTicks: z.number(), // Ticks boids must stay close before reproducing
   eatingCooldownTicks: z.number(), // Ticks predator must wait after eating (prevents monopolizing food)
 });
-// ============================================
-// World Configuration Schema
-// ============================================
 
 /**
- * World Configuration - Physical dimensions and initial conditions
+ * Physical dimensions and initial conditions
  *
  * Defines the simulation space and starting populations.
  * The world uses toroidal (wrap-around) topology.
@@ -196,24 +257,6 @@ export const worldConfigSchema = z.object({
   initialPreyCount: z.number(), // Number of prey to spawn at start
   initialPredatorCount: z.number().optional(), // Number of predators to spawn at start
 });
-
-// ============================================
-// Obstacle Schema
-// ============================================
-
-/**
- * Obstacle - Physical barrier in the environment
- *
- * All boids avoid obstacles using steering forces.
- * Obstacles are circular and immovable.
- */
-export const obstacleSchema = z.object({
-  position: z.object({ x: z.number(), y: z.number() }),
-  radius: z.number(), // Obstacle radius in pixels
-});
-// ============================================
-// Simulation Profile Schema
-// ============================================
 
 /**
  * Simulation Profile - Complete preset for a simulation scenario
@@ -249,3 +292,9 @@ export type DeathMarker = z.infer<typeof deathMarkerSchema>;
 export type SpeciesRole = z.infer<typeof speciesRoleSchema>;
 export type ReproductionType = z.infer<typeof reproductionTypeSchema>;
 export type SpeciesConfig = z.infer<typeof speciesConfigSchema>;
+export type PreyStance = z.infer<typeof preyStanceSchema>;
+export type PredatorStance = z.infer<typeof predatorStanceSchema>;
+export type BoidStance = z.infer<typeof stanceSchema>;
+export type Boid = z.infer<typeof boidSchema>;
+export type Vector2 = z.infer<typeof vectorSchema>;
+export type Obstacle = z.infer<typeof obstacleSchema>;

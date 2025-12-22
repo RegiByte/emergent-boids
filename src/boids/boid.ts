@@ -1,7 +1,7 @@
 import type {
   SimulationParameters,
   SpeciesConfig,
-} from "../vocabulary/schemas/prelude.ts";
+} from "./vocabulary/schemas/prelude.ts";
 import {
   calculateEatingSpeedFactor,
   calculateEnergySpeedFactor,
@@ -14,7 +14,8 @@ import type { BoidUpdateContext } from "./context";
 import { getPredators, getPrey } from "./filters";
 import { FOOD_CONSTANTS } from "./food";
 import * as rules from "./rules";
-import type { Boid, PredatorStance } from "./types";
+import { Boid } from "./vocabulary/schemas/prelude.ts";
+import { PredatorStance } from "./vocabulary/schemas/prelude.ts";
 import * as vec from "./vector";
 
 let boidIdCounter = 0;
@@ -176,7 +177,8 @@ function updatePredator(
         targetFood.position,
         speciesConfig,
         world,
-        FOOD_CONSTANTS.FOOD_EATING_RADIUS
+        FOOD_CONSTANTS.FOOD_EATING_RADIUS,
+        context.profiler
       );
     }
   } else if (stance === "hunting") {
@@ -193,7 +195,8 @@ function updatePredator(
       foodSources,
       speciesConfig,
       world,
-      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
+      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS,
+      context.profiler
     );
     if (foodSeek.targetFoodId) {
       foodSeekingForce = foodSeek.force;
@@ -205,14 +208,22 @@ function updatePredator(
         foodSources,
         speciesConfig,
         world,
-        Infinity // No distance limit - seek any food
+        Infinity, // No distance limit - seek any food
+        context.profiler
       );
       if (anyFoodSeek.targetFoodId) {
         foodSeekingForce = anyFoodSeek.force;
       }
     } else {
       // No food nearby and not at cap, hunt prey
-      chaseForce = rules.chase(boid, prey, parameters, speciesConfig, world);
+      chaseForce = rules.chase(
+        boid,
+        prey,
+        parameters,
+        speciesConfig,
+        world,
+        context.profiler
+      );
     }
   } else if (stance === "seeking_mate" || stance === "mating") {
     // Seek predator mates, not prey
@@ -221,7 +232,8 @@ function updatePredator(
       otherPredators,
       parameters,
       speciesConfig,
-      world
+      world,
+      context.profiler
     );
     // Opportunistic food seeking
     const foodSeek = rules.seekFood(
@@ -229,7 +241,8 @@ function updatePredator(
       foodSources,
       speciesConfig,
       world,
-      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
+      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS,
+      context.profiler
     );
     if (foodSeek.targetFoodId) {
       foodSeekingForce = vec.multiply(foodSeek.force, 0.5);
@@ -241,7 +254,8 @@ function updatePredator(
       foodSources,
       speciesConfig,
       world,
-      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
+      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS,
+      context.profiler
     );
     if (foodSeek.targetFoodId) {
       foodSeekingForce = foodSeek.force;
@@ -267,7 +281,8 @@ function updatePredator(
     obstacles,
     parameters,
     speciesConfig,
-    world
+    world,
+    context.profiler
   );
   const avoidWeighted = vec.multiply(avoid, parameters.obstacleAvoidanceWeight);
   boid.acceleration = vec.add(boid.acceleration, avoidWeighted);
@@ -283,11 +298,23 @@ function updatePredator(
       otherPredators,
       parameters,
       speciesConfig,
-      world
+      world,
+      context.profiler
     );
     const sepWeighted = vec.multiply(sep, separationWeight);
     boid.acceleration = vec.add(boid.acceleration, sepWeighted);
   }
+
+  // Avoid crowded areas (territorial behavior)
+  const crowdAvoidance = rules.avoidCrowdedAreas(
+    boid,
+    otherPredators,
+    parameters,
+    speciesConfig,
+    world,
+    context.profiler
+  );
+  boid.acceleration = vec.add(boid.acceleration, crowdAvoidance);
 
   // Update velocity with energy-based speed scaling
   boid.velocity = vec.add(boid.velocity, boid.acceleration);
@@ -337,16 +364,32 @@ function updatePrey(
     allBoids,
     parameters,
     speciesConfig,
-    world
+    world,
+    context.profiler
   );
-  const ali = rules.alignment(boid, allBoids, parameters, speciesConfig, world);
-  const coh = rules.cohesion(boid, allBoids, parameters, speciesConfig, world);
+  const ali = rules.alignment(
+    boid,
+    allBoids,
+    parameters,
+    speciesConfig,
+    world,
+    context.profiler
+  );
+  const coh = rules.cohesion(
+    boid,
+    allBoids,
+    parameters,
+    speciesConfig,
+    world,
+    context.profiler
+  );
   const avoid = rules.avoidObstacles(
     boid,
     obstacles,
     parameters,
     speciesConfig,
-    world
+    world,
+    context.profiler
   );
 
   // Fear of predators (using pure filter)
@@ -356,7 +399,8 @@ function updatePrey(
     predators,
     parameters,
     speciesConfig,
-    world
+    world,
+    context.profiler
   );
 
   // Avoid death markers (natural deaths create danger zones)
@@ -365,7 +409,8 @@ function updatePrey(
     deathMarkers,
     parameters,
     speciesConfig,
-    world
+    world,
+    context.profiler
   );
 
   // Avoid predator food sources (death sites)
@@ -374,7 +419,18 @@ function updatePrey(
     foodSources,
     parameters,
     speciesConfig,
-    world
+    world,
+    context.profiler
+  );
+
+  // Avoid crowded areas (species-specific tolerance)
+  const crowdAvoidance = rules.avoidCrowdedAreas(
+    boid,
+    allBoids,
+    parameters,
+    speciesConfig,
+    world,
+    context.profiler
   );
 
   // Food seeking and eating
@@ -397,7 +453,8 @@ function updatePrey(
         targetFood.position,
         speciesConfig,
         world,
-        FOOD_CONSTANTS.FOOD_EATING_RADIUS
+        FOOD_CONSTANTS.FOOD_EATING_RADIUS,
+        context.profiler
       );
     }
   } else if (
@@ -410,7 +467,8 @@ function updatePrey(
       foodSources,
       speciesConfig,
       world,
-      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
+      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS,
+      context.profiler
     );
     if (foodSeek.targetFoodId) {
       foodSeekingForce = foodSeek.force;
@@ -425,7 +483,8 @@ function updatePrey(
       allBoids,
       parameters,
       speciesConfig,
-      world
+      world,
+      context.profiler
     );
   }
 
@@ -456,6 +515,7 @@ function updatePrey(
     predatorFoodAvoidance,
     speciesConfig.lifecycle.fearFactor * 2.5
   );
+  const crowdAvoidanceWeighted = crowdAvoidance; // Already weighted in rule
   const foodSeekingWeighted = vec.multiply(foodSeekingForce, 2.0);
   const orbitWeighted = vec.multiply(orbitForce, 3.0); // Strong orbit when eating
 
@@ -466,6 +526,7 @@ function updatePrey(
   boid.acceleration = vec.add(boid.acceleration, fearWeighted);
   boid.acceleration = vec.add(boid.acceleration, deathAvoidanceWeighted);
   boid.acceleration = vec.add(boid.acceleration, predatorFoodAvoidanceWeighted);
+  boid.acceleration = vec.add(boid.acceleration, crowdAvoidanceWeighted);
   boid.acceleration = vec.add(boid.acceleration, foodSeekingWeighted);
   boid.acceleration = vec.add(boid.acceleration, orbitWeighted);
 

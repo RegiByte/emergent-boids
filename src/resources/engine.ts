@@ -7,11 +7,11 @@ import {
   getNearbyBoids,
   insertBoids,
 } from "../boids/spatialHash";
-import type { Boid } from "../boids/types";
 import * as vec from "../boids/vector";
 import type { StartedRuntimeStore } from "./runtimeStore";
 import type { Profiler } from "./profiler";
-import { SpeciesConfig } from "../vocabulary/schemas/prelude";
+import { getMaxCrowdTolerance } from "../boids/affinity";
+import { Boid } from "../boids/vocabulary/schemas/prelude";
 
 export type CatchEvent = {
   predatorId: string;
@@ -92,6 +92,14 @@ export const engine = defineResource({
       // Get current runtime state from store
       const { config, simulation } = runtimeStore.store.getState();
 
+      const maxBoidCrowdTolerance = getMaxCrowdTolerance(config.species);
+      // Max neighbors lookup is 25% more than the max crowd tolerance to prevent concentration bottleneck
+      // but still allow for some extra crowd tolerance
+      // we need to ensure the maxNeighbors is at least the maxBoidCrowdTolerance
+      // this is because, if it's lower, we will never reach the aversion threshold
+      // since we will always consider less neighbors than the maxBoidCrowdTolerance
+      const maxNeighborsLookup = Math.ceil(maxBoidCrowdTolerance * 1.25);
+
       // Build update context from state slices
       const context: BoidUpdateContext = {
         simulation: {
@@ -105,6 +113,7 @@ export const engine = defineResource({
           species: config.species,
         },
         deltaSeconds,
+        profiler,
       };
 
       // Insert all boids into spatial hash for efficient neighbor queries
@@ -116,13 +125,17 @@ export const engine = defineResource({
       profiler.start("boids.update.loop");
       for (let i = 0; i < boids.length; i++) {
         const boid = boids[i];
-        profiler.start("spatial.query");
-        const nearbyBoids = getNearbyBoids(spatialHash, boid.position);
-        profiler.end("spatial.query");
+        profiler.start("boid.spatial.query");
+        const nearbyBoids = getNearbyBoids(
+          spatialHash,
+          boid.position,
+          maxNeighborsLookup
+        );
+        profiler.end("boid.spatial.query");
 
-        profiler.start("boid.update.single");
+        profiler.start("boid.rules.apply");
         updateBoid(boid, nearbyBoids, context);
-        profiler.end("boid.update.single");
+        profiler.end("boid.rules.apply");
 
         // Update position history for motion trails (every other frame for performance)
         profiler.start("boid.trail.update");

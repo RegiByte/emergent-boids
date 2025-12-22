@@ -11,7 +11,7 @@
 import { stableEcosystemProfile } from "./stable-ecosystem";
 
 
-import {SimulationProfile} from "../vocabulary/schemas/prelude.ts";
+import {SimulationProfile} from "../boids/vocabulary/schemas/prelude.ts";
 
 /**
  * All available simulation profiles

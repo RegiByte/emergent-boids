@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { effectKeywords } from "../keywords.ts";
 import { allEventSchema } from "./events.ts";
+import { boidSchema } from "./prelude.ts";
 import { runtimeStoreSchema } from "./state.ts";
-import { vectorSchema, stanceSchema } from "./prelude.ts";
 
 /**
  * Effect Schemas - Side effects produced by event handlers
@@ -41,23 +41,7 @@ export const controlEffectSchemas = {
   // Add a boid to the engine (used for spawning)
   engineAddBoid: z.object({
     type: z.literal(effectKeywords.engine.addBoid),
-    boid: z.object({
-      id: z.string(),
-      position: vectorSchema,
-      velocity: vectorSchema,
-      acceleration: vectorSchema,
-      typeId: z.string(), // Species ID
-      energy: z.number(),
-      age: z.number(), // Age in seconds
-      reproductionCooldown: z.number(), // Ticks until can reproduce
-      seekingMate: z.boolean(),
-      mateId: z.string().nullable(), // ID of current mate (if mating)
-      matingBuildupCounter: z.number(), // Ticks spent close to mate
-      eatingCooldown: z.number(), // Ticks until can eat again
-      stance: stanceSchema,
-      previousStance: stanceSchema.nullable(), // No previous stance (just spawned)
-      positionHistory: z.array(vectorSchema), // For motion trails (past positions)
-    }),
+    boid: boidSchema,
   }),
   // Remove a boid from the engine (used for death)
   engineRemoveBoid: z.object({

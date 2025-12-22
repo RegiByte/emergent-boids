@@ -2,7 +2,7 @@ import type { BoidEngine } from "../resources/engine";
 import type { EvolutionSnapshot } from "../resources/runtimeStore";
 
 
-import {RuntimeStore} from "../vocabulary/schemas/state.ts";
+import {RuntimeStore} from "../boids/vocabulary/schemas/state.ts";
 
 /**
  * Export Utilities

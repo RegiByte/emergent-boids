@@ -1,4 +1,4 @@
-import {SpeciesConfig} from "../../vocabulary/schemas/prelude.ts";
+import {SpeciesConfig} from "../vocabulary/schemas/prelude.ts";
 
 /**
  * Check if offspring can be spawned given population caps

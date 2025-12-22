@@ -1,7 +1,6 @@
-import type { Boid } from "../types";
+import type { Boid } from "../vocabulary/schemas/prelude.ts";
 
-
-import {SpeciesConfig} from "../../vocabulary/schemas/prelude.ts";
+import { SpeciesConfig } from "../vocabulary/schemas/prelude.ts";
 
 /**
  * Update energy for a single boid based on its role and stance

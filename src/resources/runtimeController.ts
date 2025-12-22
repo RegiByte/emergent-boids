@@ -5,17 +5,13 @@ import {
   type EffectExecutorMap,
 } from "emergent";
 import type { RuntimeStoreApi, StartedRuntimeStore } from "./runtimeStore";
-import {
-  eventKeywords,
-  effectKeywords,
-
-} from "../vocabulary/keywords";
+import { eventKeywords, effectKeywords } from "../boids/vocabulary/keywords.ts";
 import { produce } from "immer";
 import type { TimerManager } from "./timer";
 import type { BoidEngine } from "./engine";
-import {RuntimeStore} from "../vocabulary/schemas/state.ts";
-import {AllEvents} from "../vocabulary/schemas/events.ts";
-import {AllEffects, ControlEffect} from "../vocabulary/schemas/effects.ts";
+import { RuntimeStore } from "../boids/vocabulary/schemas/state.ts";
+import { AllEvents } from "../boids/vocabulary/schemas/events.ts";
+import { AllEffects, ControlEffect } from "../boids/vocabulary/schemas/effects.ts";
 
 // ============================================
 // Event Handlers (Pure Functions)

@@ -246,6 +246,38 @@ export const profiler = defineResource({
       const metrics = getMetrics();
       const summary = formatSummary(metrics, state.frameMetrics);
       console.log(summary);
+
+      // Also print rule-specific metrics
+      const lines = [];
+      const ruleMetrics = metrics.filter((m) => m.name.startsWith("rule."));
+      if (ruleMetrics.length > 0) {
+        lines.push("\n🎯 RULE-LEVEL BREAKDOWN:");
+        lines.push(
+          "═══════════════════════════════════════════════════════════"
+        );
+        const sorted = ruleMetrics.sort((a, b) => b.totalTime - a.totalTime);
+        for (const metric of sorted) {
+          const name = metric.name.padEnd(30);
+          const total = `${metric.totalTime.toFixed(2)}ms`.padStart(10);
+          const avg = `${(metric.avgTime * 1000).toFixed(2)}µs`.padStart(10);
+          const calls = metric.callCount.toString().padStart(8);
+          const pct = `${(
+            (metric.totalTime / state.frameMetrics.updateTime) *
+            100
+          ).toFixed(1)}%`.padStart(6);
+          lines.push(
+            `${name} Total: ${total}  Avg: ${avg}  Calls: ${calls}  ${pct}`
+          );
+        }
+        lines.push(
+          "═══════════════════════════════════════════════════════════\n"
+        );
+      } else {
+        lines.push(
+          "\n⚠️  No rule metrics found. Profiler may not be enabled during rule execution.\n"
+        );
+      }
+      console.log(lines.join("\n"));
     };
 
     const reset = () => {

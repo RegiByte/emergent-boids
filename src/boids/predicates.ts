@@ -1,6 +1,7 @@
-import type { Boid, Vector2 } from "./types";
+import type { Boid } from "./vocabulary/schemas/prelude.ts";
+import type { Vector2 } from "./vocabulary/schemas/prelude.ts";
 import * as vec from "./vector";
-import {SimulationParameters, SpeciesConfig} from "../vocabulary/schemas/prelude.ts";
+import {SimulationParameters, SpeciesConfig} from "./vocabulary/schemas/prelude.ts";
 
 /**
  * Pure predicates for boid state and behavior

@@ -1,8 +1,8 @@
 
 import { processMatingCycle, type MatingResult } from "../mating";
 import { isReadyToMate } from "../predicates";
-import type { Boid } from "../types";
-import {SimulationParameters, SpeciesConfig} from "../../vocabulary/schemas/prelude.ts";
+import type { Boid } from "../vocabulary/schemas/prelude.ts";
+import {SimulationParameters, SpeciesConfig} from "../vocabulary/schemas/prelude.ts";
 
 /**
  * Process reproduction for a single boid

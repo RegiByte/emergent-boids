@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useResource } from "../system";
-import { eventKeywords } from "../vocabulary/keywords";
+import { eventKeywords } from "../boids/vocabulary/keywords";
 import {
   exportCurrentStats,
   exportEvolutionCSV,

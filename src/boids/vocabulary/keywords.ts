@@ -81,3 +81,13 @@ export const deathCauseKeywords = {
   starvation: "starvation",
   predation: "predation",
 } as const;
+
+export const roleKeywords = {
+  prey: "prey",
+  predator: "predator",
+} as const;
+
+export const reproductionTypeKeywords = {
+  sexual: "sexual",
+  asexual: "asexual",
+} as const;

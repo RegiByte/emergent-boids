@@ -3,7 +3,7 @@ import "./App.css";
 import { useSystem } from "./system";
 import { type SpawnMode } from "./components/Controls";
 import { SimulationPanel } from "./components/SimulationPanel";
-import { eventKeywords } from "./vocabulary/keywords";
+import { eventKeywords } from "./boids/vocabulary/keywords";
 import { calculateCanvasDimensions } from "./resources/canvas";
 
 function App() {

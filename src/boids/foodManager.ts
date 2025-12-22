@@ -2,8 +2,8 @@ import type {
   FoodSource,
   SpeciesConfig,
   WorldConfig,
-} from "../vocabulary/schemas/prelude";
-import type { Boid } from "./types";
+} from "./vocabulary/schemas/prelude.ts";
+import type { Boid } from "./vocabulary/schemas/prelude.ts";
 import { FOOD_CONSTANTS } from "./food";
 
 /**

@@ -1,8 +1,8 @@
-import type { Boid } from "../types";
+import type { Boid } from "../vocabulary/schemas/prelude.ts";
 import { hasDiedFromOldAge, hasDiedFromStarvation } from "../predicates";
 
 
-import {SpeciesConfig} from "../../vocabulary/schemas/prelude.ts";
+import {SpeciesConfig} from "../vocabulary/schemas/prelude.ts";
 
 /**
  * Update age for a single boid

@@ -1,4 +1,4 @@
-import type { Vector2 } from "./types";
+import type { Vector2 } from "./vocabulary/schemas/prelude.ts";
 
 /**
  * Pure calculation functions for boid physics and energy
