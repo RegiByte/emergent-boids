@@ -24,11 +24,11 @@ ChartJS.register(
   Legend
 );
 
-type PopulationGraphProps = {
+type BirthRatesGraphProps = {
   compact?: boolean;
 };
 
-export function PopulationGraph({ compact = false }: PopulationGraphProps) {
+export function BirthRatesGraph({ compact = false }: BirthRatesGraphProps) {
   const { useStore } = useResource("runtimeStore");
   const species = useStore((state) => state.config.species);
   const analytics = useStore((state) => state.analytics);
@@ -65,29 +65,30 @@ export function PopulationGraph({ compact = false }: PopulationGraphProps) {
           fontSize: "14px",
         }}
       >
-        📊 Collecting data... (snapshots appear every 3 seconds)
+        👶 Collecting birth rate data...
       </div>
     );
   }
 
-  // Build labels (tick numbers or time)
+  // Build labels (tick numbers)
   const labels = snapshots.map((snap) => snap.tick.toString());
 
   // Get all type IDs from species config
-  const typeIds = Object.keys(species);
+  const speciesIds = Object.keys(species);
 
-  // Build datasets for each species
-  const datasets = typeIds.map((typeId) => {
+  // Build datasets for birth rates
+  const datasets = speciesIds.map((typeId) => {
     const typeConfig = species[typeId];
     return {
       label: typeConfig.name,
-      data: snapshots.map((snap) => snap.populations[typeId] || 0),
+      data: snapshots.map((snap) => snap.births[typeId] || 0),
       borderColor: typeConfig.color,
       backgroundColor: typeConfig.color + "40", // Add transparency
       borderWidth: 2,
       pointRadius: 0, // Hide points for cleaner look
       pointHoverRadius: 4,
       tension: 0.1, // Slight curve
+      fill: false,
     };
   });
 
@@ -115,7 +116,7 @@ export function PopulationGraph({ compact = false }: PopulationGraphProps) {
       },
       title: {
         display: true,
-        text: "Population Over Time",
+        text: "Birth Rates Over Time",
         color: getColor("--color-foreground"),
         font: {
           size: 10,
@@ -144,7 +145,7 @@ export function PopulationGraph({ compact = false }: PopulationGraphProps) {
           label: (context) => {
             const label = context.dataset.label || "";
             const value = context.parsed.y;
-            return `${label}: ${value}`;
+            return `${label}: ${value} births`;
           },
         },
       },
@@ -177,12 +178,15 @@ export function PopulationGraph({ compact = false }: PopulationGraphProps) {
       y: {
         display: true,
         title: {
-          display: !compact,
-          text: "Population",
+          display: false,
+          text: "Births p/Interval",
           color: getColor("--color-muted-foreground"),
           font: {
             size: 9,
             family: "monospace",
+          },
+          padding: {
+            top: 0,
           },
         },
         ticks: {
@@ -199,7 +203,6 @@ export function PopulationGraph({ compact = false }: PopulationGraphProps) {
         },
         beginAtZero: true,
         min: 0,
-        max: 200, // Show up to 200 to see caps clearly
       },
     },
     interaction: {
@@ -210,7 +213,7 @@ export function PopulationGraph({ compact = false }: PopulationGraphProps) {
   };
 
   return (
-    <div className="h-full bg-background w-full rounded-md border border-border p-2 max-h-42">
+    <div className="h-full w-full bg-background rounded-md border border-border p-2 max-h-42">
       <Line data={chartData} options={options} />
     </div>
   );

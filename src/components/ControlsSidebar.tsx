@@ -59,12 +59,18 @@ export function ControlsSidebar({
   const [activeTab, setActiveTab] = useState<"controls" | "species">(
     "controls"
   );
-  const [activeSpecies, setActiveSpecies] = useState(speciesIds[0] || "explorer");
+  const [activeSpecies, setActiveSpecies] = useState(
+    speciesIds[0] || "explorer"
+  );
 
   const species = config.species[activeSpecies];
 
   return (
-    <Sidebar collapsible="offExamples" variant="inset">
+    <Sidebar
+      collapsible="offExamples"
+      variant="inset"
+      className="bg-background"
+    >
       <SidebarContent>
         {/* Tab Navigation */}
         <SidebarGroup>
@@ -279,7 +285,9 @@ export function ControlsSidebar({
                     return (
                       <Button
                         key={typeId}
-                        variant={activeSpecies === typeId ? "default" : "outline"}
+                        variant={
+                          activeSpecies === typeId ? "default" : "outline"
+                        }
                         size="sm"
                         onClick={() => setActiveSpecies(typeId)}
                         style={{
@@ -302,9 +310,7 @@ export function ControlsSidebar({
             {/* Species Settings */}
             {species && (
               <SidebarGroup>
-                <SidebarGroupLabel
-                  style={{ color: species.color }}
-                >
+                <SidebarGroupLabel style={{ color: species.color }}>
                   {species.name} Settings
                 </SidebarGroupLabel>
                 <SidebarGroupContent className="px-4">
@@ -322,7 +328,9 @@ export function ControlsSidebar({
                           <Slider
                             value={[species.movement.separationWeight]}
                             onValueChange={(values) => {
-                              const value = Array.isArray(values) ? values[0] : values;
+                              const value = Array.isArray(values)
+                                ? values[0]
+                                : values;
                               runtimeController.dispatch({
                                 type: eventKeywords.controls.typeConfigChanged,
                                 typeId: activeSpecies,
@@ -346,7 +354,9 @@ export function ControlsSidebar({
                           <Slider
                             value={[species.movement.alignmentWeight]}
                             onValueChange={(values) => {
-                              const value = Array.isArray(values) ? values[0] : values;
+                              const value = Array.isArray(values)
+                                ? values[0]
+                                : values;
                               runtimeController.dispatch({
                                 type: eventKeywords.controls.typeConfigChanged,
                                 typeId: activeSpecies,
@@ -370,7 +380,9 @@ export function ControlsSidebar({
                           <Slider
                             value={[species.movement.cohesionWeight]}
                             onValueChange={(values) => {
-                              const value = Array.isArray(values) ? values[0] : values;
+                              const value = Array.isArray(values)
+                                ? values[0]
+                                : values;
                               runtimeController.dispatch({
                                 type: eventKeywords.controls.typeConfigChanged,
                                 typeId: activeSpecies,
@@ -394,7 +406,9 @@ export function ControlsSidebar({
                           <Slider
                             value={[species.movement.maxSpeed]}
                             onValueChange={(values) => {
-                              const value = Array.isArray(values) ? values[0] : values;
+                              const value = Array.isArray(values)
+                                ? values[0]
+                                : values;
                               runtimeController.dispatch({
                                 type: eventKeywords.controls.typeConfigChanged,
                                 typeId: activeSpecies,
@@ -418,7 +432,9 @@ export function ControlsSidebar({
                           <Slider
                             value={[species.movement.maxForce]}
                             onValueChange={(values) => {
-                              const value = Array.isArray(values) ? values[0] : values;
+                              const value = Array.isArray(values)
+                                ? values[0]
+                                : values;
                               runtimeController.dispatch({
                                 type: eventKeywords.controls.typeConfigChanged,
                                 typeId: activeSpecies,
@@ -443,4 +459,3 @@ export function ControlsSidebar({
     </Sidebar>
   );
 }
-

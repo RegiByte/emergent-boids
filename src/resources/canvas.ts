@@ -1,30 +1,13 @@
 import { defineResource } from "braided";
 import type { StartedRuntimeStore } from "./runtimeStore";
 
-export type CanvasResource = {
+export type CanvasAPI = {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   width: number;
   height: number;
-  resize: (newWidth: number, newHeight: number) => void;
+  resize: (_newWidth: number, _newHeight: number) => void;
 };
-
-// Helper function to calculate canvas dimensions
-function calculateCanvasDimensions() {
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-
-  // Account for header (~80px) and use 75% of viewport width
-  const availableWidth = viewportWidth * 0.75;
-  const availableHeight = viewportHeight - 100; // Subtract header height
-
-  // Calculate dimensions maintaining a reasonable aspect ratio
-  // Use the smaller dimension to ensure canvas fits
-  const canvasWidth = Math.floor(Math.min(availableWidth - 40, 1400)); // Max 1400px width
-  const canvasHeight = Math.floor(Math.min(availableHeight - 40, 1000)); // Max 1000px height
-
-  return { canvasWidth, canvasHeight };
-}
 
 export const canvas = defineResource({
   dependencies: ["runtimeStore"],
@@ -36,11 +19,17 @@ export const canvas = defineResource({
 
     // Create canvas element
     const canvas = document.createElement("canvas");
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
-    canvas.style.border = "2px solid #00ff88";
-    canvas.style.display = "block";
-    canvas.style.boxShadow = "0 0 20px rgba(0, 255, 136, 0.3)";
+    canvas.width = 800;
+    canvas.height = 600;
+    canvas.classList.add(
+      // "border-2",
+      // "border-green-500",
+      "absolute",
+      "top-[50%]",
+      "left-[50%]",
+      "translate-x-[-50%]",
+      "translate-y-[-50%]"
+    );
 
     const ctx = canvas.getContext("2d", {
       willReadFrequently: true,
@@ -74,15 +63,12 @@ export const canvas = defineResource({
           },
         });
       },
-    };
+    } satisfies CanvasAPI;
 
-    return resource satisfies CanvasResource;
+    return resource;
   },
-  halt: ({ canvas }: CanvasResource) => {
+  halt: ({ canvas }: CanvasAPI) => {
     // Remove canvas from DOM if it's attached
     canvas.remove();
   },
 });
-
-// Export the calculation function for use in App
-export { calculateCanvasDimensions };

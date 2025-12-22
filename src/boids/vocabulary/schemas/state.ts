@@ -56,6 +56,33 @@ export const visualSettingsSchema = z.object({
   stanceSymbolsEnabled: z.boolean(), // Show emoji indicators for boid stances
   deathMarkersEnabled: z.boolean(), // Show skull markers where boids died
   foodSourcesEnabled: z.boolean(), // Show food source indicators
+
+  // Atmosphere settings - environmental mood and visual effects
+  atmosphere: z.object({
+    // Base settings (user-controlled defaults)
+    base: z.object({
+      trailAlpha: z.number().min(0).max(1), // Background transparency for trails
+      fogColor: z.string(), // Base fog color
+      fogIntensity: z.number().min(0).max(1), // How far fog extends inward
+      fogOpacity: z.number().min(0).max(1).default(0.6), // Fog opacity
+    }),
+
+    // Current active event (null = using base settings)
+    activeEvent: z
+      .object({
+        eventType: z.string(), // Type of atmospheric event
+        settings: z.object({
+          trailAlpha: z.number(), // Override trail alpha
+          fogColor: z.string(), // Override fog color
+          fogIntensity: z.number().optional(), // Override fog intensity
+          fogOpacity: z.number().optional(), // Override fog opacity
+        }),
+        startedAt: z.number(), // Timestamp when event started
+        minDurationTicks: z.number(), // Minimum duration before override allowed
+      })
+      .nullable()
+      .default(null),
+  }),
 });
 
 // ============================================
@@ -104,10 +131,11 @@ export const runtimeStoreSchema = z.object({
   }),
   ui: z.object({
     visualSettings: visualSettingsSchema, // Rendering preferences
+    sidebarOpen: z.boolean(), // Whether the sidebar is open
   }),
   analytics: z.object({
     evolutionHistory: z.array(evolutionSnapshotSchema), // Historical data for graphs
-    currentSnapshot: z.any().nullable(), // Latest snapshot (nullable during init)
+    currentSnapshot: evolutionSnapshotSchema.nullable(), // Latest snapshot (nullable during init)
   }),
 });
 

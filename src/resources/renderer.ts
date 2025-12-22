@@ -1,6 +1,6 @@
 import { defineResource } from "braided";
 import { eventKeywords } from "../boids/vocabulary/keywords";
-import { CanvasResource } from "./canvas";
+import { CanvasAPI } from "./canvas";
 import { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
 import type { StartedRuntimeStore } from "./runtimeStore";
@@ -27,7 +27,7 @@ export const renderer = defineResource({
     runtimeController,
     profiler,
   }: {
-    canvas: CanvasResource;
+    canvas: CanvasAPI;
     engine: BoidEngine;
     runtimeStore: StartedRuntimeStore;
     runtimeController: RuntimeController;
@@ -213,9 +213,13 @@ export const renderer = defineResource({
       const { ctx, width, height } = canvas;
       const { simulation, ui, config } = runtimeStore.store.getState();
 
-      // Clear canvas
+      // Get atmosphere settings (active event overrides base)
+      const { base, activeEvent } = ui.visualSettings.atmosphere;
+      const atmosphereSettings = activeEvent?.settings || base;
+
+      // Clear canvas with atmosphere-controlled background
       profiler.start("render.clear");
-      ctx.fillStyle = "#0a0a0a";
+      ctx.fillStyle = `rgba(0, 0, 0, ${atmosphereSettings.trailAlpha})`;
       ctx.fillRect(0, 0, width, height);
       profiler.end("render.clear");
 
@@ -668,16 +672,21 @@ export const renderer = defineResource({
       }).length;
       const preyCount = engine.boids.length - predatorCount;
 
+      const startingY = 33;
       ctx.fillStyle = "#00ff88";
       ctx.font = "16px monospace";
-      ctx.fillText(`FPS: ${Math.round(fps)}`, 25, 20);
-      ctx.fillText(`Total: ${engine.boids.length}`, 25, 40);
+      ctx.fillText(`FPS: ${Math.round(fps)}`, 25, startingY);
+      ctx.fillText(`Total: ${engine.boids.length}`, 25, startingY + 20);
       ctx.fillStyle = "#00ff88";
-      ctx.fillText(`Prey: ${preyCount}`, 25, 60);
+      ctx.fillText(`Prey: ${preyCount}`, 25, startingY + 40);
       ctx.fillStyle = "#ff0000";
-      ctx.fillText(`Predators: ${predatorCount}`, 25, 80);
+      ctx.fillText(`Predators: ${predatorCount}`, 25, startingY + 60);
       ctx.fillStyle = "#00ff88";
-      ctx.fillText(`Obstacles: ${simulation.obstacles.length}`, 25, 100);
+      ctx.fillText(
+        `Obstacles: ${simulation.obstacles.length}`,
+        25,
+        startingY + 80
+      );
       profiler.end("render.stats");
     };
 

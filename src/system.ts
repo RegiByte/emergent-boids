@@ -6,6 +6,7 @@ import { canvas } from "./resources/canvas";
 import { engine } from "./resources/engine";
 import { lifecycleManager } from "./resources/lifecycleManager";
 import { analytics } from "./resources/analytics";
+import { atmosphere } from "./resources/atmosphere";
 import { renderer } from "./resources/renderer";
 import { profiler } from "./resources/profiler";
 
@@ -17,6 +18,7 @@ export const systemConfig = {
   engine,
   lifecycleManager,
   analytics,
+  atmosphere,
   renderer,
   profiler,
 };

@@ -39,6 +39,15 @@ export const eventKeywords = {
     spawnPredator: "boids/spawnPredator",
     foodSourceCreated: "boids/foodSourceCreated",
   },
+
+  ui: {
+    sidebarToggled: "ui/sidebarToggled",
+  },
+
+  atmosphere: {
+    eventStarted: "atmosphere/eventStarted",
+    eventEnded: "atmosphere/eventEnded",
+  },
 } as const;
 
 // ============================================

@@ -119,6 +119,59 @@ export const boidEventSchemas = {
     foodSource: foodSourceSchemas, // Complete food source data
   }),
 };
+
+// ============================================
+// UI Events - User interface interactions
+// ============================================
+
+export const uiEventSchemas = {
+  // User toggles the sidebar
+  toggleSidebar: z.object({
+    type: z.literal(eventKeywords.ui.sidebarToggled),
+    open: z.boolean(),
+  }),
+};
+
+export const uiEventSchema = z.discriminatedUnion("type", [
+  uiEventSchemas.toggleSidebar,
+]);
+
+// ============================================
+// Atmosphere Events - Environmental mood changes
+// ============================================
+
+export const atmosphereEventSchemas = {
+  // Atmosphere event started (mating season, extinction, etc.)
+  eventStarted: z.object({
+    type: z.literal(eventKeywords.atmosphere.eventStarted),
+    eventType: z.enum([
+      "mating-season",
+      "mass-extinction",
+      "predator-dominance",
+      "population-boom",
+      "starvation-crisis",
+    ]),
+    settings: z.object({
+      trailAlpha: z.number().min(0).max(1).optional(),
+      fogColor: z.string().optional(), // CSS color string
+      fogIntensity: z.number().min(0).max(1).optional(),
+      fogOpacity: z.number().min(0).max(1).optional(),
+    }),
+    minDurationTicks: z.number(), // Minimum time before another event can override
+  }),
+
+  // Atmosphere event ended (return to base settings)
+  eventEnded: z.object({
+    type: z.literal(eventKeywords.atmosphere.eventEnded),
+    eventType: z.string(), // Which event ended
+  }),
+};
+
+export const atmosphereEventSchema = z.discriminatedUnion("type", [
+  atmosphereEventSchemas.eventStarted,
+  atmosphereEventSchemas.eventEnded,
+]);
+
 // ============================================
 // Event Union Types
 // ============================================
@@ -157,6 +210,8 @@ export const allEventSchema = z.union([
   obstacleEventSchema,
   timeEventSchema,
   boidEventSchema,
+  uiEventSchema,
+  atmosphereEventSchema,
 ]);
 
 // ============================================
@@ -167,4 +222,5 @@ export type ControlEvent = z.infer<typeof controlEventSchema>;
 export type ObstacleEvent = z.infer<typeof obstacleEventSchema>;
 export type TimeEvent = z.infer<typeof timeEventSchema>;
 export type BoidEvent = z.infer<typeof boidEventSchema>;
+export type AtmosphereEvent = z.infer<typeof atmosphereEventSchema>;
 export type AllEvents = z.infer<typeof allEventSchema>;

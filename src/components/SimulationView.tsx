@@ -1,51 +1,124 @@
-import { useEffect, useRef, useState } from "react";
-import { useSystem } from "@/system";
-import { type SpawnMode } from "@/components/ControlsSidebar";
-import { ControlsSidebar } from "@/components/ControlsSidebar";
-import { GraphBar } from "@/components/GraphBar";
+import { eventKeywords } from "@/boids/vocabulary/keywords";
+import { ControlsSidebar, type SpawnMode } from "@/components/ControlsSidebar";
+import { HeaderSidebar } from "@/components/HeaderSidebar";
 import {
-  SidebarProvider,
   SidebarInset,
+  SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { eventKeywords } from "@/boids/vocabulary/keywords";
+import { cn } from "@/lib/utils";
+import { useResource, useSystem } from "@/system";
+import { IconAdjustmentsHorizontal } from "@tabler/icons-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useDebouncer } from "@tanstack/react-pacer";
+import { CanvasAPI } from "@/resources/canvas";
+import { CanvasFrame } from "@/components/CanvasFrame";
 
 function SimulationView() {
+  const runtimeController = useResource("runtimeController");
+  const runtimeStore = useResource("runtimeStore");
+  const canvas = useResource("canvas");
+  const renderer = useResource("renderer");
+  const { useStore } = runtimeStore;
+  const sidebarOpen = useStore((state) => state.ui.sidebarOpen);
+
+  // Get atmosphere settings (select individual values to avoid creating new objects)
+  const atmosphereBase = useStore(
+    (state) => state.ui.visualSettings.atmosphere.base
+  );
+  const atmosphereEvent = useStore(
+    (state) => state.ui.visualSettings.atmosphere.activeEvent
+  );
+
+  // Compute final settings (memoized to prevent re-renders)
+  const atmosphereSettings = useMemo(() => {
+    if (atmosphereEvent) {
+      return {
+        trailAlpha: atmosphereEvent.settings.trailAlpha,
+        fogColor: atmosphereEvent.settings.fogColor,
+        fogIntensity:
+          atmosphereEvent.settings.fogIntensity ?? atmosphereBase.fogIntensity,
+        fogOpacity:
+          atmosphereEvent.settings.fogOpacity ?? atmosphereBase.fogOpacity,
+      };
+    }
+    return atmosphereBase;
+  }, [atmosphereBase, atmosphereEvent]);
   const system = useSystem();
-  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const canvasAreaRef = useRef<HTMLDivElement>(null); // The parent flex container
+  const canvasContainerRef = useRef<HTMLDivElement>(null); // The canvas wrapper
   const canvasElementRef = useRef<HTMLCanvasElement | null>(null);
   const [spawnMode, setSpawnMode] = useState<SpawnMode>("obstacle");
+  const getParentDimensions = () => {
+    if (canvasAreaRef.current) {
+      const rect = canvasAreaRef.current.getBoundingClientRect();
+      return {
+        width: Math.floor(rect.width) - 4,
+        height: Math.floor(rect.height) - 4,
+      };
+    }
+    return {
+      width: 0,
+      height: 0,
+    };
+  };
+  const updateCanvasDebouncer = useDebouncer(
+    (canvas: CanvasAPI) => {
+      const { width, height } = getParentDimensions();
+      console.trace("resizing canvas to", width, height);
+      canvas.resize(width, height);
+    },
+    {
+      wait: 200,
+      leading: false,
+      trailing: true,
+    }
+  );
 
   useEffect(() => {
     // Mount canvas when system is ready
-    if (system?.canvas && canvasContainerRef.current) {
+    if (canvas && canvasContainerRef.current && canvasAreaRef.current) {
       const container = canvasContainerRef.current;
-      const canvas = system.canvas.canvas;
-      canvasElementRef.current = canvas;
+      canvasElementRef.current = canvas.canvas;
 
-      // Clear container and append canvas
-      container.innerHTML = "";
-      container.appendChild(canvas);
+      // Find or create the canvas wrapper div
+      let canvasWrapper = container.querySelector(
+        "[data-canvas-wrapper]"
+      ) as HTMLDivElement;
+      if (!canvasWrapper) {
+        canvasWrapper = document.createElement("div");
+        canvasWrapper.setAttribute("data-canvas-wrapper", "true");
+        canvasWrapper.style.position = "absolute";
+        canvasWrapper.style.inset = "0";
+        canvasWrapper.style.width = "100%";
+        canvasWrapper.style.height = "100%";
+        container.appendChild(canvasWrapper);
+      }
+
+      // Clear wrapper and append canvas
+      canvasWrapper.innerHTML = "";
+      canvasWrapper.appendChild(canvas.canvas);
 
       // Calculate initial canvas size based on container
       // Use requestAnimationFrame to ensure layout is complete
+      // This needs to run at least once to get the initial canvas size
       requestAnimationFrame(() => {
-        const rect = container.getBoundingClientRect();
-        const canvasWidth = Math.floor(rect.width - 40);
-        const canvasHeight = Math.floor(rect.height - 40);
-        system.canvas.resize(canvasWidth, canvasHeight);
+        const { width, height } = getParentDimensions();
+        if (width > 0 && height > 0) {
+          canvas.resize(width, height);
+        }
       });
 
       // Add click handler for placing obstacles or spawning predators
       const handleCanvasClick = (e: MouseEvent) => {
-        const rect = canvas.getBoundingClientRect();
+        const rect = canvas.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
         if (spawnMode === "obstacle") {
           // Dispatch obstacle added event
-          system.runtimeController.dispatch({
+          runtimeController.dispatch({
             type: eventKeywords.obstacles.added,
             x,
             y,
@@ -56,7 +129,7 @@ function SimulationView() {
           });
         } else {
           // Dispatch spawn predator event
-          system.runtimeController.dispatch({
+          runtimeController.dispatch({
             type: eventKeywords.boids.spawnPredator,
             x,
             y,
@@ -67,22 +140,22 @@ function SimulationView() {
         }
       };
 
-      canvas.addEventListener("click", handleCanvasClick);
+      canvas.canvas.addEventListener("click", handleCanvasClick);
 
       // Start the renderer
-      if (system.renderer) {
-        system.renderer.start();
+      if (renderer) {
+        renderer.start();
       }
 
       return () => {
         // Stop renderer on cleanup
-        if (system.renderer) {
-          system.renderer.stop();
+        if (renderer) {
+          renderer.stop();
         }
-        canvas.removeEventListener("click", handleCanvasClick);
+        canvas.canvas.removeEventListener("click", handleCanvasClick);
       };
     }
-  }, [system, spawnMode]);
+  }, [spawnMode, canvas, renderer, runtimeController]);
 
   // Update cursor based on spawn mode
   useEffect(() => {
@@ -92,48 +165,34 @@ function SimulationView() {
     }
   }, [spawnMode]);
 
-  // Handle canvas container resize (tracks both window resize and sidebar toggle)
+  // Handle canvas area resize (tracks both window resize and sidebar toggle)
   useEffect(() => {
-    if (!system?.canvas || !canvasContainerRef.current) return;
-
-    let resizeTimeout: ReturnType<typeof setTimeout>;
+    if (!canvas || !canvasAreaRef.current) return;
 
     const resizeObserver = new ResizeObserver((entries) => {
-      // Debounce resize to avoid too many updates
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        const container = entries[0];
-        if (container) {
-          (
-            window as unknown as { simulationContainer: HTMLDivElement }
-          ).simulationContainer = container;
-          // Use requestAnimationFrame to ensure layout is complete
-          requestAnimationFrame(() => {
-            // Calculate canvas size based on container dimensions
-            const containerWidth = container.contentRect.width;
-            const containerHeight = container.contentRect.height;
+      const entry = entries[0];
 
-            // Add some padding (20px on each side)
-            const canvasWidth = Math.floor(containerWidth - 40);
-            const canvasHeight = Math.floor(containerHeight - 40);
+      if (entry) {
+        const areaWidth = entry.contentRect.width;
+        const areaHeight = entry.contentRect.height;
 
-            // Only resize if dimensions are valid
-            if (canvasWidth > 0 && canvasHeight > 0) {
-              system.canvas.resize(canvasWidth, canvasHeight);
-            }
-          });
+        const canvasWidth = Math.floor(areaWidth);
+        const canvasHeight = Math.floor(areaHeight);
+
+        if (canvasWidth > 0 && canvasHeight > 0) {
+          updateCanvasDebouncer.maybeExecute(canvas);
         }
-      }, 100); // Reduced debounce time for snappier response
+      }
     });
 
-    // Observe the canvas container for size changes
-    resizeObserver.observe(canvasContainerRef.current);
+    // Observe the canvas AREA (parent), not the container that holds the canvas
+    // This prevents feedback loops from canvas size changes
+    resizeObserver.observe(canvasAreaRef.current);
 
     return () => {
       resizeObserver.disconnect();
-      clearTimeout(resizeTimeout);
     };
-  }, [system]);
+  }, [canvas, updateCanvasDebouncer]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -158,9 +217,9 @@ function SimulationView() {
       }
 
       // Escape: Clear obstacles
-      if (e.code === "Escape" && system) {
+      if (e.code === "Escape") {
         e.preventDefault();
-        system.runtimeController.dispatch({
+        runtimeController.dispatch({
           type: eventKeywords.obstacles.cleared,
         });
         toast.success("All obstacles cleared");
@@ -169,41 +228,76 @@ function SimulationView() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [system]);
+  }, [runtimeController]);
 
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      open={sidebarOpen}
+      onOpenChange={(open) => {
+        console.log("sidebar open changed", open);
+        runtimeController.dispatch({
+          type: eventKeywords.ui.sidebarToggled,
+          open,
+        });
+        // ResizeObserver will handle the canvas resize automatically
+      }}
+      onAnimationEnd={() => {
+        console.log("sidebar animation end");
+      }}
+    >
       <div className="flex h-screen w-screen overflow-hidden bg-background">
         <ControlsSidebar
           spawnMode={spawnMode}
           onSpawnModeChange={setSpawnMode}
         />
         <SidebarInset className="flex flex-col">
-          {/* Header */}
-          <header className="flex items-center gap-2 border-b bg-card px-4 py-3">
-            <SidebarTrigger />
-            <div className="flex-1">
-              <h1 className="text-lg font-bold text-primary">
-                🐦 Emergent Boids: Predator/Prey Ecosystem
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                Simple rules → Complex dynamics
-              </p>
+          {/* Header with Sidebar Trigger and Graphs */}
+          <div className="flex items-center gap-2 border-b bg-card px-4 py-3 w-full">
+            <div className="group">
+              <label
+                className={cn(
+                  "absolute left-2 top-2 px-1 py-1 inline-flex items-center justify-center gap-2",
+                  "rounded-md group-hover:bg-slate-100/30"
+                )}
+              >
+                <SidebarTrigger
+                  className={"p-2"}
+                  icon={IconAdjustmentsHorizontal}
+                />
+                <span className="text-sm">Simulation Controls</span>
+              </label>
             </div>
-          </header>
-
-          {/* Graph Bar */}
-          {system && <GraphBar />}
+            {system && <HeaderSidebar />}
+          </div>
 
           {/* Canvas Area */}
-          <div className="flex-1 flex items-center justify-center bg-black relative overflow-hidden">
+          <div
+            ref={canvasAreaRef}
+            data-testid="canvas-area"
+            className={cn(
+              "flex-1 flex items-center justify-center bg-black relative overflow-hidden"
+            )}
+            style={
+              {
+                // Atmosphere settings driven by state (reactive!)
+                "--simulation-bg": `rgba(0, 0, 0, ${atmosphereSettings.trailAlpha})`,
+                "--simulation-fog-color": atmosphereSettings.fogColor,
+              } as React.CSSProperties
+            }
+          >
             {!system && (
               <div className="text-primary text-lg">Loading system...</div>
             )}
             <div
               ref={canvasContainerRef}
-              className="flex items-center justify-center w-full h-full"
-            />
+              data-testid="canvas-container"
+              className={cn("relative w-full h-full border-2 border-green-500 rounded-b-lg overflow-hidden")}
+            >
+              <CanvasFrame
+                fogIntensity={atmosphereSettings.fogIntensity}
+                fogOpacity={atmosphereSettings.fogOpacity}
+              />
+            </div>
           </div>
         </SidebarInset>
       </div>

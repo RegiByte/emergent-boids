@@ -4,68 +4,49 @@ import type { StoreApi } from "zustand/vanilla";
 import { createStore } from "zustand/vanilla";
 import { defaultProfileId, getProfile } from "../profiles";
 
-
-import {RuntimeStore} from "../boids/vocabulary/schemas/state.ts";
+import { RuntimeStore } from "../boids/vocabulary/schemas/state.ts";
 
 /**
  * Evolution Snapshot - captures ecosystem state at a point in time
  * Used for time-series analysis and CSV export
  */
-export type EvolutionSnapshot = {
-  tick: number;
-  timestamp: number;
-  populations: Record<string, number>; // Population count per type
-  births: Record<string, number>; // Births since last snapshot per type
-  deaths: Record<string, number>; // Deaths since last snapshot per type
-  catches: Record<string, number>; // Prey caught since last snapshot per type
-  avgEnergy: Record<string, number>; // Average energy per type
-  foodSources: {
-    prey: number;
-    predator: number;
-  };
-};
+// export type EvolutionSnapshot = {
+//   tick: number;
+//   timestamp: number;
+//   populations: Record<string, number>; // Population count per type
+//   births: Record<string, number>; // Births since last snapshot per type
+//   deaths: Record<string, number>; // Deaths since last snapshot per type
+//   catches: Record<string, number>; // Prey caught since last snapshot per type
+//   avgEnergy: Record<string, number>; // Average energy per type
+//   foodSources: {
+//     prey: number;
+//     predator: number;
+//   };
+// };
 
 /**
  * Analytics State - time-series data and metrics
  * Managed by analytics resource, read by components
  */
-export type AnalyticsState = {
-  evolutionHistory: EvolutionSnapshot[];
-  currentSnapshot: EvolutionSnapshot | null;
-};
+// export type AnalyticsState = {
+//   evolutionHistory: EvolutionSnapshot[];
+//   currentSnapshot: EvolutionSnapshot | null;
+// };
 
 /**
  * Visual Settings - UI preferences for rendering
  * Toggleable via keyboard shortcuts
  */
-export type VisualSettings = {
-  trailsEnabled: boolean;
-  energyBarsEnabled: boolean;
-  matingHeartsEnabled: boolean;
-  stanceSymbolsEnabled: boolean;
-  deathMarkersEnabled: boolean;
-  foodSourcesEnabled: boolean;
-};
+// export type VisualSettings = {
+//   trailsEnabled: boolean;
+//   energyBarsEnabled: boolean;
+//   matingHeartsEnabled: boolean;
+//   stanceSymbolsEnabled: boolean;
+//   deathMarkersEnabled: boolean;
+//   foodSourcesEnabled: boolean;
+// };
 
 export type RuntimeStoreApi = StoreApi<RuntimeStore>;
-
-/**
- * Calculate canvas dimensions based on viewport
- * TODO: In the future, this will be replaced by a viewport system
- * where the canvas is larger than the visible area
- */
-function calculateCanvasDimensions() {
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-
-  const availableWidth = viewportWidth * 0.75;
-  const availableHeight = viewportHeight - 100;
-
-  const canvasWidth = Math.floor(Math.min(availableWidth - 40, 1400));
-  const canvasHeight = Math.floor(Math.min(availableHeight - 40, 1000));
-
-  return { canvasWidth, canvasHeight };
-}
 
 export const runtimeStore = defineResource({
   dependencies: [],
@@ -74,7 +55,10 @@ export const runtimeStore = defineResource({
     const profile = getProfile(defaultProfileId);
 
     // Calculate canvas dimensions dynamically from viewport
-    const { canvasWidth, canvasHeight } = calculateCanvasDimensions();
+    const { canvasWidth, canvasHeight } = {
+      canvasWidth: 800,
+      canvasHeight: 600,
+    };
 
     // Create zustand store with initial values from profile
     // This becomes the single source of truth - all runtime code should read from here
@@ -103,7 +87,17 @@ export const runtimeStore = defineResource({
           stanceSymbolsEnabled: false,
           deathMarkersEnabled: true,
           foodSourcesEnabled: true,
+          atmosphere: {
+            base: {
+              trailAlpha: 0.9,
+              fogColor: "rgba(0, 200, 100, 0.5)",
+              fogIntensity: 0.3,
+              fogOpacity: 0.6,
+            },
+            activeEvent: null,
+          },
         },
+        sidebarOpen: true,
       },
       analytics: {
         evolutionHistory: [],
@@ -111,7 +105,7 @@ export const runtimeStore = defineResource({
       },
     }));
 
-    function useStore<T>(selector: (state: RuntimeStore) => T): T {
+    function useStore<T>(selector: (_state: RuntimeStore) => T): T {
       return useZustandStore(store, selector);
     }
 

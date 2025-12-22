@@ -36,6 +36,14 @@ export function EnergyGraph({ compact = false }: EnergyGraphProps) {
   // Force re-render when analytics updates
   const [, setTick] = useState(0);
 
+  // Get computed CSS colors from the document
+  const getColor = (varName: string) => {
+    if (typeof window === "undefined") return "#666";
+    const style = getComputedStyle(document.documentElement);
+    const value = style.getPropertyValue(varName).trim();
+    return value || "#666";
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTick((prev) => prev + 1);
@@ -93,39 +101,40 @@ export function EnergyGraph({ compact = false }: EnergyGraphProps) {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: !compact,
-        position: "top" as const,
+        display: compact ? false : true,
+        position: "bottom" as const,
+        align: "start" as const,
         labels: {
-          color: "hsl(var(--primary))",
+          color: getColor("--color-foreground"),
           font: {
-            size: compact ? 9 : 12,
+            size: 8,
           },
           usePointStyle: true,
-          padding: compact ? 8 : 15,
+          padding: 8,
         },
       },
       title: {
         display: true,
-        text: compact ? "Energy" : "Average Energy Over Time",
-        color: "hsl(var(--primary))",
+        text: "Average Energy Over Time",
+        color: getColor("--color-foreground"),
         font: {
-          size: compact ? 11 : 16,
+          size: 10,
           weight: "bold",
         },
         padding: {
-          top: compact ? 4 : 10,
-          bottom: compact ? 8 : 20,
+          top: 0,
+          bottom: 8,
         },
       },
       tooltip: {
         mode: "index",
         intersect: false,
-        backgroundColor: "hsl(var(--popover))",
-        titleColor: "hsl(var(--primary))",
-        bodyColor: "hsl(var(--popover-foreground))",
-        borderColor: "hsl(var(--border))",
-        borderWidth: 1,
-        padding: compact ? 8 : 12,
+        backgroundColor: getColor("--color-popover"),
+        titleColor: getColor("--color-foreground"),
+        bodyColor: getColor("--color-popover-foreground"),
+        borderColor: getColor("--color-border"),
+        borderWidth: 2,
+        padding: 10,
         displayColors: true,
         callbacks: {
           title: (context) => {
@@ -145,21 +154,23 @@ export function EnergyGraph({ compact = false }: EnergyGraphProps) {
         display: !compact,
         title: {
           display: !compact,
-          text: "Time (ticks)",
-          color: "hsl(var(--muted-foreground))",
+          text: `Time (last ${snapshots.length} ticks)`,
+          color: getColor("--color-muted-foreground"),
           font: {
-            size: compact ? 9 : 12,
+            size: 9,
+            family: "monospace",
           },
         },
         ticks: {
-          color: "hsl(var(--muted-foreground))",
+          color: getColor("--color-muted-foreground"),
           maxTicksLimit: compact ? 5 : 10,
           font: {
-            size: compact ? 8 : 10,
+            size: 8,
+            family: "monospace",
           },
         },
         grid: {
-          color: "hsl(var(--border))",
+          color: getColor("--color-border"),
           drawOnChartArea: true,
         },
       },
@@ -168,23 +179,26 @@ export function EnergyGraph({ compact = false }: EnergyGraphProps) {
         title: {
           display: !compact,
           text: "Average Energy",
-          color: "hsl(var(--muted-foreground))",
+          color: getColor("--color-muted-foreground"),
           font: {
-            size: compact ? 9 : 12,
+            size: 9,
+            family: "monospace",
           },
         },
         ticks: {
-          color: "hsl(var(--muted-foreground))",
+          color: getColor("--color-muted-foreground"),
           font: {
-            size: compact ? 8 : 10,
+            size: 8,
+            family: "monospace",
           },
-          maxTicksLimit: compact ? 4 : undefined,
+          maxTicksLimit: 4,
         },
         grid: {
-          color: "hsl(var(--border))",
+          color: getColor("--color-border"),
           drawOnChartArea: true,
         },
         beginAtZero: true,
+        min: 0,
         max: 150, // Max energy (predators have 150 max)
       },
     },
@@ -195,22 +209,9 @@ export function EnergyGraph({ compact = false }: EnergyGraphProps) {
     },
   };
 
-  if (compact) {
-    return (
-      <div className="h-full w-full bg-slate-100/40 rounded-md border border-border p-2 max-h-42">
-        <Line data={chartData} options={options} />
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4 bg-card rounded-lg border border-border mb-4">
-      <div style={{ height: "300px" }}>
-        <Line data={chartData} options={options} />
-      </div>
-      <div className="mt-3 text-xs text-muted-foreground text-center">
-        Energy trends help identify starvation patterns and resource imbalances
-      </div>
+    <div className="h-full w-full bg-background rounded-md border border-border p-2 max-h-42">
+      <Line data={chartData} options={options} />
     </div>
   );
 }

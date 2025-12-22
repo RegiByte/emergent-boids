@@ -11,7 +11,10 @@ import type { TimerManager } from "./timer";
 import type { BoidEngine } from "./engine";
 import { RuntimeStore } from "../boids/vocabulary/schemas/state.ts";
 import { AllEvents } from "../boids/vocabulary/schemas/events.ts";
-import { AllEffects, ControlEffect } from "../boids/vocabulary/schemas/effects.ts";
+import {
+  AllEffects,
+  ControlEffect,
+} from "../boids/vocabulary/schemas/effects.ts";
 
 // ============================================
 // Event Handlers (Pure Functions)
@@ -19,8 +22,8 @@ import { AllEffects, ControlEffect } from "../boids/vocabulary/schemas/effects.t
 
 type HandlerContext = {
   nextState: (
-    current: RuntimeStore,
-    mutation: (draft: RuntimeStore) => void
+    _current: RuntimeStore,
+    _mutation: (_draft: RuntimeStore) => void
   ) => RuntimeStore;
 };
 
@@ -175,6 +178,66 @@ const handlers = {
   [eventKeywords.boids.foodSourceCreated]: () => {
     // Food source creation is handled in lifecycleManager
     return [];
+  },
+
+  [eventKeywords.ui.sidebarToggled]: (state: RuntimeStore, event, ctx) => {
+    return [
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          draft.ui.sidebarOpen = event.open;
+        }),
+      },
+    ];
+  },
+
+  [eventKeywords.atmosphere.eventStarted]: (
+    state: RuntimeStore,
+    event,
+    ctx
+  ): ControlEffect[] => {
+    return [
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          const baseSettings = draft.ui.visualSettings.atmosphere.base;
+          const settings = {
+            trailAlpha: event.settings?.trailAlpha ?? baseSettings.trailAlpha,
+            fogColor: event.settings?.fogColor ?? baseSettings.fogColor,
+            fogIntensity:
+              event.settings?.fogIntensity ?? baseSettings.fogIntensity,
+            fogOpacity: event.settings?.fogOpacity ?? baseSettings.fogOpacity,
+          };
+          draft.ui.visualSettings.atmosphere.activeEvent = {
+            eventType: event.eventType,
+            settings,
+            startedAt: Date.now(),
+            minDurationTicks: event.minDurationTicks,
+          };
+        }),
+      },
+    ];
+  },
+
+  [eventKeywords.atmosphere.eventEnded]: (
+    state: RuntimeStore,
+    event,
+    ctx
+  ): ControlEffect[] => {
+    return [
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          // Only clear if the ended event matches the active one
+          if (
+            draft.ui.visualSettings.atmosphere.activeEvent?.eventType ===
+            event.eventType
+          ) {
+            draft.ui.visualSettings.atmosphere.activeEvent = null;
+          }
+        }),
+      },
+    ];
   },
 } satisfies EventHandlerMap<
   AllEvents,

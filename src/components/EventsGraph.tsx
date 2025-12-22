@@ -34,6 +34,14 @@ export function EventsGraph({ compact = false }: EventsGraphProps) {
   // Force re-render when analytics updates
   const [, setTick] = useState(0);
 
+  // Get computed CSS colors from the document
+  const getColor = (varName: string) => {
+    if (typeof window === "undefined") return "#666";
+    const style = getComputedStyle(document.documentElement);
+    const value = style.getPropertyValue(varName).trim();
+    return value || "#666";
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTick((prev) => prev + 1);
@@ -108,7 +116,7 @@ export function EventsGraph({ compact = false }: EventsGraphProps) {
         display: !compact,
         position: "top" as const,
         labels: {
-          color: "hsl(var(--primary))",
+          color: getColor("--color-foreground"),
           font: {
             size: compact ? 8 : 11,
           },
@@ -121,7 +129,7 @@ export function EventsGraph({ compact = false }: EventsGraphProps) {
         text: compact
           ? "Events"
           : "Birth & Death Rates (per 3-second interval)",
-        color: "hsl(var(--primary))",
+        color: getColor("--color-foreground"),
         font: {
           size: compact ? 11 : 16,
           weight: "bold",
@@ -134,10 +142,10 @@ export function EventsGraph({ compact = false }: EventsGraphProps) {
       tooltip: {
         mode: "index",
         intersect: false,
-        backgroundColor: "hsl(var(--popover))",
-        titleColor: "hsl(var(--primary))",
-        bodyColor: "hsl(var(--popover-foreground))",
-        borderColor: "hsl(var(--border))",
+        backgroundColor: getColor("--color-popover"),
+        titleColor: getColor("--color-foreground"),
+        bodyColor: getColor("--color-popover-foreground"),
+        borderColor: getColor("--color-border"),
         borderWidth: 1,
         padding: compact ? 8 : 12,
         displayColors: true,
@@ -160,20 +168,20 @@ export function EventsGraph({ compact = false }: EventsGraphProps) {
         title: {
           display: !compact,
           text: "Time (ticks)",
-          color: "hsl(var(--muted-foreground))",
+          color: getColor("--color-muted-foreground"),
           font: {
             size: compact ? 9 : 12,
           },
         },
         ticks: {
-          color: "hsl(var(--muted-foreground))",
+          color: getColor("--color-muted-foreground"),
           maxTicksLimit: compact ? 5 : 10,
           font: {
             size: compact ? 8 : 10,
           },
         },
         grid: {
-          color: "hsl(var(--border))",
+          color: getColor("--color-border"),
           drawOnChartArea: true,
         },
         stacked: false, // Don't stack X-axis (allows grouping)
@@ -183,20 +191,20 @@ export function EventsGraph({ compact = false }: EventsGraphProps) {
         title: {
           display: !compact,
           text: "Events Count",
-          color: "hsl(var(--muted-foreground))",
+          color: getColor("--color-muted-foreground"),
           font: {
             size: compact ? 9 : 12,
           },
         },
         ticks: {
-          color: "hsl(var(--muted-foreground))",
+          color: getColor("--color-muted-foreground"),
           font: {
             size: compact ? 8 : 10,
           },
           maxTicksLimit: compact ? 4 : undefined,
         },
         grid: {
-          color: "hsl(var(--border))",
+          color: getColor("--color-border"),
           drawOnChartArea: true,
         },
         stacked: false, // Don't stack Y-axis (allows grouping)
@@ -209,23 +217,9 @@ export function EventsGraph({ compact = false }: EventsGraphProps) {
     },
   };
 
-  if (compact) {
-    return (
-      <div className="h-full w-full bg-slate-100/40 rounded-md border border-border p-2 max-h-42">
-        <Bar data={chartData} options={options} />
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4 bg-card rounded-lg border border-border mb-4">
-      <div style={{ height: "300px" }}>
-        <Bar data={chartData} options={options} />
-      </div>
-      <div className="mt-3 text-xs text-muted-foreground text-center">
-        Births (bright) and Deaths (dim) grouped by species • Showing last{" "}
-        {snapshots.length} intervals • Toggle legend to show/hide
-      </div>
+    <div className="h-full w-full bg-background rounded-md border border-border p-2 max-h-42">
+      <Bar data={chartData} options={options} />
     </div>
   );
 }
