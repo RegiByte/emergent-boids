@@ -24,7 +24,11 @@ ChartJS.register(
   Legend
 );
 
-export function EnergyGraph() {
+type EnergyGraphProps = {
+  compact?: boolean;
+};
+
+export function EnergyGraph({ compact = false }: EnergyGraphProps) {
   const { useStore } = useResource("runtimeStore");
   const species = useStore((state) => state.config.species);
   const analytics = useStore((state) => state.analytics);
@@ -89,38 +93,39 @@ export function EnergyGraph() {
     maintainAspectRatio: false,
     plugins: {
       legend: {
+        display: !compact,
         position: "top" as const,
         labels: {
-          color: "#00ff88",
+          color: "hsl(var(--primary))",
           font: {
-            size: 12,
+            size: compact ? 9 : 12,
           },
           usePointStyle: true,
-          padding: 15,
+          padding: compact ? 8 : 15,
         },
       },
       title: {
         display: true,
-        text: "Average Energy Over Time",
-        color: "#00ff88",
+        text: compact ? "Energy" : "Average Energy Over Time",
+        color: "hsl(var(--primary))",
         font: {
-          size: 16,
+          size: compact ? 11 : 16,
           weight: "bold",
         },
         padding: {
-          top: 10,
-          bottom: 20,
+          top: compact ? 4 : 10,
+          bottom: compact ? 8 : 20,
         },
       },
       tooltip: {
         mode: "index",
         intersect: false,
-        backgroundColor: "rgba(0, 0, 0, 0.9)",
-        titleColor: "#00ff88",
-        bodyColor: "#fff",
-        borderColor: "#333",
+        backgroundColor: "hsl(var(--popover))",
+        titleColor: "hsl(var(--primary))",
+        bodyColor: "hsl(var(--popover-foreground))",
+        borderColor: "hsl(var(--border))",
         borderWidth: 1,
-        padding: 12,
+        padding: compact ? 8 : 12,
         displayColors: true,
         callbacks: {
           title: (context) => {
@@ -137,45 +142,46 @@ export function EnergyGraph() {
     },
     scales: {
       x: {
-        display: true,
+        display: !compact,
         title: {
-          display: true,
+          display: !compact,
           text: "Time (ticks)",
-          color: "#888",
+          color: "hsl(var(--muted-foreground))",
           font: {
-            size: 12,
+            size: compact ? 9 : 12,
           },
         },
         ticks: {
-          color: "#666",
-          maxTicksLimit: 10,
+          color: "hsl(var(--muted-foreground))",
+          maxTicksLimit: compact ? 5 : 10,
           font: {
-            size: 10,
+            size: compact ? 8 : 10,
           },
         },
         grid: {
-          color: "#222",
+          color: "hsl(var(--border))",
           drawOnChartArea: true,
         },
       },
       y: {
         display: true,
         title: {
-          display: true,
+          display: !compact,
           text: "Average Energy",
-          color: "#888",
+          color: "hsl(var(--muted-foreground))",
           font: {
-            size: 12,
+            size: compact ? 9 : 12,
           },
         },
         ticks: {
-          color: "#666",
+          color: "hsl(var(--muted-foreground))",
           font: {
-            size: 10,
+            size: compact ? 8 : 10,
           },
+          maxTicksLimit: compact ? 4 : undefined,
         },
         grid: {
-          color: "#222",
+          color: "hsl(var(--border))",
           drawOnChartArea: true,
         },
         beginAtZero: true,
@@ -189,30 +195,22 @@ export function EnergyGraph() {
     },
   };
 
+  if (compact) {
+    return (
+      <div className="h-full w-full bg-slate-100/40 rounded-md border border-border p-2 max-h-42">
+        <Line data={chartData} options={options} />
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={{
-        padding: "16px",
-        background: "#0a0a0a",
-        borderRadius: "8px",
-        border: "1px solid #333",
-        marginBottom: "16px",
-      }}
-    >
+    <div className="p-4 bg-card rounded-lg border border-border mb-4">
       <div style={{ height: "300px" }}>
         <Line data={chartData} options={options} />
       </div>
-      <div
-        style={{
-          marginTop: "12px",
-          fontSize: "11px",
-          color: "#666",
-          textAlign: "center",
-        }}
-      >
+      <div className="mt-3 text-xs text-muted-foreground text-center">
         Energy trends help identify starvation patterns and resource imbalances
       </div>
     </div>
   );
 }
-
