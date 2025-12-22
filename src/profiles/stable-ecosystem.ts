@@ -37,7 +37,7 @@ export const stableEcosystemProfile: SimulationProfile = {
         cohesionWeight: 1.8,
         maxSpeed: 4.4, // +10% speed (endurance specialist)
         maxForce: 0.1,
-        trailLength: 15, // Medium trail length
+        trailLength: 8, // Reduced for performance (was 15)
       },
 
       lifecycle: {
@@ -71,7 +71,7 @@ export const stableEcosystemProfile: SimulationProfile = {
         cohesionWeight: 2.5,
         maxSpeed: 4.0, // Baseline speed
         maxForce: 0.08,
-        trailLength: 12, // Shorter trail (slower movement)
+        trailLength: 6, // Reduced for performance (was 12)
       },
 
       lifecycle: {
@@ -105,7 +105,7 @@ export const stableEcosystemProfile: SimulationProfile = {
         cohesionWeight: 0.5,
         maxSpeed: 5.0, // +25% speed (fast solo hunters)
         maxForce: 0.15,
-        trailLength: 20, // Longer trail (fastest movement)
+        trailLength: 10, // Reduced for performance (was 20)
       },
 
       lifecycle: {
@@ -140,7 +140,7 @@ export const stableEcosystemProfile: SimulationProfile = {
         cohesionWeight: 2.0,
         maxSpeed: 3.9, // Slower, defensive
         maxForce: 0.12,
-        trailLength: 10, // Short trail (slowest movement)
+        trailLength: 5, // Reduced for performance (was 10)
       },
 
       lifecycle: {
@@ -175,7 +175,7 @@ export const stableEcosystemProfile: SimulationProfile = {
         cohesionWeight: 0.0, // Don't flock with prey
         maxSpeed: 3.2, // Faster than socials, slower than independents
         maxForce: 0.2, // High turning ability
-        trailLength: 25, // Longest trail (hunting paths are interesting)
+        trailLength: 12, // Reduced for performance (was 25)
       },
 
       lifecycle: {

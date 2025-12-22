@@ -4,6 +4,7 @@ import { CanvasResource } from "./canvas";
 import { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
 import type { StartedRuntimeStore } from "./runtimeStore";
+import type { Profiler } from "./profiler";
 
 export type Renderer = {
   start: () => void;
@@ -12,17 +13,25 @@ export type Renderer = {
 };
 
 export const renderer = defineResource({
-  dependencies: ["canvas", "engine", "runtimeStore", "runtimeController"],
+  dependencies: [
+    "canvas",
+    "engine",
+    "runtimeStore",
+    "runtimeController",
+    "profiler",
+  ],
   start: ({
     canvas,
     engine,
     runtimeStore,
     runtimeController,
+    profiler,
   }: {
     canvas: CanvasResource;
     engine: BoidEngine;
     runtimeStore: StartedRuntimeStore;
     runtimeController: RuntimeController;
+    profiler: Profiler;
   }) => {
     let animationId: number | null = null;
     let isRunning = false;
@@ -130,6 +139,23 @@ export const renderer = defineResource({
             console.log("Resumed");
           }
           break;
+        case "p":
+          // Toggle profiler
+          if (profiler.isEnabled()) {
+            profiler.printSummary();
+            profiler.disable();
+          } else {
+            profiler.reset();
+            profiler.enable();
+          }
+          break;
+        case "r":
+          // Reset profiler metrics
+          if (profiler.isEnabled()) {
+            profiler.reset();
+            console.log("Profiler metrics reset");
+          }
+          break;
         case "/":
         case "k":
           // Show help (/ or k)
@@ -144,6 +170,8 @@ export const renderer = defineResource({
 ║ D - Toggle death markers               ║
 ║ F - Toggle food sources                ║
 ║ Space - Pause/Resume simulation        ║
+║ P - Toggle performance profiler        ║
+║ R - Reset profiler metrics             ║
 ║ K or / - Show this help                ║
 ╚════════════════════════════════════════╝
           `);
@@ -186,10 +214,13 @@ export const renderer = defineResource({
       const { simulation, ui, config } = runtimeStore.store.getState();
 
       // Clear canvas
+      profiler.start("render.clear");
       ctx.fillStyle = "#0a0a0a";
       ctx.fillRect(0, 0, width, height);
+      profiler.end("render.clear");
 
       // Draw obstacles first (behind boids)
+      profiler.start("render.obstacles");
       for (const obstacle of simulation.obstacles) {
         ctx.fillStyle = "#ff4444";
         ctx.beginPath();
@@ -207,8 +238,10 @@ export const renderer = defineResource({
         ctx.lineWidth = 2;
         ctx.stroke();
       }
+      profiler.end("render.obstacles");
 
       // Draw death markers (after obstacles, before boids)
+      profiler.start("render.deathMarkers");
       if (
         ui.visualSettings.deathMarkersEnabled &&
         simulation.deathMarkers.length > 0
@@ -261,8 +294,10 @@ export const renderer = defineResource({
           ctx.restore();
         }
       }
+      profiler.end("render.deathMarkers");
 
       // Draw food sources
+      profiler.start("render.foodSources");
       if (
         ui.visualSettings.foodSourcesEnabled &&
         simulation.foodSources.length > 0
@@ -305,62 +340,120 @@ export const renderer = defineResource({
           ctx.restore();
         }
       }
+      profiler.end("render.foodSources");
 
       // Draw each boid
-      for (const boid of engine.boids) {
-        const angle = Math.atan2(boid.velocity.y, boid.velocity.x);
-        const speciesConfig = config.species[boid.typeId];
-        if (!speciesConfig) continue;
+      profiler.start("render.boids");
 
-        // Draw motion trail first (behind the boid)
-        if (
-          ui.visualSettings.trailsEnabled &&
-          speciesConfig &&
-          boid.positionHistory.length > 1
-        ) {
+      // OPTIMIZATION: Batch trail rendering
+      // Collect all trail segments first, then draw them in batches
+      // This reduces canvas state changes from ~10,000 to ~100
+      if (ui.visualSettings.trailsEnabled) {
+        profiler.start("render.trails.collect");
+
+        // Group segments by color and alpha (quantized to reduce batches)
+        type TrailSegment = {
+          x1: number;
+          y1: number;
+          x2: number;
+          y2: number;
+        };
+        type TrailBatch = {
+          segments: TrailSegment[];
+          lineWidth: number;
+        };
+
+        // Map key: "color|alpha|lineWidth"
+        const trailBatches = new Map<string, TrailBatch>();
+
+        for (const boid of engine.boids) {
+          const speciesConfig = config.species[boid.typeId];
+          if (!speciesConfig || boid.positionHistory.length <= 1) continue;
+
           // Calculate energy ratio for trail visibility
           const energyRatio = boid.energy / speciesConfig.lifecycle.maxEnergy;
-          // Higher energy = more visible trail (0.3 to 0.8 alpha range)
           const baseAlpha = 0.3 + energyRatio * 0.5;
 
-          ctx.strokeStyle = speciesConfig.color;
-          ctx.lineWidth = speciesConfig.role === "predator" ? 2 : 1.5;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
+          const color = speciesConfig.color;
+          const r = parseInt(color.slice(1, 3), 16);
+          const g = parseInt(color.slice(3, 5), 16);
+          const b = parseInt(color.slice(5, 7), 16);
+          const lineWidth = speciesConfig.role === "predator" ? 2 : 1.5;
 
-          // Draw trail as connected line segments with fading opacity
+          // Collect segments for this boid
           for (let i = 0; i < boid.positionHistory.length - 1; i++) {
             const pos1 = boid.positionHistory[i];
             const pos2 = boid.positionHistory[i + 1];
 
-            // Skip drawing if positions are too far apart (toroidal wrap detected)
-            // If distance > half canvas width/height, it's a wrap, not actual movement
+            // Skip if toroidal wrap detected
             const dx = Math.abs(pos2.x - pos1.x);
             const dy = Math.abs(pos2.y - pos1.y);
             const maxJump = Math.min(width, height) / 2;
 
             if (dx > maxJump || dy > maxJump) {
-              continue; // Skip this segment - it's a wrap
+              continue;
             }
 
-            // Fade older positions (earlier in array = older = more transparent)
+            // Calculate alpha for this segment
             const segmentRatio = i / boid.positionHistory.length;
             const alpha = baseAlpha * segmentRatio;
 
-            // Extract RGB from hex color and apply alpha
-            const color = speciesConfig.color;
-            const r = parseInt(color.slice(1, 3), 16);
-            const g = parseInt(color.slice(3, 5), 16);
-            const b = parseInt(color.slice(5, 7), 16);
+            // Quantize alpha to reduce number of batches (10 levels)
+            const quantizedAlpha = Math.round(alpha * 10) / 10;
 
-            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            // Create batch key
+            const batchKey = `${r},${g},${b}|${quantizedAlpha}|${lineWidth}`;
 
-            ctx.beginPath();
-            ctx.moveTo(pos1.x, pos1.y);
-            ctx.lineTo(pos2.x, pos2.y);
-            ctx.stroke();
+            // Get or create batch
+            let batch = trailBatches.get(batchKey);
+            if (!batch) {
+              batch = { segments: [], lineWidth };
+              trailBatches.set(batchKey, batch);
+            }
+
+            // Add segment to batch
+            batch.segments.push({
+              x1: pos1.x,
+              y1: pos1.y,
+              x2: pos2.x,
+              y2: pos2.y,
+            });
           }
         }
+
+        profiler.end("render.trails.collect");
+
+        // Draw all batches
+        profiler.start("render.trails.draw");
+
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        for (const [batchKey, batch] of trailBatches) {
+          const [colorPart, alphaPart, _lineWidthPart] = batchKey.split("|");
+          const [r, g, b] = colorPart.split(",").map(Number);
+          const alpha = parseFloat(alphaPart);
+
+          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          ctx.lineWidth = batch.lineWidth;
+
+          // Draw all segments in this batch with a single stroke call
+          ctx.beginPath();
+          for (const seg of batch.segments) {
+            ctx.moveTo(seg.x1, seg.y1);
+            ctx.lineTo(seg.x2, seg.y2);
+          }
+          ctx.stroke();
+        }
+
+        profiler.end("render.trails.draw");
+      }
+
+      // Draw boid bodies
+      for (const boid of engine.boids) {
+        const angle = Math.atan2(boid.velocity.y, boid.velocity.x);
+        const speciesConfig = config.species[boid.typeId];
+        if (!speciesConfig) continue;
 
         ctx.save();
         ctx.translate(boid.position.x, boid.position.y);
@@ -498,8 +591,10 @@ export const renderer = defineResource({
           ctx.strokeRect(barX, barY, barWidth, barHeight);
         }
       }
+      profiler.end("render.boids");
 
       // Draw mating hearts (one per pair, centered between mates)
+      profiler.start("render.matingHearts");
       if (ui.visualSettings.matingHeartsEnabled) {
         const drawnMatingPairs = new Set<string>();
 
@@ -563,8 +658,10 @@ export const renderer = defineResource({
           }
         }
       }
+      profiler.end("render.matingHearts");
 
       // Draw FPS counter and stats
+      profiler.start("render.stats");
       const predatorCount = engine.boids.filter((b) => {
         const speciesConfig = config.species[b.typeId];
         return speciesConfig && speciesConfig.role === "predator";
@@ -581,9 +678,12 @@ export const renderer = defineResource({
       ctx.fillText(`Predators: ${predatorCount}`, 25, 80);
       ctx.fillStyle = "#00ff88";
       ctx.fillText(`Obstacles: ${simulation.obstacles.length}`, 25, 100);
+      profiler.end("render.stats");
     };
 
     const animate = () => {
+      profiler.start("frame.total");
+
       // Calculate frame time
       const currentTime = performance.now();
       const deltaTime = (currentTime - lastFrameTime) / 1000; // Convert to seconds
@@ -601,12 +701,15 @@ export const renderer = defineResource({
       }
 
       // Update simulation at fixed rate (may run 0, 1, or multiple times per frame)
+      profiler.start("frame.update");
       while (accumulator >= FIXED_TIMESTEP) {
         engine.update(FIXED_TIMESTEP); // Always pass fixed 16.67ms timestep
         accumulator -= FIXED_TIMESTEP;
       }
+      profiler.end("frame.update");
 
       // Check for catches after all updates (once per render frame)
+      profiler.start("frame.catches");
       const catches = engine.checkCatches();
       for (const catchEvent of catches) {
         runtimeController.dispatch({
@@ -618,9 +721,25 @@ export const renderer = defineResource({
           preyPosition: catchEvent.preyPosition,
         });
       }
+      profiler.end("frame.catches");
 
       // Render at display rate (always once per frame)
+      profiler.start("frame.render");
       draw();
+      profiler.end("frame.render");
+
+      profiler.end("frame.total");
+
+      // Record frame metrics
+      const metrics = profiler.getMetrics();
+      const frameTime =
+        metrics.find((m) => m.name === "frame.total")?.lastTime || 0;
+      const updateTime =
+        metrics.find((m) => m.name === "frame.update")?.lastTime || 0;
+      const renderTime =
+        metrics.find((m) => m.name === "frame.render")?.lastTime || 0;
+      profiler.recordFrame(frameTime, fps, updateTime, renderTime);
+
       animationId = requestAnimationFrame(animate);
     };
 

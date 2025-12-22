@@ -10,6 +10,8 @@ import {
 import type { Boid } from "../boids/types";
 import * as vec from "../boids/vector";
 import type { StartedRuntimeStore } from "./runtimeStore";
+import type { Profiler } from "./profiler";
+import { SpeciesConfig } from "../vocabulary/schemas/prelude";
 
 export type CatchEvent = {
   predatorId: string;
@@ -30,13 +32,16 @@ export type BoidEngine = {
 };
 
 export const engine = defineResource({
-  dependencies: ["runtimeStore"],
-  start: ({ runtimeStore }: { runtimeStore: StartedRuntimeStore }) => {
+  dependencies: ["runtimeStore", "profiler"],
+  start: ({
+    runtimeStore,
+    profiler,
+  }: {
+    runtimeStore: StartedRuntimeStore;
+    profiler: Profiler;
+  }) => {
     const { config: initialConfig } = runtimeStore.store.getState();
     const { world: initialWorld, species: initialSpecies } = initialConfig;
-
-    // Convert species configs to flat BoidTypeConfig for backwards compatibility
-    // const flatTypes = convertSpeciesConfigs(initialState.config.species);
 
     // Get available type IDs (prey for initial spawn, predators from profile)
     const preyTypeIds = Object.keys(initialSpecies).filter(
@@ -75,7 +80,15 @@ export const engine = defineResource({
       initialConfig.parameters.perceptionRadius
     );
 
+    // Frame counter for trail sampling (update trails every other frame)
+    let frameCounter = 0;
+
     const update = (deltaSeconds: number) => {
+      profiler.start("engine.update");
+
+      // Increment frame counter for trail sampling
+      frameCounter++;
+
       // Get current runtime state from store
       const { config, simulation } = runtimeStore.store.getState();
 
@@ -95,17 +108,37 @@ export const engine = defineResource({
       };
 
       // Insert all boids into spatial hash for efficient neighbor queries
+      profiler.start("spatial.insert");
       insertBoids(spatialHash, boids);
+      profiler.end("spatial.insert");
 
       // Update each boid with only nearby boids (O(n) instead of O(n²))
-      for (const boid of boids) {
+      profiler.start("boids.update.loop");
+      for (let i = 0; i < boids.length; i++) {
+        const boid = boids[i];
+        profiler.start("spatial.query");
         const nearbyBoids = getNearbyBoids(spatialHash, boid.position);
-        updateBoid(boid, nearbyBoids, context);
+        profiler.end("spatial.query");
 
-        // Update position history for motion trails
+        profiler.start("boid.update.single");
+        updateBoid(boid, nearbyBoids, context);
+        profiler.end("boid.update.single");
+
+        // Update position history for motion trails (every other frame for performance)
+        profiler.start("boid.trail.update");
         const speciesConfig = config.species[boid.typeId];
-        if (speciesConfig) {
-          // Add current position to history
+        /**
+         * Performance optimization:
+         * Distribute the trail update workload evenly across all boids
+         * This ensures that even boids update on even frames and odd boids update on odd frames
+         * Instead of trying to update them all in one frame, we distribute the load evenly across time
+         */
+        const isBoidEven = i % 2 === 0;
+        const isFrameEven = frameCounter % 2 === 0;
+        const shouldUpdateTrail =
+          (isBoidEven && isFrameEven) || (!isBoidEven && !isFrameEven);
+        if (speciesConfig && shouldUpdateTrail) {
+          // Add current position to history (only on even frames)
           boid.positionHistory.push({ x: boid.position.x, y: boid.position.y });
 
           // Keep only the last N positions based on type config
@@ -115,7 +148,11 @@ export const engine = defineResource({
             boid.positionHistory.shift(); // Remove oldest position
           }
         }
+        profiler.end("boid.trail.update");
       }
+      profiler.end("boids.update.loop");
+
+      profiler.end("engine.update");
     };
 
     // Check for catches - returns list of catches without side effects

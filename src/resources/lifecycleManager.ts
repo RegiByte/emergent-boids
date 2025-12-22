@@ -3,6 +3,7 @@ import type { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
 import type { StartedRuntimeStore } from "./runtimeStore";
 import { eventKeywords } from "../vocabulary/keywords";
+import type { Profiler } from "./profiler";
 import { createBoidOfType } from "../boids/boid";
 import type { BoidUpdateContext } from "../boids/context";
 import { countPrey, countPredators } from "../boids/filters";
@@ -31,15 +32,17 @@ import { processDeathMarkers, fadeDeathMarkers } from "../boids/deathMarkers";
  * - Predator spawning (user-triggered)
  */
 export const lifecycleManager = defineResource({
-  dependencies: ["engine", "runtimeController", "runtimeStore"],
+  dependencies: ["engine", "runtimeController", "runtimeStore", "profiler"],
   start: ({
     engine,
     runtimeController,
     runtimeStore,
+    profiler,
   }: {
     engine: BoidEngine;
     runtimeController: RuntimeController;
     runtimeStore: StartedRuntimeStore;
+    profiler: Profiler;
   }) => {
     const store = runtimeStore.store;
     // Tick counter for periodic events
@@ -63,6 +66,8 @@ export const lifecycleManager = defineResource({
     });
 
     const handleLifecycleUpdate = (deltaMs: number) => {
+      profiler.start("lifecycle.total");
+
       tickCounter++;
       const deltaSeconds = deltaMs / 1000;
       const { config, simulation } = store.getState();
@@ -83,21 +88,33 @@ export const lifecycleManager = defineResource({
       };
 
       // Process all lifecycle updates (pure logic)
+      profiler.start("lifecycle.process");
       const changes = processLifecycleUpdates(engine.boids, context);
+      profiler.end("lifecycle.process");
 
       // Apply changes (side effects)
+      profiler.start("lifecycle.apply");
       applyLifecycleChanges(changes);
+      profiler.end("lifecycle.apply");
 
       // Fade death markers over time
+      profiler.start("lifecycle.fadeMarkers");
       applyDeathMarkersFade();
+      profiler.end("lifecycle.fadeMarkers");
 
       // Consume food sources
+      profiler.start("lifecycle.consumeFood");
       consumeFoodSources();
+      profiler.end("lifecycle.consumeFood");
 
       // Spawn prey food periodically
       if (tickCounter % FOOD_CONSTANTS.PREY_FOOD_SPAWN_INTERVAL_TICKS === 0) {
+        profiler.start("lifecycle.spawnFood");
         spawnPreyFoodSources();
+        profiler.end("lifecycle.spawnFood");
       }
+
+      profiler.end("lifecycle.total");
     };
 
     const applyDeathMarkersFade = () => {

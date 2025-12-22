@@ -1,11 +1,11 @@
 import { Boid, Vector2, Obstacle } from "./types";
 import * as vec from "./vector";
 import {
-	DeathMarker,
-	FoodSource,
-	SimulationParameters,
-	SpeciesConfig,
-	WorldConfig
+  DeathMarker,
+  FoodSource,
+  SimulationParameters,
+  SpeciesConfig,
+  WorldConfig,
 } from "../vocabulary/schemas/prelude.ts";
 
 /**
@@ -157,7 +157,7 @@ export function avoidObstacles(
   obstacles: Obstacle[],
   parameters: SimulationParameters,
   speciesConfig: SpeciesConfig,
-  world: WorldConfig
+  _world: WorldConfig
 ): Vector2 {
   const steering: Vector2 = { x: 0, y: 0 };
   let total = 0;
@@ -300,7 +300,7 @@ export function chase(
 export function seekMate(
   boid: Boid,
   potentialMates: Boid[],
-  parameters: SimulationParameters,
+  _parameters: SimulationParameters,
   speciesConfig: SpeciesConfig,
   world: WorldConfig
 ): Vector2 {
@@ -358,7 +358,7 @@ export function seekMate(
 export function avoidDeathMarkers(
   boid: Boid,
   deathMarkers: Array<DeathMarker>,
-  parameters: SimulationParameters,
+  _parameters: SimulationParameters,
   speciesConfig: SpeciesConfig,
   world: WorldConfig
 ): Vector2 {

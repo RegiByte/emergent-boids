@@ -7,6 +7,7 @@ import { engine } from "./resources/engine";
 import { lifecycleManager } from "./resources/lifecycleManager";
 import { analytics } from "./resources/analytics";
 import { renderer } from "./resources/renderer";
+import { profiler } from "./resources/profiler";
 
 export const systemConfig = {
   timer,
@@ -17,6 +18,7 @@ export const systemConfig = {
   lifecycleManager,
   analytics,
   renderer,
+  profiler,
 };
 
 export const manager = createSystemManager(systemConfig);
