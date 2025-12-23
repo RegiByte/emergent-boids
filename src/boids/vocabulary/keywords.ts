@@ -48,6 +48,11 @@ export const eventKeywords = {
     eventStarted: "atmosphere/eventStarted",
     eventEnded: "atmosphere/eventEnded",
   },
+
+  analytics: {
+    filterChanged: "analytics/filterChanged",
+    filterCleared: "analytics/filterCleared",
+  },
 } as const;
 
 // ============================================

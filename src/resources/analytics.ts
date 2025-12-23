@@ -2,7 +2,7 @@ import { defineResource } from "braided";
 import { eventKeywords } from "../boids/vocabulary/keywords";
 import type { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
-import type { StartedRuntimeStore } from "./runtimeStore";
+import type { RuntimeStoreResource } from "./runtimeStore";
 import {
   getStanceDistributionBySpecies,
   computeEnergyStatsBySpecies,
@@ -13,6 +13,7 @@ import {
   computeDeathMarkerStats,
 } from "@/boids/analytics/statistics";
 import { EvolutionSnapshot } from "@/boids/vocabulary/schemas/evolution.ts";
+import { produce } from "immer";
 
 /**
  * Analytics Resource
@@ -45,10 +46,11 @@ export const analytics = defineResource({
   }: {
     engine: BoidEngine;
     runtimeController: RuntimeController;
-    runtimeStore: StartedRuntimeStore;
+    runtimeStore: RuntimeStoreResource;
   }) => {
     let tickCounter = 0;
     let lastSnapshotTime = Date.now();
+    let eventIdCounter = 0;
     const SNAPSHOT_INTERVAL = 3; // Every 3 ticks (3 seconds at 1 tick/sec)
     const MAX_SNAPSHOTS = 1000; // Keep last 1000 snapshots (~50 minutes at 3s intervals)
 
@@ -70,6 +72,53 @@ export const analytics = defineResource({
 
     // Subscribe to all events
     const unsubscribe = runtimeController.subscribe((event) => {
+      // Get active filter configuration (custom overrides default)
+      const { eventsConfig } = runtimeStore.store.getState().analytics;
+      const maxEvents =
+        eventsConfig.customFilter?.maxEvents ??
+        eventsConfig.defaultFilter.maxEvents;
+      const allowedEventTypes =
+        eventsConfig.customFilter?.allowedEventTypes ??
+        eventsConfig.defaultFilter.allowedEventTypes;
+
+      // Check if event should be tracked based on filter
+      const shouldTrack =
+        !allowedEventTypes || allowedEventTypes.includes(event.type);
+
+      if (shouldTrack) {
+        // Track event in the store for the events panel
+        const eventEntry = {
+          id: `event-${Date.now()}-${eventIdCounter++}`,
+          timestamp: Date.now(),
+          tick: tickCounter, // Simulation time (independent of wall-clock)
+          event,
+        };
+        const lines = [
+          `Tracking event: ${event.type}`,
+          `Event ID: ${eventEntry.id}`,
+          `Timestamp: ${eventEntry.timestamp}`,
+          `Tick: ${eventEntry.tick}`,
+        ];
+        if (event.type === eventKeywords.atmosphere.eventStarted) {
+          lines.push(`Atmosphere Event Type: ${event.eventType}`);
+          lines.push(
+            `Atmosphere Event Settings: ${JSON.stringify(event.settings)}`
+          );
+          lines.push(
+            `Atmosphere Event Min Duration Ticks: ${event.minDurationTicks}`
+          );
+        }
+        console.log(lines.join("\n"));
+        runtimeStore.store.setState((current) =>
+          produce(current, (draft) => {
+            draft.analytics.recentEvents = [
+              eventEntry,
+              ...draft.analytics.recentEvents,
+            ].slice(0, maxEvents);
+          })
+        );
+      }
+
       // Track lifecycle events
       if (event.type === eventKeywords.boids.reproduced) {
         const typeId = event.typeId;
@@ -111,8 +160,12 @@ export const analytics = defineResource({
     });
 
     const captureSnapshot = () => {
-      const { config, simulation, ui, analytics: analyticsState } =
-        runtimeStore.store.getState();
+      const {
+        config,
+        simulation,
+        ui,
+        analytics: analyticsState,
+      } = runtimeStore.store.getState();
       const timestamp = Date.now();
       const deltaSeconds = (timestamp - lastSnapshotTime) / 1000;
       lastSnapshotTime = timestamp;
@@ -177,7 +230,19 @@ export const analytics = defineResource({
             };
             return acc;
           },
-          {} as Record<string, any>
+          {} as Record<
+            string,
+            {
+              role: "prey" | "predator";
+              maxSpeed: number;
+              maxForce: number;
+              maxEnergy: number;
+              energyLossRate: number;
+              fearFactor: number;
+              reproductionType: "sexual" | "asexual";
+              offspringCount: number;
+            }
+          >
         ),
       };
 
@@ -267,6 +332,7 @@ export const analytics = defineResource({
 
       runtimeStore.store.setState({
         analytics: {
+          ...analyticsState,
           evolutionHistory: newSnapshots,
           currentSnapshot: snapshot,
         },

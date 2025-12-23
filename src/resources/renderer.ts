@@ -3,7 +3,7 @@ import { eventKeywords } from "../boids/vocabulary/keywords";
 import { CanvasAPI } from "./canvas";
 import { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
-import type { StartedRuntimeStore } from "./runtimeStore";
+import type { RuntimeStoreResource } from "./runtimeStore";
 import type { Profiler } from "./profiler";
 
 export type Renderer = {
@@ -29,7 +29,7 @@ export const renderer = defineResource({
   }: {
     canvas: CanvasAPI;
     engine: BoidEngine;
-    runtimeStore: StartedRuntimeStore;
+    runtimeStore: RuntimeStoreResource;
     runtimeController: RuntimeController;
     profiler: Profiler;
   }) => {
@@ -533,19 +533,19 @@ export const renderer = defineResource({
             // Prey stance symbols
             switch (stance) {
               case "flocking":
-                stanceSymbol = "🪽";
+                stanceSymbol = "🐦";
                 stanceColor = "#00aaff";
                 break;
               case "seeking_mate":
-                stanceSymbol = "👀";
+                stanceSymbol = "💕";
                 stanceColor = "#ff69b4";
                 break;
               case "mating":
-                stanceSymbol = "❣️";
+                stanceSymbol = "❤️";
                 stanceColor = "#ff1493";
                 break;
               case "fleeing":
-                stanceSymbol = "❗";
+                stanceSymbol = "😱";
                 stanceColor = "#ffaa00";
                 break;
             }

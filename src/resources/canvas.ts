@@ -1,5 +1,5 @@
 import { defineResource } from "braided";
-import type { StartedRuntimeStore } from "./runtimeStore";
+import type { RuntimeStoreResource } from "./runtimeStore";
 
 export type CanvasAPI = {
   canvas: HTMLCanvasElement;
@@ -11,7 +11,7 @@ export type CanvasAPI = {
 
 export const canvas = defineResource({
   dependencies: ["runtimeStore"],
-  start: ({ runtimeStore }: { runtimeStore: StartedRuntimeStore }) => {
+  start: ({ runtimeStore }: { runtimeStore: RuntimeStoreResource }) => {
     const store = runtimeStore.store;
     const state = store.getState();
     const canvasWidth = state.config.world.canvasWidth;

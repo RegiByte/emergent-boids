@@ -273,6 +273,7 @@ export const worldConfigSchema = z.object({
  */
 export const simulationProfileSchema = z.object({
   id: z.string(), // Unique profile identifier
+  seed: z.string(), // Seed for reproducible randomness
   name: z.string(), // Display name
   description: z.string(), // Human-readable description
   world: worldConfigSchema, // Physical world setup

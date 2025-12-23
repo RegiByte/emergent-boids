@@ -4,7 +4,7 @@ import {
   type EventHandlerMap,
   type EffectExecutorMap,
 } from "emergent";
-import type { RuntimeStoreApi, StartedRuntimeStore } from "./runtimeStore";
+import type { RuntimeStoreApi, RuntimeStoreResource } from "./runtimeStore";
 import { eventKeywords, effectKeywords } from "../boids/vocabulary/keywords.ts";
 import { produce } from "immer";
 import type { TimerManager } from "./timer";
@@ -239,6 +239,41 @@ const handlers = {
       },
     ];
   },
+
+  [eventKeywords.analytics.filterChanged]: (
+    state: RuntimeStore,
+    event,
+    ctx
+  ): ControlEffect[] => {
+    return [
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          // Update custom filter with provided values
+          draft.analytics.eventsConfig.customFilter = {
+            maxEvents: event.maxEvents,
+            allowedEventTypes: event.allowedEventTypes,
+          };
+        }),
+      },
+    ];
+  },
+
+  [eventKeywords.analytics.filterCleared]: (
+    state: RuntimeStore,
+    _event,
+    ctx
+  ): ControlEffect[] => {
+    return [
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          // Clear custom filter (revert to default)
+          draft.analytics.eventsConfig.customFilter = null;
+        }),
+      },
+    ];
+  },
 } satisfies EventHandlerMap<
   AllEvents,
   AllEffects,
@@ -329,7 +364,7 @@ export const runtimeController = defineResource({
     timer,
     engine,
   }: {
-    runtimeStore: StartedRuntimeStore;
+    runtimeStore: RuntimeStoreResource;
     timer: TimerManager;
     engine: BoidEngine;
   }) => {

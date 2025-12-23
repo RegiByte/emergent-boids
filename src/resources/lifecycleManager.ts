@@ -1,7 +1,7 @@
 import { defineResource } from "braided";
 import type { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
-import type { StartedRuntimeStore } from "./runtimeStore";
+import type { RuntimeStoreResource } from "./runtimeStore";
 import { eventKeywords } from "../boids/vocabulary/keywords";
 import type { Profiler } from "./profiler";
 import { createBoidOfType } from "../boids/boid";
@@ -19,6 +19,7 @@ import {
   haveFoodSourcesChanged,
 } from "../boids/foodManager";
 import { processDeathMarkers, fadeDeathMarkers } from "../boids/deathMarkers";
+import { RandomnessResource } from "./randomness";
 
 /**
  * Lifecycle Manager
@@ -32,17 +33,25 @@ import { processDeathMarkers, fadeDeathMarkers } from "../boids/deathMarkers";
  * - Predator spawning (user-triggered)
  */
 export const lifecycleManager = defineResource({
-  dependencies: ["engine", "runtimeController", "runtimeStore", "profiler"],
+  dependencies: [
+    "engine",
+    "runtimeController",
+    "runtimeStore",
+    "profiler",
+    "randomness",
+  ],
   start: ({
     engine,
     runtimeController,
     runtimeStore,
     profiler,
+    randomness,
   }: {
     engine: BoidEngine;
     runtimeController: RuntimeController;
-    runtimeStore: StartedRuntimeStore;
+    runtimeStore: RuntimeStoreResource;
     profiler: Profiler;
+    randomness: RandomnessResource;
   }) => {
     const store = runtimeStore.store;
     // Tick counter for periodic events
@@ -229,6 +238,7 @@ export const lifecycleManager = defineResource({
                 canvasHeight: store.getState().config.world.canvasHeight,
               },
               species: speciesTypes,
+              rng: randomness.domain("reproduction"),
             };
             const newBoid = createBoidOfType(
               offspring.position,
@@ -264,8 +274,9 @@ export const lifecycleManager = defineResource({
       const maxBoids = store.getState().config.parameters.maxBoids;
       if (engine.boids.length > maxBoids) {
         const excessCount = engine.boids.length - maxBoids;
+        const lifecycleRng = randomness.domain("lifecycle");
         for (let i = 0; i < excessCount; i++) {
-          const randomIndex = Math.floor(Math.random() * engine.boids.length);
+          const randomIndex = lifecycleRng.intRange(0, engine.boids.length);
           const boid = engine.boids[randomIndex];
           engine.removeBoid(boid.id);
         }
@@ -297,6 +308,7 @@ export const lifecycleManager = defineResource({
           canvasHeight: store.getState().config.world.canvasHeight,
         },
         species: runtimeTypes,
+        rng: randomness.domain("spawning"),
       };
       const newPredator = createBoidOfType(
         { x, y },
@@ -325,7 +337,8 @@ export const lifecycleManager = defineResource({
       const foodSource = createPredatorFood(
         preyEnergy,
         preyPosition,
-        tickCounter
+        tickCounter,
+        randomness.domain("food")
       );
 
       // Apply side effects
@@ -349,7 +362,8 @@ export const lifecycleManager = defineResource({
       const { newFoodSources, shouldUpdate } = generatePreyFood(
         simulation.foodSources,
         config.world,
-        tickCounter
+        tickCounter,
+        randomness.domain("food")
       );
 
       if (!shouldUpdate) {

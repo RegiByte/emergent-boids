@@ -5,6 +5,7 @@ import type {
 } from "./vocabulary/schemas/prelude.ts";
 import type { Boid } from "./vocabulary/schemas/prelude.ts";
 import { FOOD_CONSTANTS } from "./food";
+import type { DomainRNG } from "@/lib/seededRandom";
 
 /**
  * Food Management System
@@ -38,15 +39,16 @@ export type FoodSpawnResult = {
 export function createPredatorFood(
   preyEnergy: number,
   preyPosition: { x: number; y: number },
-  currentTick: number
+  currentTick: number,
+  rng: DomainRNG
 ): FoodSource {
   const foodEnergy =
     preyEnergy * FOOD_CONSTANTS.PREDATOR_FOOD_FROM_PREY_MULTIPLIER;
-  const randomNumber = Math.random().toString(36).substring(2, 15);
+  const randomId = Math.floor(rng.next() * 1000000000);
   const now = Date.now();
 
   return {
-    id: `food-predator-${now}-${randomNumber}`,
+    id: `food-predator-${now}-${randomId}`,
     position: preyPosition,
     energy: foodEnergy,
     maxEnergy: foodEnergy,
@@ -75,7 +77,8 @@ export function canCreatePredatorFood(
 export function generatePreyFood(
   currentFoodSources: FoodSource[],
   world: WorldConfig,
-  currentTick: number
+  currentTick: number,
+  rng: DomainRNG
 ): FoodSpawnResult {
   // Count existing prey food sources
   const existingPreyFoodCount = currentFoodSources.filter(
@@ -96,11 +99,12 @@ export function generatePreyFood(
   const newFoodSources: FoodSource[] = [];
 
   for (let i = 0; i < maxToSpawn; i++) {
+    const randomId = Math.floor(rng.next() * 1000000000);
     newFoodSources.push({
-      id: `food-prey-${Date.now()}-${Math.random()}-${i}`,
+      id: `food-prey-${Date.now()}-${randomId}-${i}`,
       position: {
-        x: Math.random() * world.canvasWidth,
-        y: Math.random() * world.canvasHeight,
+        x: rng.range(0, world.canvasWidth),
+        y: rng.range(0, world.canvasHeight),
       },
       energy: FOOD_CONSTANTS.PREY_FOOD_INITIAL_ENERGY,
       maxEnergy: FOOD_CONSTANTS.PREY_FOOD_INITIAL_ENERGY,

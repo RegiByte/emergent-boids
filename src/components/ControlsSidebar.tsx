@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Accordion,
@@ -35,8 +36,20 @@ import {
   IconAdjustments,
   IconClick,
   IconDatabase,
+  IconRefresh,
+  IconCopy,
+  IconActivity,
+  IconChartBar,
+  IconChartLine,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { generateRandomSeed } from "@/lib/seededRandom";
+import { EventsPanel } from "./EventsPanel";
+import { PopulationStats } from "./PopulationStats";
+import { PopulationGraph } from "./PopulationGraph";
+import { EnergyGraph } from "./EnergyGraph";
+import { BirthRatesGraph } from "./BirthRatesGraph";
+import { DeathRatesGraph } from "./DeathRatesGraph";
 
 export type SpawnMode = "obstacle" | "predator";
 
@@ -55,13 +68,15 @@ export function ControlsSidebar({
   const analytics = useStore((state) => state.analytics);
   const runtimeController = useResource("runtimeController");
   const engine = useResource("engine");
+  const randomness = useResource("randomness");
   const speciesIds = Object.keys(config.species);
-  const [activeTab, setActiveTab] = useState<"controls" | "species">(
-    "controls"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "controls" | "species" | "events" | "stats" | "graphs"
+  >("controls");
   const [activeSpecies, setActiveSpecies] = useState(
     speciesIds[0] || "explorer"
   );
+  const [seedInput, setSeedInput] = useState(config.randomSeed || "");
 
   const species = config.species[activeSpecies];
 
@@ -95,6 +110,36 @@ export function ControlsSidebar({
                 <span>Species</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveTab("events")}
+                isActive={activeTab === "events"}
+                tooltip="Events"
+              >
+                <IconActivity className="size-4" />
+                <span>Events</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveTab("stats")}
+                isActive={activeTab === "stats"}
+                tooltip="Stats"
+              >
+                <IconChartBar className="size-4" />
+                <span>Stats</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setActiveTab("graphs")}
+                isActive={activeTab === "graphs"}
+                tooltip="Graphs"
+              >
+                <IconChartLine className="size-4" />
+                <span>Graphs</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
 
@@ -104,7 +149,7 @@ export function ControlsSidebar({
         {activeTab === "controls" && (
           <>
             {/* Global Settings */}
-            <SidebarGroup>
+            <SidebarGroup className="px-0">
               <SidebarGroupLabel>
                 <IconAdjustments className="size-4 mr-2" />
                 Global Settings
@@ -159,7 +204,7 @@ export function ControlsSidebar({
             <Separator />
 
             {/* Canvas Mode */}
-            <SidebarGroup>
+            <SidebarGroup className="px-0">
               <SidebarGroupLabel>
                 <IconClick className="size-4 mr-2" />
                 Canvas Click Mode
@@ -232,7 +277,7 @@ export function ControlsSidebar({
             <Separator />
 
             {/* Data Export */}
-            <SidebarGroup>
+            <SidebarGroup className="px-0">
               <SidebarGroupLabel>
                 <IconDatabase className="size-4 mr-2" />
                 Data Export
@@ -269,6 +314,90 @@ export function ControlsSidebar({
                 </p>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            <Separator />
+
+            {/* Random Seed */}
+            <SidebarGroup className="px-0">
+              <SidebarGroupLabel>🎲 Random Seed</SidebarGroupLabel>
+              <SidebarGroupContent className="px-4 space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">Current Seed</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={seedInput}
+                      onChange={(e) => setSeedInput(e.target.value)}
+                      placeholder="Enter seed..."
+                      className="flex-1 text-xs font-mono"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && seedInput.trim()) {
+                          randomness.setSeed(seedInput.trim());
+                          toast.success(`Seed set to: ${seedInput.trim()}`);
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        if (config.randomSeed) {
+                          navigator.clipboard.writeText(config.randomSeed);
+                          toast.success("Seed copied to clipboard!");
+                        }
+                      }}
+                      title="Copy seed"
+                    >
+                      <IconCopy className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      if (seedInput.trim()) {
+                        randomness.setSeed(seedInput.trim());
+                        toast.success(`Seed applied: ${seedInput.trim()}`);
+                      } else {
+                        toast.error("Please enter a seed");
+                      }
+                    }}
+                  >
+                    Apply Seed
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      const newSeed = generateRandomSeed();
+                      setSeedInput(newSeed);
+                      randomness.setSeed(newSeed);
+                      toast.success("Random seed generated!");
+                    }}
+                  >
+                    <IconRefresh className="size-4 mr-1" />
+                    Random
+                  </Button>
+                </div>
+
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>
+                    <strong>Active:</strong>{" "}
+                    <code className="text-primary">
+                      {config.randomSeed || "default-seed"}
+                    </code>
+                  </p>
+                  <p className="text-[10px] leading-tight">
+                    Same seed = reproducible simulation. Share seeds with others
+                    for identical results!
+                  </p>
+                </div>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </>
         )}
 
@@ -276,7 +405,7 @@ export function ControlsSidebar({
         {activeTab === "species" && (
           <>
             {/* Species Selector */}
-            <SidebarGroup>
+            <SidebarGroup className="px-0">
               <SidebarGroupLabel>Select Species</SidebarGroupLabel>
               <SidebarGroupContent className="px-4">
                 <div className="flex flex-wrap gap-2">
@@ -309,7 +438,7 @@ export function ControlsSidebar({
 
             {/* Species Settings */}
             {species && (
-              <SidebarGroup>
+              <SidebarGroup className="px-0">
                 <SidebarGroupLabel style={{ color: species.color }}>
                   {species.name} Settings
                 </SidebarGroupLabel>
@@ -454,6 +583,36 @@ export function ControlsSidebar({
               </SidebarGroup>
             )}
           </>
+        )}
+
+        {/* Events Tab */}
+        {activeTab === "events" && (
+          <SidebarGroup className="px-0">
+            <SidebarGroupContent className="px-0">
+              <EventsPanel />
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Stats Tab */}
+        {activeTab === "stats" && (
+          <SidebarGroup className="px-0">
+            <SidebarGroupContent className="px-0">
+              <PopulationStats />
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Graphs Tab */}
+        {activeTab === "graphs" && (
+          <SidebarGroup className="px-0">
+            <SidebarGroupContent className="px-4 space-y-4">
+              <PopulationGraph />
+              <EnergyGraph />
+              <BirthRatesGraph />
+              <DeathRatesGraph />
+            </SidebarGroupContent>
+          </SidebarGroup>
         )}
       </SidebarContent>
     </Sidebar>

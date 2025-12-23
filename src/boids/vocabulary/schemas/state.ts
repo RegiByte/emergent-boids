@@ -8,6 +8,7 @@ import {
   worldConfigSchema,
 } from "./prelude.ts";
 import { evolutionSnapshotSchema } from "@/boids/vocabulary/schemas/evolution.ts";
+import { allEventSchema } from "./events.ts";
 
 /**
  * State Schemas - Runtime state management
@@ -96,6 +97,7 @@ export const visualSettingsSchema = z.object({
 export const runtimeStoreSchema = z.object({
   config: z.object({
     profileId: z.string(), // Currently loaded profile ID
+    randomSeed: z.string().optional(), // Master seed for reproducible randomness
     world: worldConfigSchema, // World dimensions and initial populations
     species: speciesRecordSchema, // All species in this simulation
     parameters: simulationParametersSchema, // Global rules
@@ -112,6 +114,28 @@ export const runtimeStoreSchema = z.object({
   analytics: z.object({
     evolutionHistory: z.array(evolutionSnapshotSchema), // Historical data for graphs
     currentSnapshot: evolutionSnapshotSchema.nullable(), // Latest snapshot (nullable during init)
+    recentEvents: z.array(
+      z.object({
+        id: z.string(), // Unique event ID
+        timestamp: z.number(), // Real-world timestamp (for display)
+        tick: z.number(), // Simulation tick (for aggregation)
+        event: allEventSchema, // The event data
+      })
+    ), // Last N events for the events panel
+    eventsConfig: z.object({
+      // Default filter (always active as baseline)
+      defaultFilter: z.object({
+        maxEvents: z.number().int().min(10).max(500), // Max events to track
+        allowedEventTypes: z.array(z.string()).nullable(), // null = all events
+      }),
+      // Custom filter (user override, null = use default)
+      customFilter: z
+        .object({
+          maxEvents: z.number().int().min(10).max(500).optional(),
+          allowedEventTypes: z.array(z.string()).nullable().optional(),
+        })
+        .nullable(),
+    }),
   }),
 });
 

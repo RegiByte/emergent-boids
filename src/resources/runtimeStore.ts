@@ -5,6 +5,7 @@ import { createStore } from "zustand/vanilla";
 import { defaultProfileId, getProfile } from "../profiles";
 
 import { RuntimeStore } from "../boids/vocabulary/schemas/state.ts";
+import { eventKeywords } from "@/boids/vocabulary/keywords.ts";
 
 export type RuntimeStoreApi = StoreApi<RuntimeStore>;
 
@@ -25,6 +26,7 @@ export const runtimeStore = defineResource({
     const store = createStore<RuntimeStore>()(() => ({
       config: {
         profileId: profile.id,
+        randomSeed: profile.seed,
         world: {
           canvasWidth,
           canvasHeight,
@@ -49,7 +51,7 @@ export const runtimeStore = defineResource({
           foodSourcesEnabled: true,
           atmosphere: {
             base: {
-              trailAlpha: 0.9,
+              trailAlpha: 0.6,
               fogColor: "rgba(0, 200, 100, 0.5)",
               fogIntensity: 0.3,
               fogOpacity: 0.6,
@@ -62,6 +64,23 @@ export const runtimeStore = defineResource({
       analytics: {
         evolutionHistory: [],
         currentSnapshot: null,
+        recentEvents: [],
+        eventsConfig: {
+          // Default: Track key lifecycle events only (no time:passed)
+          defaultFilter: {
+            maxEvents: 100,
+            allowedEventTypes: [
+              eventKeywords.boids.reproduced,
+              eventKeywords.boids.died,
+              eventKeywords.boids.caught,
+              eventKeywords.boids.spawnPredator,
+              eventKeywords.atmosphere.eventStarted,
+              eventKeywords.atmosphere.eventEnded,
+            ],
+          },
+          // No custom filter initially
+          customFilter: null,
+        },
       },
     }));
 
@@ -91,10 +110,12 @@ export const runtimeStore = defineResource({
         },
         // Keep UI preferences
         ui: store.getState().ui,
-        // Reset analytics
+        // Reset analytics (keep filter config)
         analytics: {
           evolutionHistory: [],
           currentSnapshot: null,
+          recentEvents: [],
+          eventsConfig: store.getState().analytics.eventsConfig, // Preserve filter settings
         },
       });
     }
@@ -106,4 +127,4 @@ export const runtimeStore = defineResource({
   },
 });
 
-export type StartedRuntimeStore = StartedResource<typeof runtimeStore>;
+export type RuntimeStoreResource = StartedResource<typeof runtimeStore>;

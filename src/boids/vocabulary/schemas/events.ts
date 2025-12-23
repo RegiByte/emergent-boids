@@ -173,6 +173,29 @@ export const atmosphereEventSchema = z.discriminatedUnion("type", [
 ]);
 
 // ============================================
+// Analytics Events - Event tracking configuration
+// ============================================
+
+export const analyticsEventSchemas = {
+  // User changes event filter settings
+  filterChanged: z.object({
+    type: z.literal(eventKeywords.analytics.filterChanged),
+    maxEvents: z.number().int().min(10).max(500).optional(), // Max events to track
+    allowedEventTypes: z.array(z.string()).optional(), // Whitelist of event types (null = all)
+  }),
+
+  // User clears custom filter (revert to default)
+  filterCleared: z.object({
+    type: z.literal(eventKeywords.analytics.filterCleared),
+  }),
+};
+
+export const analyticsEventSchema = z.discriminatedUnion("type", [
+  analyticsEventSchemas.filterChanged,
+  analyticsEventSchemas.filterCleared,
+]);
+
+// ============================================
 // Event Union Types
 // ============================================
 
@@ -212,6 +235,7 @@ export const allEventSchema = z.union([
   boidEventSchema,
   uiEventSchema,
   atmosphereEventSchema,
+  analyticsEventSchema,
 ]);
 
 // ============================================
@@ -223,4 +247,5 @@ export type ObstacleEvent = z.infer<typeof obstacleEventSchema>;
 export type TimeEvent = z.infer<typeof timeEventSchema>;
 export type BoidEvent = z.infer<typeof boidEventSchema>;
 export type AtmosphereEvent = z.infer<typeof atmosphereEventSchema>;
+export type AnalyticsEvent = z.infer<typeof analyticsEventSchema>;
 export type AllEvents = z.infer<typeof allEventSchema>;

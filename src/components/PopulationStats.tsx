@@ -119,25 +119,25 @@ export function PopulationStats() {
       <StatSection title="Prey Stances">
         <StanceRow
           label="🐦 Flocking"
-          value={preyStances.flocking}
+          value={preyStances.flocking || 0}
           total={prey.length}
           color="#00aaff"
         />
         <StanceRow
           label="💕 Seeking Mate"
-          value={preyStances.seeking_mate}
+          value={preyStances.seeking_mate || 0}
           total={prey.length}
           color="#ff69b4"
         />
         <StanceRow
           label="❤️ Mating"
-          value={preyStances.mating}
+          value={preyStances.mating || 0}
           total={prey.length}
           color="#ff1493"
         />
         <StanceRow
           label="😱 Fleeing"
-          value={preyStances.fleeing}
+          value={preyStances.fleeing || 0}
           total={prey.length}
           color="#ffaa00"
         />
@@ -247,31 +247,31 @@ export function PopulationStats() {
       <StatSection title="Predator Stances">
         <StanceRow
           label="🎯 Hunting"
-          value={predatorStances.hunting}
+          value={predatorStances.hunting || 0}
           total={predators.length}
           color="#ff0000"
         />
         <StanceRow
           label="💕 Seeking Mate"
-          value={predatorStances.seeking_mate}
+          value={predatorStances.seeking_mate || 0}
           total={predators.length}
           color="#ff69b4"
         />
         <StanceRow
           label="❤️ Mating"
-          value={predatorStances.mating}
+          value={predatorStances.mating || 0}
           total={predators.length}
           color="#ff1493"
         />
         <StanceRow
           label="💤 Idle"
-          value={predatorStances.idle}
+          value={predatorStances.idle || 0}
           total={predators.length}
           color="#666"
         />
         <StanceRow
           label="🍖 Eating"
-          value={predatorStances.eating}
+          value={predatorStances.eating || 0}
           total={predators.length}
           color="#ff8800"
         />

@@ -1,4 +1,5 @@
 import { defineResource } from "braided";
+import { getMaxCrowdTolerance } from "../boids/affinity";
 import { createBoid, updateBoid } from "../boids/boid";
 import type { BoidUpdateContext } from "../boids/context";
 import { getPredators, getPrey } from "../boids/filters";
@@ -8,10 +9,10 @@ import {
   insertBoids,
 } from "../boids/spatialHash";
 import * as vec from "../boids/vector";
-import type { StartedRuntimeStore } from "./runtimeStore";
-import type { Profiler } from "./profiler";
-import { getMaxCrowdTolerance } from "../boids/affinity";
 import { Boid } from "../boids/vocabulary/schemas/prelude";
+import type { Profiler } from "./profiler";
+import { RandomnessResource } from "./randomness";
+import type { RuntimeStoreResource } from "./runtimeStore";
 
 export type CatchEvent = {
   predatorId: string;
@@ -32,13 +33,15 @@ export type BoidEngine = {
 };
 
 export const engine = defineResource({
-  dependencies: ["runtimeStore", "profiler"],
+  dependencies: ["runtimeStore", "profiler", "randomness"],
   start: ({
     runtimeStore,
     profiler,
+    randomness,
   }: {
-    runtimeStore: StartedRuntimeStore;
+    runtimeStore: RuntimeStoreResource;
     profiler: Profiler;
+    randomness: RandomnessResource;
   }) => {
     const { config: initialConfig } = runtimeStore.store.getState();
     const { world: initialWorld, species: initialSpecies } = initialConfig;
@@ -61,6 +64,7 @@ export const engine = defineResource({
         canvasHeight: initialWorld.canvasHeight,
       },
       species: initialSpecies,
+      rng: randomness.domain("spawning"),
     };
 
     // Spawn initial prey
@@ -243,6 +247,7 @@ export const engine = defineResource({
           canvasHeight: world.canvasHeight,
         },
         species,
+        rng: randomness.domain("spawning"),
       };
 
       // Respawn prey

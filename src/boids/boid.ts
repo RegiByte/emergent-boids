@@ -17,6 +17,7 @@ import * as rules from "./rules";
 import { Boid } from "./vocabulary/schemas/prelude.ts";
 import { PredatorStance } from "./vocabulary/schemas/prelude.ts";
 import * as vec from "./vector";
+import type { DomainRNG } from "@/lib/seededRandom";
 
 let boidIdCounter = 0;
 
@@ -26,6 +27,7 @@ let boidIdCounter = 0;
 export type BoidCreationContext = {
   world: { canvasWidth: number; canvasHeight: number };
   species: Record<string, SpeciesConfig>;
+  rng: DomainRNG; // Seeded RNG for reproducibility
 };
 
 /**
@@ -36,10 +38,10 @@ export function createBoid(
   context: BoidCreationContext,
   age: number | null = null
 ): Boid {
-  const { world, species } = context;
+  const { world, species, rng } = context;
 
   // Pick a random type
-  const typeId = typeIds[Math.floor(Math.random() * typeIds.length)];
+  const typeId = rng.pick(typeIds);
   const speciesConfig = species[typeId];
 
   const role = speciesConfig?.role || "prey";
@@ -47,18 +49,18 @@ export function createBoid(
   // Randomize initial age to prevent synchronized deaths
   // Start between 0 and 30% of max age to create age diversity
   const maxAge = speciesConfig?.lifecycle?.maxAge || 90;
-  const randomAge = Math.random() * (maxAge * 0.3);
+  const randomAge = rng.range(0, maxAge * 0.3);
   const effectiveAge = age !== null ? age : randomAge;
 
   return {
     id: `boid-${boidIdCounter++}`,
     position: {
-      x: Math.random() * world.canvasWidth,
-      y: Math.random() * world.canvasHeight,
+      x: rng.range(0, world.canvasWidth),
+      y: rng.range(0, world.canvasHeight),
     },
     velocity: {
-      x: (Math.random() - 0.5) * 4, // Default initial speed
-      y: (Math.random() - 0.5) * 4,
+      x: rng.range(-2, 2), // Default initial speed
+      y: rng.range(-2, 2),
     },
     acceleration: { x: 0, y: 0 },
     typeId,
@@ -86,7 +88,7 @@ export function createBoidOfType(
   context: BoidCreationContext,
   energyBonus: number = 0 // Optional energy bonus for offspring (0-1)
 ): Boid {
-  const { world, species } = context;
+  const { world, species, rng } = context;
   const speciesConfig = species[typeId];
 
   // Spawn near parent with slight offset
@@ -104,15 +106,15 @@ export function createBoidOfType(
     id: `boid-${boidIdCounter++}`,
     position: {
       x:
-        (position.x + (Math.random() - 0.5) * offset + world.canvasWidth) %
+        (position.x + rng.range(-offset / 2, offset / 2) + world.canvasWidth) %
         world.canvasWidth,
       y:
-        (position.y + (Math.random() - 0.5) * offset + world.canvasHeight) %
+        (position.y + rng.range(-offset / 2, offset / 2) + world.canvasHeight) %
         world.canvasHeight,
     },
     velocity: {
-      x: (Math.random() - 0.5) * 4,
-      y: (Math.random() - 0.5) * 4,
+      x: rng.range(-2, 2),
+      y: rng.range(-2, 2),
     },
     acceleration: { x: 0, y: 0 },
     typeId,

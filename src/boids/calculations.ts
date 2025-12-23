@@ -78,16 +78,19 @@ export function calculateOffspringPosition(
 
 /**
  * Calculate spawn position near parent with random offset
+ * Note: This function is deprecated - use createBoidOfType with RNG instead
  */
 export function calculateNearbySpawnPosition(
   parentPosition: Vector2,
   offset: number,
   width: number,
-  height: number
+  height: number,
+  rng: { range: (min: number, max: number) => number }
 ): Vector2 {
   return {
-    x: (parentPosition.x + (Math.random() - 0.5) * offset + width) % width,
-    y: (parentPosition.y + (Math.random() - 0.5) * offset + height) % height,
+    x: (parentPosition.x + rng.range(-offset / 2, offset / 2) + width) % width,
+    y:
+      (parentPosition.y + rng.range(-offset / 2, offset / 2) + height) % height,
   };
 }
 

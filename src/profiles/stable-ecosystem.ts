@@ -14,6 +14,7 @@ import { SimulationProfile } from "../boids/vocabulary/schemas/prelude.ts";
  */
 export const stableEcosystemProfile: SimulationProfile = {
   id: "stable-ecosystem",
+  seed: "stable-ecosystem-42",
   name: "Stable Ecosystem",
   description: "Balanced multi-species coexistence with predator-prey dynamics",
 
