@@ -202,7 +202,7 @@ export function BirthRatesGraph({ compact = false }: BirthRatesGraphProps) {
           drawOnChartArea: true,
         },
         beginAtZero: true,
-        min: 0,
+        min: 25,
       },
     },
     interaction: {
