@@ -4,7 +4,7 @@ Example usage of the Evolution Analyzer
 Shows how to use individual functions for custom analysis
 """
 
-from src.evolution_analyzer import (
+from src.analyzer.evolution_analyzer import (
     load_evolution_data,
     detect_species_from_csv,
     get_species_colors,

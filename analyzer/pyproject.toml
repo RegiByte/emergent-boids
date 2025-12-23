@@ -28,4 +28,8 @@ build-backend = "hatchling.build"
 
 # Configure package discovery
 [tool.hatch.build.targets.wheel]
-packages = ["src/analyzer"]
+packages = ["src"]
+
+# Tell Python where to find the packages
+[tool.setuptools.packages.find]
+where = ["src"]
