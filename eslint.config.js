@@ -23,6 +23,7 @@ export default defineConfig([
   {
     rules: {
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "react-refresh/only-export-components": "off",
     },
   },
 ]);

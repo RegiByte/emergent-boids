@@ -6,46 +6,6 @@ import { defaultProfileId, getProfile } from "../profiles";
 
 import { RuntimeStore } from "../boids/vocabulary/schemas/state.ts";
 
-/**
- * Evolution Snapshot - captures ecosystem state at a point in time
- * Used for time-series analysis and CSV export
- */
-// export type EvolutionSnapshot = {
-//   tick: number;
-//   timestamp: number;
-//   populations: Record<string, number>; // Population count per type
-//   births: Record<string, number>; // Births since last snapshot per type
-//   deaths: Record<string, number>; // Deaths since last snapshot per type
-//   catches: Record<string, number>; // Prey caught since last snapshot per type
-//   avgEnergy: Record<string, number>; // Average energy per type
-//   foodSources: {
-//     prey: number;
-//     predator: number;
-//   };
-// };
-
-/**
- * Analytics State - time-series data and metrics
- * Managed by analytics resource, read by components
- */
-// export type AnalyticsState = {
-//   evolutionHistory: EvolutionSnapshot[];
-//   currentSnapshot: EvolutionSnapshot | null;
-// };
-
-/**
- * Visual Settings - UI preferences for rendering
- * Toggleable via keyboard shortcuts
- */
-// export type VisualSettings = {
-//   trailsEnabled: boolean;
-//   energyBarsEnabled: boolean;
-//   matingHeartsEnabled: boolean;
-//   stanceSymbolsEnabled: boolean;
-//   deathMarkersEnabled: boolean;
-//   foodSourcesEnabled: boolean;
-// };
-
 export type RuntimeStoreApi = StoreApi<RuntimeStore>;
 
 export const runtimeStore = defineResource({

@@ -1,0 +1,91 @@
+{
+  "timestamp": 1766452451671,
+  "date": "2025-12-23T01:14:11.671Z",
+  "populations": {
+    "total": 582,
+    "byRole": {
+      "prey": 559,
+      "predator": 23
+    },
+    "byType": {
+      "cautious": 147,
+      "social": 167,
+      "independent": 97,
+      "explorer": 148,
+      "predator": 23
+    },
+    "preyToPredatorRatio": "24.30"
+  },
+  "energy": {
+    "cautious": {
+      "avg": 34.4959839857799,
+      "min": 30,
+      "max": 48
+    },
+    "social": {
+      "avg": 30.634856161802276,
+      "min": 30,
+      "max": 40.666666666666664
+    },
+    "independent": {
+      "avg": 36.69865186360031,
+      "min": 36,
+      "max": 46
+    },
+    "explorer": {
+      "avg": 44.357351357351355,
+      "min": 42,
+      "max": 62
+    },
+    "predator": {
+      "avg": 87.21414629385643,
+      "min": 72,
+      "max": 115.8
+    }
+  },
+  "stances": {
+    "cautious": {
+      "fleeing": 116,
+      "mating": 19,
+      "flocking": 12
+    },
+    "social": {
+      "fleeing": 74,
+      "mating": 34,
+      "seeking_mate": 4,
+      "flocking": 53,
+      "eating": 2
+    },
+    "independent": {
+      "fleeing": 48,
+      "flocking": 42,
+      "eating": 7
+    },
+    "explorer": {
+      "mating": 41,
+      "fleeing": 79,
+      "flocking": 21,
+      "eating": 3,
+      "seeking_mate": 4
+    },
+    "predator": {
+      "eating": 13,
+      "mating": 6,
+      "hunting": 4
+    }
+  },
+  "foodSources": {
+    "prey": 12,
+    "predator": 20,
+    "total": 32
+  },
+  "config": {
+    "maxBoids": 600,
+    "maxPreyBoids": 550,
+    "maxPredatorBoids": 50,
+    "canvasSize": {
+      "width": 1102,
+      "height": 746
+    }
+  }
+}

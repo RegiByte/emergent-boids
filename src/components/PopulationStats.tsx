@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useResource } from "../system";
 import { eventKeywords } from "../boids/vocabulary/keywords";
+import { getStanceDistribution } from "@/boids/analytics/statistics";
+import { getPredators, getPrey } from "@/boids/filters";
+import { boidsBySpecies, boidsToAge, boidsToEnergy } from "@/boids/mappings";
+import { calcAvg } from "@/lib/math";
 
 export function PopulationStats() {
   const engine = useResource("engine");
@@ -27,33 +31,17 @@ export function PopulationStats() {
   const allBoids = engine.boids;
 
   // Separate by role
-  const prey = allBoids.filter((b) => {
-    const typeConfig = species[b.typeId];
-    return typeConfig && typeConfig.role === "prey";
-  });
+  const prey = getPrey(allBoids, species);
 
-  const predators = allBoids.filter((b) => {
-    const typeConfig = species[b.typeId];
-    return typeConfig && typeConfig.role === "predator";
-  });
+  const predators = getPredators(allBoids, species);
 
   // Group prey by type
-  const preyBySpecies: Record<string, typeof prey> = {};
-  prey.forEach((boid) => {
-    if (!preyBySpecies[boid.typeId]) {
-      preyBySpecies[boid.typeId] = [];
-    }
-    preyBySpecies[boid.typeId].push(boid);
-  });
+  const preyBySpecies = boidsBySpecies(prey);
 
-  // Calculate averages
-  const calcAvg = (arr: number[]) =>
-    arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-
-  const preyEnergies = prey.map((b) => b.energy);
-  const predatorEnergies = predators.map((b) => b.energy);
-  const preyAges = prey.map((b) => b.age);
-  const predatorAges = predators.map((b) => b.age);
+  const preyEnergies = boidsToEnergy(prey);
+  const predatorEnergies = boidsToEnergy(predators);
+  const preyAges = boidsToAge(prey);
+  const predatorAges = boidsToAge(predators);
 
   const avgPreyEnergy = calcAvg(preyEnergies);
   const avgPredatorEnergy = calcAvg(predatorEnergies);
@@ -61,20 +49,8 @@ export function PopulationStats() {
   const avgPredatorAge = calcAvg(predatorAges);
 
   // Calculate stance distribution
-  const preyStances = {
-    flocking: prey.filter((b) => b.stance === "flocking").length,
-    seeking_mate: prey.filter((b) => b.stance === "seeking_mate").length,
-    mating: prey.filter((b) => b.stance === "mating").length,
-    fleeing: prey.filter((b) => b.stance === "fleeing").length,
-  };
-
-  const predatorStances = {
-    hunting: predators.filter((b) => b.stance === "hunting").length,
-    seeking_mate: predators.filter((b) => b.stance === "seeking_mate").length,
-    mating: predators.filter((b) => b.stance === "mating").length,
-    idle: predators.filter((b) => b.stance === "idle").length,
-    eating: predators.filter((b) => b.stance === "eating").length,
-  };
+  const preyStances = getStanceDistribution(prey);
+  const predatorStances = getStanceDistribution(predators);
 
   return (
     <div

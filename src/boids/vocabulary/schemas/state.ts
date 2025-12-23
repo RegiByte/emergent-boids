@@ -7,6 +7,7 @@ import {
   speciesRecordSchema,
   worldConfigSchema,
 } from "./prelude.ts";
+import { evolutionSnapshotSchema } from "@/boids/vocabulary/schemas/evolution.ts";
 
 /**
  * State Schemas - Runtime state management
@@ -14,31 +15,6 @@ import {
  * Defines the structure of the centralized RuntimeStore.
  * Organized into logical slices for separation of concerns.
  */
-
-// ============================================
-// Evolution Snapshot Schema
-// ============================================
-
-/**
- * Evolution Snapshot - Time-series data point
- *
- * Captures population statistics at a specific moment.
- * Used for graphs and analytics tracking.
- */
-const evolutionSnapshotSchema = z.object({
-  tick: z.number(), // Simulation tick number
-  timestamp: z.number(), // Real-world timestamp (ms since epoch)
-  populations: z.record(z.string(), z.number()), // Current population per species
-  births: z.record(z.string(), z.number()), // Births since last snapshot per species
-  deaths: z.record(z.string(), z.number()), // Deaths since last snapshot per species
-  catches: z.record(z.string(), z.number()), // Catches by predator species
-  avgEnergy: z.record(z.string(), z.number()), // Average energy per species
-  foodSources: z.object({
-    prey: z.number(), // Count of prey food sources
-    predator: z.number(), // Count of predator food sources
-  }),
-});
-
 // ============================================
 // Visual Settings Schema
 // ============================================
@@ -140,3 +116,4 @@ export const runtimeStoreSchema = z.object({
 });
 
 export type RuntimeStore = z.infer<typeof runtimeStoreSchema>;
+export type VisualSettings = z.infer<typeof visualSettingsSchema>;

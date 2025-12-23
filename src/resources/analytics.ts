@@ -1,19 +1,38 @@
 import { defineResource } from "braided";
+import { eventKeywords } from "../boids/vocabulary/keywords";
 import type { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
-import type { StartedRuntimeStore, EvolutionSnapshot } from "./runtimeStore";
-import { eventKeywords } from "../boids/vocabulary/keywords";
+import type { StartedRuntimeStore } from "./runtimeStore";
+import {
+  getStanceDistributionBySpecies,
+  computeEnergyStatsBySpecies,
+  computeAgeDistributionBySpecies,
+  computeSpatialPatternsBySpecies,
+  computeReproductionMetricsBySpecies,
+  computeFoodSourceStatsByType,
+  computeDeathMarkerStats,
+} from "@/boids/analytics/statistics";
+import { EvolutionSnapshot } from "@/boids/vocabulary/schemas/evolution.ts";
 
 /**
  * Analytics Resource
  *
- * Observes the event loop and tracks ecosystem metrics over time.
+ * Observes the event loop and tracks comprehensive ecosystem metrics over time.
  * Runs independently of UI rendering - always collecting data.
  *
+ * Now captures rich data for AI training:
+ * - Population dynamics with death cause breakdown
+ * - Energy statistics (mean, stdDev, min, max)
+ * - Age distribution (young, mature, elder)
+ * - Spatial patterns (clustering, dispersion)
+ * - Reproduction metrics (ready, seeking, mating)
+ * - Environmental state (food, markers, obstacles)
+ * - Configuration snapshot (active parameters)
+ *
  * Responsibilities:
- * - Track births/deaths/catches per type
+ * - Track births/deaths/catches per species
  * - Capture evolution snapshots every N ticks
- * - Calculate population and energy statistics
+ * - Calculate comprehensive statistics
  * - Update analytics slice in runtime store
  * - Manage snapshot history (max 1000 records)
  */
@@ -29,6 +48,7 @@ export const analytics = defineResource({
     runtimeStore: StartedRuntimeStore;
   }) => {
     let tickCounter = 0;
+    let lastSnapshotTime = Date.now();
     const SNAPSHOT_INTERVAL = 3; // Every 3 ticks (3 seconds at 1 tick/sec)
     const MAX_SNAPSHOTS = 1000; // Keep last 1000 snapshots (~50 minutes at 3s intervals)
 
@@ -36,7 +56,16 @@ export const analytics = defineResource({
     const eventCounters = {
       births: {} as Record<string, number>,
       deaths: {} as Record<string, number>,
+      deathsByCause: {} as Record<
+        string,
+        { old_age: number; starvation: number; predation: number }
+      >,
       catches: {} as Record<string, number>,
+      escapes: {} as Record<string, number>,
+      totalChaseDistance: 0,
+      totalFleeDistance: 0,
+      chaseCount: 0,
+      fleeCount: 0,
     };
 
     // Subscribe to all events
@@ -49,9 +78,21 @@ export const analytics = defineResource({
         eventCounters.births[typeId] =
           (eventCounters.births[typeId] || 0) + offspringCount;
       } else if (event.type === eventKeywords.boids.died) {
-        // TypeId now included in event (no need to search)
         const typeId = event.typeId;
+        const reason = event.reason; // Event schema uses 'reason', not 'cause'
+
+        // Track total deaths
         eventCounters.deaths[typeId] = (eventCounters.deaths[typeId] || 0) + 1;
+
+        // Track deaths by cause
+        if (!eventCounters.deathsByCause[typeId]) {
+          eventCounters.deathsByCause[typeId] = {
+            old_age: 0,
+            starvation: 0,
+            predation: 0,
+          };
+        }
+        eventCounters.deathsByCause[typeId][reason]++;
       } else if (event.type === eventKeywords.boids.caught) {
         // Find prey type from boid list
         const prey = engine.boids.find((b) => b.id === event.preyId);
@@ -70,46 +111,151 @@ export const analytics = defineResource({
     });
 
     const captureSnapshot = () => {
-      const { simulation, analytics: analyticsState } =
+      const { config, simulation, ui, analytics: analyticsState } =
         runtimeStore.store.getState();
       const timestamp = Date.now();
+      const deltaSeconds = (timestamp - lastSnapshotTime) / 1000;
+      lastSnapshotTime = timestamp;
 
-      // Calculate populations per type
+      // Calculate populations per species
       const populations: Record<string, number> = {};
-      const energySum: Record<string, number> = {};
-
       engine.boids.forEach((boid) => {
-        const typeId = boid.typeId;
-        populations[typeId] = (populations[typeId] || 0) + 1;
-        energySum[typeId] = (energySum[typeId] || 0) + boid.energy;
+        populations[boid.typeId] = (populations[boid.typeId] || 0) + 1;
       });
 
-      // Calculate average energy per type
-      const avgEnergy: Record<string, number> = {};
-      Object.keys(energySum).forEach((typeId) => {
-        avgEnergy[typeId] = energySum[typeId] / (populations[typeId] || 1);
+      // Compute comprehensive statistics
+      const energyStats = computeEnergyStatsBySpecies(engine.boids);
+      const ageStats = computeAgeDistributionBySpecies(
+        engine.boids,
+        config.species,
+        config.parameters.minReproductionAge
+      );
+      const spatialPatterns = computeSpatialPatternsBySpecies(
+        engine.boids,
+        config.world.canvasWidth,
+        config.world.canvasHeight
+      );
+      const reproductionMetrics = computeReproductionMetricsBySpecies(
+        engine.boids,
+        config.species,
+        config.parameters.minReproductionAge,
+        config.parameters.reproductionEnergyThreshold
+      );
+
+      // Stance distribution by species
+      const stancesBySpecies = getStanceDistributionBySpecies(engine.boids);
+
+      // Food source statistics
+      const foodSourceStats = computeFoodSourceStatsByType(
+        simulation.foodSources
+      );
+
+      // Death marker statistics
+      const deathMarkerStats = computeDeathMarkerStats(simulation.deathMarkers);
+
+      // Get atmosphere state
+      const atmosphereState = ui.visualSettings.atmosphere.activeEvent;
+
+      // Build configuration snapshot
+      const activeParameters = {
+        perceptionRadius: config.parameters.perceptionRadius,
+        fearRadius: config.parameters.fearRadius,
+        chaseRadius: config.parameters.chaseRadius,
+        reproductionEnergyThreshold:
+          config.parameters.reproductionEnergyThreshold,
+        speciesConfigs: Object.entries(config.species).reduce(
+          (acc, [id, species]) => {
+            acc[id] = {
+              role: species.role,
+              maxSpeed: species.movement.maxSpeed,
+              maxForce: species.movement.maxForce,
+              maxEnergy: species.lifecycle.maxEnergy,
+              energyLossRate: species.lifecycle.energyLossRate,
+              fearFactor: species.lifecycle.fearFactor,
+              reproductionType: species.reproduction.type,
+              offspringCount: species.reproduction.offspringCount,
+            };
+            return acc;
+          },
+          {} as Record<string, any>
+        ),
+      };
+
+      // Ensure all species have death cause entries (even if zero)
+      const deathsByCause: Record<
+        string,
+        { old_age: number; starvation: number; predation: number }
+      > = {};
+      Object.keys(config.species).forEach((typeId) => {
+        deathsByCause[typeId] = eventCounters.deathsByCause[typeId] || {
+          old_age: 0,
+          starvation: 0,
+          predation: 0,
+        };
       });
 
-      // Count food sources by type
-      const preyFoodCount = simulation.foodSources.filter(
-        (f) => f.sourceType === "prey"
-      ).length;
-      const predatorFoodCount = simulation.foodSources.filter(
-        (f) => f.sourceType === "predator"
-      ).length;
-
-      // Create snapshot
+      // Create comprehensive snapshot
       const snapshot: EvolutionSnapshot = {
+        // Temporal context
         tick: tickCounter,
         timestamp,
+        deltaSeconds,
+
+        // Population dynamics
         populations,
         births: { ...eventCounters.births },
         deaths: { ...eventCounters.deaths },
-        catches: { ...eventCounters.catches },
-        avgEnergy,
-        foodSources: {
-          prey: preyFoodCount,
-          predator: predatorFoodCount,
+        deathsByCause,
+
+        // Energy dynamics
+        energy: energyStats,
+
+        // Behavioral distribution
+        stances: stancesBySpecies,
+
+        // Age distribution
+        age: ageStats,
+
+        // Environmental state
+        environment: {
+          foodSources: foodSourceStats,
+          deathMarkers: deathMarkerStats,
+          obstacles: {
+            count: simulation.obstacles.length,
+          },
+        },
+
+        // Spatial patterns
+        spatial: spatialPatterns,
+
+        // Predator-prey dynamics
+        interactions: {
+          catches: { ...eventCounters.catches },
+          escapes: { ...eventCounters.escapes },
+          averageChaseDistance:
+            eventCounters.chaseCount > 0
+              ? eventCounters.totalChaseDistance / eventCounters.chaseCount
+              : 0,
+          averageFleeDistance:
+            eventCounters.fleeCount > 0
+              ? eventCounters.totalFleeDistance / eventCounters.fleeCount
+              : 0,
+        },
+
+        // Reproduction dynamics
+        reproduction: reproductionMetrics,
+
+        // Configuration snapshot
+        activeParameters,
+
+        // Atmosphere state
+        atmosphere: {
+          activeEvent: atmosphereState?.eventType || null,
+          eventStartedAtTick: atmosphereState ? tickCounter : null,
+          eventDurationTicks: atmosphereState
+            ? tickCounter -
+              Math.floor((timestamp - atmosphereState.startedAt) / 1000)
+            : null,
         },
       };
 
@@ -129,7 +275,13 @@ export const analytics = defineResource({
       // Reset event counters
       eventCounters.births = {};
       eventCounters.deaths = {};
+      eventCounters.deathsByCause = {};
       eventCounters.catches = {};
+      eventCounters.escapes = {};
+      eventCounters.totalChaseDistance = 0;
+      eventCounters.totalFleeDistance = 0;
+      eventCounters.chaseCount = 0;
+      eventCounters.fleeCount = 0;
     };
 
     return { unsubscribe };

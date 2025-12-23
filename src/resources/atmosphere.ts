@@ -3,6 +3,7 @@ import type { RuntimeController } from "./runtimeController";
 import type { StartedRuntimeStore } from "./runtimeStore";
 import { eventKeywords } from "../boids/vocabulary/keywords";
 import { produce } from "immer";
+import { BoidEngine } from "./engine";
 
 /**
  * Atmosphere Resource
@@ -18,13 +19,15 @@ import { produce } from "immer";
  * - Starvation crisis: Average energy <30% across all species
  */
 export const atmosphere = defineResource({
-  dependencies: ["runtimeController", "runtimeStore"],
+  dependencies: ["runtimeController", "runtimeStore", "engine"],
   start: ({
     runtimeController,
     runtimeStore,
+    engine,
   }: {
     runtimeController: RuntimeController;
     runtimeStore: StartedRuntimeStore;
+    engine: BoidEngine;
   }) => {
     let tickCounter = 0;
     const CHECK_INTERVAL = 3; // Check for events every 3 ticks (same as analytics)
@@ -92,6 +95,7 @@ export const atmosphere = defineResource({
       const snapshot = analytics.currentSnapshot;
 
       if (!snapshot) return;
+      console.log("checking for atmospheric events", snapshot);
 
       // Calculate metrics
       const populations = Object.values(snapshot.populations) as number[];

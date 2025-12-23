@@ -1,8 +1,7 @@
 import type { BoidEngine } from "../resources/engine";
-import type { EvolutionSnapshot } from "../resources/runtimeStore";
 
-
-import {RuntimeStore} from "../boids/vocabulary/schemas/state.ts";
+import { RuntimeStore } from "../boids/vocabulary/schemas/state.ts";
+import { EvolutionSnapshot } from "@/boids/vocabulary/schemas/evolution.ts";
 
 /**
  * Export Utilities
@@ -118,8 +117,22 @@ export function exportCurrentStats(
 }
 
 /**
- * Export evolution history as CSV
- * Optimized for spreadsheet analysis and graphing
+ * Export evolution history as JSON Lines (JSONL)
+ * Optimized for ML training and data analysis
+ *
+ * Each line is a complete JSON snapshot - easy to stream and process
+ */
+export function exportEvolutionJSONL(snapshots: EvolutionSnapshot[]): string {
+  if (snapshots.length === 0) {
+    return "No evolution data available yet";
+  }
+
+  return snapshots.map((snap) => JSON.stringify(snap)).join("\n");
+}
+
+/**
+ * Export evolution history as CSV (simplified for backward compatibility)
+ * For basic analysis - use JSONL for comprehensive ML training data
  */
 export function exportEvolutionCSV(snapshots: EvolutionSnapshot[]): string {
   if (snapshots.length === 0) {
@@ -132,30 +145,34 @@ export function exportEvolutionCSV(snapshots: EvolutionSnapshot[]): string {
     Object.keys(snap.populations).forEach((typeId) => typeIds.add(typeId));
     Object.keys(snap.births).forEach((typeId) => typeIds.add(typeId));
     Object.keys(snap.deaths).forEach((typeId) => typeIds.add(typeId));
-    Object.keys(snap.catches).forEach((typeId) => typeIds.add(typeId));
-    Object.keys(snap.avgEnergy).forEach((typeId) => typeIds.add(typeId));
+    Object.keys(snap.energy).forEach((typeId) => typeIds.add(typeId));
   });
 
   const sortedTypeIds = Array.from(typeIds).sort();
 
-  // Build CSV header
+  // Build CSV header (simplified - basic metrics only)
   const header = [
     "tick",
     "timestamp",
     "date",
+    "deltaSeconds",
     // Population columns
     ...sortedTypeIds.map((id) => `${id}_population`),
     // Birth columns
     ...sortedTypeIds.map((id) => `${id}_births`),
     // Death columns
     ...sortedTypeIds.map((id) => `${id}_deaths`),
-    // Catch columns (prey only, but include all for consistency)
-    ...sortedTypeIds.map((id) => `${id}_catches`),
-    // Average energy columns
-    ...sortedTypeIds.map((id) => `${id}_avgEnergy`),
+    // Energy columns (mean only for CSV simplicity)
+    ...sortedTypeIds.map((id) => `${id}_energy_mean`),
+    // Death causes (totals)
+    ...sortedTypeIds.map((id) => `${id}_deaths_old_age`),
+    ...sortedTypeIds.map((id) => `${id}_deaths_starvation`),
+    ...sortedTypeIds.map((id) => `${id}_deaths_predation`),
     // Food sources
-    "prey_food",
-    "predator_food",
+    "prey_food_count",
+    "predator_food_count",
+    // Atmosphere
+    "atmosphere_event",
   ].join(",");
 
   // Build CSV rows
@@ -165,21 +182,26 @@ export function exportEvolutionCSV(snapshots: EvolutionSnapshot[]): string {
       snap.tick,
       snap.timestamp,
       date,
+      snap.deltaSeconds.toFixed(3),
       // Population values
       ...sortedTypeIds.map((id) => snap.populations[id] || 0),
       // Birth values
       ...sortedTypeIds.map((id) => snap.births[id] || 0),
       // Death values
       ...sortedTypeIds.map((id) => snap.deaths[id] || 0),
-      // Catch values
-      ...sortedTypeIds.map((id) => snap.catches[id] || 0),
-      // Average energy values (rounded to 1 decimal)
+      // Energy mean values (rounded to 1 decimal)
       ...sortedTypeIds.map((id) =>
-        snap.avgEnergy[id] ? snap.avgEnergy[id].toFixed(1) : "0.0"
+        snap.energy[id]?.mean ? snap.energy[id].mean.toFixed(1) : "0.0"
       ),
+      // Death causes
+      ...sortedTypeIds.map((id) => snap.deathsByCause[id]?.old_age || 0),
+      ...sortedTypeIds.map((id) => snap.deathsByCause[id]?.starvation || 0),
+      ...sortedTypeIds.map((id) => snap.deathsByCause[id]?.predation || 0),
       // Food sources
-      snap.foodSources.prey,
-      snap.foodSources.predator,
+      snap.environment.foodSources.prey.count,
+      snap.environment.foodSources.predator.count,
+      // Atmosphere
+      snap.atmosphere.activeEvent || "none",
     ].join(",");
   });
 

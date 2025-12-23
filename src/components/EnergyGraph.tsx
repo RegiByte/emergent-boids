@@ -81,7 +81,7 @@ export function EnergyGraph({ compact = false }: EnergyGraphProps) {
     const typeConfig = species[typeId];
     return {
       label: typeConfig.name,
-      data: snapshots.map((snap) => snap.avgEnergy[typeId] || 0),
+      data: snapshots.map((snap) => snap.energy[typeId]?.mean || 0),
       borderColor: typeConfig.color,
       backgroundColor: typeConfig.color + "40", // Add transparency
       borderWidth: 2,
