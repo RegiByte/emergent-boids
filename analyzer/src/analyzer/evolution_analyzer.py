@@ -1,8 +1,8 @@
 """
 Evolution Analyzer - Analyze boid simulation evolution data
 
-Functional approach to analyzing evolution.csv and stats.json files
-from the Emergent Boids simulation.
+Updated to work with new schema including death causes and atmosphere events.
+Functional approach - each plot is a pure function.
 
 Philosophy: Simple functions compose. Each plot is a pure function.
 """
@@ -21,7 +21,7 @@ import seaborn as sns
 # ============================================
 
 def load_evolution_data(csv_path: str) -> pd.DataFrame:
-    """Load evolution CSV data"""
+    """Load evolution CSV data with new schema"""
     df = pd.read_csv(csv_path)
     df['date'] = pd.to_datetime(df['date'])
     return df
@@ -91,12 +91,13 @@ def calculate_summary_stats(df: pd.DataFrame, species: List[str]) -> Dict:
     stats = {
         'total_ticks': len(df),
         'tick_range': (df['tick'].min(), df['tick'].max()),
-        'duration_hours': (df['date'].max() - df['date'].min()).total_seconds() / 3600,
+        'duration_seconds': (df['date'].max() - df['date'].min()).total_seconds(),
         'species_survival': {},
         'avg_populations': {},
         'stability_cv': {},
         'total_births': {},
         'total_deaths': {},
+        'death_causes': {},
     }
     
     for sp in species:
@@ -122,6 +123,14 @@ def calculate_summary_stats(df: pd.DataFrame, species: List[str]) -> Dict:
             stats['total_births'][sp] = df[birth_col].sum()
         if death_col in df.columns:
             stats['total_deaths'][sp] = df[death_col].sum()
+        
+        # Death causes (NEW!)
+        death_causes = {}
+        for cause in ['old_age', 'starvation', 'predation']:
+            cause_col = f'{sp}_deaths_{cause}'
+            if cause_col in df.columns:
+                death_causes[cause] = df[cause_col].sum()
+        stats['death_causes'][sp] = death_causes
     
     return stats
 
@@ -181,11 +190,11 @@ def plot_population_trends(df: pd.DataFrame, species: List[str],
 
 def plot_energy_trends(df: pd.DataFrame, species: List[str], 
                       colors: Dict[str, str], save_path: Optional[str] = None):
-    """Plot average energy levels over time"""
+    """Plot average energy levels over time (NEW SCHEMA: energy_mean)"""
     fig, ax = plt.subplots(figsize=(14, 8))
     
     for sp in species:
-        energy_col = f'{sp}_avgEnergy'
+        energy_col = f'{sp}_energy_mean'
         if energy_col in df.columns:
             ax.plot(df['tick'], df[energy_col], 
                    label=sp.capitalize(), color=colors[sp], linewidth=2, alpha=0.8)
@@ -244,6 +253,53 @@ def plot_birth_death_rates(df: pd.DataFrame, species: List[str],
     plt.close()
 
 
+def plot_death_causes(df: pd.DataFrame, species: List[str], 
+                     colors: Dict[str, str], save_path: Optional[str] = None):
+    """Plot death causes breakdown (NEW!)"""
+    fig, ax = plt.subplots(figsize=(14, 8))
+    
+    causes = ['old_age', 'starvation', 'predation']
+    cause_labels = ['Old Age', 'Starvation', 'Predation']
+    
+    # Aggregate death causes per species
+    data = []
+    for sp in species:
+        sp_data = {'species': sp.capitalize()}
+        for cause in causes:
+            cause_col = f'{sp}_deaths_{cause}'
+            if cause_col in df.columns:
+                sp_data[cause] = df[cause_col].sum()
+            else:
+                sp_data[cause] = 0
+        data.append(sp_data)
+    
+    death_df = pd.DataFrame(data)
+    
+    # Create stacked bar chart
+    x = range(len(species))
+    width = 0.6
+    
+    bottom = [0] * len(species)
+    for i, cause in enumerate(causes):
+        values = death_df[cause].values
+        ax.bar(x, values, width, label=cause_labels[i], bottom=bottom)
+        bottom = [bottom[j] + values[j] for j in range(len(values))]
+    
+    ax.set_xlabel('Species', fontsize=12)
+    ax.set_ylabel('Total Deaths', fontsize=12)
+    ax.set_title('Death Causes by Species', fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels([sp.capitalize() for sp in species])
+    ax.legend(loc='best', framealpha=0.9)
+    ax.grid(True, alpha=0.3, axis='y')
+    
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"  ✓ Saved: {save_path}")
+    plt.close()
+
+
 def plot_stability_metrics(df: pd.DataFrame, species: List[str], 
                            colors: Dict[str, str], save_path: Optional[str] = None):
     """Plot stability metrics (rolling CV) over time"""
@@ -283,7 +339,7 @@ def plot_stability_metrics(df: pd.DataFrame, species: List[str],
 def plot_prey_predator_ratio(df: pd.DataFrame, species: List[str], 
                              save_path: Optional[str] = None):
     """Plot prey to predator ratio over time"""
-    # Identify prey and predators (predator species typically named 'predator')
+    # Identify prey and predators
     predator_species = [sp for sp in species if 'predator' in sp.lower()]
     prey_species = [sp for sp in species if sp not in predator_species]
     
@@ -331,7 +387,7 @@ def print_summary_report(stats: Dict, species: List[str], equilibrium_tick: Opti
     print(f"\n📊 Run Statistics:")
     print(f"  Total Ticks: {stats['total_ticks']:,}")
     print(f"  Tick Range: {stats['tick_range'][0]:,} → {stats['tick_range'][1]:,}")
-    print(f"  Duration: {stats['duration_hours']:.2f} hours")
+    print(f"  Duration: {stats['duration_seconds']:.2f} seconds")
     
     # Species survival
     print(f"\n🦠 Species Survival:")
@@ -374,6 +430,16 @@ def print_summary_report(stats: Dict, species: List[str], equilibrium_tick: Opti
         for sp in species:
             deaths = stats['total_deaths'].get(sp, 0)
             print(f"  {sp.capitalize():15} {deaths:6,}")
+    
+    # Death causes (NEW!)
+    print(f"\n💀 Death Causes:")
+    for sp in species:
+        causes = stats['death_causes'].get(sp, {})
+        if causes:
+            print(f"  {sp.capitalize()}:")
+            for cause, count in causes.items():
+                if count > 0:
+                    print(f"    {cause:12} {count:6,}")
     
     # Equilibrium
     if equilibrium_tick:
@@ -433,6 +499,7 @@ def generate_full_report(csv_path: str, output_dir: str = './analysis',
     plot_population_trends(df, species, colors, f'{output_dir}/population_trends.png')
     plot_energy_trends(df, species, colors, f'{output_dir}/energy_trends.png')
     plot_birth_death_rates(df, species, colors, f'{output_dir}/birth_death_rates.png')
+    plot_death_causes(df, species, colors, f'{output_dir}/death_causes.png')
     plot_stability_metrics(df, species, colors, f'{output_dir}/stability_metrics.png')
     plot_prey_predator_ratio(df, species, f'{output_dir}/prey_predator_ratio.png')
     
@@ -459,4 +526,3 @@ if __name__ == '__main__':
     
     # Run analysis
     generate_full_report(csv_path, output_dir, stats_path)
-
