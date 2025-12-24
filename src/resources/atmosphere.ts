@@ -1,6 +1,7 @@
 import { defineResource } from "braided";
 import type { RuntimeController } from "./runtimeController";
 import type { RuntimeStoreResource } from "./runtimeStore";
+import type { AnalyticsStoreResource } from "./analyticsStore";
 import { eventKeywords } from "../boids/vocabulary/keywords";
 import { produce } from "immer";
 
@@ -18,13 +19,15 @@ import { produce } from "immer";
  * - Starvation crisis: Average energy <30% across all species
  */
 export const atmosphere = defineResource({
-  dependencies: ["runtimeController", "runtimeStore"],
+  dependencies: ["runtimeController", "runtimeStore", "analyticsStore"],
   start: ({
     runtimeController,
     runtimeStore,
+    analyticsStore,
   }: {
     runtimeController: RuntimeController;
     runtimeStore: RuntimeStoreResource;
+    analyticsStore: AnalyticsStoreResource;
   }) => {
     let tickCounter = 0;
     const CHECK_INTERVAL = 3; // Check for events every 3 ticks (same as analytics)
@@ -87,9 +90,10 @@ export const atmosphere = defineResource({
     };
 
     const checkForAtmosphereEvents = () => {
-      const state = runtimeStore.store.getState();
-      const { analytics, config } = state;
-      const snapshot = analytics.currentSnapshot;
+      const runtimeState = runtimeStore.store.getState();
+      const analyticsState = analyticsStore.store.getState();
+      const { config } = runtimeState;
+      const snapshot = analyticsState.evolution.data.currentSnapshot;
 
       if (!snapshot) return;
 
@@ -121,64 +125,56 @@ export const atmosphere = defineResource({
 
       // 1. Mass extinction (highest priority)
       if (totalDeaths > totalPop * 0.15 && totalPop > 50) {
-        const event = {
+        runtimeController.dispatch({
           type: eventKeywords.atmosphere.eventStarted,
           eventType: "mass-extinction",
           settings: {
             fogColor: "rgba(139, 0, 0, 0.7)", // Dark red
           },
           minDurationTicks: MIN_EVENT_DURATION,
-        } as const;
-        console.log("Mass extinction event:", event);
-        runtimeController.dispatch(event);
+        } as const);
         resetDetectionWindow();
         return;
       }
 
       // 2. Mating season
       if (totalBirths > totalPop * 0.1 && totalPop > 50) {
-        const event = {
+        runtimeController.dispatch({
           type: eventKeywords.atmosphere.eventStarted,
           eventType: "mating-season",
           settings: {
             fogColor: "rgba(255, 105, 180, 0.6)", // Hot pink
           },
           minDurationTicks: MIN_EVENT_DURATION,
-        } as const;
-        console.log("Mating season event:", event);
-        runtimeController.dispatch(event);
+        } as const);
         resetDetectionWindow();
         return;
       }
 
       // 3. Predator dominance
       if (totalPop > 0 && predatorPop / totalPop > 0.3) {
-        const event = {
+        runtimeController.dispatch({
           type: eventKeywords.atmosphere.eventStarted,
           eventType: "predator-dominance",
           settings: {
             fogColor: "rgba(128, 0, 0, 0.8)", // Blood red
           },
           minDurationTicks: MIN_EVENT_DURATION,
-        } as const;
-        console.log("Predator dominance event:", event);
-        runtimeController.dispatch(event);
+        } as const);
         resetDetectionWindow();
         return;
       }
 
       // 4. Starvation crisis
       if (avgEnergy < 30 && totalPop > 50) {
-        const event = {
+        runtimeController.dispatch({
           type: eventKeywords.atmosphere.eventStarted,
           eventType: "starvation-crisis",
           settings: {
             fogColor: "rgba(70, 70, 0, 0.7)", // Dark yellow
           },
           minDurationTicks: MIN_EVENT_DURATION,
-        } as const;
-        console.log("Starvation crisis event:", event);
-        runtimeController.dispatch(event);
+        } as const);
         resetDetectionWindow();
         return;
       }

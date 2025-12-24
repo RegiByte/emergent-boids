@@ -16,6 +16,7 @@ import {
   getCohesionWeight,
   shouldFlock,
 } from "./affinity";
+import { weightedScoreNormalized } from "@/lib/weightedMath";
 
 /**
  * Separation: Steer to avoid crowding local flockmates
@@ -313,8 +314,77 @@ export function fear(
 }
 
 /**
- * Chase: Steer towards nearest prey
- * Returns a steering force towards the nearest prey boid
+ * Select best prey target using weighted multi-factor scoring
+ * 
+ * Factors considered:
+ * - Proximity (weight: 2.0) - Closer prey are preferred
+ * - Low energy (weight: 0.5) - Weaker prey are easier to catch
+ * - Age (weight: 0.3) - Older prey are slower
+ * 
+ * Philosophy: Predators hunt strategically, not just opportunistically
+ */
+function selectBestPrey(
+  predator: Boid,
+  prey: Boid[],
+  world: WorldConfig,
+  chaseRadius: number,
+  maxEnergy: number
+): Boid | null {
+  if (prey.length === 0) return null;
+
+  let bestPrey: Boid | null = null;
+  let bestScore = -Infinity;
+
+  for (const target of prey) {
+    const dist = vec.toroidalDistance(
+      predator.position,
+      target.position,
+      world.canvasWidth,
+      world.canvasHeight
+    );
+
+    // Only consider prey within chase radius
+    if (dist >= chaseRadius) continue;
+
+    // Multi-factor scoring: proximity, vulnerability, age
+    const score = weightedScoreNormalized([
+      // Proximity: closer = better (inverted distance)
+      {
+        value: chaseRadius - dist,
+        weight: 2.0,
+        min: 0,
+        max: chaseRadius,
+      },
+      // Energy: lower energy = easier catch
+      {
+        value: maxEnergy - target.energy,
+        weight: 0.5,
+        min: 0,
+        max: maxEnergy,
+      },
+      // Age: older = slower = easier
+      {
+        value: target.age,
+        weight: 0.3,
+        min: 0,
+        max: 100,
+      },
+    ]);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestPrey = target;
+    }
+  }
+
+  return bestPrey;
+}
+
+/**
+ * Chase: Steer towards best prey target (weighted selection)
+ * Returns a steering force towards the strategically best prey boid
+ * 
+ * Uses weighted scoring to select prey based on proximity, energy, and age
  */
 export function chase(
   predator: Boid,
@@ -325,29 +395,20 @@ export function chase(
   profiler?: Profiler
 ): Vector2 {
   profiler?.start("rule.chase");
-  // Find nearest prey
-  let nearestPrey: Boid | null = null;
-  let nearestDist = Infinity;
 
-  for (const boid of prey) {
-    // Calculate toroidal distance
-    const dist = vec.toroidalDistance(
-      predator.position,
-      boid.position,
-      world.canvasWidth,
-      world.canvasHeight
-    );
+  // Use weighted selection to find best prey target
+  const targetPrey = selectBestPrey(
+    predator,
+    prey,
+    world,
+    parameters.chaseRadius,
+    speciesConfig.lifecycle.maxEnergy
+  );
 
-    if (dist < nearestDist) {
-      nearestDist = dist;
-      nearestPrey = boid;
-    }
-  }
-
-  if (nearestPrey && nearestDist < parameters.chaseRadius) {
-    // Steer toward nearest prey
+  if (targetPrey) {
+    // Steer toward selected prey
     const desired = vec.toroidalSubtract(
-      nearestPrey.position,
+      targetPrey.position,
       predator.position,
       world.canvasWidth,
       world.canvasHeight
@@ -366,8 +427,86 @@ export function chase(
 }
 
 /**
- * Seek Mate: Steer towards nearest eligible mate
- * Returns a steering force towards the nearest same-type boid ready to mate
+ * Select best mate using weighted multi-factor scoring
+ * 
+ * Factors considered:
+ * - Proximity (weight: 1.0) - Closer mates are more convenient
+ * - Health/Energy (weight: 0.8) - Healthier mates produce healthier offspring
+ * - Maturity (weight: 0.5) - Prefer mid-age mates (not too young, not too old)
+ * 
+ * Philosophy: Mate selection balances convenience with genetic fitness
+ */
+function selectBestMate(
+  boid: Boid,
+  potentialMates: Boid[],
+  world: WorldConfig,
+  speciesConfig: SpeciesConfig
+): Boid | null {
+  if (potentialMates.length === 0) return null;
+
+  let bestMate: Boid | null = null;
+  let bestScore = -Infinity;
+  const maxSearchDist = 500; // Maximum search distance for normalization
+
+  for (const candidate of potentialMates) {
+    // Eligibility checks (must pass all)
+    if (
+      candidate.id === boid.id ||
+      candidate.typeId !== boid.typeId ||
+      !candidate.seekingMate ||
+      candidate.reproductionCooldown !== 0
+    ) {
+      continue;
+    }
+
+    const dist = vec.toroidalDistance(
+      boid.position,
+      candidate.position,
+      world.canvasWidth,
+      world.canvasHeight
+    );
+
+    // Multi-factor mate scoring
+    const score = weightedScoreNormalized([
+      // Proximity: closer = more convenient
+      {
+        value: maxSearchDist - dist,
+        weight: 1.0,
+        min: 0,
+        max: maxSearchDist,
+      },
+      // Health: higher energy = better fitness
+      {
+        value: candidate.energy,
+        weight: 0.8,
+        min: 0,
+        max: speciesConfig.lifecycle.maxEnergy,
+      },
+      // Maturity: prefer mid-age (inverted distance from optimal age)
+      {
+        value:
+          speciesConfig.lifecycle.maxAge * 0.5 -
+          Math.abs(candidate.age - speciesConfig.lifecycle.maxAge * 0.5),
+        weight: 0.5,
+        min: 0,
+        max: speciesConfig.lifecycle.maxAge * 0.5,
+      },
+    ]);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMate = candidate;
+    }
+  }
+
+  return bestMate;
+}
+
+/**
+ * Seek Mate: Steer towards best eligible mate (weighted selection)
+ * Returns a steering force towards the strategically best mate
+ * 
+ * Uses weighted scoring to select mates based on proximity, health, and maturity
  */
 export function seekMate(
   boid: Boid,
@@ -378,37 +517,14 @@ export function seekMate(
   profiler?: Profiler
 ): Vector2 {
   profiler?.start("rule.seekMate");
-  // Find nearest eligible mate
-  let nearestMate: Boid | null = null;
-  let nearestDist = Infinity;
 
-  for (const other of potentialMates) {
-    // Must be same type, different boid, ready to mate
-    if (
-      other.id !== boid.id &&
-      other.typeId === boid.typeId &&
-      other.seekingMate &&
-      other.reproductionCooldown === 0
-    ) {
-      // Calculate toroidal distance
-      const dist = vec.toroidalDistance(
-        boid.position,
-        other.position,
-        world.canvasWidth,
-        world.canvasHeight
-      );
+  // Use weighted selection to find best mate
+  const targetMate = selectBestMate(boid, potentialMates, world, speciesConfig);
 
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearestMate = other;
-      }
-    }
-  }
-
-  if (nearestMate) {
+  if (targetMate) {
     // Strong steering force toward mate
     const desired = vec.toroidalSubtract(
-      nearestMate.position,
+      targetMate.position,
       boid.position,
       world.canvasWidth,
       world.canvasHeight
@@ -500,9 +616,78 @@ export function avoidDeathMarkers(
 }
 
 /**
- * Seek Food: Steer towards nearest compatible food source
- * Returns a steering force towards the nearest food source and its ID
- * Prey seek prey food, predators seek predator food
+ * Select best food source using weighted multi-factor scoring
+ * 
+ * Factors considered:
+ * - Proximity (weight: 2.0) - Closer food is more accessible
+ * - Energy value (weight: 1.0) - More energy = more valuable
+ * 
+ * Philosophy: Boids optimize foraging by balancing distance and reward
+ */
+function selectBestFood(
+  boid: Boid,
+  foodSources: FoodSource[],
+  role: "prey" | "predator",
+  world: WorldConfig,
+  detectionRadius: number
+): FoodSource | null {
+  // Filter compatible food sources
+  const compatibleFood = foodSources.filter((food) => {
+    if (role === "prey") return food.sourceType === "prey" && food.energy > 0;
+    if (role === "predator")
+      return food.sourceType === "predator" && food.energy > 0;
+    return false;
+  });
+
+  if (compatibleFood.length === 0) return null;
+
+  let bestFood: FoodSource | null = null;
+  let bestScore = -Infinity;
+  const maxFoodEnergy = 100; // Typical max food energy
+
+  for (const food of compatibleFood) {
+    const dist = vec.toroidalDistance(
+      boid.position,
+      food.position,
+      world.canvasWidth,
+      world.canvasHeight
+    );
+
+    // Only consider food within detection radius
+    if (dist >= detectionRadius) continue;
+
+    // Multi-factor food scoring
+    const score = weightedScoreNormalized([
+      // Proximity: closer = better
+      {
+        value: detectionRadius - dist,
+        weight: 2.0,
+        min: 0,
+        max: detectionRadius,
+      },
+      // Energy value: more energy = better reward
+      {
+        value: food.energy,
+        weight: 1.0,
+        min: 0,
+        max: maxFoodEnergy,
+      },
+    ]);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestFood = food;
+    }
+  }
+
+  return bestFood;
+}
+
+/**
+ * Seek Food: Steer towards best compatible food source (weighted selection)
+ * Returns a steering force towards the strategically best food source and its ID
+ * 
+ * Uses weighted scoring to select food based on proximity and energy value
  */
 export function seekFood(
   boid: Boid,
@@ -513,39 +698,20 @@ export function seekFood(
   profiler?: Profiler
 ): { force: Vector2; targetFoodId: string | null } {
   profiler?.start("rule.seekFood");
-  const role = speciesConfig.role;
 
-  // Filter food sources by type
-  const compatibleFood = foodSources.filter((food) => {
-    if (role === "prey") return food.sourceType === "prey";
-    if (role === "predator") return food.sourceType === "predator";
-    return false;
-  });
+  // Use weighted selection to find best food source
+  const targetFood = selectBestFood(
+    boid,
+    foodSources,
+    speciesConfig.role,
+    world,
+    detectionRadius
+  );
 
-  // Find nearest food within detection radius
-  let nearestFood: (typeof foodSources)[0] | null = null;
-  let nearestDist = Infinity;
-
-  for (const food of compatibleFood) {
-    if (food.energy <= 0) continue; // Skip exhausted sources
-
-    const dist = vec.toroidalDistance(
-      boid.position,
-      food.position,
-      world.canvasWidth,
-      world.canvasHeight
-    );
-
-    if (dist < detectionRadius && dist < nearestDist) {
-      nearestDist = dist;
-      nearestFood = food;
-    }
-  }
-
-  if (nearestFood) {
-    // Steer toward food
+  if (targetFood) {
+    // Steer toward selected food
     const desired = vec.toroidalSubtract(
-      nearestFood.position,
+      targetFood.position,
       boid.position,
       world.canvasWidth,
       world.canvasHeight
@@ -558,7 +724,7 @@ export function seekFood(
     profiler?.end("rule.seekFood");
     return {
       force: vec.limit(steer, speciesConfig.movement.maxForce),
-      targetFoodId: nearestFood.id,
+      targetFoodId: targetFood.id,
     };
   }
 

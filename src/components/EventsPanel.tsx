@@ -201,10 +201,10 @@ const EVENT_CATEGORIES = [
 const config = {
   maxEventsToShow: 50,
   ignoreEventTypes: [
-    eventKeywords.time.passed,
-    eventKeywords.boids.died,
-    eventKeywords.boids.reproduced,
-    eventKeywords.boids.caught,
+    // eventKeywords.time.passed,
+    // eventKeywords.boids.died,
+    // eventKeywords.boids.reproduced,
+    // eventKeywords.boids.caught,
   ] as AllEvents["type"][],
   aggregationWindowTicks: 10, // 10 ticks (simulation time, not wall-clock)
 };
@@ -292,11 +292,14 @@ function aggregateEvents(
 
 export function EventsPanel() {
   const { useStore: useRuntimeStore } = useResource("runtimeStore");
+  const { useStore: useAnalyticsStore } = useResource("analyticsStore");
   const runtimeController = useResource("runtimeController");
-  const recentEvents = useRuntimeStore((state) => state.analytics.recentEvents);
+  const recentEvents = useAnalyticsStore((state) => {
+    return state.events.data.recentEvents;
+  });
   // Get current tick window
-  const currentTick = useRuntimeStore((state) => {
-    return state.analytics.currentSnapshot?.tick;
+  const currentTick = useAnalyticsStore((state) => {
+    return state.evolution.data.currentSnapshot?.tick;
   });
 
   const currentWindow = useMemo(() => {
@@ -306,6 +309,7 @@ export function EventsPanel() {
 
   // Filter and aggregate events
   const aggregatedEvents = useMemo(() => {
+    // UI-level filter: Hide noisy events from display (but they're still stored)
     const filtered = recentEvents.filter(
       (event) => !config.ignoreEventTypes.includes(event.event.type)
     );
@@ -323,18 +327,18 @@ export function EventsPanel() {
   }, [recentEvents]);
 
   const species = useRuntimeStore((state) => state.config.species);
-  const maxEventsCaptured = useRuntimeStore(
+  const maxEventsCaptured = useAnalyticsStore(
     (state) =>
-      state.analytics.eventsConfig.customFilter?.maxEvents ??
-      state.analytics.eventsConfig.defaultFilter.maxEvents
+      state.events.config.customFilter?.maxEvents ??
+      state.events.config.defaultFilter.maxEvents
   );
-  const allowedEventTypes = useRuntimeStore(
+  const allowedEventTypes = useAnalyticsStore(
     (state) =>
-      state.analytics.eventsConfig.customFilter?.allowedEventTypes ??
-      state.analytics.eventsConfig.defaultFilter.allowedEventTypes
+      state.events.config.customFilter?.allowedEventTypes ??
+      state.events.config.defaultFilter.allowedEventTypes
   );
-  const isCustomFilterActive = useRuntimeStore(
-    (state) => state.analytics.eventsConfig.customFilter !== null
+  const isCustomFilterActive = useAnalyticsStore(
+    (state) => state.events.config.customFilter !== null
   );
 
   // Event statistics

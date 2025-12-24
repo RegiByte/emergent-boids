@@ -21,7 +21,7 @@ export const stableEcosystemProfile: SimulationProfile = {
   world: {
     canvasWidth: 1400,
     canvasHeight: 1000,
-    initialPreyCount: 100,
+    initialPreyCount: 200,
     initialPredatorCount: 10, // Predators emerge from prey evolution
   },
 
@@ -263,7 +263,7 @@ export const stableEcosystemProfile: SimulationProfile = {
     fearFactor: 0.5, // Baseline fear factor for all species
 
     // Population limits
-    maxBoids: 600, // Global safety limit
+    maxBoids: 500, // Global safety limit
     maxPreyBoids: 550, // Per-role cap for prey
     maxPredatorBoids: 50, // Per-role cap for predators
 

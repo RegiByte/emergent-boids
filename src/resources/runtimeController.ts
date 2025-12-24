@@ -5,6 +5,7 @@ import {
   type EffectExecutorMap,
 } from "emergent";
 import type { RuntimeStoreApi, RuntimeStoreResource } from "./runtimeStore";
+import type { AnalyticsStoreResource } from "./analyticsStore";
 import { eventKeywords, effectKeywords } from "../boids/vocabulary/keywords.ts";
 import { produce } from "immer";
 import type { TimerManager } from "./timer";
@@ -241,36 +242,25 @@ const handlers = {
   },
 
   [eventKeywords.analytics.filterChanged]: (
-    state: RuntimeStore,
-    event,
-    ctx
+    _state: RuntimeStore,
+    event
   ): ControlEffect[] => {
+    // Analytics filter changes are now handled by analyticsStore
+    // We dispatch a special effect to update it
     return [
       {
-        type: effectKeywords.state.update,
-        state: ctx.nextState(state, (draft) => {
-          // Update custom filter with provided values
-          draft.analytics.eventsConfig.customFilter = {
-            maxEvents: event.maxEvents,
-            allowedEventTypes: event.allowedEventTypes,
-          };
-        }),
+        type: effectKeywords.analytics.updateFilter,
+        maxEvents: event.maxEvents,
+        allowedEventTypes: event.allowedEventTypes,
       },
     ];
   },
 
-  [eventKeywords.analytics.filterCleared]: (
-    state: RuntimeStore,
-    _event,
-    ctx
-  ): ControlEffect[] => {
+  [eventKeywords.analytics.filterCleared]: (): ControlEffect[] => {
+    // Analytics filter clear is now handled by analyticsStore
     return [
       {
-        type: effectKeywords.state.update,
-        state: ctx.nextState(state, (draft) => {
-          // Clear custom filter (revert to default)
-          draft.analytics.eventsConfig.customFilter = null;
-        }),
+        type: effectKeywords.analytics.clearFilter,
       },
     ];
   },
@@ -287,6 +277,7 @@ const handlers = {
 
 type ExecutorContext = {
   store: RuntimeStoreApi;
+  analyticsStore: AnalyticsStoreResource;
   timer: TimerManager;
   engine: BoidEngine;
 };
@@ -314,6 +305,17 @@ const executors = {
     ctx.engine.removeBoid(effect.boidId);
   },
 
+  [effectKeywords.analytics.updateFilter]: (effect, ctx) => {
+    ctx.analyticsStore.updateEventsFilter(
+      effect.maxEvents,
+      effect.allowedEventTypes
+    );
+  },
+
+  [effectKeywords.analytics.clearFilter]: (_effect, ctx) => {
+    ctx.analyticsStore.clearEventsFilter();
+  },
+
   [effectKeywords.runtime.dispatch]: (effect, ctx) => {
     ctx.dispatch(effect.event);
   },
@@ -327,6 +329,7 @@ export type RuntimeController = ReturnType<typeof createRuntimeController>;
 
 function createRuntimeController(
   store: RuntimeStoreApi,
+  analyticsStore: AnalyticsStoreResource,
   timer: TimerManager,
   engine: BoidEngine
 ) {
@@ -349,6 +352,7 @@ function createRuntimeController(
     },
     executorContext: {
       store,
+      analyticsStore,
       timer,
       engine,
     },
@@ -358,18 +362,21 @@ function createRuntimeController(
 }
 
 export const runtimeController = defineResource({
-  dependencies: ["runtimeStore", "timer", "engine"],
+  dependencies: ["runtimeStore", "analyticsStore", "timer", "engine"],
   start: ({
     runtimeStore,
+    analyticsStore,
     timer,
     engine,
   }: {
     runtimeStore: RuntimeStoreResource;
+    analyticsStore: AnalyticsStoreResource;
     timer: TimerManager;
     engine: BoidEngine;
   }) => {
     const controller = createRuntimeController(
       runtimeStore.store,
+      analyticsStore,
       timer,
       engine
     );

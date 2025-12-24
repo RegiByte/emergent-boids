@@ -62,10 +62,11 @@ export function ControlsSidebar({
   spawnMode,
   onSpawnModeChange,
 }: ControlsSidebarProps) {
-  const { useStore } = useResource("runtimeStore");
-  const runtimeStore = useStore((state) => state);
+  const { useStore: useRuntimeStore } = useResource("runtimeStore");
+  const { useStore: useAnalyticsStore } = useResource("analyticsStore");
+  const runtimeStore = useRuntimeStore((state) => state);
   const { config, simulation } = runtimeStore;
-  const analytics = useStore((state) => state.analytics);
+  const analytics = useAnalyticsStore((state) => state.evolution.data);
   const runtimeController = useResource("runtimeController");
   const engine = useResource("engine");
   const randomness = useResource("randomness");

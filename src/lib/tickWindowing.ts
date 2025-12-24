@@ -214,7 +214,11 @@ export function getOverlappingWindows(
   const firstWindow = getTickWindow(startTick, windowSize);
   const lastWindow = getTickWindow(endTick, windowSize);
 
-  for (let start = firstWindow.start; start <= lastWindow.start; start += windowSize) {
+  for (
+    let start = firstWindow.start;
+    start <= lastWindow.start;
+    start += windowSize
+  ) {
     windows.push({ start, end: start + windowSize });
   }
 
@@ -237,4 +241,3 @@ export function formatTickWindow(
   }
   return `T${window.start}-T${window.end}`;
 }
-

@@ -48,6 +48,16 @@ export const controlEffectSchemas = {
     type: z.literal(effectKeywords.engine.removeBoid),
     boidId: z.string(), // ID of boid to remove
   }),
+  // Update analytics events filter
+  analyticsUpdateFilter: z.object({
+    type: z.literal(effectKeywords.analytics.updateFilter),
+    maxEvents: z.number().int().min(10).max(500).optional(),
+    allowedEventTypes: z.array(z.string()).nullable().optional(),
+  }),
+  // Clear analytics events filter
+  analyticsClearFilter: z.object({
+    type: z.literal(effectKeywords.analytics.clearFilter),
+  }),
 };
 // Union of all control effects
 export const controlEffectSchema = z.discriminatedUnion("type", [
@@ -56,6 +66,8 @@ export const controlEffectSchema = z.discriminatedUnion("type", [
   controlEffectSchemas.timerCancel,
   controlEffectSchemas.engineAddBoid,
   controlEffectSchemas.engineRemoveBoid,
+  controlEffectSchemas.analyticsUpdateFilter,
+  controlEffectSchemas.analyticsClearFilter,
 ]);
 
 // ============================================

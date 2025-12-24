@@ -52,15 +52,17 @@ export const canvas = defineResource({
         resource.height = newHeight;
 
         // Update runtime store dimensions so boids know the new boundaries
-        store.setState({
-          config: {
-            ...store.getState().config,
-            world: {
-              ...store.getState().config.world,
-              canvasWidth: newWidth,
-              canvasHeight: newHeight,
+        store.setState((current) => {
+          return {
+            config: {
+              ...current.config,
+              world: {
+                ...current.config.world,
+                canvasWidth: newWidth,
+                canvasHeight: newHeight,
+              },
             },
-          },
+          };
         });
       },
     } satisfies CanvasAPI;

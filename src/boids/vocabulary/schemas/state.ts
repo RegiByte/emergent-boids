@@ -85,9 +85,8 @@ export const visualSettingsSchema = z.object({
  * **ui** - User preferences (persists across profile changes)
  *   - visualSettings: What to render
  *
- * **analytics** - Time-series data (resets when profile changes)
- *   - evolutionHistory: Historical snapshots for graphs
- *   - currentSnapshot: Latest statistics
+ * Note: Analytics data has been moved to a separate analyticsStore
+ * to prevent race conditions with event handling.
  *
  * This structure enables:
  * - React optimization (subscribe to specific slices)
@@ -111,18 +110,34 @@ export const runtimeStoreSchema = z.object({
     visualSettings: visualSettingsSchema, // Rendering preferences
     sidebarOpen: z.boolean(), // Whether the sidebar is open
   }),
-  analytics: z.object({
-    evolutionHistory: z.array(evolutionSnapshotSchema), // Historical data for graphs
-    currentSnapshot: evolutionSnapshotSchema.nullable(), // Latest snapshot (nullable during init)
-    recentEvents: z.array(
-      z.object({
-        id: z.string(), // Unique event ID
-        timestamp: z.number(), // Real-world timestamp (for display)
-        tick: z.number(), // Simulation tick (for aggregation)
-        event: allEventSchema, // The event data
-      })
-    ), // Last N events for the events panel
-    eventsConfig: z.object({
+});
+
+/**
+ * Analytics Store Schema
+ *
+ * Separate store for analytics data to prevent race conditions with runtime state.
+ * Each domain follows the pattern: { data, config }
+ *
+ * Domains:
+ * - events: Recent event tracking with filtering
+ * - evolution: Population snapshots over time
+ * - genetics: (future) Trait evolution and lineage tracking
+ * - ml: (future) Machine learning models and predictions
+ */
+export const analyticsStoreSchema = z.object({
+  // Events domain - tracks recent simulation events
+  events: z.object({
+    data: z.object({
+      recentEvents: z.array(
+        z.object({
+          id: z.string(), // Unique event ID
+          timestamp: z.number(), // Real-world timestamp (for display)
+          tick: z.number(), // Simulation tick (for aggregation)
+          event: allEventSchema, // The event data
+        })
+      ),
+    }),
+    config: z.object({
       // Default filter (always active as baseline)
       defaultFilter: z.object({
         maxEvents: z.number().int().min(10).max(500), // Max events to track
@@ -137,7 +152,20 @@ export const runtimeStoreSchema = z.object({
         .nullable(),
     }),
   }),
+
+  // Evolution domain - tracks population dynamics over time
+  evolution: z.object({
+    data: z.object({
+      evolutionHistory: z.array(evolutionSnapshotSchema), // Historical data for graphs
+      currentSnapshot: evolutionSnapshotSchema.nullable(), // Latest snapshot (nullable during init)
+    }),
+    config: z.object({
+      snapshotInterval: z.number().int().min(1).default(3), // Ticks between snapshots
+      maxSnapshots: z.number().int().min(10).max(10000).default(1000), // Max history length
+    }),
+  }),
 });
 
+export type AnalyticsStore = z.infer<typeof analyticsStoreSchema>;
 export type RuntimeStore = z.infer<typeof runtimeStoreSchema>;
 export type VisualSettings = z.infer<typeof visualSettingsSchema>;

@@ -29,9 +29,10 @@ type BirthRatesGraphProps = {
 };
 
 export function BirthRatesGraph({ compact = false }: BirthRatesGraphProps) {
-  const { useStore } = useResource("runtimeStore");
-  const species = useStore((state) => state.config.species);
-  const analytics = useStore((state) => state.analytics);
+  const { useStore: useRuntimeStore } = useResource("runtimeStore");
+  const { useStore: useAnalyticsStore } = useResource("analyticsStore");
+  const species = useRuntimeStore((state) => state.config.species);
+  const analytics = useAnalyticsStore((state) => state.evolution.data);
 
   // Force re-render when analytics updates
   const [, setTick] = useState(0);

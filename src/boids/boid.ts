@@ -18,8 +18,30 @@ import { Boid } from "./vocabulary/schemas/prelude.ts";
 import { PredatorStance } from "./vocabulary/schemas/prelude.ts";
 import * as vec from "./vector";
 import type { DomainRNG } from "@/lib/seededRandom";
+import type { Vector2 } from "./vocabulary/schemas/prelude.ts";
+import { roleKeywords } from "./vocabulary/keywords.ts";
 
 let boidIdCounter = 0;
+
+export type Force = {
+  force: Vector2;
+  weight: number;
+};
+
+/**
+ * Apply weighted forces to boid acceleration
+ *
+ * Declarative composition of behavioral forces with explicit weights.
+ * Makes force priorities clear and easy to tune.
+ *
+ * Philosophy: Simple rules compose. Weighted forces create emergent behavior.
+ */
+function applyWeightedForces(boid: Boid, forces: Array<Force>): void {
+  for (const { force, weight } of forces) {
+    const weighted = vec.multiply(force, weight);
+    boid.acceleration = vec.add(boid.acceleration, weighted);
+  }
+}
 
 /**
  * Boid creation context - provides world and species configuration
@@ -44,7 +66,7 @@ export function createBoid(
   const typeId = rng.pick(typeIds);
   const speciesConfig = species[typeId];
 
-  const role = speciesConfig?.role || "prey";
+  const role = speciesConfig?.role || roleKeywords.prey;
 
   // Randomize initial age to prevent synchronized deaths
   // Start between 0 and 30% of max age to create age diversity
@@ -264,20 +286,7 @@ function updatePredator(
     }
   }
 
-  // Apply forces with stance-based weights
-  const chaseWeight = calculatePredatorChaseWeight(stance);
-  const chaseWeighted = vec.multiply(chaseForce, chaseWeight);
-  const foodWeighted = vec.multiply(foodSeekingForce, 2.5); // Strong food seeking
-  boid.acceleration = vec.add(boid.acceleration, chaseWeighted);
-  boid.acceleration = vec.add(boid.acceleration, foodWeighted);
-
-  // Mate-seeking force (strong when seeking/mating)
-  if (stance === "seeking_mate" || stance === "mating") {
-    const mateSeekingWeighted = vec.multiply(mateSeekingForce, 2.5);
-    boid.acceleration = vec.add(boid.acceleration, mateSeekingWeighted);
-  }
-
-  // Avoid obstacles
+  // Calculate obstacle avoidance (always needed)
   const avoid = rules.avoidObstacles(
     boid,
     obstacles,
@@ -286,16 +295,16 @@ function updatePredator(
     world,
     context.profiler
   );
-  const avoidWeighted = vec.multiply(avoid, parameters.obstacleAvoidanceWeight);
-  boid.acceleration = vec.add(boid.acceleration, avoidWeighted);
 
-  // Separate from other predators (unless mating or eating)
+  // Calculate separation (conditional based on stance)
+  let sep = { x: 0, y: 0 };
+  let separationWeight = 0;
   if (stance !== "eating") {
-    const separationWeight = calculatePredatorSeparationWeight(
+    separationWeight = calculatePredatorSeparationWeight(
       speciesConfig.movement.separationWeight,
       stance
     );
-    const sep = rules.separation(
+    sep = rules.separation(
       boid,
       otherPredators,
       parameters,
@@ -303,11 +312,9 @@ function updatePredator(
       world,
       context.profiler
     );
-    const sepWeighted = vec.multiply(sep, separationWeight);
-    boid.acceleration = vec.add(boid.acceleration, sepWeighted);
   }
 
-  // Avoid crowded areas (territorial behavior)
+  // Calculate crowd avoidance (territorial behavior)
   const crowdAvoidance = rules.avoidCrowdedAreas(
     boid,
     otherPredators,
@@ -316,7 +323,28 @@ function updatePredator(
     world,
     context.profiler
   );
-  boid.acceleration = vec.add(boid.acceleration, crowdAvoidance);
+
+  // Declarative force composition with explicit weights
+  // Clear visual hierarchy makes priorities obvious and easy to tune
+  const chaseWeight = calculatePredatorChaseWeight(stance);
+
+  const forces = [
+    // Hunting and resource behaviors
+    { force: chaseForce, weight: chaseWeight },
+    { force: foodSeekingForce, weight: 2.5 }, // Strong food seeking
+
+    // Avoidance behaviors
+    { force: avoid, weight: parameters.obstacleAvoidanceWeight },
+    { force: sep, weight: separationWeight },
+    { force: crowdAvoidance, weight: 1.0 }, // Already weighted in rule
+  ] satisfies Array<Force>;
+
+  applyWeightedForces(boid, forces);
+  
+  // Mate-seeking (conditional, high priority when active)
+  if (stance === "seeking_mate" || stance === "mating") {
+    applyWeightedForces(boid, [{ force: mateSeekingForce, weight: 2.5 }]);
+  }
 
   // Update velocity with energy-based speed scaling
   boid.velocity = vec.add(boid.velocity, boid.acceleration);
@@ -490,52 +518,40 @@ function updatePrey(
     );
   }
 
-  // Apply weights to all forces (stance-dependent)
-  const sepWeighted = vec.multiply(
-    sep,
-    speciesConfig.movement.separationWeight
-  );
-  const aliWeighted = vec.multiply(ali, speciesConfig.movement.alignmentWeight);
-
-  // Stance-based cohesion adjustment
+  // Declarative force composition with explicit weights
+  // Clear visual hierarchy makes priorities obvious and easy to tune
   const cohesionWeight = calculatePreyCohesionWeight(
     speciesConfig.movement.cohesionWeight,
     stance
   );
-  const cohWeighted = vec.multiply(coh, cohesionWeight);
 
-  const avoidWeighted = vec.multiply(avoid, parameters.obstacleAvoidanceWeight);
-  const fearWeighted = vec.multiply(
-    fearResponse.force,
-    speciesConfig.lifecycle.fearFactor * 3.0
-  );
-  const deathAvoidanceWeighted = vec.multiply(
-    deathAvoidance,
-    speciesConfig.lifecycle.fearFactor * 1.5
-  );
-  const predatorFoodAvoidanceWeighted = vec.multiply(
-    predatorFoodAvoidance,
-    speciesConfig.lifecycle.fearFactor * 2.5
-  );
-  const crowdAvoidanceWeighted = crowdAvoidance; // Already weighted in rule
-  const foodSeekingWeighted = vec.multiply(foodSeekingForce, 2.0);
-  const orbitWeighted = vec.multiply(orbitForce, 3.0); // Strong orbit when eating
+  applyWeightedForces(boid, [
+    // Core flocking behaviors
+    { force: sep, weight: speciesConfig.movement.separationWeight },
+    { force: ali, weight: speciesConfig.movement.alignmentWeight },
+    { force: coh, weight: cohesionWeight },
 
-  boid.acceleration = vec.add(boid.acceleration, sepWeighted);
-  boid.acceleration = vec.add(boid.acceleration, aliWeighted);
-  boid.acceleration = vec.add(boid.acceleration, cohWeighted);
-  boid.acceleration = vec.add(boid.acceleration, avoidWeighted);
-  boid.acceleration = vec.add(boid.acceleration, fearWeighted);
-  boid.acceleration = vec.add(boid.acceleration, deathAvoidanceWeighted);
-  boid.acceleration = vec.add(boid.acceleration, predatorFoodAvoidanceWeighted);
-  boid.acceleration = vec.add(boid.acceleration, crowdAvoidanceWeighted);
-  boid.acceleration = vec.add(boid.acceleration, foodSeekingWeighted);
-  boid.acceleration = vec.add(boid.acceleration, orbitWeighted);
+    // Avoidance behaviors (high priority)
+    { force: avoid, weight: parameters.obstacleAvoidanceWeight },
+    {
+      force: fearResponse.force,
+      weight: speciesConfig.lifecycle.fearFactor * 3.0,
+    },
+    { force: deathAvoidance, weight: speciesConfig.lifecycle.fearFactor * 1.5 },
+    {
+      force: predatorFoodAvoidance,
+      weight: speciesConfig.lifecycle.fearFactor * 2.5,
+    },
+    { force: crowdAvoidance, weight: 1.0 }, // Already weighted in rule
 
-  // Mate-seeking is strong but not as strong as fear (stance-based)
+    // Resource behaviors
+    { force: foodSeekingForce, weight: 2.0 },
+    { force: orbitForce, weight: 3.0 }, // Strong orbit when eating
+  ]);
+
+  // Mate-seeking (conditional, high priority when active)
   if (stance === "seeking_mate" || stance === "mating") {
-    const mateSeekingWeighted = vec.multiply(mateSeekingForce, 2.5);
-    boid.acceleration = vec.add(boid.acceleration, mateSeekingWeighted);
+    applyWeightedForces(boid, [{ force: mateSeekingForce, weight: 2.5 }]);
   }
 
   // Update velocity with fear-induced speed boost

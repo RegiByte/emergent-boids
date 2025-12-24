@@ -267,5 +267,4 @@ Potential additions:
 
 ---
 
-**Philosophy:** Everything is information processing. Simple rules compose. Emergence is reliable.
 

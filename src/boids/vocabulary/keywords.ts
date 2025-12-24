@@ -74,7 +74,12 @@ export const effectKeywords = {
     addBoid: "engine:addBoid",
     removeBoid: "engine:removeBoid",
   },
-
+  // Analytics effects
+  analytics: {
+    updateFilter: "analytics:updateFilter",
+    clearFilter: "analytics:clearFilter",
+  },
+  // Runtime effects
   runtime: {
     dispatch: "runtime:dispatch",
   },

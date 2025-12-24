@@ -237,16 +237,29 @@ export function weightedEuclideanDistance(
 /**
  * Create a weighted priority queue comparator
  *
- * Combines multiple priority factors with decay over time.
+ * Combines multiple priority factors with optional time decay.
  *
  * @example
+ * // Without decay (simple weighted comparison)
  * const comparator = createPriorityComparator(
  *   currentTick,
  *   [
  *     { getValue: (task) => task.urgency, weight: 10.0 },
  *     { getValue: (task) => task.importance, weight: 5.0 },
+ *   ]
+ * );
+ *
+ * // With decay (priority decreases over time)
+ * const comparatorWithDecay = createPriorityComparator(
+ *   currentTick,
+ *   [
+ *     { getValue: (task) => task.urgency, weight: 10.0 },
+ *     { getValue: (task) => task.importance, weight: 5.0 },
  *   ],
- *   0.01 // Decay rate
+ *   {
+ *     decayRate: 0.01,
+ *     getCreatedAt: (task) => task.createdAt,
+ *   }
  * );
  *
  * tasks.sort(comparator);
@@ -257,23 +270,42 @@ export function createPriorityComparator<T>(
     getValue: (item: T) => number;
     weight: number;
   }>,
-  decayRate: number = 0
+  options?: {
+    decayRate?: number;
+    getCreatedAt?: (item: T) => number;
+  }
 ): (a: T, b: T) => number {
+  const decayRate = options?.decayRate ?? 0;
+  const getCreatedAt = options?.getCreatedAt;
+
   return (a: T, b: T) => {
-    const getScore = (item: T, createdAt: number) => {
-      const baseScore = factors.reduce((sum, { getValue, weight }) => {
+    // Calculate base score from weighted factors
+    const calculateBaseScore = (item: T): number => {
+      return factors.reduce((sum, { getValue, weight }) => {
         return sum + getValue(item) * weight;
       }, 0);
+    };
 
-      if (decayRate === 0) return baseScore;
+    // Apply time decay if configured
+    const applyDecay = (baseScore: number, item: T): number => {
+      // No decay configured
+      if (decayRate === 0 || !getCreatedAt) {
+        return baseScore;
+      }
 
+      const createdAt = getCreatedAt(item);
       const age = currentTime - createdAt;
+
+      // No decay for items created now or in the future
+      if (age <= 0) {
+        return baseScore;
+      }
+
       return baseScore * Math.exp(-decayRate * age);
     };
 
-    // Assuming items have a 'createdAt' property
-    const scoreA = getScore(a, (a as any).createdAt || currentTime);
-    const scoreB = getScore(b, (b as any).createdAt || currentTime);
+    const scoreA = applyDecay(calculateBaseScore(a), a);
+    const scoreB = applyDecay(calculateBaseScore(b), b);
 
     return scoreB - scoreA; // Higher score = higher priority
   };
@@ -331,4 +363,3 @@ export function remap(
   const t = inverseLerp(fromMin, fromMax, value, clamp);
   return lerp(toMin, toMax, t);
 }
-
