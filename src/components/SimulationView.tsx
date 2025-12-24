@@ -14,11 +14,14 @@ import { toast } from "sonner";
 import { useDebouncer } from "@tanstack/react-pacer";
 import { CanvasAPI } from "@/resources/canvas";
 import { CanvasFrame } from "@/components/CanvasFrame";
+import { Minimap } from "@/components/Minimap";
+import { CameraControls } from "@/components/CameraControls";
 
 function SimulationView() {
   const runtimeController = useResource("runtimeController");
   const runtimeStore = useResource("runtimeStore");
   const canvas = useResource("canvas");
+  const camera = useResource("camera");
   const renderer = useResource("renderer");
   const { useStore } = runtimeStore;
   const sidebarOpen = useStore((state) => state.ui.sidebarOpen);
@@ -96,9 +99,12 @@ function SimulationView() {
         container.appendChild(canvasWrapper);
       }
 
-      // Clear wrapper and append canvas
-      canvasWrapper.innerHTML = "";
-      canvasWrapper.appendChild(canvas.canvas);
+      // Only append canvas if it's not already in the wrapper
+      // This prevents React StrictMode from causing issues
+      if (!canvasWrapper.contains(canvas.canvas)) {
+        canvasWrapper.innerHTML = "";
+        canvasWrapper.appendChild(canvas.canvas);
+      }
 
       // Calculate initial canvas size based on container
       // Use requestAnimationFrame to ensure layout is complete
@@ -113,8 +119,13 @@ function SimulationView() {
       // Add click handler for placing obstacles or spawning predators
       const handleCanvasClick = (e: MouseEvent) => {
         const rect = canvas.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+
+        // Convert screen coordinates to world coordinates using camera
+        const worldPos = camera.screenToWorld(screenX, screenY);
+        const x = worldPos.x;
+        const y = worldPos.y;
 
         if (spawnMode === "obstacle") {
           // Dispatch obstacle added event
@@ -155,7 +166,7 @@ function SimulationView() {
         canvas.canvas.removeEventListener("click", handleCanvasClick);
       };
     }
-  }, [spawnMode, canvas, renderer, runtimeController]);
+  }, [spawnMode, canvas, renderer, runtimeController, camera]);
 
   // Update cursor based on spawn mode
   useEffect(() => {
@@ -291,12 +302,21 @@ function SimulationView() {
             <div
               ref={canvasContainerRef}
               data-testid="canvas-container"
-              className={cn("relative w-full h-full border-2 border-(--simulation-fog-color) rounded-b-lg overflow-hidden")}
+              className={cn(
+                "relative w-full h-full border-2 border-(--simulation-fog-color) rounded-b-lg overflow-hidden"
+              )}
             >
               <CanvasFrame
                 fogIntensity={atmosphereSettings.fogIntensity}
                 fogOpacity={atmosphereSettings.fogOpacity}
               />
+              {/* Camera controls and minimap overlays */}
+              {system && (
+                <>
+                  <CameraControls />
+                  <Minimap />
+                </>
+              )}
             </div>
           </div>
         </SidebarInset>

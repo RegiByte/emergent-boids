@@ -7,6 +7,7 @@ import type { RuntimeStoreResource } from "./runtimeStore";
 import type { Profiler } from "./profiler";
 import type { TimeResource } from "./time";
 import { renderFrame, type RenderContext } from "./rendering/pipeline";
+import { CameraAPI } from "./camera";
 
 export type Renderer = {
   start: () => void;
@@ -16,11 +17,19 @@ export type Renderer = {
 
 export const renderer = defineResource({
   dependencies: {
-    required: ["canvas", "engine", "runtimeStore", "runtimeController", "time"],
+    required: [
+      "canvas",
+      "camera",
+      "engine",
+      "runtimeStore",
+      "runtimeController",
+      "time",
+    ],
     optional: ["profiler"],
   },
   start: ({
     canvas,
+    camera,
     engine,
     runtimeStore,
     runtimeController,
@@ -28,6 +37,7 @@ export const renderer = defineResource({
     profiler,
   }: {
     canvas: CanvasAPI;
+    camera: CameraAPI; // Will be typed properly
     engine: BoidEngine;
     runtimeStore: RuntimeStoreResource;
     runtimeController: RuntimeController;
@@ -241,12 +251,19 @@ export const renderer = defineResource({
       const { base, activeEvent } = ui.visualSettings.atmosphere;
       const atmosphereSettings = activeEvent?.settings || base;
 
+      // Viewport culling: Only render boids visible in camera viewport
+      profiler?.start("render.culling");
+      const visibleBoids = engine.boids.filter((boid) =>
+        camera.isInViewport(boid.position.x, boid.position.y, 100)
+      );
+      profiler?.end("render.culling");
+
       // Build render context
       const renderContext: RenderContext = {
         ctx,
         width,
         height,
-        boids: engine.boids,
+        boids: visibleBoids, // Only visible boids!
         obstacles: simulation.obstacles,
         deathMarkers: simulation.deathMarkers,
         foodSources: simulation.foodSources,
@@ -264,6 +281,7 @@ export const renderer = defineResource({
         },
         timeState, // NEW: Pass time state to renderer
         profiler,
+        camera, // NEW: Pass camera to renderer for coordinate transforms
       };
 
       // Execute rendering pipeline

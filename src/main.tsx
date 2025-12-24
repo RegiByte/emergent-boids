@@ -1,5 +1,5 @@
 import { StrictMode, Suspense } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { ThemeProvider } from "next-themes";
 import "./index.css";
 import App from "./App.tsx";
@@ -24,7 +24,21 @@ function ErrorFallback({ error }: { error: Error }) {
   );
 }
 
-createRoot(document.getElementById("root")!).render(
+// Prevent double-root creation in development (React StrictMode + HMR)
+const rootElement = document.getElementById("root")!;
+
+// Store root reference globally to prevent HMR from creating multiple roots
+declare global {
+  interface Window {
+    __APP_ROOT__?: Root;
+  }
+}
+
+if (!window.__APP_ROOT__) {
+  window.__APP_ROOT__ = createRoot(rootElement);
+}
+
+window.__APP_ROOT__.render(
   <StrictMode>
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <ErrorBoundary FallbackComponent={ErrorFallback}>

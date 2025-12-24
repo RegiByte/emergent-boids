@@ -39,31 +39,22 @@ export const canvas = defineResource({
     }
 
     // Create the resource object
+    // Note: width/height are VIEWPORT dimensions (what we see on screen)
+    // World dimensions (canvasWidth/canvasHeight) are stored in runtimeStore
     const resource = {
       canvas,
       ctx,
-      width: canvasWidth,
-      height: canvasHeight,
+      width: canvas.width, // Viewport width (800)
+      height: canvas.height, // Viewport height (600)
       resize: (newWidth: number, newHeight: number) => {
-        // Update canvas dimensions
+        // Update viewport (canvas element) dimensions
         canvas.width = newWidth;
         canvas.height = newHeight;
         resource.width = newWidth;
         resource.height = newHeight;
 
-        // Update runtime store dimensions so boids know the new boundaries
-        store.setState((current) => {
-          return {
-            config: {
-              ...current.config,
-              world: {
-                ...current.config.world,
-                canvasWidth: newWidth,
-                canvasHeight: newHeight,
-              },
-            },
-          };
-        });
+        // Note: We do NOT update world dimensions here
+        // World stays 10K x 10K, only viewport changes
       },
     } satisfies CanvasAPI;
 
@@ -71,6 +62,11 @@ export const canvas = defineResource({
   },
   halt: ({ canvas }: CanvasAPI) => {
     // Remove canvas from DOM if it's attached
-    canvas.remove();
+    // Check if canvas is actually in the DOM before removing
+    // (prevents React StrictMode double-unmount issues)
+    if (canvas.parentNode) {
+      console.log("removing canvas");
+      canvas.remove();
+    }
   },
 });

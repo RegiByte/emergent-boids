@@ -6,6 +6,7 @@ import { analyticsStore } from "./resources/analyticsStore";
 import { randomness } from "./resources/randomness";
 import { runtimeController } from "./resources/runtimeController";
 import { canvas } from "./resources/canvas";
+import { camera } from "./resources/camera";
 import { engine } from "./resources/engine";
 import { lifecycleManager } from "./resources/lifecycleManager";
 import { analytics } from "./resources/analytics";
@@ -21,6 +22,7 @@ export const systemConfig = {
   randomness,
   runtimeController,
   canvas,
+  camera,
   engine,
   lifecycleManager,
   analytics,

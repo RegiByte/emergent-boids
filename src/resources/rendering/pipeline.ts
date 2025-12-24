@@ -15,6 +15,7 @@ import type {
 } from "../../boids/vocabulary/schemas/prelude";
 import type { Profiler } from "../profiler";
 import type { TimeState } from "../time";
+import type { CameraAPI } from "../camera";
 import { getBodyPartRenderer, getShapeRenderer } from "./shapes";
 
 /**
@@ -40,7 +41,8 @@ export type RenderContext = {
       trailAlpha: number;
     };
   };
-  timeState: TimeState; // NEW: Time state for pause overlay and speed indicator
+  timeState: TimeState; // Time state for pause overlay and speed indicator
+  camera: CameraAPI; // Camera for coordinate transforms
   profiler?: Profiler;
 };
 
@@ -637,17 +639,35 @@ export const renderStats = (
   }).length;
   const preyCount = rc.boids.length - predatorCount;
 
-  const startingY = 33;
+  // Responsive font size and positioning
+  const isSmallScreen = rc.width < 600;
+  const fontSize = isSmallScreen ? 12 : 16;
+  const lineHeight = isSmallScreen ? 16 : 20;
+  const startingX = isSmallScreen ? 10 : 25;
+  const startingY = isSmallScreen ? 20 : 33;
+
   rc.ctx.fillStyle = "#00ff88";
-  rc.ctx.font = "16px monospace";
-  rc.ctx.fillText(`FPS: ${Math.round(fps)}`, 25, startingY);
-  rc.ctx.fillText(`Total: ${rc.boids.length}`, 25, startingY + 20);
+  rc.ctx.font = `${fontSize}px monospace`;
+  rc.ctx.fillText(`FPS: ${Math.round(fps)}`, startingX, startingY);
+  rc.ctx.fillText(
+    `Total: ${rc.boids.length}`,
+    startingX,
+    startingY + lineHeight
+  );
   rc.ctx.fillStyle = "#00ff88";
-  rc.ctx.fillText(`Prey: ${preyCount}`, 25, startingY + 40);
+  rc.ctx.fillText(`Prey: ${preyCount}`, startingX, startingY + lineHeight * 2);
   rc.ctx.fillStyle = "#ff0000";
-  rc.ctx.fillText(`Predators: ${predatorCount}`, 25, startingY + 60);
+  rc.ctx.fillText(
+    `Predators: ${predatorCount}`,
+    startingX,
+    startingY + lineHeight * 3
+  );
   rc.ctx.fillStyle = "#00ff88";
-  rc.ctx.fillText(`Obstacles: ${obstacleCount}`, 25, startingY + 80);
+  rc.ctx.fillText(
+    `Obstacles: ${obstacleCount}`,
+    startingX,
+    startingY + lineHeight * 4
+  );
 
   // Paused overlay (if paused)
   if (rc.timeState.isPaused) {
@@ -710,6 +730,12 @@ export const renderFrame = (
   // Layer 1: Background (with trails)
   renderBackground(rc);
 
+  // Apply camera transform for world rendering
+  rc.ctx.save();
+  rc.ctx.translate(rc.width / 2, rc.height / 2);
+  rc.ctx.scale(rc.camera.zoom, rc.camera.zoom);
+  rc.ctx.translate(-rc.camera.x, -rc.camera.y);
+
   // Layer 2: Static environment
   renderObstacles(rc);
   renderDeathMarkers(rc);
@@ -726,6 +752,9 @@ export const renderFrame = (
   renderEnergyBars(rc);
   renderMatingHearts(rc);
 
-  // Layer 6: UI overlay
+  // Restore transform for UI rendering
+  rc.ctx.restore();
+
+  // Layer 6: UI overlay (in screen space, not world space)
   renderStats(rc, fps, obstacleCount);
 };

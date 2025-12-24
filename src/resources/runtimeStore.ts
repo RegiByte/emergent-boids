@@ -15,10 +15,11 @@ export const runtimeStore = defineResource({
     // Load default profile
     const profile = getProfile(defaultProfileId);
 
-    // Calculate canvas dimensions dynamically from viewport
+    // World dimensions (10K x 10K for large-scale simulation)
+    // Note: Viewport (canvas element) will be 800x600, but world is much larger
     const { canvasWidth, canvasHeight } = {
-      canvasWidth: 800,
-      canvasHeight: 600,
+      canvasWidth: 10000,
+      canvasHeight: 10000,
     };
 
     // Create zustand store with initial values from profile
