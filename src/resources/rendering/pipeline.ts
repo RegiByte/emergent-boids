@@ -14,6 +14,7 @@ import type {
   SpeciesConfig,
 } from "../../boids/vocabulary/schemas/prelude";
 import type { Profiler } from "../profiler";
+import type { TimeState } from "../time";
 import { getBodyPartRenderer, getShapeRenderer } from "./shapes";
 
 /**
@@ -39,6 +40,7 @@ export type RenderContext = {
       trailAlpha: number;
     };
   };
+  timeState: TimeState; // NEW: Time state for pause overlay and speed indicator
   profiler?: Profiler;
 };
 
@@ -594,8 +596,8 @@ export const renderMatingHearts = (rc: RenderContext): void => {
       if (midY < 0) midY += rc.height;
       if (midY > rc.height) midY -= rc.height;
 
-      // Animated bobbing effect
-      const time = performance.now() / 1000;
+      // Animated bobbing effect (uses simulation time so it pauses)
+      const time = rc.timeState.simulationElapsedMs / 1000;
       const bobOffset = Math.sin(time * 3) * 4; // Bob 4px up/down
 
       // Draw heart emoji
@@ -646,6 +648,53 @@ export const renderStats = (
   rc.ctx.fillText(`Predators: ${predatorCount}`, 25, startingY + 60);
   rc.ctx.fillStyle = "#00ff88";
   rc.ctx.fillText(`Obstacles: ${obstacleCount}`, 25, startingY + 80);
+
+  // Paused overlay (if paused)
+  if (rc.timeState.isPaused) {
+    rc.ctx.save();
+
+    // Semi-transparent overlay
+    rc.ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    rc.ctx.fillRect(0, 0, rc.width, rc.height);
+
+    // "PAUSED" text
+    rc.ctx.fillStyle = "#00ff88";
+    rc.ctx.font = "bold 64px 'Nunito Sans', sans-serif";
+    rc.ctx.textAlign = "center";
+    rc.ctx.textBaseline = "middle";
+    rc.ctx.fillText("⏸️ PAUSED", rc.width / 2, rc.height / 2);
+
+    // Instructions
+    rc.ctx.fillStyle = "#ffffff";
+    rc.ctx.font = "20px 'Nunito Sans', sans-serif";
+    rc.ctx.fillText(
+      "Press SPACE to resume or → to step forward",
+      rc.width / 2,
+      rc.height / 2 + 60
+    );
+
+    // Frame counter
+    rc.ctx.fillStyle = "#888888";
+    rc.ctx.font = "16px 'Nunito Sans', sans-serif";
+    rc.ctx.fillText(
+      `Frame: ${rc.timeState.simulationFrame}`,
+      rc.width / 2,
+      rc.height / 2 + 90
+    );
+
+    rc.ctx.restore();
+  }
+
+  // Speed indicator (if not 1x)
+  if (rc.timeState.timeScale !== 1.0) {
+    rc.ctx.save();
+    rc.ctx.fillStyle = "#ffaa00";
+    rc.ctx.font = "bold 24px 'Nunito Sans', sans-serif";
+    rc.ctx.textAlign = "right";
+    rc.ctx.textBaseline = "top";
+    rc.ctx.fillText(`⏩ ${rc.timeState.timeScale}x`, rc.width - 20, 20);
+    rc.ctx.restore();
+  }
 
   rc.profiler?.end("render.stats");
 };

@@ -5,6 +5,7 @@ import { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
 import type { RuntimeStoreResource } from "./runtimeStore";
 import type { Profiler } from "./profiler";
+import type { TimeResource } from "./time";
 import { renderFrame, type RenderContext } from "./rendering/pipeline";
 
 export type Renderer = {
@@ -15,7 +16,7 @@ export type Renderer = {
 
 export const renderer = defineResource({
   dependencies: {
-    required: ["canvas", "engine", "runtimeStore", "runtimeController"],
+    required: ["canvas", "engine", "runtimeStore", "runtimeController", "time"],
     optional: ["profiler"],
   },
   start: ({
@@ -23,12 +24,14 @@ export const renderer = defineResource({
     engine,
     runtimeStore,
     runtimeController,
+    time,
     profiler,
   }: {
     canvas: CanvasAPI;
     engine: BoidEngine;
     runtimeStore: RuntimeStoreResource;
     runtimeController: RuntimeController;
+    time: TimeResource;
     profiler: Profiler | undefined;
   }) => {
     let animationId: number | null = null;
@@ -41,6 +44,10 @@ export const renderer = defineResource({
     const FIXED_TIMESTEP = 1 / FIXED_UPDATE_RATE; // 0.01667 seconds (16.67ms)
     const MAX_ACCUMULATED_TIME = FIXED_TIMESTEP * 5; // Prevent spiral of death
     let accumulator = 0;
+
+    // Lifecycle tick tracking (dispatch time.passed every second of simulation time)
+    let lastLifecycleTickTime = 0;
+    const LIFECYCLE_TICK_INTERVAL = 1000; // 1 second in milliseconds
 
     // Keyboard shortcuts for visual toggles
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -126,16 +133,49 @@ export const renderer = defineResource({
           });
           console.log("Food sources:", !currentSettings.foodSourcesEnabled);
           break;
-        case " ":
+        case " ": {
           // Toggle pause (space bar)
           e.preventDefault();
-          if (isRunning) {
-            stop();
-            console.log("Paused");
+          const timeState = time.getState();
+          if (timeState.isPaused) {
+            time.resume();
+            console.log("▶️ Resumed");
           } else {
-            start();
-            console.log("Resumed");
+            time.pause();
+            console.log("⏸️ Paused");
           }
+          break;
+        }
+        case "arrowright":
+          // Step forward one tick (when paused)
+          e.preventDefault();
+          time.step();
+          console.log("⏭️ Step forward");
+          break;
+        case "1":
+          // 0.25x speed
+          time.setTimeScale(0.25);
+          console.log("⏩ Speed: 0.25x");
+          break;
+        case "2":
+          // 0.5x speed
+          time.setTimeScale(0.5);
+          console.log("⏩ Speed: 0.5x");
+          break;
+        case "3":
+          // 1x speed (normal)
+          time.setTimeScale(1.0);
+          console.log("⏩ Speed: 1x");
+          break;
+        case "4":
+          // 2x speed
+          time.setTimeScale(2.0);
+          console.log("⏩ Speed: 2x");
+          break;
+        case "5":
+          // 4x speed
+          time.setTimeScale(4.0);
+          console.log("⏩ Speed: 4x");
           break;
         case "p":
           // Toggle profiler
@@ -161,15 +201,27 @@ export const renderer = defineResource({
 ╔════════════════════════════════════════╗
 ║     EMERGENT BOIDS - KEYBOARD HELP     ║
 ╠════════════════════════════════════════╣
+║ VISUAL TOGGLES:                        ║
 ║ T - Toggle motion trails               ║
 ║ E - Toggle energy bars (prey)          ║
 ║ H - Toggle mating hearts               ║
 ║ S - Toggle stance symbols              ║
 ║ D - Toggle death markers               ║
 ║ F - Toggle food sources                ║
+║                                        ║
+║ TIME CONTROL:                          ║
 ║ Space - Pause/Resume simulation        ║
+║ → - Step forward (when paused)         ║
+║ 1 - Speed 0.25x (slow motion)          ║
+║ 2 - Speed 0.5x                         ║
+║ 3 - Speed 1x (normal)                  ║
+║ 4 - Speed 2x                           ║
+║ 5 - Speed 4x (fast forward)            ║
+║                                        ║
+║ PROFILER:                              ║
 ║ P - Toggle performance profiler        ║
 ║ R - Reset profiler metrics             ║
+║                                        ║
 ║ K or / - Show this help                ║
 ╚════════════════════════════════════════╝
           `);
@@ -183,6 +235,7 @@ export const renderer = defineResource({
     const draw = () => {
       const { ctx, width, height } = canvas;
       const { simulation, ui, config } = runtimeStore.store.getState();
+      const timeState = time.getState();
 
       // Get atmosphere settings (active event overrides base)
       const { base, activeEvent } = ui.visualSettings.atmosphere;
@@ -209,6 +262,7 @@ export const renderer = defineResource({
             trailAlpha: atmosphereSettings.trailAlpha,
           },
         },
+        timeState, // NEW: Pass time state to renderer
         profiler,
       };
 
@@ -219,46 +273,112 @@ export const renderer = defineResource({
     const animate = () => {
       profiler?.start("frame.total");
 
-      // Calculate frame time
+      // Calculate real-world frame time
       const currentTime = performance.now();
-      const deltaTime = (currentTime - lastFrameTime) / 1000; // Convert to seconds
+      const realDeltaMs = currentTime - lastFrameTime;
       lastFrameTime = currentTime;
 
+      // Update time resource (handles pause/scale internally)
+      time.update(realDeltaMs);
+
+      // Get time state
+      const timeState = time.getState();
+
       // Smooth FPS calculation (exponential moving average) - for display only
-      fps = fps * 0.9 + (1 / deltaTime) * 0.1;
+      fps = fps * 0.9 + (1000 / realDeltaMs) * 0.1;
 
-      // Add frame time to accumulator
-      accumulator += deltaTime;
+      // Only update simulation if not paused
+      if (!timeState.isPaused) {
+        // Apply time scale to delta
+        const scaledDeltaSeconds = (realDeltaMs / 1000) * timeState.timeScale;
+        accumulator += scaledDeltaSeconds;
 
-      // Clamp accumulator to prevent spiral of death (if simulation can't keep up)
-      if (accumulator > MAX_ACCUMULATED_TIME) {
-        accumulator = MAX_ACCUMULATED_TIME;
+        // Clamp accumulator to prevent spiral of death
+        if (accumulator > MAX_ACCUMULATED_TIME) {
+          accumulator = MAX_ACCUMULATED_TIME;
+        }
+
+        // Update simulation at fixed rate (may run 0, 1, or multiple times per frame)
+        profiler?.start("frame.update");
+        while (accumulator >= FIXED_TIMESTEP) {
+          engine.update(FIXED_TIMESTEP); // Always pass fixed 16.67ms timestep
+          time.tick(); // Increment tick counter
+          accumulator -= FIXED_TIMESTEP;
+        }
+        profiler?.end("frame.update");
+
+        // Check for lifecycle tick (dispatch time.passed every second of simulation time)
+        const currentSimulationTime = timeState.simulationElapsedMs;
+        if (
+          currentSimulationTime - lastLifecycleTickTime >=
+          LIFECYCLE_TICK_INTERVAL
+        ) {
+          profiler?.start("frame.lifecycle");
+          runtimeController.dispatch({
+            type: eventKeywords.time.passed,
+            deltaMs: 1000,
+          });
+          lastLifecycleTickTime = currentSimulationTime;
+          profiler?.end("frame.lifecycle");
+        }
+
+        // Check for catches after all updates (once per render frame)
+        profiler?.start("frame.catches");
+        const catches = engine.checkCatches();
+        for (const catchEvent of catches) {
+          runtimeController.dispatch({
+            type: eventKeywords.boids.caught,
+            predatorId: catchEvent.predatorId,
+            preyId: catchEvent.preyId,
+            preyTypeId: catchEvent.preyTypeId, // Include prey type for death tracking
+            preyEnergy: catchEvent.preyEnergy,
+            preyPosition: catchEvent.preyPosition,
+          });
+        }
+        profiler?.end("frame.catches");
       }
 
-      // Update simulation at fixed rate (may run 0, 1, or multiple times per frame)
-      profiler?.start("frame.update");
-      while (accumulator >= FIXED_TIMESTEP) {
-        engine.update(FIXED_TIMESTEP); // Always pass fixed 16.67ms timestep
-        accumulator -= FIXED_TIMESTEP;
-      }
-      profiler?.end("frame.update");
+      // Handle step mode (when paused)
+      if (timeState.isPaused && timeState.stepRequested) {
+        profiler?.start("frame.step");
 
-      // Check for catches after all updates (once per render frame)
-      profiler?.start("frame.catches");
-      const catches = engine.checkCatches();
-      for (const catchEvent of catches) {
-        runtimeController.dispatch({
-          type: eventKeywords.boids.caught,
-          predatorId: catchEvent.predatorId,
-          preyId: catchEvent.preyId,
-          preyTypeId: catchEvent.preyTypeId, // Include prey type for death tracking
-          preyEnergy: catchEvent.preyEnergy,
-          preyPosition: catchEvent.preyPosition,
-        });
-      }
-      profiler?.end("frame.catches");
+        // Run one simulation update
+        engine.update(FIXED_TIMESTEP);
+        time.tick();
 
-      // Render at display rate (always once per frame)
+        // Check for lifecycle tick (same as normal update)
+        const currentSimulationTime = timeState.simulationElapsedMs;
+        if (
+          currentSimulationTime - lastLifecycleTickTime >=
+          LIFECYCLE_TICK_INTERVAL
+        ) {
+          runtimeController.dispatch({
+            type: eventKeywords.time.passed,
+            deltaMs: 1000,
+          });
+          lastLifecycleTickTime = currentSimulationTime;
+        }
+
+        // Check for catches after step
+        const catches = engine.checkCatches();
+        for (const catchEvent of catches) {
+          runtimeController.dispatch({
+            type: eventKeywords.boids.caught,
+            predatorId: catchEvent.predatorId,
+            preyId: catchEvent.preyId,
+            preyTypeId: catchEvent.preyTypeId,
+            preyEnergy: catchEvent.preyEnergy,
+            preyPosition: catchEvent.preyPosition,
+          });
+        }
+
+        // Clear step request
+        time.clearStepRequest();
+
+        profiler?.end("frame.step");
+      }
+
+      // Always render (even when paused)
       profiler?.start("frame.render");
       draw();
       profiler?.end("frame.render");

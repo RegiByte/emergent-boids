@@ -2,6 +2,8 @@ import { defineResource } from "braided";
 import type { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
 import type { RuntimeStoreResource } from "./runtimeStore";
+import type { TimerManager } from "./timer";
+import type { TimeResource } from "./time";
 import { eventKeywords } from "../boids/vocabulary/keywords";
 import type { Profiler } from "./profiler";
 import { createBoidOfType } from "../boids/boid";
@@ -39,6 +41,8 @@ export const lifecycleManager = defineResource({
     "runtimeStore",
     "profiler",
     "randomness",
+    "timer",
+    "time",
   ],
   start: ({
     engine,
@@ -46,12 +50,16 @@ export const lifecycleManager = defineResource({
     runtimeStore,
     profiler,
     randomness,
+    timer,
+    time,
   }: {
     engine: BoidEngine;
     runtimeController: RuntimeController;
     runtimeStore: RuntimeStoreResource;
     profiler: Profiler;
     randomness: RandomnessResource;
+    timer: TimerManager;
+    time: TimeResource;
   }) => {
     const store = runtimeStore.store;
     // Tick counter for periodic events
@@ -76,6 +84,11 @@ export const lifecycleManager = defineResource({
 
     const handleLifecycleUpdate = (deltaMs: number) => {
       profiler.start("lifecycle.total");
+
+      // Update timers (check for expired timers)
+      profiler.start("lifecycle.timers");
+      timer.update();
+      profiler.end("lifecycle.timers");
 
       tickCounter++;
       const deltaSeconds = deltaMs / 1000;
@@ -338,7 +351,8 @@ export const lifecycleManager = defineResource({
         preyEnergy,
         preyPosition,
         tickCounter,
-        randomness.domain("food")
+        randomness.domain("food"),
+        time.now() // Pass simulation time for ID generation
       );
 
       // Apply side effects
@@ -363,7 +377,8 @@ export const lifecycleManager = defineResource({
         simulation.foodSources,
         config.world,
         tickCounter,
-        randomness.domain("food")
+        randomness.domain("food"),
+        time.now() // Pass simulation time for ID generation
       );
 
       if (!shouldUpdate) {

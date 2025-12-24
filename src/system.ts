@@ -1,4 +1,5 @@
 import { createSystemHooks, createSystemManager } from "braided-react";
+import { time } from "./resources/time";
 import { timer } from "./resources/timer";
 import { runtimeStore } from "./resources/runtimeStore";
 import { analyticsStore } from "./resources/analyticsStore";
@@ -13,6 +14,7 @@ import { renderer } from "./resources/renderer";
 import { profiler } from "./resources/profiler";
 
 export const systemConfig = {
+  time,
   timer,
   runtimeStore,
   analyticsStore,

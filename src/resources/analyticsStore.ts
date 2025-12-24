@@ -7,6 +7,7 @@ import { eventKeywords } from "@/boids/vocabulary/keywords.ts";
 import type { AllEvents } from "@/boids/vocabulary/schemas/events.ts";
 import type { EvolutionSnapshot } from "@/boids/vocabulary/schemas/evolution.ts";
 import { RandomnessResource } from "./randomness";
+import type { TimeResource } from "./time";
 
 export type AnalyticsStoreApi = StoreApi<AnalyticsStore>;
 
@@ -27,8 +28,14 @@ export type AnalyticsStoreApi = StoreApi<AnalyticsStore>;
  * - clearEventsFilter(): Reset to default filter
  */
 export const analyticsStore = defineResource({
-  dependencies: ["randomness"],
-  start: ({ randomness }: { randomness: RandomnessResource }) => {
+  dependencies: ["randomness", "time"],
+  start: ({
+    randomness,
+    time,
+  }: {
+    randomness: RandomnessResource;
+    time: TimeResource;
+  }) => {
     const rng = randomness.domain("analytics");
 
     // Create zustand store with initial state
@@ -99,10 +106,10 @@ export const analyticsStore = defineResource({
 
       if (!shouldTrack) return;
 
-      // Create event entry
+      // Create event entry (use simulation time)
       const eventEntry = {
-        id: `event-${Date.now()}-${rng.next().toString(36).slice(2, 9)}`,
-        timestamp: Date.now(),
+        id: `event-${time.now()}-${rng.next().toString(36).slice(2, 9)}`,
+        timestamp: time.now(), // Use simulation time instead of Date.now()
         tick,
         event,
       };

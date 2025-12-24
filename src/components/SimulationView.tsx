@@ -291,7 +291,7 @@ function SimulationView() {
             <div
               ref={canvasContainerRef}
               data-testid="canvas-container"
-              className={cn("relative w-full h-full border-2 border-green-500 rounded-b-lg overflow-hidden")}
+              className={cn("relative w-full h-full border-2 border-(--simulation-fog-color) rounded-b-lg overflow-hidden")}
             >
               <CanvasFrame
                 fogIntensity={atmosphereSettings.fogIntensity}

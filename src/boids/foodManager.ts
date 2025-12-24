@@ -40,15 +40,15 @@ export function createPredatorFood(
   preyEnergy: number,
   preyPosition: { x: number; y: number },
   currentTick: number,
-  rng: DomainRNG
+  rng: DomainRNG,
+  simulationTime: number // NEW: Pass simulation time for ID generation
 ): FoodSource {
   const foodEnergy =
     preyEnergy * FOOD_CONSTANTS.PREDATOR_FOOD_FROM_PREY_MULTIPLIER;
-  const randomId = Math.floor(rng.next() * 1000000000);
-  const now = Date.now();
+  const randomId = Math.floor(rng.next() * 1_000_000);
 
   return {
-    id: `food-predator-${now}-${randomId}`,
+    id: `food-predator-${simulationTime}-${randomId}`,
     position: preyPosition,
     energy: foodEnergy,
     maxEnergy: foodEnergy,
@@ -78,7 +78,8 @@ export function generatePreyFood(
   currentFoodSources: FoodSource[],
   world: WorldConfig,
   currentTick: number,
-  rng: DomainRNG
+  rng: DomainRNG,
+  simulationTime: number // NEW: Pass simulation time for ID generation
 ): FoodSpawnResult {
   // Count existing prey food sources
   const existingPreyFoodCount = currentFoodSources.filter(
@@ -101,7 +102,7 @@ export function generatePreyFood(
   for (let i = 0; i < maxToSpawn; i++) {
     const randomId = Math.floor(rng.next() * 1000000000);
     newFoodSources.push({
-      id: `food-prey-${Date.now()}-${randomId}-${i}`,
+      id: `food-prey-${simulationTime}-${randomId}-${i}`,
       position: {
         x: rng.range(0, world.canvasWidth),
         y: rng.range(0, world.canvasHeight),

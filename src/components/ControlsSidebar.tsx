@@ -70,6 +70,8 @@ export function ControlsSidebar({
   const runtimeController = useResource("runtimeController");
   const engine = useResource("engine");
   const randomness = useResource("randomness");
+  const time = useResource("time");
+  const timeState = time.useStore((state) => state);
   const speciesIds = Object.keys(config.species);
   const [activeTab, setActiveTab] = useState<
     "controls" | "species" | "events" | "stats" | "graphs"
@@ -198,6 +200,86 @@ export function ControlsSidebar({
                     max={5}
                     step={0.1}
                   />
+                </div>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <Separator />
+
+            {/* Time Control */}
+            <SidebarGroup className="px-0">
+              <SidebarGroupLabel>⏱️ Time Control</SidebarGroupLabel>
+              <SidebarGroupContent className="px-4 space-y-3">
+                {/* Pause/Resume Button */}
+                <Button
+                  variant={timeState.isPaused ? "default" : "destructive"}
+                  size="sm"
+                  className="w-full"
+                  onClick={() =>
+                    timeState.isPaused ? time.resume() : time.pause()
+                  }
+                >
+                  {timeState.isPaused ? "▶️ Resume" : "⏸️ Pause"}
+                </Button>
+
+                {/* Speed Control Buttons */}
+                <div className="flex gap-1">
+                  {[0.25, 0.5, 1, 2, 4].map((scale) => (
+                    <Button
+                      key={scale}
+                      variant={
+                        timeState.timeScale === scale ? "default" : "outline"
+                      }
+                      size="sm"
+                      className="flex-1 text-xs px-1"
+                      onClick={() => time.setTimeScale(scale)}
+                    >
+                      {scale}x
+                    </Button>
+                  ))}
+                </div>
+
+                {/* Step Button (only when paused) */}
+                {timeState.isPaused && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => time.step()}
+                  >
+                    ⏭️ Step (1 Tick)
+                  </Button>
+                )}
+
+                {/* Status Indicator */}
+                <div className="text-xs text-muted-foreground text-center space-y-1">
+                  <p>
+                    <strong>Frame:</strong>{" "}
+                    <code className="text-primary">
+                      {timeState.simulationFrame}
+                    </code>
+                  </p>
+                  <p>
+                    {timeState.isPaused
+                      ? "⏸️ PAUSED"
+                      : `▶️ Running at ${timeState.timeScale}x speed`}
+                  </p>
+                </div>
+
+                {/* Keyboard Shortcuts */}
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Kbd>Space</Kbd>
+                    <span>Pause/Resume</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Kbd>→</Kbd>
+                    <span>Step forward</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Kbd>1-5</Kbd>
+                    <span>Speed control</span>
+                  </div>
                 </div>
               </SidebarGroupContent>
             </SidebarGroup>

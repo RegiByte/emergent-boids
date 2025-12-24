@@ -21,8 +21,32 @@ export const stableEcosystemProfile: SimulationProfile = {
   world: {
     canvasWidth: 1400,
     canvasHeight: 1000,
-    initialPreyCount: 200,
-    initialPredatorCount: 10, // Predators emerge from prey evolution
+    initialPreyCount: 150,
+    initialPredatorCount: 20, // Predators emerge from prey evolution
+  },
+
+  parameters: {
+    // Perception and interaction
+    perceptionRadius: 50,
+    obstacleAvoidanceWeight: 2.0,
+    fearRadius: 150, // Increased from 100 - earlier warning system
+    chaseRadius: 150,
+    catchRadius: 10,
+    mateRadius: 20, // Proximity-based reproduction
+    minDistance: 10, // Prevents overlap/stacking
+    fearFactor: 0.5, // Baseline fear factor for all species
+
+    // Population limits
+    maxBoids: 600, // Global safety limit
+    maxPreyBoids: 500, // Per-role cap for prey
+    maxPredatorBoids: 50, // Per-role cap for predators
+
+    // Lifecycle parameters
+    minReproductionAge: 5, // Can start reproducing at 5 seconds old
+    reproductionEnergyThreshold: 0.5, // Need 50% energy to seek mates
+    reproductionCooldownTicks: 5, // 5 time passages (~5 seconds) cooldown
+    matingBuildupTicks: 2, // Must stay close to mate for 3 ticks before reproducing
+    eatingCooldownTicks: 2, // Predators must wait 3 ticks after eating
   },
 
   species: {
@@ -286,29 +310,5 @@ export const stableEcosystemProfile: SimulationProfile = {
         // Prey affinities don't matter (chase/fear overrides flocking)
       },
     },
-  },
-
-  parameters: {
-    // Perception and interaction
-    perceptionRadius: 50,
-    obstacleAvoidanceWeight: 2.0,
-    fearRadius: 150, // Increased from 100 - earlier warning system
-    chaseRadius: 150,
-    catchRadius: 10,
-    mateRadius: 20, // Proximity-based reproduction
-    minDistance: 10, // Prevents overlap/stacking
-    fearFactor: 0.5, // Baseline fear factor for all species
-
-    // Population limits
-    maxBoids: 500, // Global safety limit
-    maxPreyBoids: 550, // Per-role cap for prey
-    maxPredatorBoids: 50, // Per-role cap for predators
-
-    // Lifecycle parameters
-    minReproductionAge: 5, // Can start reproducing at 5 seconds old
-    reproductionEnergyThreshold: 0.5, // Need 50% energy to seek mates
-    reproductionCooldownTicks: 5, // 5 time passages (~5 seconds) cooldown
-    matingBuildupTicks: 2, // Must stay close to mate for 3 ticks before reproducing
-    eatingCooldownTicks: 2, // Predators must wait 3 ticks after eating
   },
 };

@@ -2,6 +2,7 @@ import { defineResource } from "braided";
 import type { RuntimeController } from "./runtimeController";
 import type { RuntimeStoreResource } from "./runtimeStore";
 import type { AnalyticsStoreResource } from "./analyticsStore";
+import type { TimeResource } from "./time";
 import { eventKeywords } from "../boids/vocabulary/keywords";
 import { produce } from "immer";
 
@@ -19,15 +20,17 @@ import { produce } from "immer";
  * - Starvation crisis: Average energy <30% across all species
  */
 export const atmosphere = defineResource({
-  dependencies: ["runtimeController", "runtimeStore", "analyticsStore"],
+  dependencies: ["runtimeController", "runtimeStore", "analyticsStore", "time"],
   start: ({
     runtimeController,
     runtimeStore,
     analyticsStore,
+    time,
   }: {
     runtimeController: RuntimeController;
     runtimeStore: RuntimeStoreResource;
     analyticsStore: AnalyticsStoreResource;
+    time: TimeResource;
   }) => {
     let tickCounter = 0;
     const CHECK_INTERVAL = 3; // Check for events every 3 ticks (same as analytics)
@@ -37,7 +40,7 @@ export const atmosphere = defineResource({
     const detectionWindow = {
       births: {} as Record<string, number>,
       deaths: {} as Record<string, number>,
-      windowStart: Date.now(),
+      windowStart: time.now(), // Use simulation time
     };
 
     // Subscribe to events
@@ -202,7 +205,7 @@ export const atmosphere = defineResource({
     const resetDetectionWindow = () => {
       detectionWindow.births = {};
       detectionWindow.deaths = {};
-      detectionWindow.windowStart = Date.now();
+      detectionWindow.windowStart = time.now(); // Use simulation time
     };
 
     return { unsubscribe };

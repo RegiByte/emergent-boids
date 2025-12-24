@@ -126,22 +126,11 @@ const handlers = {
   },
 
   [eventKeywords.time.passed]: (): ControlEffect[] => {
-    // This handler schedules the next tick
+    // This handler no longer auto-schedules the next tick
+    // Instead, the renderer dispatches time.passed events directly
+    // based on simulation time (respects pause/scale)
     // Energy updates are handled in lifecycleManager
-    const effects: ControlEffect[] = [];
-
-    // Schedule next tick
-    effects.push({
-      type: effectKeywords.timer.schedule,
-      id: "energy-tick",
-      delayMs: 1000,
-      onExpire: {
-        type: eventKeywords.time.passed,
-        deltaMs: 1000,
-      },
-    });
-
-    return effects;
+    return [];
   },
 
   [eventKeywords.boids.caught]: (_state, event) => {
@@ -381,11 +370,9 @@ export const runtimeController = defineResource({
       engine
     );
 
-    // Start the energy tick timer
-    controller.dispatch({
-      type: eventKeywords.time.passed,
-      deltaMs: 1000,
-    });
+    // Note: time.passed events are now dispatched by the renderer
+    // based on simulation time (respects pause/scale)
+    // No need to start a timer here
 
     return controller;
   },
