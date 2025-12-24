@@ -422,8 +422,10 @@ export function ControlsSidebar({
                         onClick={() => setActiveSpecies(typeId)}
                         style={{
                           backgroundColor:
-                            activeSpecies === typeId ? sp.color : undefined,
-                          borderColor: sp.color,
+                            activeSpecies === typeId
+                              ? sp.visual.color
+                              : undefined,
+                          borderColor: sp.visual.color,
                           color: activeSpecies === typeId ? "#000" : undefined,
                         }}
                       >
@@ -440,7 +442,7 @@ export function ControlsSidebar({
             {/* Species Settings */}
             {species && (
               <SidebarGroup className="px-0">
-                <SidebarGroupLabel style={{ color: species.color }}>
+                <SidebarGroupLabel style={{ color: species.visual.color }}>
                   {species.name} Settings
                 </SidebarGroupLabel>
                 <SidebarGroupContent className="px-4">

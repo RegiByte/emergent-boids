@@ -85,8 +85,8 @@ export function EventsGraph({ compact = false }: EventsGraphProps) {
     return {
       label: `${typeConfig.name} Births`,
       data: snapshots.map((snap) => snap.births[typeId] || 0),
-      backgroundColor: typeConfig.color + "DD", // Bright for births
-      borderColor: typeConfig.color,
+      backgroundColor: typeConfig.visual.color + "DD", // Bright for births
+      borderColor: typeConfig.visual.color,
       borderWidth: 1,
       stack: "births", // All births in one group
     };
@@ -97,8 +97,8 @@ export function EventsGraph({ compact = false }: EventsGraphProps) {
     return {
       label: `${typeConfig.name} Deaths`,
       data: snapshots.map((snap) => snap.deaths[typeId] || 0), // Positive values
-      backgroundColor: typeConfig.color + "50", // Dim for deaths
-      borderColor: typeConfig.color + "AA",
+      backgroundColor: typeConfig.visual.color + "50", // Dim for deaths
+      borderColor: typeConfig.visual.color + "AA",
       borderWidth: 1,
       stack: "deaths", // All deaths in separate group
     };

@@ -110,3 +110,19 @@ export const reproductionTypeKeywords = {
   sexual: "sexual",
   asexual: "asexual",
 } as const;
+
+export const shapeKeywords = {
+  diamond: "diamond",
+  circle: "circle",
+  hexagon: "hexagon",
+  square: "square",
+  triangle: "triangle",
+} as const;
+
+export const bodyPartKeywords = {
+  eyes: "eyes",
+  fins: "fins",
+  spikes: "spikes",
+  tail: "tail",
+  glow: "glow",
+} as const;

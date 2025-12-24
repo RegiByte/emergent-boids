@@ -29,8 +29,17 @@ export const stableEcosystemProfile: SimulationProfile = {
     explorer: {
       id: "explorer",
       name: "Explorer",
-      color: "#00ff88", // Green
       role: "prey",
+
+      visual: {
+        color: "#00ff88", // Green
+        shape: "diamond", // Fast and agile - diamond shape
+        size: 0.9, // Slightly smaller than average
+        trail: true, // Birds leave trails (flight paths)
+        trailColor: "#ffffff", // White trails for contrast
+        bodyParts: ["eyes", "tail"], // Eyes for character, tail for direction
+        tailColor: "#ffffff", // White tail for contrast
+      },
 
       movement: {
         separationWeight: 1.5,
@@ -74,8 +83,15 @@ export const stableEcosystemProfile: SimulationProfile = {
     social: {
       id: "social",
       name: "Social",
-      color: "#ff4488", // Pink
       role: "prey",
+
+      visual: {
+        color: "#ff4488", // Pink
+        shape: "circle", // Smooth and social - circle shape
+        size: 1.0, // Average size
+        trail: true, // Fish leave trails (water currents)
+        bodyParts: ["eyes", "fins"], // Eyes for character, fins for aquatic look
+      },
 
       movement: {
         separationWeight: 0.5,
@@ -119,8 +135,15 @@ export const stableEcosystemProfile: SimulationProfile = {
     independent: {
       id: "independent",
       name: "Independent",
-      color: "#ffaa00", // Orange
       role: "prey",
+
+      visual: {
+        color: "#ffaa00", // Orange
+        shape: "hexagon", // Sturdy and grounded - hexagon shape
+        size: 1.1, // Slightly larger
+        trail: false, // Ground animals don't leave trails (cleaner look)
+        bodyParts: ["eyes"], // Just eyes, simple ground animal
+      },
 
       movement: {
         separationWeight: 2.3,
@@ -165,8 +188,15 @@ export const stableEcosystemProfile: SimulationProfile = {
     cautious: {
       id: "cautious",
       name: "Cautious",
-      color: "#00aaff", // Blue
       role: "prey",
+
+      visual: {
+        color: "#00aaff", // Blue
+        shape: "hexagon", // Sturdy and grounded - hexagon shape
+        size: 0.95, // Slightly smaller, defensive
+        trail: false, // Ground animals don't leave trails (cleaner look)
+        bodyParts: ["eyes", "spikes"], // Just eyes, cautious and simple
+      },
 
       movement: {
         separationWeight: 2.0,
@@ -211,8 +241,15 @@ export const stableEcosystemProfile: SimulationProfile = {
     predator: {
       id: "predator",
       name: "Predator",
-      color: "#ff0000", // Bright red
       role: "predator",
+
+      visual: {
+        color: "#ff0000", // Bright red
+        shape: "diamond", // Fast and aggressive - diamond shape
+        size: 1.3, // Larger and more menacing
+        trail: true, // Predators leave trails (hunting paths)
+        bodyParts: ["eyes", "fins", "tail", "glow"], // Eyes, fins on sides, tail fin, glow for menace
+      },
 
       movement: {
         separationWeight: 2.5, // Spread out more

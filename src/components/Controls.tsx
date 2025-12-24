@@ -46,7 +46,7 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
               onClick={() => setActiveTab(typeId)}
               style={{
                 padding: "8px 12px",
-                background: activeTab === typeId ? species.color : "#2a2a2a",
+                background: activeTab === typeId ? species.visual.color : "#2a2a2a",
                 color: activeTab === typeId ? "#000" : "#aaa",
                 border: "none",
                 borderRadius: "4px",
@@ -69,13 +69,13 @@ export function Controls({ spawnMode, onSpawnModeChange }: ControlsProps) {
             padding: "12px",
             background: "#222",
             borderRadius: "4px",
-            border: `2px solid ${activeSpecies.color}`,
+            border: `2px solid ${activeSpecies.visual.color}`,
           }}
         >
           <h4
             style={{
               margin: "0 0 12px 0",
-              color: activeSpecies.color,
+              color: activeSpecies.visual.color,
               fontSize: "14px",
             }}
           >

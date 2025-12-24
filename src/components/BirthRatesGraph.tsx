@@ -83,8 +83,8 @@ export function BirthRatesGraph({ compact = false }: BirthRatesGraphProps) {
     return {
       label: typeConfig.name,
       data: snapshots.map((snap) => snap.births[typeId] || 0),
-      borderColor: typeConfig.color,
-      backgroundColor: typeConfig.color + "40", // Add transparency
+      borderColor: typeConfig.visual.color,
+      backgroundColor: typeConfig.visual.color + "40", // Add transparency
       borderWidth: 2,
       pointRadius: 0, // Hide points for cleaner look
       pointHoverRadius: 4,

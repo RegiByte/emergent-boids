@@ -4,6 +4,8 @@ import {
   stanceKeywords,
   roleKeywords,
   reproductionTypeKeywords,
+  shapeKeywords,
+  bodyPartKeywords,
 } from "../keywords";
 
 export const vectorSchema = z.object({
@@ -95,6 +97,21 @@ export const reproductionTypeSchema = z.enum([
   reproductionTypeKeywords.asexual, // Asexual reproduction does not need a mate
 ]);
 
+export const shapeSchema = z.enum([
+  shapeKeywords.diamond,
+  shapeKeywords.circle,
+  shapeKeywords.hexagon,
+  shapeKeywords.square,
+  shapeKeywords.triangle,
+]);
+export const bodyPartSchema = z.enum([
+  bodyPartKeywords.eyes,
+  bodyPartKeywords.fins,
+  bodyPartKeywords.spikes,
+  bodyPartKeywords.tail,
+  bodyPartKeywords.glow,
+]);
+
 /**
  * Species Configuration - Defines behavior and characteristics of a species
  *
@@ -109,7 +126,6 @@ export const reproductionTypeSchema = z.enum([
 export const speciesConfigSchema = z.object({
   id: z.string(), // Unique identifier of species
   name: z.string(), // Display name
-  color: z.string(), // Hex color for rendering (e.g., "#00ff88")
   role: speciesRoleSchema, // "predator" or "prey"
 
   // Movement behavior - Flocking rules and physics
@@ -156,6 +172,17 @@ export const speciesConfigSchema = z.object({
   // - -0.5: Repulsion (actively avoid)
   // Same species always defaults to 1.0 if not specified
   affinities: z.record(z.string(), z.number().min(-1).max(1)).optional(),
+
+  // Visual appearance - How this species is rendered
+  visual: z.object({
+    color: z.string(), // Hex color for rendering (e.g., "#00ff88")
+    shape: shapeSchema, // Shape type for rendering
+    size: z.number().min(0.5).max(2.0).default(1.0), // Size multiplier
+    trail: z.boolean().default(true), // Whether this species leaves motion trails
+    trailColor: z.string().optional(), // Optional trail color override (hex color, defaults to species color)
+    bodyParts: z.array(bodyPartSchema).optional(), // Optional body parts for visual variety
+    tailColor: z.string().optional(), // Optional tail color override (hex color)
+  }),
 });
 
 export const speciesRecordSchema = z.record(z.string(), speciesConfigSchema);
@@ -299,3 +326,5 @@ export type BoidStance = z.infer<typeof stanceSchema>;
 export type Boid = z.infer<typeof boidSchema>;
 export type Vector2 = z.infer<typeof vectorSchema>;
 export type Obstacle = z.infer<typeof obstacleSchema>;
+export type RenderShapeType = z.infer<typeof shapeSchema>;
+export type RenderBodyPartType = z.infer<typeof bodyPartSchema>;
