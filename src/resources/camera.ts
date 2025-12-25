@@ -176,7 +176,7 @@ export const camera = defineResource({
       const worldBeforeZoom = screenToWorld(mouseScreenX, mouseScreenY);
 
       // Apply zoom
-      const zoomFactor = 1.03;
+      const zoomFactor = 1.01;
       const oldZoom = zoom;
       const newZoom = e.deltaY > 0 ? zoom / zoomFactor : zoom * zoomFactor;
       setZoom(newZoom);
