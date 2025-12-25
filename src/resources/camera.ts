@@ -1,6 +1,28 @@
 import { defineResource } from "braided";
 import type { CanvasAPI } from "./canvas";
 import type { RuntimeStoreResource } from "./runtimeStore";
+import { create } from "zustand";
+
+export type CameraMode =
+  | { type: "free" }
+  | {
+      type: "picker";
+      targetBoidId: string | null;
+      mouseWorldPos: { x: number; y: number };
+      mouseInCanvas: boolean;
+    }
+  | { type: "following"; boidId: string; lerpFactor: number };
+
+// Zustand store for reactive camera mode state
+type CameraModeStore = {
+  mode: CameraMode;
+  setMode: (mode: CameraMode) => void;
+};
+
+const useCameraModeStore = create<CameraModeStore>((set) => ({
+  mode: { type: "free" },
+  setMode: (mode) => set({ mode }),
+}));
 
 export type CameraAPI = {
   x: number;
@@ -8,6 +30,8 @@ export type CameraAPI = {
   zoom: number;
   viewportWidth: number;
   viewportHeight: number;
+  mode: CameraMode;
+  useModeStore: typeof useCameraModeStore;
   panTo: (x: number, y: number) => void;
   setZoom: (zoom: number) => void;
   screenToWorld: (screenX: number, screenY: number) => { x: number; y: number };
@@ -19,6 +43,16 @@ export type CameraAPI = {
     top: number;
     bottom: number;
   };
+  enterPickerMode: () => void;
+  updatePickerTarget: (
+    boidId: string | null,
+    mouseWorldPos: { x: number; y: number }
+  ) => void;
+  setMouseInCanvas: (inCanvas: boolean) => void;
+  exitPickerMode: () => void;
+  startFollowing: (boidId: string) => void;
+  stopFollowing: () => void;
+  updateFollowPosition: (targetX: number, targetY: number) => void;
 };
 
 export const camera = defineResource({
@@ -36,6 +70,10 @@ export const camera = defineResource({
     let x = config.world.canvasWidth / 2;
     let y = config.world.canvasHeight / 2;
     let zoom = 1.0; // 1.0 = see full viewport width in world units
+    let mode: CameraMode = { type: "free" };
+
+    // Sync initial mode to store
+    useCameraModeStore.setState({ mode });
 
     // Pure functions for coordinate transforms
     // Note: Use canvas.width/height dynamically to handle viewport resizing
@@ -73,7 +111,13 @@ export const camera = defineResource({
       };
     };
 
-    const panTo = (newX: number, newY: number) => {
+    const panTo = (newX: number, newY: number, isManualNavigation = false) => {
+      // If user manually navigates while following, exit follow mode
+      if (isManualNavigation && mode.type === "following") {
+        mode = { type: "free" };
+        useCameraModeStore.setState({ mode });
+      }
+
       // Calculate viewport half-dimensions at current zoom
       const halfWidth = canvas.width / zoom / 2;
       const halfHeight = canvas.height / zoom / 2;
@@ -90,22 +134,31 @@ export const camera = defineResource({
       zoom = Math.max(0.25, Math.min(2.5, newZoom)); // Clamp zoom (0.25x - 2.5x)
     };
 
-    // Keyboard controls (WASD for pan)
+    // Keyboard controls (WASD for pan, Escape to exit modes)
     const handleKeyboard = (e: KeyboardEvent) => {
+      // Exit picker/follow mode on Escape
+      if (e.key === "Escape") {
+        if (mode.type === "picker" || mode.type === "following") {
+          mode = { type: "free" };
+          useCameraModeStore.setState({ mode });
+          return;
+        }
+      }
+
       const panSpeed = 50 / zoom; // Faster pan when zoomed out
 
       switch (e.key.toLowerCase()) {
         case "w":
-          panTo(x, y - panSpeed);
+          panTo(x, y - panSpeed, true); // Manual navigation
           break;
         case "s":
-          panTo(x, y + panSpeed);
+          panTo(x, y + panSpeed, true); // Manual navigation
           break;
         case "a":
-          panTo(x - panSpeed, y);
+          panTo(x - panSpeed, y, true); // Manual navigation
           break;
         case "d":
-          panTo(x + panSpeed, y);
+          panTo(x + panSpeed, y, true); // Manual navigation
           break;
       }
     };
@@ -164,7 +217,7 @@ export const camera = defineResource({
         const dy = e.clientY - lastMouseY;
 
         // Pan camera (invert direction for natural feel)
-        panTo(x - dx / zoom, y - dy / zoom);
+        panTo(x - dx / zoom, y - dy / zoom, true); // Manual navigation
 
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
@@ -173,6 +226,69 @@ export const camera = defineResource({
 
     const handleMouseUp = () => {
       isDragging = false;
+    };
+
+    // Camera mode methods
+    const enterPickerMode = () => {
+      mode = {
+        type: "picker",
+        targetBoidId: null,
+        mouseWorldPos: { x, y },
+        mouseInCanvas: false,
+      };
+      useCameraModeStore.setState({ mode });
+    };
+
+    const updatePickerTarget = (
+      boidId: string | null,
+      mouseWorldPos: { x: number; y: number }
+    ) => {
+      if (mode.type === "picker") {
+        mode = {
+          type: "picker",
+          targetBoidId: boidId,
+          mouseWorldPos,
+          mouseInCanvas: mode.mouseInCanvas,
+        };
+        useCameraModeStore.setState({ mode });
+      }
+    };
+
+    const setMouseInCanvas = (inCanvas: boolean) => {
+      if (mode.type === "picker") {
+        mode = {
+          type: "picker",
+          targetBoidId: mode.targetBoidId,
+          mouseWorldPos: mode.mouseWorldPos,
+          mouseInCanvas: inCanvas,
+        };
+        useCameraModeStore.setState({ mode });
+      }
+    };
+
+    const exitPickerMode = () => {
+      mode = { type: "free" };
+      useCameraModeStore.setState({ mode });
+    };
+
+    const startFollowing = (boidId: string) => {
+      mode = { type: "following", boidId, lerpFactor: 0.5 };
+      useCameraModeStore.setState({ mode });
+    };
+
+    const stopFollowing = () => {
+      mode = { type: "free" };
+      useCameraModeStore.setState({ mode });
+    };
+
+    const updateFollowPosition = (targetX: number, targetY: number) => {
+      if (mode.type === "following") {
+        // Smooth lerp to target position
+        const lerpFactor = mode.lerpFactor;
+        const newX = x + (targetX - x) * lerpFactor;
+        const newY = y + (targetY - y) * lerpFactor;
+        panTo(newX, newY);
+      }
     };
 
     // Register event listeners
@@ -190,7 +306,7 @@ export const camera = defineResource({
       document.removeEventListener("mouseup", handleMouseUp);
     };
 
-    return {
+    const api = {
       get x() {
         return x;
       },
@@ -200,6 +316,10 @@ export const camera = defineResource({
       get zoom() {
         return zoom;
       },
+      get mode() {
+        return mode;
+      },
+      useModeStore: useCameraModeStore,
       get viewportWidth() {
         return canvas.width; // Dynamic - reads current canvas size
       },
@@ -212,8 +332,17 @@ export const camera = defineResource({
       screenToWorld,
       isInViewport,
       getViewportBounds,
+      enterPickerMode,
+      updatePickerTarget,
+      setMouseInCanvas,
+      exitPickerMode,
+      startFollowing,
+      stopFollowing,
+      updateFollowPosition,
       cleanup,
     } satisfies CameraAPI & { cleanup: () => void };
+
+    return api;
   },
   halt: (camera: CameraAPI & { cleanup?: () => void }) => {
     if (camera.cleanup) {

@@ -158,7 +158,7 @@ export function Minimap() {
     const clickY = e.clientY - rect.top;
 
     const worldPos = minimapToWorld(clickX, clickY);
-    camera.panTo(worldPos.x, worldPos.y);
+    camera.panTo(worldPos.x, worldPos.y, true); // Manual navigation
   };
 
   // Mouse move: pan camera in real-time while dragging
@@ -173,7 +173,7 @@ export function Minimap() {
     const mouseY = e.clientY - rect.top;
 
     const worldPos = minimapToWorld(mouseX, mouseY);
-    camera.panTo(worldPos.x, worldPos.y);
+    camera.panTo(worldPos.x, worldPos.y, true); // Manual navigation
   };
 
   // Mouse up: stop dragging

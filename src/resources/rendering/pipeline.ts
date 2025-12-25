@@ -15,7 +15,7 @@ import type {
 } from "../../boids/vocabulary/schemas/prelude";
 import type { Profiler } from "../profiler";
 import type { TimeState } from "../time";
-import type { CameraAPI } from "../camera";
+import type { CameraAPI, CameraMode } from "../camera";
 import { getBodyPartRenderer, getShapeRenderer } from "./shapes";
 
 /**
@@ -722,6 +722,90 @@ export const renderStats = (
 };
 
 /**
+ * Render picker mode circle and target highlight
+ */
+export const renderPickerMode = (rc: RenderContext): void => {
+  if (rc.camera.mode.type !== "picker") return;
+
+  const { mouseWorldPos, targetBoidId, mouseInCanvas } = rc.camera.mode;
+
+  // Only render if mouse is in canvas
+  if (!mouseInCanvas) return;
+
+  const ctx = rc.ctx;
+
+  // Convert world position to screen position
+  const screenPos = rc.camera.worldToScreen(mouseWorldPos.x, mouseWorldPos.y);
+
+  // Draw picker circle (fixed screen-space radius)
+  const pickerRadius = 80; // pixels
+  ctx.save();
+  ctx.strokeStyle = "rgba(100, 200, 255, 0.6)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.arc(screenPos.x, screenPos.y, pickerRadius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Highlight target boid if one is selected
+  if (targetBoidId) {
+    const targetBoid = rc.allBoids.find((b) => b.id === targetBoidId);
+    if (targetBoid) {
+      const boidScreenPos = rc.camera.worldToScreen(
+        targetBoid.position.x,
+        targetBoid.position.y
+      );
+
+      ctx.save();
+      ctx.strokeStyle = "rgba(100, 200, 255, 0.8)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(boidScreenPos.x, boidScreenPos.y, 15, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+};
+
+/**
+ * Render pulsing ring around followed boid
+ */
+export const renderFollowedBoid = (rc: RenderContext): void => {
+  if (rc.camera.mode.type !== "following") return;
+
+  const followedBoid = rc.allBoids.find(
+    (b) =>
+      b.id ===
+      (rc.camera.mode as Extract<CameraMode, { type: "following" }>).boidId
+  );
+  if (!followedBoid) return;
+
+  const ctx = rc.ctx;
+  const screenPos = rc.camera.worldToScreen(
+    followedBoid.position.x,
+    followedBoid.position.y
+  );
+
+  // Pulsing effect based on time
+  const pulseSpeed = 0.5; // Hz
+  const time = rc.timeState.simulationElapsedMs / 1000;
+  const pulsePhase = time * pulseSpeed * Math.PI * 2;
+  const pulseScale = 0.8 + Math.sin(pulsePhase) * 0.2; // 0.6 to 1.0
+  const radius = 20 * pulseScale;
+  const alpha = 0.5 + Math.sin(pulsePhase) * 0.3; // 0.2 to 0.8
+
+  ctx.save();
+  ctx.strokeStyle = `rgba(255, 200, 100, ${alpha})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(screenPos.x, screenPos.y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+};
+
+/**
  * Complete rendering pipeline - orchestrates all render passes
  */
 export const renderFrame = (
@@ -757,6 +841,10 @@ export const renderFrame = (
   // Restore transform for UI rendering
   rc.ctx.restore();
 
-  // Layer 6: UI overlay (in screen space, not world space)
+  // Layer 6: Camera mode overlays (picker circle, followed boid)
+  renderPickerMode(rc);
+  renderFollowedBoid(rc);
+
+  // Layer 7: UI overlay (in screen space, not world space)
   renderStats(rc, fps, obstacleCount);
 };

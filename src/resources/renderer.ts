@@ -7,7 +7,7 @@ import type { RuntimeStoreResource } from "./runtimeStore";
 import type { Profiler } from "./profiler";
 import type { TimeResource } from "./time";
 import { renderFrame, type RenderContext } from "./rendering/pipeline";
-import { CameraAPI } from "./camera";
+import { CameraAPI, CameraMode } from "./camera";
 
 export type Renderer = {
   start: () => void;
@@ -395,6 +395,24 @@ export const renderer = defineResource({
         time.clearStepRequest();
 
         profiler?.end("frame.step");
+      }
+
+      // Update camera if in follow mode
+      if (camera.mode.type === "following") {
+        const followedBoid = engine.boids.find(
+          (b) =>
+            b.id ===
+            (camera.mode as Extract<CameraMode, { type: "following" }>).boidId
+        );
+        if (followedBoid) {
+          camera.updateFollowPosition(
+            followedBoid.position.x,
+            followedBoid.position.y
+          );
+        } else {
+          // Boid died or disappeared - exit follow mode
+          camera.stopFollowing();
+        }
       }
 
       // Always render (even when paused)

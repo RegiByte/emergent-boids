@@ -1,21 +1,21 @@
 import { eventKeywords } from "@/boids/vocabulary/keywords";
+import { CameraControls } from "@/components/CameraControls";
+import { CanvasFrame } from "@/components/CanvasFrame";
 import { ControlsSidebar, type SpawnMode } from "@/components/ControlsSidebar";
 import { HeaderSidebar } from "@/components/HeaderSidebar";
+import { Minimap } from "@/components/Minimap";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { CanvasAPI } from "@/resources/canvas";
 import { useResource, useSystem } from "@/system";
 import { IconAdjustmentsHorizontal } from "@tabler/icons-react";
+import { useDebouncer } from "@tanstack/react-pacer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useDebouncer } from "@tanstack/react-pacer";
-import { CanvasAPI } from "@/resources/canvas";
-import { CanvasFrame } from "@/components/CanvasFrame";
-import { Minimap } from "@/components/Minimap";
-import { CameraControls } from "@/components/CameraControls";
 
 function SimulationView() {
   const runtimeController = useResource("runtimeController");
@@ -23,6 +23,7 @@ function SimulationView() {
   const canvas = useResource("canvas");
   const camera = useResource("camera");
   const renderer = useResource("renderer");
+  const engine = useResource("engine");
   const { useStore } = runtimeStore;
   const sidebarOpen = useStore((state) => state.ui.sidebarOpen);
 
@@ -69,7 +70,6 @@ function SimulationView() {
   const updateCanvasDebouncer = useDebouncer(
     (canvas: CanvasAPI) => {
       const { width, height } = getParentDimensions();
-      console.trace("resizing canvas to", width, height);
       canvas.resize(width, height);
     },
     {
@@ -116,11 +116,47 @@ function SimulationView() {
         }
       });
 
-      // Add click handler for placing obstacles or spawning predators
+      // Helper function to find closest boid to screen position
+      const findClosestBoidToScreen = (
+        screenX: number,
+        screenY: number,
+        maxScreenDistance: number
+      ): string | null => {
+        let closestBoid: string | null = null;
+        let closestDistance = maxScreenDistance;
+
+        for (const boid of engine.boids) {
+          const boidScreen = camera.worldToScreen(
+            boid.position.x,
+            boid.position.y
+          );
+          const dx = boidScreen.x - screenX;
+          const dy = boidScreen.y - screenY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestBoid = boid.id;
+          }
+        }
+
+        return closestBoid;
+      };
+
+      // Add click handler for placing obstacles, spawning predators, or following boids
       const handleCanvasClick = (e: MouseEvent) => {
         const rect = canvas.canvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
+
+        // Handle picker mode - start following target boid
+        if (camera.mode.type === "picker" && camera.mode.targetBoidId) {
+          camera.startFollowing(camera.mode.targetBoidId);
+          toast.success("Following boid", {
+            description: `ID: ${camera.mode.targetBoidId.slice(0, 8)}...`,
+          });
+          return;
+        }
 
         // Convert screen coordinates to world coordinates using camera
         const worldPos = camera.screenToWorld(screenX, screenY);
@@ -151,7 +187,34 @@ function SimulationView() {
         }
       };
 
+      // Add mouse move handler for picker mode
+      const handleCanvasMouseMove = (e: MouseEvent) => {
+        if (camera.mode.type !== "picker") return;
+
+        const rect = canvas.canvas.getBoundingClientRect();
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const worldPos = camera.screenToWorld(screenX, screenY);
+
+        // Find closest boid within picker radius (80px screen space)
+        const closestBoidId = findClosestBoidToScreen(screenX, screenY, 80);
+
+        camera.updatePickerTarget(closestBoidId, worldPos);
+      };
+
+      // Track mouse enter/leave canvas for picker mode
+      const handleCanvasMouseEnter = () => {
+        camera.setMouseInCanvas(true);
+      };
+
+      const handleCanvasMouseLeave = () => {
+        camera.setMouseInCanvas(false);
+      };
+
       canvas.canvas.addEventListener("click", handleCanvasClick);
+      canvas.canvas.addEventListener("mousemove", handleCanvasMouseMove);
+      canvas.canvas.addEventListener("mouseenter", handleCanvasMouseEnter);
+      canvas.canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
 
       // Start the renderer
       if (renderer) {
@@ -164,17 +227,28 @@ function SimulationView() {
           renderer.stop();
         }
         canvas.canvas.removeEventListener("click", handleCanvasClick);
+        canvas.canvas.removeEventListener("mousemove", handleCanvasMouseMove);
+        canvas.canvas.removeEventListener("mouseenter", handleCanvasMouseEnter);
+        canvas.canvas.removeEventListener("mouseleave", handleCanvasMouseLeave);
       };
     }
-  }, [spawnMode, canvas, renderer, runtimeController, camera]);
+  }, [spawnMode, canvas, renderer, runtimeController, camera, engine]);
 
-  // Update cursor based on spawn mode
+  // Use reactive camera mode for cursor updates
+  const cameraMode = camera.useModeStore((state) => state.mode);
+
+  // Update cursor based on spawn mode and camera mode
   useEffect(() => {
     if (canvasElementRef.current) {
-      canvasElementRef.current.style.cursor =
-        spawnMode === "obstacle" ? "crosshair" : "pointer";
+      if (cameraMode.type === "picker") {
+        canvasElementRef.current.style.cursor = "crosshair";
+      } else if (spawnMode === "obstacle") {
+        canvasElementRef.current.style.cursor = "crosshair";
+      } else {
+        canvasElementRef.current.style.cursor = "pointer";
+      }
     }
-  }, [spawnMode]);
+  }, [spawnMode, cameraMode]);
 
   // Handle canvas area resize (tracks both window resize and sidebar toggle)
   useEffect(() => {
