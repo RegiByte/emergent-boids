@@ -22,6 +22,7 @@
     "braided": "^0.2.1",
     "braided-react": "^0.1.2",
     "chart.js": "^4.5.1",
+    "chroma-js": "^3.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "embla-carousel-auto-scroll": "^8.6.0",
@@ -45,6 +46,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@types/chroma-js": "^3.1.2",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",

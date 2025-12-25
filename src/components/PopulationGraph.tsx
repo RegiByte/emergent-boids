@@ -199,8 +199,6 @@ export function PopulationGraph({ compact = false }: PopulationGraphProps) {
           drawOnChartArea: true,
         },
         beginAtZero: true,
-        min: 0,
-        max: 200, // Show up to 200 to see caps clearly
       },
     },
     interaction: {

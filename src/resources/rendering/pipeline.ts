@@ -17,6 +17,7 @@ import type { Profiler } from "../profiler";
 import type { TimeState } from "../time";
 import type { CameraAPI, CameraMode } from "../camera";
 import { getBodyPartRenderer, getShapeRenderer } from "./shapes";
+import { adjustColorBrightness, hexToRgba, toRgb } from "@/lib/colors";
 
 /**
  * Render Context - All data needed for rendering
@@ -49,41 +50,15 @@ export type RenderContext = {
 };
 
 /**
- * Adjust color brightness based on energy ratio
- * Low energy = darker, high energy = brighter
- */
-export const adjustColorBrightness = (
-  hexColor: string,
-  energyRatio: number
-): string => {
-  // Extract RGB from hex
-  const r = parseInt(hexColor.slice(1, 3), 16);
-  const g = parseInt(hexColor.slice(3, 5), 16);
-  const b = parseInt(hexColor.slice(5, 7), 16);
-
-  // Adjust brightness (0.4 = 40% brightness at 0 energy, 1.0 = full at max)
-  const minBrightness = 0.4;
-  const brightness = minBrightness + (1 - minBrightness) * energyRatio;
-
-  const newR = Math.round(r * brightness);
-  const newG = Math.round(g * brightness);
-  const newB = Math.round(b * brightness);
-
-  return `rgb(${newR}, ${newG}, ${newB})`;
-};
-
-/**
  * Clear canvas with atmosphere-controlled background
  */
 export const renderBackground = (rc: RenderContext): void => {
   rc.profiler?.start("render.clear");
   // Use background color from profile with trail alpha for motion blur effect
-  const color = rc.backgroundColor;
-  // Parse hex color and apply alpha
-  const r = parseInt(color.slice(1, 3), 16);
-  const g = parseInt(color.slice(3, 5), 16);
-  const b = parseInt(color.slice(5, 7), 16);
-  rc.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${rc.visualSettings.atmosphere.trailAlpha})`;
+  rc.ctx.fillStyle = hexToRgba(
+    rc.backgroundColor,
+    rc.visualSettings.atmosphere.trailAlpha
+  );
   rc.ctx.fillRect(0, 0, rc.width, rc.height);
   rc.profiler?.end("render.clear");
 };
@@ -299,9 +274,7 @@ export const renderTrails = (rc: RenderContext): void => {
 
     // Use custom trail color if specified, otherwise use species color
     const color = speciesConfig.visual.trailColor || speciesConfig.visual.color;
-    const r = parseInt(color.slice(1, 3), 16);
-    const g = parseInt(color.slice(3, 5), 16);
-    const b = parseInt(color.slice(5, 7), 16);
+    const [r, g, b] = toRgb(color);
     const lineWidth = speciesConfig.role === "predator" ? 2 : 1.5;
 
     // Collect segments for this boid
