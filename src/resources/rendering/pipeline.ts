@@ -25,6 +25,7 @@ export type RenderContext = {
   ctx: CanvasRenderingContext2D;
   width: number;
   height: number;
+  backgroundColor: string; // World background color from profile
   boids: Boid[]; // Visible boids (for rendering)
   allBoids: Boid[]; // All boids in world (for stats)
   obstacles: Obstacle[];
@@ -76,7 +77,13 @@ export const adjustColorBrightness = (
  */
 export const renderBackground = (rc: RenderContext): void => {
   rc.profiler?.start("render.clear");
-  rc.ctx.fillStyle = `rgba(0, 0, 0, ${rc.visualSettings.atmosphere.trailAlpha})`;
+  // Use background color from profile with trail alpha for motion blur effect
+  const color = rc.backgroundColor;
+  // Parse hex color and apply alpha
+  const r = parseInt(color.slice(1, 3), 16);
+  const g = parseInt(color.slice(3, 5), 16);
+  const b = parseInt(color.slice(5, 7), 16);
+  rc.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${rc.visualSettings.atmosphere.trailAlpha})`;
   rc.ctx.fillRect(0, 0, rc.width, rc.height);
   rc.profiler?.end("render.clear");
 };

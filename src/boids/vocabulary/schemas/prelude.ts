@@ -279,8 +279,9 @@ export const simulationParametersSchema = z.object({
  * The world uses toroidal (wrap-around) topology.
  */
 export const worldConfigSchema = z.object({
-  canvasWidth: z.number(), // World width in pixels
-  canvasHeight: z.number(), // World height in pixels
+  width: z.number(), // World width in pixels
+  height: z.number(), // World height in pixels
+  backgroundColor: z.string(), // World background color (CSS color)
   initialPreyCount: z.number(), // Number of prey to spawn at start
   initialPredatorCount: z.number().optional(), // Number of predators to spawn at start
 });

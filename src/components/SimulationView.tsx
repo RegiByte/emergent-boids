@@ -26,6 +26,7 @@ function SimulationView() {
   const engine = useResource("engine");
   const { useStore } = runtimeStore;
   const sidebarOpen = useStore((state) => state.ui.sidebarOpen);
+  const config = useStore((state) => state.config);
 
   // Get atmosphere settings (select individual values to avoid creating new objects)
   const atmosphereBase = useStore(
@@ -330,7 +331,14 @@ function SimulationView() {
         console.log("sidebar animation end");
       }}
     >
-      <div className="flex h-screen w-screen overflow-hidden bg-background">
+      <div
+        style={
+          {
+            "--simulation-bg": config.world.backgroundColor,
+          } as React.CSSProperties
+        }
+        className="flex h-screen w-screen overflow-hidden bg-background"
+      >
         <ControlsSidebar
           spawnMode={spawnMode}
           onSpawnModeChange={setSpawnMode}
@@ -360,12 +368,11 @@ function SimulationView() {
             ref={canvasAreaRef}
             data-testid="canvas-area"
             className={cn(
-              "flex-1 flex items-center justify-center bg-black relative overflow-hidden"
+              "flex-1 flex items-center justify-center bg-(--simulation-bg) relative overflow-hidden"
             )}
             style={
               {
                 // Atmosphere settings driven by state (reactive!)
-                "--simulation-bg": `rgba(0, 0, 0, ${atmosphereSettings.trailAlpha})`,
                 "--simulation-fog-color": atmosphereSettings.fogColor,
               } as React.CSSProperties
             }
@@ -388,7 +395,7 @@ function SimulationView() {
               {system && (
                 <>
                   <CameraControls />
-                  <Minimap />
+                  <Minimap backgroundColor={config.world.backgroundColor} />
                 </>
               )}
             </div>

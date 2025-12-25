@@ -34,7 +34,7 @@ export const canvas = defineResource({
 
     // Create the resource object
     // Note: width/height are VIEWPORT dimensions (what we see on screen)
-    // World dimensions (canvasWidth/canvasHeight) are stored in runtimeStore
+    // World dimensions (width/height) are stored in runtimeStore.config.world
     const resource = {
       canvas,
       ctx,

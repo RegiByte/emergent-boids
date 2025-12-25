@@ -15,12 +15,15 @@ export const runtimeStore = defineResource({
     // Load default profile
     const profile = getProfile(defaultProfileId);
 
-    // World dimensions (10K x 10K for large-scale simulation)
-    // Note: Viewport (canvas element) will be 800x600, but world is much larger
-    const { canvasWidth, canvasHeight } = {
-      canvasWidth: 10000,
-      canvasHeight: 10000,
-    };
+    // World configuration from profile
+    // Each profile defines its own world size and appearance for guaranteed stability
+    const {
+      width,
+      height,
+      backgroundColor,
+      initialPreyCount,
+      initialPredatorCount,
+    } = profile.world;
 
     // Create zustand store with initial values from profile
     // This becomes the single source of truth - all runtime code should read from here
@@ -30,10 +33,11 @@ export const runtimeStore = defineResource({
           profileId: profile.id,
           randomSeed: profile.seed,
           world: {
-            canvasWidth,
-            canvasHeight,
-            initialPreyCount: profile.world.initialPreyCount,
-            initialPredatorCount: profile.world.initialPredatorCount,
+            width,
+            height,
+            backgroundColor,
+            initialPreyCount,
+            initialPredatorCount,
           },
           species: profile.species,
           parameters: profile.parameters,

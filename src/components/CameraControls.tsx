@@ -9,15 +9,15 @@ export function CameraControls() {
   const cameraMode = camera.useModeStore((state) => state.mode);
 
   const worldWidth = runtimeStore.useStore(
-    (state) => state.config.world.canvasWidth
+    (state) => state.config.world.width
   );
   const worldHeight = runtimeStore.useStore(
-    (state) => state.config.world.canvasHeight
+    (state) => state.config.world.height
   );
 
   return (
     <div className="absolute bottom-4 left-4 z-40 hidden lg:block">
-      <Card className="bg-black/80 backdrop-blur-sm border-primary/30 p-3 space-y-2">
+      <Card className="bg-black/1 backdrop-blur-xs border-primary/30 border p-3 space-y-2">
         <div className="text-xs font-mono text-primary/70 mb-2">
           CAMERA CONTROLS
         </div>

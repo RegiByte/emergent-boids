@@ -104,8 +104,8 @@ export function generatePreyFood(
     newFoodSources.push({
       id: `food-prey-${simulationTime}-${randomId}-${i}`,
       position: {
-        x: rng.range(0, world.canvasWidth),
-        y: rng.range(0, world.canvasHeight),
+        x: rng.range(0, world.width),
+        y: rng.range(0, world.height),
       },
       energy: FOOD_CONSTANTS.PREY_FOOD_INITIAL_ENERGY,
       maxEnergy: FOOD_CONSTANTS.PREY_FOOD_INITIAL_ENERGY,

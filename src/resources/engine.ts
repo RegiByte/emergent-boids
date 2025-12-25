@@ -60,8 +60,8 @@ export const engine = defineResource({
     // Build creation context
     const creationContext = {
       world: {
-        canvasWidth: initialWorld.canvasWidth,
-        canvasHeight: initialWorld.canvasHeight,
+        width: initialWorld.width,
+        height: initialWorld.height,
       },
       species: initialSpecies,
       rng: randomness.domain("spawning"),
@@ -79,8 +79,8 @@ export const engine = defineResource({
 
     // Create spatial hash (cell size = perception radius for optimal performance)
     const spatialHash = createSpatialHash(
-      initialWorld.canvasWidth,
-      initialWorld.canvasHeight,
+      initialWorld.width,
+      initialWorld.height,
       initialConfig.parameters.perceptionRadius
     );
 
@@ -196,8 +196,8 @@ export const engine = defineResource({
           const dist = vec.toroidalDistance(
             predator.position,
             preyBoid.position,
-            cfg.world.canvasWidth,
-            cfg.world.canvasHeight
+            cfg.world.width,
+            cfg.world.height
           );
 
           if (dist < parameters.catchRadius) {
@@ -243,8 +243,8 @@ export const engine = defineResource({
       // Build creation context
       const creationContext = {
         world: {
-          canvasWidth: world.canvasWidth,
-          canvasHeight: world.canvasHeight,
+          width: world.width,
+          height: world.height,
         },
         species,
         rng: randomness.domain("spawning"),

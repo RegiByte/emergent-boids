@@ -19,10 +19,11 @@ export const stableEcosystemProfile: SimulationProfile = {
   description: "Balanced multi-species coexistence with predator-prey dynamics",
 
   world: {
-    canvasWidth: 1400,
-    canvasHeight: 1000,
-    initialPreyCount: 1000,
-    initialPredatorCount: 500, // Predators emerge from prey evolution
+    width: 2000,
+    height: 2000,
+    backgroundColor: "#0369a1", // Deep space blue-black
+    initialPreyCount: 200,
+    initialPredatorCount: 100, // Predators emerge from prey evolution
   },
 
   parameters: {
@@ -37,9 +38,9 @@ export const stableEcosystemProfile: SimulationProfile = {
     fearFactor: 0.5, // Baseline fear factor for all species
 
     // Population limits
-    maxBoids: 2000, // Global safety limit
-    maxPreyBoids: 1500, // Per-role cap for prey
-    maxPredatorBoids: 400, // Per-role cap for predators
+    maxBoids: 1500, // Global safety limit
+    maxPreyBoids: 900, // Per-role cap for prey
+    maxPredatorBoids: 200, // Per-role cap for predators
 
     // Lifecycle parameters
     minReproductionAge: 5, // Can start reproducing at 5 seconds old
@@ -80,7 +81,7 @@ export const stableEcosystemProfile: SimulationProfile = {
         maxEnergy: 84, // +40% energy (140 * 0.6 scaled to food system)
         energyGainRate: 1.2, // Reduced from 1.0 - reproduce in ~100 seconds
         energyLossRate: 0, // No passive loss (only lose energy when fleeing)
-        maxAge: 90, // Longer lifespan for multiple reproduction cycles
+        maxAge: 300, // Longer lifespan for multiple reproduction cycles
         fearFactor: 0.5, // Balanced fear response
       },
 
@@ -91,7 +92,7 @@ export const stableEcosystemProfile: SimulationProfile = {
       },
 
       limits: {
-        maxPopulation: 150, // Cap at 150 explorers (30% of prey cap)
+        maxPopulation: 375, // Cap at 150 explorers (30% of prey cap)
       },
 
       // Affinity System: Inter-species relationships
@@ -132,7 +133,7 @@ export const stableEcosystemProfile: SimulationProfile = {
         maxEnergy: 60, // Baseline energy (100 * 0.6 scaled to food system)
         energyGainRate: 1.3, // Reduced from 0.8 - reproduce in ~120 seconds
         energyLossRate: 0, // No passive loss (only lose energy when fleeing)
-        maxAge: 110, // Longer lifespan for multiple reproduction cycles
+        maxAge: 350, // Longer lifespan for multiple reproduction cycles
         fearFactor: 0.3, // Low fear, stays in group
       },
 
@@ -143,7 +144,7 @@ export const stableEcosystemProfile: SimulationProfile = {
       },
 
       limits: {
-        maxPopulation: 200, // Cap at 200 socials (30% of prey cap)
+        maxPopulation: 380, // Cap at 200 socials (30% of prey cap)
       },
 
       // Affinity System: Ultra-social species
@@ -184,7 +185,7 @@ export const stableEcosystemProfile: SimulationProfile = {
         maxEnergy: 72, // +20% energy (120 * 0.6 scaled to food system)
         energyGainRate: 1.5, // Reduced from 1.2 - reproduce in ~75 seconds (still fastest)
         energyLossRate: 0, // No passive loss (only lose energy when fleeing)
-        maxAge: 90, // Longer lifespan for multiple reproduction cycles
+        maxAge: 150, // Longer lifespan for multiple reproduction cycles
         fearFactor: 0.8, // High fear, scatters immediately
       },
 
@@ -196,7 +197,7 @@ export const stableEcosystemProfile: SimulationProfile = {
       },
 
       limits: {
-        maxPopulation: 100, // Cap at 100 independents (30% of prey cap) - CRITICAL for diversity!
+        maxPopulation: 250, // Cap at 100 independents (30% of prey cap) - CRITICAL for diversity!
       },
 
       // Affinity System: Solitary species
@@ -237,7 +238,7 @@ export const stableEcosystemProfile: SimulationProfile = {
         maxEnergy: 60, // -10% energy (90 * 0.6 scaled to food system)
         energyGainRate: 1.6, // Reduced from 0.9 - reproduce in ~109 seconds
         energyLossRate: 0, // No passive loss (only lose energy when fleeing)
-        maxAge: 100, // Longest lifespan - cautious types live longer
+        maxAge: 300, // Longest lifespan - cautious types live longer
         fearFactor: 0.6, // Medium-high fear, coordinated escape
       },
 
@@ -248,7 +249,7 @@ export const stableEcosystemProfile: SimulationProfile = {
       },
 
       limits: {
-        maxPopulation: 150, // Cap at 150 cautious (30% of prey cap)
+        maxPopulation: 375, // Cap at 150 cautious (30% of prey cap)
         fearRadius: 175, // +33% detection range (150 → 175)
       },
 
@@ -288,9 +289,9 @@ export const stableEcosystemProfile: SimulationProfile = {
 
       lifecycle: {
         maxEnergy: 150, // Need 6 catches to reproduce
-        energyGainRate: 25, // Less energy per catch
-        energyLossRate: 3.0, // Die in 75 seconds without food
-        maxAge: 90, // More time to reproduce
+        energyGainRate: 30, // Less energy per catch
+        energyLossRate: 1.0, // Die in 75 seconds without food
+        maxAge: 300, // More time to reproduce
         fearFactor: 0, // Predators don't fear
       },
 
@@ -301,7 +302,7 @@ export const stableEcosystemProfile: SimulationProfile = {
       },
 
       limits: {
-        maxPopulation: 50, // Cap at 50 predators
+        maxPopulation: 250, // Cap at 250 predators
       },
 
       // Affinity System: Solitary hunters

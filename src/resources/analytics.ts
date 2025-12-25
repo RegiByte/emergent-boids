@@ -142,8 +142,8 @@ export const analytics = defineResource({
       );
       const spatialPatterns = computeSpatialPatternsBySpecies(
         engine.boids,
-        config.world.canvasWidth,
-        config.world.canvasHeight
+        config.world.width,
+        config.world.height
       );
       const reproductionMetrics = computeReproductionMetricsBySpecies(
         engine.boids,

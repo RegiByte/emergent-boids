@@ -245,10 +245,11 @@ export const lifecycleManager = defineResource({
           );
 
           if (canSpawn) {
+            const { width, height } = store.getState().config.world;
             const creationContext = {
               world: {
-                canvasWidth: store.getState().config.world.canvasWidth,
-                canvasHeight: store.getState().config.world.canvasHeight,
+                width,
+                height,
               },
               species: speciesTypes,
               rng: randomness.domain("reproduction"),
@@ -315,10 +316,11 @@ export const lifecycleManager = defineResource({
         return;
       }
 
+      const { width, height } = store.getState().config.world;
       const creationContext = {
         world: {
-          canvasWidth: store.getState().config.world.canvasWidth,
-          canvasHeight: store.getState().config.world.canvasHeight,
+          width,
+          height,
         },
         species: runtimeTypes,
         rng: randomness.domain("spawning"),

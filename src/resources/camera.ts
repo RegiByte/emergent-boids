@@ -67,8 +67,8 @@ export const camera = defineResource({
     const { config } = runtimeStore.store.getState();
 
     // Start centered in world
-    let x = config.world.canvasWidth / 2;
-    let y = config.world.canvasHeight / 2;
+    let x = config.world.width / 2;
+    let y = config.world.height / 2;
     let zoom = 1.0; // 1.0 = see full viewport width in world units
     let mode: CameraMode = { type: "free" };
 
@@ -123,15 +123,27 @@ export const camera = defineResource({
       const halfHeight = canvas.height / zoom / 2;
 
       // Clamp camera position to keep viewport within world bounds
-      const worldWidth = config.world.canvasWidth;
-      const worldHeight = config.world.canvasHeight;
+      const worldWidth = config.world.width;
+      const worldHeight = config.world.height;
 
       x = Math.max(halfWidth, Math.min(worldWidth - halfWidth, newX));
       y = Math.max(halfHeight, Math.min(worldHeight - halfHeight, newY));
     };
 
     const setZoom = (newZoom: number) => {
-      zoom = Math.max(0.25, Math.min(2.5, newZoom)); // Clamp zoom (0.25x - 2.5x)
+      // Calculate minimum zoom to prevent seeing beyond world borders
+      // Zoom system: LOWER zoom = more zoomed OUT (see more world)
+      // viewport shows: canvas.width / zoom world units horizontally
+      // We want to stop zooming out when EITHER width OR height fits entirely
+      // Therefore: use the LARGER of the two constraints (stops zooming out earlier)
+      const worldWidth = config.world.width;
+      const worldHeight = config.world.height;
+      const maxZoomForWidth = canvas.width / worldWidth;
+      const maxZoomForHeight = canvas.height / worldHeight;
+      const minZoom = Math.max(maxZoomForWidth, maxZoomForHeight); // Stop when either dimension fits
+
+      // Clamp zoom: minimum = fit whole world (largest constraint), maximum = 2.5x (most zoomed in)
+      zoom = Math.max(minZoom, Math.min(2.5, newZoom));
     };
 
     // Keyboard controls (WASD for pan, Escape to exit modes)

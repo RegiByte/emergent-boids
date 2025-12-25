@@ -2,18 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { useResource } from "../system";
 import type { Boid } from "../boids/vocabulary/schemas/prelude";
 
-export function Minimap() {
+export function Minimap({ backgroundColor }: { backgroundColor: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engine = useResource("engine");
   const camera = useResource("camera");
   const runtimeStore = useResource("runtimeStore");
 
   // Get world dimensions from config
-  const worldWidth = runtimeStore.useStore(
-    (state) => state.config.world.canvasWidth
-  );
+  const worldWidth = runtimeStore.useStore((state) => state.config.world.width);
   const worldHeight = runtimeStore.useStore(
-    (state) => state.config.world.canvasHeight
+    (state) => state.config.world.height
   );
   const speciesConfigs = runtimeStore.useStore((state) => state.config.species);
 
@@ -33,7 +31,7 @@ export function Minimap() {
 
     const render = () => {
       // Clear with dark background
-      ctx.fillStyle = "#0a0a0a";
+      ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
 
       // Draw grid lines for reference
@@ -188,7 +186,7 @@ export function Minimap() {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 hidden md:block">
-      <div className="bg-black/80 backdrop-blur-sm border-2 border-primary/30 rounded-lg p-2 shadow-2xl">
+      <div className="bg-black/1 backdrop-blur-xs border border-primary/30 rounded-lg p-2 shadow-2xl">
         <div className="text-xs text-primary/70 mb-1 font-mono text-center">
           MINIMAP
         </div>

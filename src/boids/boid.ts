@@ -47,7 +47,7 @@ function applyWeightedForces(boid: Boid, forces: Array<Force>): void {
  * Boid creation context - provides world and species configuration
  */
 export type BoidCreationContext = {
-  world: { canvasWidth: number; canvasHeight: number };
+  world: { width: number; height: number };
   species: Record<string, SpeciesConfig>;
   rng: DomainRNG; // Seeded RNG for reproducibility
 };
@@ -77,8 +77,8 @@ export function createBoid(
   return {
     id: `boid-${boidIdCounter++}`,
     position: {
-      x: rng.range(0, world.canvasWidth),
-      y: rng.range(0, world.canvasHeight),
+      x: rng.range(0, world.width),
+      y: rng.range(0, world.height),
     },
     velocity: {
       x: rng.range(-2, 2), // Default initial speed
@@ -128,11 +128,11 @@ export function createBoidOfType(
     id: `boid-${boidIdCounter++}`,
     position: {
       x:
-        (position.x + rng.range(-offset / 2, offset / 2) + world.canvasWidth) %
-        world.canvasWidth,
+        (position.x + rng.range(-offset / 2, offset / 2) + world.width) %
+        world.width,
       y:
-        (position.y + rng.range(-offset / 2, offset / 2) + world.canvasHeight) %
-        world.canvasHeight,
+        (position.y + rng.range(-offset / 2, offset / 2) + world.height) %
+        world.height,
     },
     velocity: {
       x: rng.range(-2, 2),
@@ -340,7 +340,7 @@ function updatePredator(
   ] satisfies Array<Force>;
 
   applyWeightedForces(boid, forces);
-  
+
   // Mate-seeking (conditional, high priority when active)
   if (stance === "seeking_mate" || stance === "mating") {
     applyWeightedForces(boid, [{ force: mateSeekingForce, weight: 2.5 }]);
@@ -601,19 +601,15 @@ export function updateBoid(
   boid.position = vec.add(boid.position, scaledVelocity);
 
   // Wrap around edges (toroidal space)
-  wrapEdges(
-    boid,
-    context.config.world.canvasWidth,
-    context.config.world.canvasHeight
-  );
+  wrapEdges(boid, context.config.world.width, context.config.world.height);
 
   // Enforce minimum distance (prevent overlap/stacking)
   enforceMinimumDistance(
     boid,
     allBoids,
     {
-      width: context.config.world.canvasWidth,
-      height: context.config.world.canvasHeight,
+      width: context.config.world.width,
+      height: context.config.world.height,
     },
     context.config.parameters,
     context.config.species

@@ -106,9 +106,9 @@ export function exportCurrentStats(
       maxBoids: config.parameters.maxBoids,
       maxPreyBoids: config.parameters.maxPreyBoids,
       maxPredatorBoids: config.parameters.maxPredatorBoids,
-      canvasSize: {
-        width: config.world.canvasWidth,
-        height: config.world.canvasHeight,
+      worldSize: {
+        width: config.world.width,
+        height: config.world.height,
       },
     },
   };

@@ -263,6 +263,7 @@ export const renderer = defineResource({
         ctx,
         width,
         height,
+        backgroundColor: config.world.backgroundColor,
         boids: visibleBoids, // Only visible boids for rendering
         allBoids: engine.boids, // All boids in world for stats
         obstacles: simulation.obstacles,

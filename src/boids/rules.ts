@@ -44,8 +44,8 @@ export function separation(
     const dist = vec.toroidalDistance(
       boid.position,
       other.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
 
     // Only consider boids within perception radius
@@ -62,8 +62,8 @@ export function separation(
       let diff = vec.toroidalSubtract(
         boid.position,
         other.position,
-        world.canvasWidth,
-        world.canvasHeight
+        world.width,
+        world.height
       );
       // Weight by distance (closer = stronger force)
       diff = vec.divide(diff, dist * dist);
@@ -111,8 +111,8 @@ export function alignment(
     const dist = vec.toroidalDistance(
       boid.position,
       other.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
 
     if (dist > 0 && dist < parameters.perceptionRadius) {
@@ -166,8 +166,8 @@ export function cohesion(
     const dist = vec.toroidalDistance(
       boid.position,
       other.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
 
     if (dist > 0 && dist < parameters.perceptionRadius) {
@@ -191,8 +191,8 @@ export function cohesion(
     const desired = vec.toroidalSubtract(
       avg,
       boid.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
     const desiredVelocity = vec.setMagnitude(
       desired,
@@ -278,8 +278,8 @@ export function fear(
     const dist = vec.toroidalDistance(
       boid.position,
       predator.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
 
     if (dist > 0 && dist < parameters.fearRadius) {
@@ -287,8 +287,8 @@ export function fear(
       let diff = vec.toroidalSubtract(
         boid.position,
         predator.position,
-        world.canvasWidth,
-        world.canvasHeight
+        world.width,
+        world.height
       );
       // Weight by distance (closer = stronger fear)
       diff = vec.divide(diff, dist * dist);
@@ -315,12 +315,12 @@ export function fear(
 
 /**
  * Select best prey target using weighted multi-factor scoring
- * 
+ *
  * Factors considered:
  * - Proximity (weight: 2.0) - Closer prey are preferred
  * - Low energy (weight: 0.5) - Weaker prey are easier to catch
  * - Age (weight: 0.3) - Older prey are slower
- * 
+ *
  * Philosophy: Predators hunt strategically, not just opportunistically
  */
 function selectBestPrey(
@@ -339,8 +339,8 @@ function selectBestPrey(
     const dist = vec.toroidalDistance(
       predator.position,
       target.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
 
     // Only consider prey within chase radius
@@ -383,7 +383,7 @@ function selectBestPrey(
 /**
  * Chase: Steer towards best prey target (weighted selection)
  * Returns a steering force towards the strategically best prey boid
- * 
+ *
  * Uses weighted scoring to select prey based on proximity, energy, and age
  */
 export function chase(
@@ -410,8 +410,8 @@ export function chase(
     const desired = vec.toroidalSubtract(
       targetPrey.position,
       predator.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
     const desiredVelocity = vec.setMagnitude(
       desired,
@@ -428,12 +428,12 @@ export function chase(
 
 /**
  * Select best mate using weighted multi-factor scoring
- * 
+ *
  * Factors considered:
  * - Proximity (weight: 1.0) - Closer mates are more convenient
  * - Health/Energy (weight: 0.8) - Healthier mates produce healthier offspring
  * - Maturity (weight: 0.5) - Prefer mid-age mates (not too young, not too old)
- * 
+ *
  * Philosophy: Mate selection balances convenience with genetic fitness
  */
 function selectBestMate(
@@ -462,8 +462,8 @@ function selectBestMate(
     const dist = vec.toroidalDistance(
       boid.position,
       candidate.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
 
     // Multi-factor mate scoring
@@ -505,7 +505,7 @@ function selectBestMate(
 /**
  * Seek Mate: Steer towards best eligible mate (weighted selection)
  * Returns a steering force towards the strategically best mate
- * 
+ *
  * Uses weighted scoring to select mates based on proximity, health, and maturity
  */
 export function seekMate(
@@ -526,8 +526,8 @@ export function seekMate(
     const desired = vec.toroidalSubtract(
       targetMate.position,
       boid.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
     const desiredVelocity = vec.setMagnitude(
       desired,
@@ -571,8 +571,8 @@ export function avoidDeathMarkers(
     const dist = vec.toroidalDistance(
       boid.position,
       marker.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
 
     if (dist > 0 && dist < avoidanceRadius) {
@@ -580,8 +580,8 @@ export function avoidDeathMarkers(
       let diff = vec.toroidalSubtract(
         boid.position,
         marker.position,
-        world.canvasWidth,
-        world.canvasHeight
+        world.width,
+        world.height
       );
 
       // Weight by distance (closer = stronger avoidance)
@@ -617,11 +617,11 @@ export function avoidDeathMarkers(
 
 /**
  * Select best food source using weighted multi-factor scoring
- * 
+ *
  * Factors considered:
  * - Proximity (weight: 2.0) - Closer food is more accessible
  * - Energy value (weight: 1.0) - More energy = more valuable
- * 
+ *
  * Philosophy: Boids optimize foraging by balancing distance and reward
  */
 function selectBestFood(
@@ -649,8 +649,8 @@ function selectBestFood(
     const dist = vec.toroidalDistance(
       boid.position,
       food.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
 
     // Only consider food within detection radius
@@ -686,7 +686,7 @@ function selectBestFood(
 /**
  * Seek Food: Steer towards best compatible food source (weighted selection)
  * Returns a steering force towards the strategically best food source and its ID
- * 
+ *
  * Uses weighted scoring to select food based on proximity and energy value
  */
 export function seekFood(
@@ -713,8 +713,8 @@ export function seekFood(
     const desired = vec.toroidalSubtract(
       targetFood.position,
       boid.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
     const desiredVelocity = vec.setMagnitude(
       desired,
@@ -750,8 +750,8 @@ export function orbitFood(
   const toFood = vec.toroidalSubtract(
     foodPosition,
     boid.position,
-    world.canvasWidth,
-    world.canvasHeight
+    world.width,
+    world.height
   );
 
   const dist = vec.magnitude(toFood);
@@ -804,8 +804,8 @@ export function avoidPredatorFood(
     const dist = vec.toroidalDistance(
       boid.position,
       food.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
 
     if (dist < parameters.fearRadius) {
@@ -813,8 +813,8 @@ export function avoidPredatorFood(
       const away = vec.toroidalSubtract(
         boid.position,
         food.position,
-        world.canvasWidth,
-        world.canvasHeight
+        world.width,
+        world.height
       );
 
       // Weight by distance and fear factor (closer = stronger)
@@ -886,8 +886,8 @@ export function avoidCrowdedAreas(
     const dist = vec.toroidalDistance(
       boid.position,
       other.position,
-      world.canvasWidth,
-      world.canvasHeight
+      world.width,
+      world.height
     );
 
     if (dist > 0 && dist < parameters.perceptionRadius) {
@@ -911,8 +911,8 @@ export function avoidCrowdedAreas(
   const awayFromCenter = vec.toroidalSubtract(
     boid.position,
     centerOfMass,
-    world.canvasWidth,
-    world.canvasHeight
+    world.width,
+    world.height
   );
 
   // Desired velocity: away from crowd at max speed
