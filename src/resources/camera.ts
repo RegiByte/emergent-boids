@@ -37,23 +37,21 @@ export const camera = defineResource({
     let y = config.world.canvasHeight / 2;
     let zoom = 1.0; // 1.0 = see full viewport width in world units
 
-    const viewportWidth = canvas.width;
-    const viewportHeight = canvas.height;
-
     // Pure functions for coordinate transforms
+    // Note: Use canvas.width/height dynamically to handle viewport resizing
     const worldToScreen = (worldX: number, worldY: number) => ({
-      x: (worldX - x) * zoom + viewportWidth / 2,
-      y: (worldY - y) * zoom + viewportHeight / 2,
+      x: (worldX - x) * zoom + canvas.width / 2,
+      y: (worldY - y) * zoom + canvas.height / 2,
     });
 
     const screenToWorld = (screenX: number, screenY: number) => ({
-      x: (screenX - viewportWidth / 2) / zoom + x,
-      y: (screenY - viewportHeight / 2) / zoom + y,
+      x: (screenX - canvas.width / 2) / zoom + x,
+      y: (screenY - canvas.height / 2) / zoom + y,
     });
 
     const isInViewport = (worldX: number, worldY: number, buffer = 100) => {
-      const halfWidth = viewportWidth / zoom / 2 + buffer;
-      const halfHeight = viewportHeight / zoom / 2 + buffer;
+      const halfWidth = canvas.width / zoom / 2 + buffer;
+      const halfHeight = canvas.height / zoom / 2 + buffer;
 
       return (
         worldX >= x - halfWidth &&
@@ -64,8 +62,8 @@ export const camera = defineResource({
     };
 
     const getViewportBounds = () => {
-      const halfWidth = viewportWidth / zoom / 2;
-      const halfHeight = viewportHeight / zoom / 2;
+      const halfWidth = canvas.width / zoom / 2;
+      const halfHeight = canvas.height / zoom / 2;
 
       return {
         left: x - halfWidth,
@@ -76,12 +74,20 @@ export const camera = defineResource({
     };
 
     const panTo = (newX: number, newY: number) => {
-      x = newX;
-      y = newY;
+      // Calculate viewport half-dimensions at current zoom
+      const halfWidth = canvas.width / zoom / 2;
+      const halfHeight = canvas.height / zoom / 2;
+
+      // Clamp camera position to keep viewport within world bounds
+      const worldWidth = config.world.canvasWidth;
+      const worldHeight = config.world.canvasHeight;
+
+      x = Math.max(halfWidth, Math.min(worldWidth - halfWidth, newX));
+      y = Math.max(halfHeight, Math.min(worldHeight - halfHeight, newY));
     };
 
     const setZoom = (newZoom: number) => {
-      zoom = Math.max(0.1, Math.min(5.0, newZoom)); // Clamp zoom
+      zoom = Math.max(0.25, Math.min(2.5, newZoom)); // Clamp zoom (0.25x - 2.5x)
     };
 
     // Keyboard controls (WASD for pan)
@@ -90,16 +96,16 @@ export const camera = defineResource({
 
       switch (e.key.toLowerCase()) {
         case "w":
-          y -= panSpeed;
+          panTo(x, y - panSpeed);
           break;
         case "s":
-          y += panSpeed;
+          panTo(x, y + panSpeed);
           break;
         case "a":
-          x -= panSpeed;
+          panTo(x - panSpeed, y);
           break;
         case "d":
-          x += panSpeed;
+          panTo(x + panSpeed, y);
           break;
       }
     };
@@ -107,8 +113,34 @@ export const camera = defineResource({
     // Mouse wheel for zoom
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const zoomSpeed = 0.1;
-      setZoom(zoom + (e.deltaY > 0 ? -zoomSpeed : zoomSpeed));
+
+      // Get mouse position relative to canvas
+      const rect = canvas.canvas.getBoundingClientRect();
+      const mouseScreenX = e.clientX - rect.left;
+      const mouseScreenY = e.clientY - rect.top;
+
+      // Calculate world position under mouse BEFORE zoom
+      const worldBeforeZoom = screenToWorld(mouseScreenX, mouseScreenY);
+
+      // Apply zoom
+      const zoomFactor = 1.03;
+      const oldZoom = zoom;
+      const newZoom = e.deltaY > 0 ? zoom / zoomFactor : zoom * zoomFactor;
+      setZoom(newZoom);
+
+      // If zoom actually changed (not clamped), adjust camera position
+      // so the world point under the mouse stays in the same screen position
+      if (zoom !== oldZoom) {
+        // Calculate where that world point would NOW be on screen with new zoom
+        const worldAfterZoom = screenToWorld(mouseScreenX, mouseScreenY);
+
+        // The difference tells us how much the world "shifted" under the mouse
+        // We need to move the camera in the OPPOSITE direction to compensate
+        const dx = worldBeforeZoom.x - worldAfterZoom.x;
+        const dy = worldBeforeZoom.y - worldAfterZoom.y;
+
+        panTo(x + dx, y + dy);
+      }
     };
 
     // Mouse drag for pan
@@ -132,8 +164,7 @@ export const camera = defineResource({
         const dy = e.clientY - lastMouseY;
 
         // Pan camera (invert direction for natural feel)
-        x -= dx / zoom;
-        y -= dy / zoom;
+        panTo(x - dx / zoom, y - dy / zoom);
 
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
@@ -169,8 +200,12 @@ export const camera = defineResource({
       get zoom() {
         return zoom;
       },
-      viewportWidth,
-      viewportHeight,
+      get viewportWidth() {
+        return canvas.width; // Dynamic - reads current canvas size
+      },
+      get viewportHeight() {
+        return canvas.height; // Dynamic - reads current canvas size
+      },
       panTo,
       setZoom,
       worldToScreen,

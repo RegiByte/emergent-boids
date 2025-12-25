@@ -13,7 +13,7 @@ export function CameraControls() {
   );
 
   return (
-    <div className="fixed top-20 left-4 z-40 hidden lg:block">
+    <div className="absolute bottom-4 left-4 z-40 hidden lg:block">
       <Card className="bg-black/80 backdrop-blur-sm border-primary/30 p-3 space-y-2">
         <div className="text-xs font-mono text-primary/70 mb-2">
           CAMERA CONTROLS

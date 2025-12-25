@@ -263,7 +263,8 @@ export const renderer = defineResource({
         ctx,
         width,
         height,
-        boids: visibleBoids, // Only visible boids!
+        boids: visibleBoids, // Only visible boids for rendering
+        allBoids: engine.boids, // All boids in world for stats
         obstacles: simulation.obstacles,
         deathMarkers: simulation.deathMarkers,
         foodSources: simulation.foodSources,

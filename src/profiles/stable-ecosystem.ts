@@ -21,8 +21,8 @@ export const stableEcosystemProfile: SimulationProfile = {
   world: {
     canvasWidth: 1400,
     canvasHeight: 1000,
-    initialPreyCount: 150,
-    initialPredatorCount: 20, // Predators emerge from prey evolution
+    initialPreyCount: 1000,
+    initialPredatorCount: 500, // Predators emerge from prey evolution
   },
 
   parameters: {
@@ -37,9 +37,9 @@ export const stableEcosystemProfile: SimulationProfile = {
     fearFactor: 0.5, // Baseline fear factor for all species
 
     // Population limits
-    maxBoids: 600, // Global safety limit
-    maxPreyBoids: 500, // Per-role cap for prey
-    maxPredatorBoids: 50, // Per-role cap for predators
+    maxBoids: 2000, // Global safety limit
+    maxPreyBoids: 1500, // Per-role cap for prey
+    maxPredatorBoids: 400, // Per-role cap for predators
 
     // Lifecycle parameters
     minReproductionAge: 5, // Can start reproducing at 5 seconds old

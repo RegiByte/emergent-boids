@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useResource } from "../system";
 import type { Boid } from "../boids/vocabulary/schemas/prelude";
 
@@ -127,8 +127,29 @@ export function Minimap() {
     };
   }, [engine, camera, worldWidth, worldHeight, speciesConfigs]);
 
-  // Click to pan camera
-  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Drag state for minimap navigation
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Helper function to convert minimap coordinates to world coordinates
+  const minimapToWorld = (
+    minimapX: number,
+    minimapY: number
+  ): { x: number; y: number } => {
+    const MINIMAP_SIZE = 200;
+    const scaleX = MINIMAP_SIZE / worldWidth;
+    const scaleY = MINIMAP_SIZE / worldHeight;
+
+    return {
+      x: minimapX / scaleX,
+      y: minimapY / scaleY,
+    };
+  };
+
+  // Mouse down: start dragging
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    setIsDragging(true);
+
+    // Immediately pan to clicked location
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -136,16 +157,33 @@ export function Minimap() {
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    const MINIMAP_SIZE = 200;
-    const scaleX = MINIMAP_SIZE / worldWidth;
-    const scaleY = MINIMAP_SIZE / worldHeight;
+    const worldPos = minimapToWorld(clickX, clickY);
+    camera.panTo(worldPos.x, worldPos.y);
+  };
 
-    // Convert minimap coordinates to world coordinates
-    const worldX = clickX / scaleX;
-    const worldY = clickY / scaleY;
+  // Mouse move: pan camera in real-time while dragging
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging) return;
 
-    // Pan camera to clicked location
-    camera.panTo(worldX, worldY);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const worldPos = minimapToWorld(mouseX, mouseY);
+    camera.panTo(worldPos.x, worldPos.y);
+  };
+
+  // Mouse up: stop dragging
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Mouse leave: stop dragging if mouse leaves minimap
+  const handleMouseLeave = () => {
+    setIsDragging(false);
   };
 
   return (
@@ -158,9 +196,14 @@ export function Minimap() {
           ref={canvasRef}
           width={200}
           height={200}
-          className="cursor-crosshair rounded"
-          onClick={handleClick}
-          title="Click to pan camera"
+          className={
+            isDragging ? "cursor-grabbing rounded" : "cursor-grab rounded"
+          }
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          title="Click and drag to navigate"
         />
         <div className="text-xs text-primary/50 mt-1 font-mono text-center">
           {worldWidth}x{worldHeight}

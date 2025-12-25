@@ -25,7 +25,8 @@ export type RenderContext = {
   ctx: CanvasRenderingContext2D;
   width: number;
   height: number;
-  boids: Boid[];
+  boids: Boid[]; // Visible boids (for rendering)
+  allBoids: Boid[]; // All boids in world (for stats)
   obstacles: Obstacle[];
   deathMarkers: DeathMarker[];
   foodSources: FoodSource[];
@@ -633,11 +634,12 @@ export const renderStats = (
 ): void => {
   rc.profiler?.start("render.stats");
 
-  const predatorCount = rc.boids.filter((b) => {
+  // Use allBoids for stats (entire world, not just visible viewport)
+  const predatorCount = rc.allBoids.filter((b) => {
     const speciesConfig = rc.speciesConfigs[b.typeId];
     return speciesConfig && speciesConfig.role === "predator";
   }).length;
-  const preyCount = rc.boids.length - predatorCount;
+  const preyCount = rc.allBoids.length - predatorCount;
 
   // Responsive font size and positioning
   const isSmallScreen = rc.width < 600;
@@ -650,7 +652,7 @@ export const renderStats = (
   rc.ctx.font = `${fontSize}px monospace`;
   rc.ctx.fillText(`FPS: ${Math.round(fps)}`, startingX, startingY);
   rc.ctx.fillText(
-    `Total: ${rc.boids.length}`,
+    `Total: ${rc.allBoids.length}`,
     startingX,
     startingY + lineHeight
   );
