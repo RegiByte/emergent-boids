@@ -20,6 +20,10 @@ import * as vec from "./vector";
 import type { DomainRNG } from "@/lib/seededRandom";
 import type { Vector2 } from "./vocabulary/schemas/prelude.ts";
 import { roleKeywords } from "./vocabulary/keywords.ts";
+import type { WorldPhysics } from "./vocabulary/schemas/genetics";
+import { computePhenotype, createGenesisGenome } from "./genetics/phenotype";
+import { convertLegacyConfigToGenome } from "./genetics/legacyConversion";
+import { defaultWorldPhysics } from "@/resources/defaultPhysics";
 
 let boidIdCounter = 0;
 
@@ -50,6 +54,7 @@ export type BoidCreationContext = {
   world: { width: number; height: number };
   species: Record<string, SpeciesConfig>;
   rng: DomainRNG; // Seeded RNG for reproducibility
+  physics?: WorldPhysics; // Optional physics (uses defaults if not provided)
 };
 
 /**
@@ -60,7 +65,7 @@ export function createBoid(
   context: BoidCreationContext,
   age: number | null = null
 ): Boid {
-  const { world, species, rng } = context;
+  const { world, species, rng, physics = defaultWorldPhysics } = context;
 
   // Pick a random type
   const typeId = rng.pick(typeIds);
@@ -74,6 +79,17 @@ export function createBoid(
   const randomAge = rng.range(0, maxAge * 0.3);
   const effectiveAge = age !== null ? age : randomAge;
 
+  // Create genome from species config (new or legacy format)
+  const genome = speciesConfig.baseGenome
+    ? createGenesisGenome(
+        speciesConfig.baseGenome.traits,
+        speciesConfig.baseGenome.visual
+      )
+    : convertLegacyConfigToGenome(speciesConfig, physics);
+
+  // Compute phenotype from genome + physics
+  const phenotype = computePhenotype(genome, physics);
+
   return {
     id: `boid-${boidIdCounter++}`,
     position: {
@@ -86,9 +102,15 @@ export function createBoid(
     },
     acceleration: { x: 0, y: 0 },
     typeId,
-    energy: speciesConfig?.lifecycle?.maxEnergy
-      ? speciesConfig.lifecycle.maxEnergy / 2
-      : 50, // Start at half energy
+    
+    // Genetics (NEW)
+    genome,
+    phenotype,
+    
+    // Resources (UPDATED)
+    energy: phenotype.maxEnergy / 2, // Start at half energy
+    health: phenotype.maxHealth, // Start at full health
+    
     age: effectiveAge, // Randomized initial age (0-30% of max age)
     reproductionCooldown: 0, // Start ready to mate
     seekingMate: false, // Not seeking initially
@@ -110,18 +132,29 @@ export function createBoidOfType(
   context: BoidCreationContext,
   energyBonus: number = 0 // Optional energy bonus for offspring (0-1)
 ): Boid {
-  const { world, species, rng } = context;
+  const { world, species, rng, physics = defaultWorldPhysics } = context;
   const speciesConfig = species[typeId];
 
   // Spawn near parent with slight offset
   const offset = 20;
 
+  // Create genome from species config (new or legacy format)
+  const genome = speciesConfig.baseGenome
+    ? createGenesisGenome(
+        speciesConfig.baseGenome.traits,
+        speciesConfig.baseGenome.visual
+      )
+    : convertLegacyConfigToGenome(speciesConfig, physics);
+
+  // Compute phenotype from genome + physics
+  const phenotype = computePhenotype(genome, physics);
+
   // Calculate starting energy with bonus
-  const baseEnergy = speciesConfig.lifecycle.maxEnergy / 2; // Start at half energy
-  const bonusEnergy = speciesConfig.lifecycle.maxEnergy * energyBonus;
+  const baseEnergy = phenotype.maxEnergy / 2; // Start at half energy
+  const bonusEnergy = phenotype.maxEnergy * energyBonus;
   const startingEnergy = Math.min(
     baseEnergy + bonusEnergy,
-    speciesConfig.lifecycle.maxEnergy
+    phenotype.maxEnergy
   );
 
   return {
@@ -140,7 +173,15 @@ export function createBoidOfType(
     },
     acceleration: { x: 0, y: 0 },
     typeId,
+    
+    // Genetics (NEW)
+    genome,
+    phenotype,
+    
+    // Resources (UPDATED)
     energy: startingEnergy, // Start with base + bonus energy
+    health: phenotype.maxHealth, // Start at full health
+    
     age: 0, // Born at age 0
     reproductionCooldown: 0, // Start ready to mate
     seekingMate: false, // Not seeking initially

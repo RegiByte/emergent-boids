@@ -13,6 +13,7 @@ import { Boid } from "../boids/vocabulary/schemas/prelude";
 import type { Profiler } from "./profiler";
 import { RandomnessResource } from "./randomness";
 import type { RuntimeStoreResource } from "./runtimeStore";
+import { defaultWorldPhysics } from "./defaultPhysics";
 
 export type CatchEvent = {
   predatorId: string;
@@ -57,6 +58,9 @@ export const engine = defineResource({
     // Initialize boids with prey and predators from profile
     const boids: Boid[] = [];
 
+    // Get physics from config (or use defaults)
+    const physics = (initialConfig as any).physics || defaultWorldPhysics;
+
     // Build creation context
     const creationContext = {
       world: {
@@ -65,6 +69,7 @@ export const engine = defineResource({
       },
       species: initialSpecies,
       rng: randomness.domain("spawning"),
+      physics,
     };
 
     // Spawn initial prey
@@ -253,6 +258,9 @@ export const engine = defineResource({
       preyTypeIds = [...currentPreyTypeIds];
       predatorTypeIds = [...currentPredatorTypeIds];
 
+      // Get physics from config (or use defaults)
+      const resetPhysics = (cfg as any).physics || defaultWorldPhysics;
+
       // Build creation context
       const creationContext = {
         world: {
@@ -261,6 +269,7 @@ export const engine = defineResource({
         },
         species,
         rng: randomness.domain("spawning"),
+        physics: resetPhysics,
       };
 
       // Respawn prey

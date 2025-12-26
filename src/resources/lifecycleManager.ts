@@ -246,6 +246,7 @@ export const lifecycleManager = defineResource({
 
           if (canSpawn) {
             const { width, height } = store.getState().config.world;
+            const physics = (store.getState().config as any).physics;
             const creationContext = {
               world: {
                 width,
@@ -253,6 +254,7 @@ export const lifecycleManager = defineResource({
               },
               species: speciesTypes,
               rng: randomness.domain("reproduction"),
+              physics,
             };
             const newBoid = createBoidOfType(
               offspring.position,
