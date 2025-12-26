@@ -7,6 +7,12 @@ import {
   shapeKeywords,
   bodyPartKeywords,
 } from "../keywords";
+import {
+  genomeSchema,
+  phenotypeSchema,
+  worldPhysicsSchema,
+  mutationConfigSchema,
+} from "./genetics";
 
 export const vectorSchema = z.object({
   x: z.number(),
@@ -115,11 +121,10 @@ export const bodyPartSchema = z.enum([
 /**
  * Species Configuration - Defines behavior and characteristics of a species
  *
- * Replaces the old flat BoidTypeConfig with logical groupings:
- * - movement: Flocking behavior and physics
- * - lifecycle: Energy, aging, and survival
- * - reproduction: Mating and offspring
- * - limits: Population caps and overrides
+ * Updated with genetics system:
+ * - baseGenome: Starting traits for genesis boids
+ * - mutation: Mutation rates for evolution
+ * - Legacy fields kept for backward compatibility (will be phased out)
  *
  * Each species has its own configuration.
  */
@@ -128,7 +133,28 @@ export const speciesConfigSchema = z.object({
   name: z.string(), // Display name
   role: speciesRoleSchema, // "predator" or "prey"
 
-  // Movement behavior - Flocking rules and physics
+  // Genetics (NEW) - Base genome and mutation configuration
+  baseGenome: z
+    .object({
+      traits: z.object({
+        speed: z.number().min(0).max(1), // % of physics.maxSpeed
+        force: z.number().min(0).max(1), // % of physics.maxForce
+        vision: z.number().min(0).max(1), // % of physics.maxVision
+        size: z.number().min(0.5).max(3.0), // Absolute size
+        aggression: z.number().min(0).max(1), // Behavioral trait
+        sociability: z.number().min(0).max(1), // Behavioral trait
+        efficiency: z.number().min(0).max(1), // Energy efficiency
+      }),
+      visual: z.object({
+        color: z.string(), // LAB color (hex string)
+        bodyParts: z.array(z.any()), // Will be properly typed as BodyPart[]
+      }),
+    })
+    .optional(), // Optional for backward compatibility
+
+  mutation: mutationConfigSchema.optional(), // Mutation rates (optional, uses defaults if not specified)
+
+  // Movement behavior - Flocking rules and physics (LEGACY - will be moved to baseGenome)
   movement: z.object({
     minDistance: z.number().optional(), // Minimum distance from other boids (overrides global)
     separationWeight: z.number(), // How strongly to avoid crowding
@@ -141,7 +167,7 @@ export const speciesConfigSchema = z.object({
     crowdAversionWeight: z.number(), // Strength of crowd avoidance force (0-3)
   }),
 
-  // Lifecycle - Energy, aging, and survival
+  // Lifecycle - Energy, aging, and survival (LEGACY - will be moved to baseGenome)
   lifecycle: z.object({
     maxEnergy: z.number(), // Maximum energy capacity
     energyGainRate: z.number(), // Energy gained per second (prey) or per catch (predator)
@@ -173,7 +199,7 @@ export const speciesConfigSchema = z.object({
   // Same species always defaults to 1.0 if not specified
   affinities: z.record(z.string(), z.number().min(-1).max(1)).optional(),
 
-  // Visual appearance - How this species is rendered
+  // Visual appearance - How this species is rendered (LEGACY - kept for backward compatibility)
   visual: z.object({
     color: z.string(), // Hex color for rendering (e.g., "#00ff88")
     shape: shapeSchema, // Shape type for rendering
@@ -190,7 +216,10 @@ export const speciesRecordSchema = z.record(z.string(), speciesConfigSchema);
 /**
  * Boid Schema - Defines the structure of a boid in the simulation
  *
- * Used to define the structure of a boid in the simulation.
+ * Updated with genetics system:
+ * - genome: Heritable traits (DNA)
+ * - phenotype: Computed effective values (expressed organism)
+ * - health: Damage buffer (separate from energy)
  */
 export const boidSchema = z.object({
   id: z.string(),
@@ -198,7 +227,16 @@ export const boidSchema = z.object({
   velocity: vectorSchema,
   acceleration: vectorSchema,
   typeId: z.string(),
-  energy: z.number(),
+
+  // Genetics (NEW)
+  genome: genomeSchema, // Heritable traits
+  phenotype: phenotypeSchema, // Computed effective values
+
+  // Resources (UPDATED)
+  energy: z.number(), // Current energy (0 - phenotype.maxEnergy)
+  health: z.number(), // Current health (0 - phenotype.maxHealth) [NEW]
+
+  // Lifecycle
   age: z.number(), // Age in seconds
   reproductionCooldown: z.number(), // Time passages until can reproduce again (0 = ready)
   seekingMate: z.boolean(), // Cached state: actively seeking mate (updated by lifecycleManager)
@@ -293,6 +331,7 @@ export const worldConfigSchema = z.object({
  * - World dimensions and initial populations
  * - Species definitions and behaviors
  * - Global simulation parameters
+ * - World physics (NEW) - Universal constants for this world
  *
  * Think of profiles as "game levels" or "experimental conditions".
  * They can be shared, saved, and loaded as JSON files.
@@ -307,6 +346,7 @@ export const simulationProfileSchema = z.object({
   world: worldConfigSchema, // Physical world setup
   species: speciesRecordSchema, // All species in this scenario
   parameters: simulationParametersSchema, // Global rules
+  physics: worldPhysicsSchema.optional(), // World physics (NEW - optional, uses defaults if not specified)
 });
 
 // ============================================
