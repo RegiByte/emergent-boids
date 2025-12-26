@@ -342,7 +342,7 @@ function updatePredator(
   let separationWeight = 0;
   if (stance !== "eating") {
     separationWeight = calculatePredatorSeparationWeight(
-      speciesConfig.movement.separationWeight,
+      speciesConfig.movement?.separationWeight || 1.5,
       stance
     );
     sep = rules.separation(
@@ -393,9 +393,9 @@ function updatePredator(
   // Energy affects speed
   const energySpeedFactor = calculateEnergySpeedFactor(
     boid.energy,
-    speciesConfig.lifecycle.maxEnergy
+    boid.phenotype.maxEnergy
   );
-  let effectiveMaxSpeed = speciesConfig.movement.maxSpeed * energySpeedFactor;
+  let effectiveMaxSpeed = boid.phenotype.maxSpeed * energySpeedFactor;
 
   // Eating stance: reduce max speed
   if (stance === "eating") {
@@ -530,7 +530,7 @@ function updatePrey(
     }
   } else if (
     stance === "flocking" &&
-    boid.energy < speciesConfig.lifecycle.maxEnergy * 0.7
+    boid.energy < boid.phenotype.maxEnergy * 0.7
   ) {
     // Seek food when hungry
     const foodSeek = rules.seekFood(
@@ -562,26 +562,28 @@ function updatePrey(
   // Declarative force composition with explicit weights
   // Clear visual hierarchy makes priorities obvious and easy to tune
   const cohesionWeight = calculatePreyCohesionWeight(
-    speciesConfig.movement.cohesionWeight,
+    speciesConfig.movement?.cohesionWeight || 1.5,
     stance
   );
 
+  const fearFactor = speciesConfig.lifecycle?.fearFactor || 0.5;
+
   applyWeightedForces(boid, [
     // Core flocking behaviors
-    { force: sep, weight: speciesConfig.movement.separationWeight },
-    { force: ali, weight: speciesConfig.movement.alignmentWeight },
+    { force: sep, weight: speciesConfig.movement?.separationWeight || 1.5 },
+    { force: ali, weight: speciesConfig.movement?.alignmentWeight || 1.0 },
     { force: coh, weight: cohesionWeight },
 
     // Avoidance behaviors (high priority)
     { force: avoid, weight: parameters.obstacleAvoidanceWeight },
     {
       force: fearResponse.force,
-      weight: speciesConfig.lifecycle.fearFactor * 3.0,
+      weight: fearFactor * 3.0,
     },
-    { force: deathAvoidance, weight: speciesConfig.lifecycle.fearFactor * 1.5 },
+    { force: deathAvoidance, weight: fearFactor * 1.5 },
     {
       force: predatorFoodAvoidance,
-      weight: speciesConfig.lifecycle.fearFactor * 2.5,
+      weight: fearFactor * 2.5,
     },
     { force: crowdAvoidance, weight: 1.0 }, // Already weighted in rule
 
@@ -599,12 +601,11 @@ function updatePrey(
   boid.velocity = vec.add(boid.velocity, boid.acceleration);
 
   // Apply adrenaline rush (using pure calculation)
-  let effectiveMaxSpeed = speciesConfig.movement.maxSpeed;
-  if (fearResponse.isAfraid && speciesConfig.lifecycle.fearFactor > 0) {
-    const speedBoost = calculateFearSpeedBoost(
-      speciesConfig.lifecycle.fearFactor
-    );
-    effectiveMaxSpeed = speciesConfig.movement.maxSpeed * speedBoost;
+  const fearFactor = speciesConfig.lifecycle?.fearFactor || 0.5;
+  let effectiveMaxSpeed = boid.phenotype.maxSpeed;
+  if (fearResponse.isAfraid && fearFactor > 0) {
+    const speedBoost = calculateFearSpeedBoost(fearFactor);
+    effectiveMaxSpeed = boid.phenotype.maxSpeed * speedBoost;
   }
 
   boid.velocity = vec.limit(boid.velocity, effectiveMaxSpeed);
@@ -679,7 +680,7 @@ function enforceMinimumDistance(
   speciesTypes: Record<string, SpeciesConfig>
 ): void {
   const speciesConfig = speciesTypes[boid.typeId];
-  const minDist = speciesConfig.movement.minDistance || parameters.minDistance;
+  const minDist = speciesConfig.movement?.minDistance || parameters.minDistance;
   if (!speciesConfig) {
     console.warn(`Unknown species: ${boid.typeId}`);
     return;

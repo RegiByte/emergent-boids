@@ -77,10 +77,10 @@ export function separation(
 
   if (total > 0) {
     const avg = vec.divide(steering, total);
-    const desired = vec.setMagnitude(avg, speciesConfig.movement.maxSpeed);
+    const desired = vec.setMagnitude(avg, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
     profiler?.end("rule.separation");
-    return vec.limit(steer, speciesConfig.movement.maxForce);
+    return vec.limit(steer, boid.phenotype.maxForce);
   }
 
   profiler?.end("rule.separation");
@@ -132,10 +132,10 @@ export function alignment(
 
   if (totalWeight > 0) {
     const avg = vec.divide(steering, totalWeight);
-    const desired = vec.setMagnitude(avg, speciesConfig.movement.maxSpeed);
+    const desired = vec.setMagnitude(avg, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
     profiler?.end("rule.alignment");
-    return vec.limit(steer, speciesConfig.movement.maxForce);
+    return vec.limit(steer, boid.phenotype.maxForce);
   }
 
   profiler?.end("rule.alignment");
@@ -196,11 +196,11 @@ export function cohesion(
     );
     const desiredVelocity = vec.setMagnitude(
       desired,
-      speciesConfig.movement.maxSpeed
+      boid.phenotype.maxSpeed
     );
     const steer = vec.subtract(desiredVelocity, boid.velocity);
     profiler?.end("rule.cohesion");
-    return vec.limit(steer, speciesConfig.movement.maxForce);
+    return vec.limit(steer, boid.phenotype.maxForce);
   }
 
   profiler?.end("rule.cohesion");
@@ -247,10 +247,10 @@ export function avoidObstacles(
 
   if (total > 0) {
     const avg = vec.divide(steering, total);
-    const desired = vec.setMagnitude(avg, speciesConfig.movement.maxSpeed);
+    const desired = vec.setMagnitude(avg, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
     profiler?.end("rule.avoidObstacles");
-    return vec.limit(steer, speciesConfig.movement.maxForce);
+    return vec.limit(steer, boid.phenotype.maxForce);
   }
 
   profiler?.end("rule.avoidObstacles");
@@ -300,11 +300,11 @@ export function fear(
 
   if (total > 0) {
     const avg = vec.divide(steering, total);
-    const desired = vec.setMagnitude(avg, speciesConfig.movement.maxSpeed);
+    const desired = vec.setMagnitude(avg, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
     profiler?.end("rule.fear");
     return {
-      force: vec.limit(steer, speciesConfig.movement.maxForce),
+      force: vec.limit(steer, boid.phenotype.maxForce),
       isAfraid: true,
     };
   }
@@ -402,7 +402,7 @@ export function chase(
     prey,
     world,
     parameters.chaseRadius,
-    speciesConfig.lifecycle.maxEnergy
+    predator.phenotype.maxEnergy
   );
 
   if (targetPrey) {
@@ -415,11 +415,11 @@ export function chase(
     );
     const desiredVelocity = vec.setMagnitude(
       desired,
-      speciesConfig.movement.maxSpeed
+      predator.phenotype.maxSpeed
     );
     const steer = vec.subtract(desiredVelocity, predator.velocity);
     profiler?.end("rule.chase");
-    return vec.limit(steer, speciesConfig.movement.maxForce);
+    return vec.limit(steer, predator.phenotype.maxForce);
   }
 
   profiler?.end("rule.chase");
@@ -480,16 +480,16 @@ function selectBestMate(
         value: candidate.energy,
         weight: 0.8,
         min: 0,
-        max: speciesConfig.lifecycle.maxEnergy,
+        max: candidate.phenotype.maxEnergy,
       },
       // Maturity: prefer mid-age (inverted distance from optimal age)
       {
         value:
-          speciesConfig.lifecycle.maxAge * 0.5 -
-          Math.abs(candidate.age - speciesConfig.lifecycle.maxAge * 0.5),
+          (speciesConfig.lifecycle?.maxAge || 300) * 0.5 -
+          Math.abs(candidate.age - (speciesConfig.lifecycle?.maxAge || 300) * 0.5),
         weight: 0.5,
         min: 0,
-        max: speciesConfig.lifecycle.maxAge * 0.5,
+        max: (speciesConfig.lifecycle?.maxAge || 300) * 0.5,
       },
     ]);
 
@@ -531,11 +531,11 @@ export function seekMate(
     );
     const desiredVelocity = vec.setMagnitude(
       desired,
-      speciesConfig.movement.maxSpeed
+      boid.phenotype.maxSpeed
     );
     const steer = vec.subtract(desiredVelocity, boid.velocity);
     profiler?.end("rule.seekMate");
-    return vec.limit(steer, speciesConfig.movement.maxForce * 2.0); // Extra strong force!
+    return vec.limit(steer, boid.phenotype.maxForce * 2.0); // Extra strong force!
   }
 
   profiler?.end("rule.seekMate");
@@ -604,11 +604,11 @@ export function avoidDeathMarkers(
 
   if (total > 0) {
     const avg = vec.divide(steering, total);
-    const desired = vec.setMagnitude(avg, speciesConfig.movement.maxSpeed);
+    const desired = vec.setMagnitude(avg, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
     // Moderate force - less than fear but still significant
     profiler?.end("rule.avoidDeathMarkers");
-    return vec.limit(steer, speciesConfig.movement.maxForce * 0.85);
+    return vec.limit(steer, boid.phenotype.maxForce * 0.85);
   }
 
   profiler?.end("rule.avoidDeathMarkers");
@@ -718,12 +718,12 @@ export function seekFood(
     );
     const desiredVelocity = vec.setMagnitude(
       desired,
-      speciesConfig.movement.maxSpeed
+      boid.phenotype.maxSpeed
     );
     const steer = vec.subtract(desiredVelocity, boid.velocity);
     profiler?.end("rule.seekFood");
     return {
-      force: vec.limit(steer, speciesConfig.movement.maxForce),
+      force: vec.limit(steer, boid.phenotype.maxForce),
       targetFoodId: targetFood.id,
     };
   }
@@ -758,21 +758,21 @@ export function orbitFood(
 
   // If too far, move closer
   if (dist > eatingRadius * 1.2) {
-    const desired = vec.setMagnitude(toFood, speciesConfig.movement.maxSpeed);
+    const desired = vec.setMagnitude(toFood, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
     profiler?.end("rule.orbitFood");
-    return vec.limit(steer, speciesConfig.movement.maxForce);
+    return vec.limit(steer, boid.phenotype.maxForce);
   }
 
   // If close enough, orbit (perpendicular to radius)
   const tangent = { x: -toFood.y, y: toFood.x }; // 90° rotation
   const desired = vec.setMagnitude(
     tangent,
-    speciesConfig.movement.maxSpeed * 0.5
+    boid.phenotype.maxSpeed * 0.5
   );
   const steer = vec.subtract(desired, boid.velocity);
   profiler?.end("rule.orbitFood");
-  return vec.limit(steer, speciesConfig.movement.maxForce * 0.8);
+  return vec.limit(steer, boid.phenotype.maxForce * 0.8);
 }
 
 /**
@@ -820,8 +820,8 @@ export function avoidPredatorFood(
       // Weight by distance and fear factor (closer = stronger)
       const weight = 1 / (dist * dist);
       const weightedDist = vec.multiply(away, weight);
-      const feerFactor = speciesConfig.lifecycle.fearFactor;
-      const weightedFear = vec.multiply(away, feerFactor);
+      const fearFactor = speciesConfig.lifecycle?.fearFactor || 0.5;
+      const weightedFear = vec.multiply(away, fearFactor);
 
       steering.x += weightedDist.x;
       steering.y += weightedDist.y;
@@ -833,10 +833,10 @@ export function avoidPredatorFood(
 
   if (count > 0) {
     const avg = vec.divide(steering, count);
-    const desired = vec.setMagnitude(avg, speciesConfig.movement.maxSpeed);
+    const desired = vec.setMagnitude(avg, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
     profiler?.end("rule.avoidPredatorFood");
-    return vec.limit(steer, speciesConfig.movement.maxForce);
+    return vec.limit(steer, boid.phenotype.maxForce);
   }
 
   profiler?.end("rule.avoidPredatorFood");
@@ -864,7 +864,7 @@ export function avoidCrowdedAreas(
 ): Vector2 {
   profiler?.start("rule.avoidCrowdedAreas");
 
-  const threshold = speciesConfig.movement.crowdAversionThreshold;
+  const threshold = speciesConfig.movement?.crowdAversionThreshold || 20;
   const nearbyCount = neighbors.length;
 
   // If below threshold, no avoidance needed
@@ -918,7 +918,7 @@ export function avoidCrowdedAreas(
   // Desired velocity: away from crowd at max speed
   const desired = vec.setMagnitude(
     awayFromCenter,
-    speciesConfig.movement.maxSpeed
+    boid.phenotype.maxSpeed
   );
   const steer = vec.subtract(desired, boid.velocity);
 
@@ -926,9 +926,8 @@ export function avoidCrowdedAreas(
   const scaled = vec.multiply(steer, crowdedness);
 
   // Apply crowd aversion weight
-  const maxForce =
-    speciesConfig.movement.maxForce *
-    speciesConfig.movement.crowdAversionWeight;
+  const crowdAversionWeight = speciesConfig.movement?.crowdAversionWeight || 1.5;
+  const maxForce = boid.phenotype.maxForce * crowdAversionWeight;
 
   profiler?.end("rule.avoidCrowdedAreas");
   return vec.limit(scaled, maxForce);
