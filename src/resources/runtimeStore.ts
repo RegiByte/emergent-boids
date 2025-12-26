@@ -66,6 +66,7 @@ export const runtimeStore = defineResource({
             },
           },
           sidebarOpen: true,
+          headerCollapsed: false, // Start with header expanded
         },
       }))
     );

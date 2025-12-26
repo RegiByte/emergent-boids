@@ -276,6 +276,7 @@ export const renderer = defineResource({
           matingHeartsEnabled: ui.visualSettings.matingHeartsEnabled,
           stanceSymbolsEnabled: ui.visualSettings.stanceSymbolsEnabled,
           deathMarkersEnabled: ui.visualSettings.deathMarkersEnabled,
+          headerCollapsed: ui.headerCollapsed,
           foodSourcesEnabled: ui.visualSettings.foodSourcesEnabled,
           atmosphere: {
             trailAlpha: atmosphereSettings.trailAlpha,

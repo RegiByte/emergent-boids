@@ -109,6 +109,7 @@ export const runtimeStoreSchema = z.object({
   ui: z.object({
     visualSettings: visualSettingsSchema, // Rendering preferences
     sidebarOpen: z.boolean(), // Whether the sidebar is open
+    headerCollapsed: z.boolean(), // Whether the header navbar is collapsed
   }),
 });
 

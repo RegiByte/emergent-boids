@@ -31,8 +31,9 @@ export type CameraAPI = {
   viewportWidth: number;
   viewportHeight: number;
   mode: CameraMode;
+  isDragging: boolean;
   useModeStore: typeof useCameraModeStore;
-  panTo: (x: number, y: number) => void;
+  panTo: (x: number, y: number, isManualNavigation?: boolean) => void;
   setZoom: (zoom: number) => void;
   screenToWorld: (screenX: number, screenY: number) => { x: number; y: number };
   worldToScreen: (worldX: number, worldY: number) => { x: number; y: number };
@@ -219,7 +220,8 @@ export const camera = defineResource({
         isDragging = true;
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
-        e.preventDefault();
+        e.preventDefault(); // Prevent text selection during drag
+        e.stopPropagation(); // Stop other click handlers
       }
     };
 
@@ -233,11 +235,23 @@ export const camera = defineResource({
 
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
+        e.preventDefault(); // Prevent any default behavior while dragging
       }
     };
 
-    const handleMouseUp = () => {
-      isDragging = false;
+    const handleMouseUp = (e: MouseEvent) => {
+      if (isDragging) {
+        isDragging = false;
+        e.preventDefault(); // Prevent click event after drag
+        e.stopPropagation(); // Stop click from bubbling to canvas click handler
+      }
+    };
+
+    // Prevent context menu on Ctrl+Click (panning gesture)
+    const handleContextMenu = (e: MouseEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault(); // Block "Save image as..." menu
+      }
     };
 
     // Camera mode methods
@@ -307,6 +321,7 @@ export const camera = defineResource({
     document.addEventListener("keydown", handleKeyboard);
     canvas.canvas.addEventListener("wheel", handleWheel, { passive: false });
     canvas.canvas.addEventListener("mousedown", handleMouseDown);
+    canvas.canvas.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
 
@@ -314,6 +329,7 @@ export const camera = defineResource({
       document.removeEventListener("keydown", handleKeyboard);
       canvas.canvas.removeEventListener("wheel", handleWheel);
       canvas.canvas.removeEventListener("mousedown", handleMouseDown);
+      canvas.canvas.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
@@ -330,6 +346,9 @@ export const camera = defineResource({
       },
       get mode() {
         return mode;
+      },
+      get isDragging() {
+        return isDragging;
       },
       useModeStore: useCameraModeStore,
       get viewportWidth() {

@@ -181,6 +181,17 @@ const handlers = {
     ];
   },
 
+  [eventKeywords.ui.headerToggled]: (state, event, ctx) => {
+    return [
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          draft.ui.headerCollapsed = event.collapsed;
+        }),
+      },
+    ];
+  },
+
   [eventKeywords.atmosphere.eventStarted]: (
     state: RuntimeStore,
     event,

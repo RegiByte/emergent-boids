@@ -130,10 +130,16 @@ export const uiEventSchemas = {
     type: z.literal(eventKeywords.ui.sidebarToggled),
     open: z.boolean(),
   }),
+  // User toggles the header navbar
+  toggleHeader: z.object({
+    type: z.literal(eventKeywords.ui.headerToggled),
+    collapsed: z.boolean(),
+  }),
 };
 
 export const uiEventSchema = z.discriminatedUnion("type", [
   uiEventSchemas.toggleSidebar,
+  uiEventSchemas.toggleHeader,
 ]);
 
 // ============================================

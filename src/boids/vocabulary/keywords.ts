@@ -42,6 +42,7 @@ export const eventKeywords = {
 
   ui: {
     sidebarToggled: "ui/sidebarToggled",
+    headerToggled: "ui/headerToggled",
   },
 
   atmosphere: {

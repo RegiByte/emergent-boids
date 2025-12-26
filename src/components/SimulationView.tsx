@@ -2,7 +2,7 @@ import { eventKeywords } from "@/boids/vocabulary/keywords";
 import { CameraControls } from "@/components/CameraControls";
 import { CanvasFrame } from "@/components/CanvasFrame";
 import { ControlsSidebar, type SpawnMode } from "@/components/ControlsSidebar";
-import { HeaderSidebar } from "@/components/HeaderSidebar";
+import { MissionControlHeader } from "@/components/MissionControlHeader";
 import { Minimap } from "@/components/Minimap";
 import {
   SidebarInset,
@@ -14,6 +14,7 @@ import { CanvasAPI } from "@/resources/canvas";
 import { useResource, useSystem } from "@/system";
 import { IconAdjustmentsHorizontal } from "@tabler/icons-react";
 import { useDebouncer } from "@tanstack/react-pacer";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -26,6 +27,7 @@ function SimulationView() {
   const engine = useResource("engine");
   const { useStore } = runtimeStore;
   const sidebarOpen = useStore((state) => state.ui.sidebarOpen);
+  const headerCollapsed = useStore((state) => state.ui.headerCollapsed);
   const config = useStore((state) => state.config);
 
   // Get atmosphere settings (select individual values to avoid creating new objects)
@@ -146,6 +148,11 @@ function SimulationView() {
 
       // Add click handler for placing obstacles, spawning predators, or following boids
       const handleCanvasClick = (e: MouseEvent) => {
+        // Don't process clicks while panning - click just releases pan mode
+        if (camera.isDragging) {
+          return;
+        }
+
         const rect = canvas.canvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
@@ -327,9 +334,6 @@ function SimulationView() {
         });
         // ResizeObserver will handle the canvas resize automatically
       }}
-      onAnimationEnd={() => {
-        console.log("sidebar animation end");
-      }}
     >
       <div
         style={
@@ -345,23 +349,45 @@ function SimulationView() {
         />
         <SidebarInset className="flex flex-col">
           {/* Header with Sidebar Trigger and Graphs */}
-          <div className="flex items-center gap-2 border-b bg-card px-4 py-3 w-full">
-            <div className="group">
-              <label
-                className={cn(
-                  "absolute left-2 top-2 px-1 py-1 inline-flex items-center justify-center gap-2",
-                  "rounded-md group-hover:bg-slate-100/30"
-                )}
+          <AnimatePresence mode="wait">
+            {!headerCollapsed ? (
+              <motion.div
+                key="header-expanded"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.1, ease: "easeInOut" }}
+                className="relative flex items-center gap-2 border-b bg-card px-4 py-3 w-full overflow-hidden"
               >
-                <SidebarTrigger
-                  className={"p-2"}
-                  icon={IconAdjustmentsHorizontal}
-                />
-                <span className="text-sm">Simulation Controls</span>
-              </label>
-            </div>
-            {system && <HeaderSidebar />}
-          </div>
+                <div className="group">
+                  <label
+                    className={cn(
+                      "absolute left-2 top-2 px-1 py-1 inline-flex items-center justify-center gap-2",
+                      "rounded-md group-hover:bg-slate-100/30 z-50"
+                    )}
+                  >
+                    <SidebarTrigger
+                      className={"p-2"}
+                      icon={IconAdjustmentsHorizontal}
+                    />
+                    <span className="text-sm">Simulation Controls</span>
+                  </label>
+                </div>
+                {system && (
+                  <MissionControlHeader
+                    showGraphs={true} // Always show graphs when header expanded
+                    collapsed={false}
+                    onToggleCollapse={() => {
+                      runtimeController.dispatch({
+                        type: eventKeywords.ui.headerToggled,
+                        collapsed: true,
+                      });
+                    }}
+                  />
+                )}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
           {/* Canvas Area */}
           <div
@@ -377,6 +403,49 @@ function SimulationView() {
               } as React.CSSProperties
             }
           >
+            {/* Collapsed header elements - positioned inside canvas area */}
+            {headerCollapsed && system && (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key="header-collapsed"
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.1 }}
+                  className="absolute inset-0 pointer-events-none z-50"
+                >
+                  {/* Expand Mission Control button */}
+                  <div className="absolute top-0 right-4 pointer-events-auto">
+                    <MissionControlHeader
+                      showGraphs={false}
+                      collapsed={true}
+                      onToggleCollapse={() => {
+                        runtimeController.dispatch({
+                          type: eventKeywords.ui.headerToggled,
+                          collapsed: false,
+                        });
+                      }}
+                    />
+                  </div>
+                  {/* Sidebar trigger when header is collapsed */}
+                  <div className="absolute left-2 top-2 pointer-events-auto group">
+                    <label
+                      className={cn(
+                        "px-1 py-1 inline-flex items-center justify-center gap-2",
+                        "rounded-md group-hover:bg-slate-100/30 bg-card/80 backdrop-blur-sm border border-primary/30"
+                      )}
+                    >
+                      <SidebarTrigger
+                        className={"p-2"}
+                        icon={IconAdjustmentsHorizontal}
+                      />
+                      <span className="text-sm">Simulation Controls</span>
+                    </label>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            )}
+
             {!system && (
               <div className="text-primary text-lg">Loading system...</div>
             )}

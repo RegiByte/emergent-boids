@@ -39,6 +39,7 @@ export type RenderContext = {
     matingHeartsEnabled: boolean;
     stanceSymbolsEnabled: boolean;
     deathMarkersEnabled: boolean;
+    headerCollapsed: boolean;
     foodSourcesEnabled: boolean;
     atmosphere: {
       trailAlpha: number;
@@ -626,7 +627,12 @@ export const renderStats = (
   const fontSize = isSmallScreen ? 12 : 16;
   const lineHeight = isSmallScreen ? 16 : 20;
   const startingX = isSmallScreen ? 10 : 25;
-  const startingY = isSmallScreen ? 20 : 33;
+  const startingY = (() => {
+    if (rc.visualSettings.headerCollapsed) {
+      return 70;
+    }
+    return isSmallScreen ? 20 : 33;
+  })();
 
   rc.ctx.fillStyle = "#00ff88";
   rc.ctx.font = `${fontSize}px monospace`;
