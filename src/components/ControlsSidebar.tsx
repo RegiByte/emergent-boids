@@ -224,7 +224,7 @@ export function ControlsSidebar({
 
                 {/* Speed Control Buttons */}
                 <div className="flex gap-1">
-                  {[0.25, 0.5, 1, 2, 4].map((scale) => (
+                  {[0.25, 0.5, 0.75, 1, 2, 4].map((scale) => (
                     <Button
                       key={scale}
                       variant={

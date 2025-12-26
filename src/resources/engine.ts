@@ -47,10 +47,10 @@ export const engine = defineResource({
     const { world: initialWorld, species: initialSpecies } = initialConfig;
 
     // Get available type IDs (prey for initial spawn, predators from profile)
-    const preyTypeIds = Object.keys(initialSpecies).filter(
+    let preyTypeIds = Object.keys(initialSpecies).filter(
       (id) => initialSpecies[id].role === "prey"
     );
-    const predatorTypeIds = Object.keys(initialSpecies).filter(
+    let predatorTypeIds = Object.keys(initialSpecies).filter(
       (id) => initialSpecies[id].role === "predator"
     );
 
@@ -240,6 +240,19 @@ export const engine = defineResource({
 
       boids.length = 0;
 
+      // Recalculate type IDs from current species config
+      // (Species change when profile switches, so we need fresh IDs)
+      const currentPreyTypeIds = Object.keys(species).filter(
+        (id) => species[id].role === "prey"
+      );
+      const currentPredatorTypeIds = Object.keys(species).filter(
+        (id) => species[id].role === "predator"
+      );
+
+      // Update module-level type ID arrays for future spawns
+      preyTypeIds = [...currentPreyTypeIds];
+      predatorTypeIds = [...currentPredatorTypeIds];
+
       // Build creation context
       const creationContext = {
         world: {
@@ -252,13 +265,17 @@ export const engine = defineResource({
 
       // Respawn prey
       for (let i = 0; i < world.initialPreyCount; i++) {
-        boids.push(createBoid(preyTypeIds, creationContext));
+        boids.push(createBoid(currentPreyTypeIds, creationContext));
       }
 
       // Respawn predators (if any)
       for (let i = 0; i < (world.initialPredatorCount || 0); i++) {
-        boids.push(createBoid(predatorTypeIds, creationContext));
+        boids.push(createBoid(currentPredatorTypeIds, creationContext));
       }
+
+      console.log(
+        `[engine.reset] Respawned ${boids.length} boids (${currentPreyTypeIds.length} prey species, ${currentPredatorTypeIds.length} predator species)`
+      );
     };
 
     const addBoid = (boid: Boid) => {

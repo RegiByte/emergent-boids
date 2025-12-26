@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { GraphBar } from "./GraphBar";
+import { ProfileSelector } from "./ProfileSelector";
 import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import { motion } from "motion/react";
 
@@ -42,13 +43,17 @@ export function MissionControlHeader({
 
   return (
     <header className="relative flex items-center gap-2 border-b bg-card px-4 py-3 w-full">
-      <div className="flex-1">
-        <h1 className="text-lg font-bold text-primary">
-          🐦 Emergent Boids: Predator/Prey Ecosystem
-        </h1>
-        <p className="text-xs text-muted-foreground">
-          Simple rules → Complex dynamics
-        </p>
+      <div className="flex-1 flex flex-col items-center gap-4">
+        <div>
+          <h1 className="text-lg font-bold text-primary">
+            🐦 Emergent Boids: Predator/Prey Ecosystem
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            Simple rules → Complex dynamics
+          </p>
+        </div>
+        {/* Profile Selector */}
+        <ProfileSelector />
       </div>
       {showGraphs && (
         <div className="max-w-[600px]">

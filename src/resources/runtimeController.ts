@@ -6,6 +6,8 @@ import {
 } from "emergent";
 import type { RuntimeStoreApi, RuntimeStoreResource } from "./runtimeStore";
 import type { AnalyticsStoreResource } from "./analyticsStore";
+import type { ProfileStoreResource } from "./profileStore";
+import type { RandomnessResource } from "./randomness";
 import { eventKeywords, effectKeywords } from "../boids/vocabulary/keywords.ts";
 import { produce } from "immer";
 import type { TimerManager } from "./timer";
@@ -192,6 +194,17 @@ const handlers = {
     ];
   },
 
+  [eventKeywords.profile.switched]: (_state, event, _ctx) => {
+    // Profile switching - load new profile configuration
+    // This triggers a full simulation reset through engine
+    return [
+      {
+        type: effectKeywords.profile.load,
+        profileId: event.profileId,
+      },
+    ];
+  },
+
   [eventKeywords.atmosphere.eventStarted]: (
     state: RuntimeStore,
     event,
@@ -278,6 +291,8 @@ const handlers = {
 type ExecutorContext = {
   store: RuntimeStoreApi;
   analyticsStore: AnalyticsStoreResource;
+  profileStore: ProfileStoreResource;
+  randomness: RandomnessResource;
   timer: TimerManager;
   engine: BoidEngine;
 };
@@ -316,6 +331,50 @@ const executors = {
     ctx.analyticsStore.clearEventsFilter();
   },
 
+  [effectKeywords.profile.load]: (effect, ctx) => {
+    // Load profile from profileStore
+    const profile = ctx.profileStore.getProfileById(effect.profileId);
+    if (!profile) {
+      console.error(`[profile:load] Profile not found: ${effect.profileId}`);
+      return;
+    }
+
+    console.log(
+      `[profile:load] Loading profile: ${profile.name} (${profile.id})`
+    );
+
+    // Update profileStore active profile
+    ctx.profileStore.setActiveProfile(effect.profileId);
+
+    // Update randomness seed
+    ctx.randomness.setSeed(profile.seed);
+
+    // Load profile into runtimeStore (updates config)
+    const currentState = ctx.store.getState();
+    ctx.store.setState({
+      config: {
+        profileId: profile.id,
+        randomSeed: profile.seed,
+        world: profile.world,
+        species: profile.species,
+        parameters: profile.parameters,
+      },
+      // Reset simulation state
+      simulation: {
+        obstacles: [],
+        foodSources: [],
+        deathMarkers: [],
+      },
+      // Keep UI preferences
+      ui: currentState.ui,
+    });
+
+    // Reset engine (respawn boids with new species)
+    ctx.engine.reset();
+
+    console.log(`[profile:load] Profile loaded successfully: ${profile.name}`);
+  },
+
   [effectKeywords.runtime.dispatch]: (effect, ctx) => {
     ctx.dispatch(effect.event);
   },
@@ -330,6 +389,8 @@ export type RuntimeController = ReturnType<typeof createRuntimeController>;
 function createRuntimeController(
   store: RuntimeStoreApi,
   analyticsStore: AnalyticsStoreResource,
+  profileStore: ProfileStoreResource,
+  randomness: RandomnessResource,
   timer: TimerManager,
   engine: BoidEngine
 ) {
@@ -353,6 +414,8 @@ function createRuntimeController(
     executorContext: {
       store,
       analyticsStore,
+      profileStore,
+      randomness,
       timer,
       engine,
     },
@@ -362,21 +425,34 @@ function createRuntimeController(
 }
 
 export const runtimeController = defineResource({
-  dependencies: ["runtimeStore", "analyticsStore", "timer", "engine"],
+  dependencies: [
+    "runtimeStore",
+    "analyticsStore",
+    "profileStore",
+    "randomness",
+    "timer",
+    "engine",
+  ],
   start: ({
     runtimeStore,
     analyticsStore,
+    profileStore,
+    randomness,
     timer,
     engine,
   }: {
     runtimeStore: RuntimeStoreResource;
     analyticsStore: AnalyticsStoreResource;
+    profileStore: ProfileStoreResource;
+    randomness: RandomnessResource;
     timer: TimerManager;
     engine: BoidEngine;
   }) => {
     const controller = createRuntimeController(
       runtimeStore.store,
       analyticsStore,
+      profileStore,
+      randomness,
       timer,
       engine
     );

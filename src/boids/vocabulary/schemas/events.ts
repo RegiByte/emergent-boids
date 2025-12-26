@@ -143,6 +143,22 @@ export const uiEventSchema = z.discriminatedUnion("type", [
 ]);
 
 // ============================================
+// Profile Events - Simulation profile switching
+// ============================================
+
+export const profileEventSchemas = {
+  // User switches to a different simulation profile
+  switched: z.object({
+    type: z.literal(eventKeywords.profile.switched),
+    profileId: z.string(), // Profile to switch to
+  }),
+};
+
+export const profileEventSchema = z.discriminatedUnion("type", [
+  profileEventSchemas.switched,
+]);
+
+// ============================================
 // Atmosphere Events - Environmental mood changes
 // ============================================
 
@@ -240,6 +256,7 @@ export const allEventSchema = z.union([
   timeEventSchema,
   boidEventSchema,
   uiEventSchema,
+  profileEventSchema,
   atmosphereEventSchema,
   analyticsEventSchema,
 ]);
@@ -252,6 +269,7 @@ export type ControlEvent = z.infer<typeof controlEventSchema>;
 export type ObstacleEvent = z.infer<typeof obstacleEventSchema>;
 export type TimeEvent = z.infer<typeof timeEventSchema>;
 export type BoidEvent = z.infer<typeof boidEventSchema>;
+export type ProfileEvent = z.infer<typeof profileEventSchema>;
 export type AtmosphereEvent = z.infer<typeof atmosphereEventSchema>;
 export type AnalyticsEvent = z.infer<typeof analyticsEventSchema>;
 export type AllEvents = z.infer<typeof allEventSchema>;

@@ -45,6 +45,10 @@ export const eventKeywords = {
     headerToggled: "ui/headerToggled",
   },
 
+  profile: {
+    switched: "profile/switched",
+  },
+
   atmosphere: {
     eventStarted: "atmosphere/eventStarted",
     eventEnded: "atmosphere/eventEnded",
@@ -83,6 +87,10 @@ export const effectKeywords = {
   // Runtime effects
   runtime: {
     dispatch: "runtime:dispatch",
+  },
+  // Profile effects
+  profile: {
+    load: "profile:load",
   },
 } as const;
 

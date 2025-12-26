@@ -9,9 +9,10 @@
  */
 
 import { stableEcosystemProfile } from "./stable-ecosystem";
+import { predatorParadiseProfile } from "./predator-paradise";
+import { peacefulCoexistenceProfile } from "./peaceful-coexistence";
 
-
-import {SimulationProfile} from "../boids/vocabulary/schemas/prelude.ts";
+import { SimulationProfile } from "../boids/vocabulary/schemas/prelude.ts";
 
 /**
  * All available simulation profiles
@@ -19,9 +20,9 @@ import {SimulationProfile} from "../boids/vocabulary/schemas/prelude.ts";
  */
 export const profiles: Record<string, SimulationProfile> = {
   "stable-ecosystem": stableEcosystemProfile,
+  "predator-paradise": predatorParadiseProfile,
+  "peaceful-coexistence": peacefulCoexistenceProfile,
   // Future profiles:
-  // "predator-paradise": predatorParadiseProfile,
-  // "peaceful-coexistence": peacefulCoexistenceProfile,
   // "chaos-mode": chaosModeProfile,
   // "extinction-event": extinctionEventProfile,
 };
@@ -38,7 +39,9 @@ export function getProfile(profileId: string): SimulationProfile {
   const profile = profiles[profileId];
   if (!profile) {
     throw new Error(
-      `Profile not found: ${profileId}. Available profiles: ${Object.keys(profiles).join(", ")}`
+      `Profile not found: ${profileId}. Available profiles: ${Object.keys(
+        profiles
+      ).join(", ")}`
     );
   }
   return profile;
@@ -65,4 +68,3 @@ export function getProfileList(): Array<{
     description: profile.description,
   }));
 }
-

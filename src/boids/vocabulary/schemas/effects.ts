@@ -58,6 +58,11 @@ export const controlEffectSchemas = {
   analyticsClearFilter: z.object({
     type: z.literal(effectKeywords.analytics.clearFilter),
   }),
+  // Load a simulation profile (triggers full reset)
+  profileLoad: z.object({
+    type: z.literal(effectKeywords.profile.load),
+    profileId: z.string(),
+  }),
 };
 // Union of all control effects
 export const controlEffectSchema = z.discriminatedUnion("type", [
@@ -68,6 +73,7 @@ export const controlEffectSchema = z.discriminatedUnion("type", [
   controlEffectSchemas.engineRemoveBoid,
   controlEffectSchemas.analyticsUpdateFilter,
   controlEffectSchemas.analyticsClearFilter,
+  controlEffectSchemas.profileLoad,
 ]);
 
 // ============================================
