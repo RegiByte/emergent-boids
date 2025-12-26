@@ -31,7 +31,7 @@ function updatePreyStance(
 
   // Priority 0: Desperate eating overrides fear (when critically low energy)
   // This creates risk/reward: starving boids will eat near predators
-  const desperateThreshold = speciesConfig.lifecycle.maxEnergy * 0.3; // Below 30% = desperate
+  const desperateThreshold = boid.phenotype.maxEnergy * 0.3; // Below 30% = desperate
   if (boid.energy < desperateThreshold) {
     const nearbyFood = foodSources.find((food) => {
       if (food.sourceType !== "prey" || food.energy <= 0) return false;
@@ -67,7 +67,7 @@ function updatePreyStance(
   }
 
   // Priority 2: Eating (near food source with low energy)
-  if (boid.energy < speciesConfig.lifecycle.maxEnergy * 0.7) {
+  if (boid.energy < boid.phenotype.maxEnergy * 0.7) {
     // Eat when below 70%
     const nearbyFood = foodSources.find((food) => {
       if (food.sourceType !== "prey" || food.energy <= 0) return false;
@@ -165,12 +165,12 @@ function updatePredatorStance(
   // Priority 4: Idle (low energy, conserving) - hysteresis: enter at 30%, exit at 50%
   if (currentStance === "idle") {
     // Stay idle until energy recovers to 50%
-    if (boid.energy < speciesConfig.lifecycle.maxEnergy * 0.5) {
+    if (boid.energy < boid.phenotype.maxEnergy * 0.5) {
       return; // Stay idle
     }
   } else {
     // Enter idle if energy drops below 30%
-    if (boid.energy < speciesConfig.lifecycle.maxEnergy * 0.3) {
+    if (boid.energy < boid.phenotype.maxEnergy * 0.3) {
       boid.stance = "idle";
       return;
     }
