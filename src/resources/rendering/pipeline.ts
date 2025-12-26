@@ -18,6 +18,7 @@ import type { TimeState } from "../time";
 import type { CameraAPI, CameraMode } from "../camera";
 import { getBodyPartRenderer, getShapeRenderer } from "./shapes";
 import { adjustColorBrightness, hexToRgba, toRgb } from "@/lib/colors";
+import { shouldShowHealthBar, getWoundedTint } from "@/boids/lifecycle/health";
 
 /**
  * Render Context - All data needed for rendering
@@ -36,6 +37,7 @@ export type RenderContext = {
   visualSettings: {
     trailsEnabled: boolean;
     energyBarsEnabled: boolean;
+    healthBarsEnabled: boolean; // NEW: Health bars toggle
     matingHeartsEnabled: boolean;
     stanceSymbolsEnabled: boolean;
     deathMarkersEnabled: boolean;
@@ -369,7 +371,7 @@ export const renderBoidBodies = (rc: RenderContext): void => {
     const size = baseSize * sizeMultiplier;
 
     // Energy-based color brightness
-    const energyRatio = boid.energy / speciesConfig.lifecycle.maxEnergy;
+    const energyRatio = boid.energy / boid.phenotype.maxEnergy;
     const dynamicColor = adjustColorBrightness(
       speciesConfig.visual.color,
       energyRatio
@@ -412,6 +414,14 @@ export const renderBoidBodies = (rc: RenderContext): void => {
             : speciesConfig.visual.color;
         partRenderer(rc.ctx, size, partColor);
       }
+    }
+
+    // Apply wounded tint overlay if damaged
+    const woundedTint = getWoundedTint(boid);
+    if (woundedTint) {
+      rc.ctx.fillStyle = woundedTint;
+      shapeRenderer(rc.ctx, size);
+      rc.ctx.fill();
     }
 
     rc.ctx.restore();
@@ -508,7 +518,7 @@ export const renderEnergyBars = (rc: RenderContext): void => {
 
     if (!showEnergyBar) continue;
 
-    const energyPercent = boid.energy / speciesConfig.lifecycle.maxEnergy;
+    const energyPercent = boid.energy / boid.phenotype.maxEnergy;
     const barWidth = 20;
     const barHeight = 3;
     const barX = boid.position.x - barWidth / 2;
@@ -523,6 +533,46 @@ export const renderEnergyBars = (rc: RenderContext): void => {
       speciesConfig.role === "predator" ? "#ff0000" : "#00ff88";
     rc.ctx.fillStyle = energyColor;
     rc.ctx.fillRect(barX, barY, barWidth * energyPercent, barHeight);
+
+    // Border
+    rc.ctx.strokeStyle = "#666";
+    rc.ctx.lineWidth = 1;
+    rc.ctx.strokeRect(barX, barY, barWidth, barHeight);
+  }
+};
+
+/**
+ * Render health bars above boids (only when damaged)
+ */
+export const renderHealthBars = (rc: RenderContext): void => {
+  if (!rc.visualSettings.healthBarsEnabled) return;
+
+  for (const boid of rc.boids) {
+    // Only show health bar if boid is damaged
+    if (!shouldShowHealthBar(boid)) continue;
+
+    const healthPercent = boid.health / boid.phenotype.maxHealth;
+    const barWidth = 20;
+    const barHeight = 3;
+    const barX = boid.position.x - barWidth / 2;
+    const barY = boid.position.y - 16; // Above energy bar
+
+    // Background
+    rc.ctx.fillStyle = "#222";
+    rc.ctx.fillRect(barX, barY, barWidth, barHeight);
+
+    // Health fill (green -> yellow -> red based on health %)
+    let healthColor: string;
+    if (healthPercent > 0.7) {
+      healthColor = "#00ff00"; // Green (healthy)
+    } else if (healthPercent > 0.4) {
+      healthColor = "#ffff00"; // Yellow (wounded)
+    } else {
+      healthColor = "#ff0000"; // Red (critical)
+    }
+
+    rc.ctx.fillStyle = healthColor;
+    rc.ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
 
     // Border
     rc.ctx.strokeStyle = "#666";
@@ -819,9 +869,10 @@ export const renderFrame = (
   // Layer 4: Boid bodies
   renderBoidBodies(rc);
 
-  // Layer 5: Boid overlays (stance, energy, hearts)
+  // Layer 5: Boid overlays (stance, energy, health, hearts)
   renderStanceSymbols(rc);
   renderEnergyBars(rc);
+  renderHealthBars(rc); // NEW: Health bars
   renderMatingHearts(rc);
 
   // Restore transform for UI rendering

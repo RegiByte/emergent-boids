@@ -46,4 +46,3 @@ export const defaultWorldPhysics: WorldPhysics = {
     foodHealingMultiplier: 0.5, // % of energy gained also heals
   },
 };
-

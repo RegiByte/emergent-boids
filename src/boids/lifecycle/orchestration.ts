@@ -7,10 +7,11 @@ import { applyMatingResult, unpairBoids } from "../mating";
 import { isReadyToMate, isWithinRadius } from "../predicates";
 import type { Boid } from "../vocabulary/schemas/prelude.ts";
 import { PreyStance } from "../vocabulary/schemas/prelude.ts";
-import { checkBoidDeath, updateBoidAge } from "./aging";
+import { updateBoidAge } from "./aging";
 import { updateBoidCooldowns } from "./cooldowns";
 import { updateBoidEnergy } from "./energy";
 import { processBoidReproduction } from "./reproduction";
+import { regenerateHealth, isDead, getDeathCause } from "./health";
 import type {
   FoodSource,
   SimulationParameters,
@@ -195,7 +196,7 @@ export function processLifecycleUpdates(
 ): {
   boidsToRemove: string[];
   boidsToAdd: OffspringData[];
-  deathEvents: Array<{ boidId: string; reason: "old_age" | "starvation" }>;
+  deathEvents: Array<{ boidId: string; reason: "old_age" | "starvation" | "predation" }>;
   reproductionEvents: Array<{
     parent1Id: string;
     parent2Id?: string;
@@ -211,7 +212,7 @@ export function processLifecycleUpdates(
   const boidsToAdd: OffspringData[] = [];
   const deathEvents: Array<{
     boidId: string;
-    reason: "old_age" | "starvation";
+    reason: "old_age" | "starvation" | "predation";
   }> = [];
   const reproductionEvents: Array<{
     parent1Id: string;
@@ -251,9 +252,10 @@ export function processLifecycleUpdates(
       );
     }
 
-    // 3. Check for death
-    const deathReason = checkBoidDeath(boid, speciesConfig);
-    if (deathReason) {
+    // 3. Check for death (health OR energy depletion)
+    if (isDead(boid)) {
+      const maxAge = speciesConfig.lifecycle?.maxAge || 0;
+      const deathReason = getDeathCause(boid, maxAge);
       boidsToRemove.push(boid.id);
       deathEvents.push({ boidId: boid.id, reason: deathReason });
       continue; // Skip remaining updates for dead boid
@@ -262,15 +264,18 @@ export function processLifecycleUpdates(
     // 4. Update energy
     boid.energy = updateBoidEnergy(boid, speciesConfig, deltaSeconds);
 
-    // 5. Update cooldowns
+    // 5. Regenerate health (passive, slow)
+    boid.health = regenerateHealth(boid).health;
+
+    // 6. Update cooldowns
     const cooldowns = updateBoidCooldowns(boid);
     boid.reproductionCooldown = cooldowns.reproductionCooldown;
     boid.eatingCooldown = cooldowns.eatingCooldown;
 
-    // 6. Update seeking state
+    // 7. Update seeking state
     boid.seekingMate = isReadyToMate(boid, parameters, speciesConfig);
 
-    // 7. Process reproduction
+    // 8. Process reproduction
     const matingResult = processBoidReproduction(
       boid,
       boids,

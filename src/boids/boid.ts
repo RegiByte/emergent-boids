@@ -102,15 +102,15 @@ export function createBoid(
     },
     acceleration: { x: 0, y: 0 },
     typeId,
-    
+
     // Genetics (NEW)
     genome,
     phenotype,
-    
+
     // Resources (UPDATED)
     energy: phenotype.maxEnergy / 2, // Start at half energy
     health: phenotype.maxHealth, // Start at full health
-    
+
     age: effectiveAge, // Randomized initial age (0-30% of max age)
     reproductionCooldown: 0, // Start ready to mate
     seekingMate: false, // Not seeking initially
@@ -173,15 +173,15 @@ export function createBoidOfType(
     },
     acceleration: { x: 0, y: 0 },
     typeId,
-    
+
     // Genetics (NEW)
     genome,
     phenotype,
-    
+
     // Resources (UPDATED)
     energy: startingEnergy, // Start with base + bonus energy
     health: phenotype.maxHealth, // Start at full health
-    
+
     age: 0, // Born at age 0
     reproductionCooldown: 0, // Start ready to mate
     seekingMate: false, // Not seeking initially
@@ -601,7 +601,6 @@ function updatePrey(
   boid.velocity = vec.add(boid.velocity, boid.acceleration);
 
   // Apply adrenaline rush (using pure calculation)
-  const fearFactor = speciesConfig.lifecycle?.fearFactor || 0.5;
   let effectiveMaxSpeed = boid.phenotype.maxSpeed;
   if (fearResponse.isAfraid && fearFactor > 0) {
     const speedBoost = calculateFearSpeedBoost(fearFactor);

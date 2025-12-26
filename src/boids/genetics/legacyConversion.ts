@@ -1,4 +1,8 @@
-import type { Genome, BodyPart, WorldPhysics } from "../vocabulary/schemas/genetics";
+import type {
+  Genome,
+  BodyPart,
+  WorldPhysics,
+} from "../vocabulary/schemas/genetics";
 import type { SpeciesConfig } from "../vocabulary/schemas/prelude";
 
 /**
@@ -40,7 +44,7 @@ export function convertLegacyConfigToGenome(
 
   // Estimate behavioral traits based on role and movement weights
   const aggression = speciesConfig.role === "predator" ? 0.8 : 0.3;
-  
+
   // Estimate sociability from cohesion weight
   const cohesionWeight = speciesConfig.movement?.cohesionWeight || 1.0;
   const sociability = Math.min(cohesionWeight / 3.0, 1.0); // Normalize to 0-1
@@ -124,4 +128,3 @@ export function convertLegacyConfigToGenome(
     mutations: [],
   };
 }
-
