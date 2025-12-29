@@ -242,7 +242,8 @@ export const boidSchema = z.object({
   seekingMate: z.boolean(), // Cached state: actively seeking mate (updated by lifecycleManager)
   mateId: z.string().nullable(), // ID of current mate (if paired)
   matingBuildupCounter: z.number(), // Time passages spent close to mate (0-3, reproduce at 3)
-  eatingCooldown: z.number(), // Time passages until can catch prey again (predators only)
+  eatingCooldown: z.number(), // Time passages until can eat from food again (prevents monopolizing food)
+  attackCooldown: z.number(), // Time passages until can attack again (predators only)
   stance: stanceSchema, // Current behavioral stance
   previousStance: stanceSchema.nullable(), // Previous stance (for returning from fleeing)
   positionHistory: z.array(vectorSchema), // Trail of recent positions for rendering motion trails
@@ -308,6 +309,7 @@ export const simulationParametersSchema = z.object({
   reproductionCooldownTicks: z.number(), // Ticks to wait before reproducing again
   matingBuildupTicks: z.number(), // Ticks boids must stay close before reproducing
   eatingCooldownTicks: z.number(), // Ticks predator must wait after eating (prevents monopolizing food)
+  attackCooldownTicks: z.number(), // Ticks predator must wait between attacks
 });
 
 /**

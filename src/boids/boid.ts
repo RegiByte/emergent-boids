@@ -117,6 +117,7 @@ export function createBoid(
     mateId: null, // No mate initially
     matingBuildupCounter: 0, // No buildup initially
     eatingCooldown: 0, // Not eating initially
+    attackCooldown: 0, // Not attacking initially
     stance: role === "predator" ? "hunting" : "flocking", // Initial stance based on role
     previousStance: null, // No previous stance
     positionHistory: [], // Empty trail initially
@@ -188,6 +189,7 @@ export function createBoidOfType(
     mateId: null, // No mate initially
     matingBuildupCounter: 0, // No buildup initially
     eatingCooldown: 0, // Not eating initially
+    attackCooldown: 0, // Not attacking initially
     stance: speciesConfig.role === "predator" ? "hunting" : "flocking", // Initial stance based on role
     previousStance: null, // No previous stance
     positionHistory: [], // Empty trail initially

@@ -3,6 +3,7 @@ import { getMaxCrowdTolerance } from "../boids/affinity";
 import { createBoid, updateBoid } from "../boids/boid";
 import type { BoidUpdateContext } from "../boids/context";
 import { getPredators, getPrey } from "../boids/filters";
+import { isDead } from "../boids/lifecycle/health";
 import {
   createSpatialHash,
   getNearbyBoids,
@@ -191,8 +192,8 @@ export const engine = defineResource({
       const caughtPreyIds: string[] = [];
 
       for (const predator of predators) {
-        // Skip if predator is still eating (cooldown active)
-        if (predator.eatingCooldown > 0) continue;
+        // Skip if predator is still on attack cooldown
+        if (predator.attackCooldown > 0) continue;
 
         for (const preyBoid of prey) {
           // Skip if already caught this frame
@@ -206,32 +207,54 @@ export const engine = defineResource({
           );
 
           if (dist < parameters.catchRadius) {
-            // Caught! Food source will be created by lifecycleManager
-            // No instant energy gain - predator must eat from food source
+            // Attack! Deal damage based on predator's attack power
+            const damage = predator.phenotype.attackDamage;
 
-            // Store prey data BEFORE removing it
-            const preyEnergy = preyBoid.energy;
-            const preyPosition = {
-              x: preyBoid.position.x,
-              y: preyBoid.position.y,
-            };
-            const preyTypeId = preyBoid.typeId; // Capture typeId before removal
+            // Apply damage to prey
+            preyBoid.health -= damage;
 
-            // Set eating cooldown (prevents monopolizing food)
-            predator.eatingCooldown = parameters.eatingCooldownTicks;
+            // Knockback: Push prey away from predator (gives escape chance)
+            const knockbackStrength = 15;
+            const dx = preyBoid.position.x - predator.position.x;
+            const dy = preyBoid.position.y - predator.position.y;
+            const pushDist = Math.sqrt(dx * dx + dy * dy);
+            if (pushDist > 0) {
+              const nx = dx / pushDist;
+              const ny = dy / pushDist;
+              preyBoid.velocity.x += nx * knockbackStrength;
+              preyBoid.velocity.y += ny * knockbackStrength;
+            }
 
-            caughtPreyIds.push(preyBoid.id);
-            removeBoid(preyBoid.id);
+            // Set attack cooldown (prevents spam attacks)
+            predator.attackCooldown = parameters.attackCooldownTicks;
 
-            catches.push({
-              predatorId: predator.id,
-              preyId: preyBoid.id,
-              preyTypeId, // Include prey type for death tracking
-              preyEnergy,
-              preyPosition,
-            });
+            // Check if prey died from attack
+            if (isDead(preyBoid)) {
+              // Store prey data BEFORE removing it
+              // Use maxEnergy instead of current energy for food balance
+              // (prey lose energy while fleeing, would create too little food)
+              const preyEnergy = preyBoid.phenotype.maxEnergy;
+              const preyPosition = {
+                x: preyBoid.position.x,
+                y: preyBoid.position.y,
+              };
+              const preyTypeId = preyBoid.typeId;
 
-            break; // Predator can only catch one prey per frame
+              // Remove dead prey
+              removeBoid(preyBoid.id);
+              caughtPreyIds.push(preyBoid.id);
+
+              // Create food source from corpse
+              catches.push({
+                predatorId: predator.id,
+                preyId: preyBoid.id,
+                preyTypeId,
+                preyEnergy,
+                preyPosition,
+              });
+            }
+
+            break; // Predator can only attack one prey per frame
           }
         }
       }

@@ -33,6 +33,7 @@ export const visualSettingsSchema = z.object({
   stanceSymbolsEnabled: z.boolean(), // Show emoji indicators for boid stances
   deathMarkersEnabled: z.boolean(), // Show skull markers where boids died
   foodSourcesEnabled: z.boolean(), // Show food source indicators
+  healthBarsEnabled: z.boolean(), // Show health bars for wounded boids
 
   // Atmosphere settings - environmental mood and visual effects
   atmosphere: z.object({

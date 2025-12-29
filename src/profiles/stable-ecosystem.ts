@@ -48,6 +48,7 @@ export const stableEcosystemProfile: SimulationProfile = {
     reproductionCooldownTicks: 5, // 5 time passages (~5 seconds) cooldown
     matingBuildupTicks: 2, // Must stay close to mate for 3 ticks before reproducing
     eatingCooldownTicks: 2, // Predators must wait 3 ticks after eating
+    attackCooldownTicks: 3, // Predators must wait 3 ticks between attacks
   },
 
   species: {

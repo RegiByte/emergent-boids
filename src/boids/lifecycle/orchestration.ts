@@ -271,6 +271,7 @@ export function processLifecycleUpdates(
     const cooldowns = updateBoidCooldowns(boid);
     boid.reproductionCooldown = cooldowns.reproductionCooldown;
     boid.eatingCooldown = cooldowns.eatingCooldown;
+    boid.attackCooldown = cooldowns.attackCooldown;
 
     // 7. Update seeking state
     boid.seekingMate = isReadyToMate(boid, parameters, speciesConfig);

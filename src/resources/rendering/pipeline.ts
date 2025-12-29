@@ -519,10 +519,10 @@ export const renderEnergyBars = (rc: RenderContext): void => {
     if (!showEnergyBar) continue;
 
     const energyPercent = boid.energy / boid.phenotype.maxEnergy;
-    const barWidth = 20;
+    const barWidth = 22;
     const barHeight = 3;
     const barX = boid.position.x - barWidth / 2;
-    const barY = boid.position.y - 12;
+    const barY = boid.position.y - 20;
 
     // Background
     rc.ctx.fillStyle = "#333";
@@ -552,10 +552,10 @@ export const renderHealthBars = (rc: RenderContext): void => {
     if (!shouldShowHealthBar(boid)) continue;
 
     const healthPercent = boid.health / boid.phenotype.maxHealth;
-    const barWidth = 20;
+    const barWidth = 22;
     const barHeight = 3;
     const barX = boid.position.x - barWidth / 2;
-    const barY = boid.position.y - 16; // Above energy bar
+    const barY = boid.position.y - 20; // Above the boid, well above energy bar
 
     // Background
     rc.ctx.fillStyle = "#222";

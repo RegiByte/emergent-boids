@@ -51,6 +51,7 @@ export const peacefulCoexistenceProfile: SimulationProfile = {
     reproductionCooldownTicks: 8, // Slower reproduction
     matingBuildupTicks: 3, // Longer courtship
     eatingCooldownTicks: 0, // N/A (no predators)
+    attackCooldownTicks: 0, // N/A (no predators)
   },
 
   species: {

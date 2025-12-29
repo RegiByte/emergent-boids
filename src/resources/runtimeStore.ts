@@ -51,7 +51,7 @@ export const runtimeStore = defineResource({
           visualSettings: {
             trailsEnabled: true,
             energyBarsEnabled: false,
-            healthBarsEnabled: false, // NEW: Health bars off by default
+            healthBarsEnabled: true, // NEW: Show health bars for wounded boids
             matingHeartsEnabled: true,
             stanceSymbolsEnabled: false,
             deathMarkersEnabled: true,

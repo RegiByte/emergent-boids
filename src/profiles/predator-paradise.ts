@@ -24,7 +24,7 @@ export const predatorParadiseProfile: SimulationProfile = {
   world: {
     width: 2000,
     height: 2000,
-    backgroundColor: "#8b0000", // Dark blood red - danger atmosphere
+    backgroundColor: "#450a0a", // Dark blood red - danger atmosphere
     initialPreyCount: 100, // Fewer prey, high pressure
     initialPredatorCount: 50, // High predator count (50% of prey!)
   },
@@ -51,6 +51,7 @@ export const predatorParadiseProfile: SimulationProfile = {
     reproductionCooldownTicks: 5,
     matingBuildupTicks: 2,
     eatingCooldownTicks: 2,
+    attackCooldownTicks: 2, // Fast attack rate for predator paradise
   },
 
   species: {

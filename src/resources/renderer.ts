@@ -278,6 +278,7 @@ export const renderer = defineResource({
           deathMarkersEnabled: ui.visualSettings.deathMarkersEnabled,
           headerCollapsed: ui.headerCollapsed,
           foodSourcesEnabled: ui.visualSettings.foodSourcesEnabled,
+          healthBarsEnabled: ui.visualSettings.healthBarsEnabled,
           atmosphere: {
             trailAlpha: atmosphereSettings.trailAlpha,
           },
