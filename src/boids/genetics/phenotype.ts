@@ -111,7 +111,22 @@ export function computePhenotype(
   const collisionRadius =
     genome.traits.size * physics.size.collisionMultiplier * 10;
 
-  // 8. Return computed phenotype
+  // 8. Compute survival-critical traits
+  const fearFactor = genome.traits.fearResponse;
+  const minReproductionAge = 5 + genome.traits.maturityRate * 15; // 5-20 seconds
+  const maxAge = 100 + genome.traits.longevity * 200; // 100-300 seconds
+
+  // 9. Compute crowd behavior from sociability
+  const crowdTolerance = 10 + genome.traits.sociability * 40; // 10-50 boids
+  const crowdAversionStrength = 2.0 - genome.traits.sociability * 1.2; // 0.8-2.0
+
+  // 10. Compute flocking weights from sociability
+  // Higher sociability = tighter flocks (low separation, high cohesion/alignment)
+  const separationWeight = 1.5 - genome.traits.sociability * 0.5; // 1.0-1.5
+  const alignmentWeight = 1.0 + genome.traits.sociability * 1.5; // 1.0-2.5
+  const cohesionWeight = 1.0 + genome.traits.sociability * 2.0; // 1.0-3.0
+
+  // 11. Return computed phenotype
   return {
     // Motion
     maxSpeed,
@@ -130,6 +145,20 @@ export function computePhenotype(
     attackDamage,
     defense,
     collisionRadius,
+
+    // Survival traits (evolvable)
+    fearFactor,
+    minReproductionAge,
+    maxAge,
+
+    // Crowd behavior (from sociability)
+    crowdTolerance,
+    crowdAversionStrength,
+
+    // Flocking weights (from sociability)
+    separationWeight,
+    alignmentWeight,
+    cohesionWeight,
 
     // Visual (pass through from genome)
     color: genome.visual.color,
@@ -162,6 +191,9 @@ export function createGenesisGenome(
     aggression: number;
     sociability: number;
     efficiency: number;
+    fearResponse?: number;
+    maturityRate?: number;
+    longevity?: number;
   },
   baseVisual: {
     color: string;
@@ -169,7 +201,13 @@ export function createGenesisGenome(
   }
 ): Genome {
   return {
-    traits: baseTraits,
+    traits: {
+      ...baseTraits,
+      // Provide defaults for new traits if not specified
+      fearResponse: baseTraits.fearResponse ?? 0.5,
+      maturityRate: baseTraits.maturityRate ?? 0.5,
+      longevity: baseTraits.longevity ?? 0.5,
+    },
     visual: baseVisual,
     parentIds: null, // Genesis boids have no parents
     generation: 0, // First generation

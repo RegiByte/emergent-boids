@@ -135,9 +135,17 @@ export function getCohesionWeight(affinity: number): number {
  * Get the maximum crowd tolerance from all species
  * @param speciesConfig - The species configuration
  * @returns The maximum crowd tolerance
+ * 
+ * NOTE: With phenotype-based crowd tolerance:
+ * - Formula: crowdTolerance = 10 + sociability * 40
+ * - Range: 10 (sociability=0) to 50 (sociability=1)
+ * - Theoretical max is 50
+ * 
+ * PERFORMANCE: This is called once per engine update, not per boid.
+ * Returning a fixed value is fast and correct for the phenotype system.
  */
-export function getMaxCrowdTolerance(speciesConfig: SpeciesRecord): number {
-  return Object.values(speciesConfig).reduce((max, species) => {
-    return Math.max(max, species.movement.crowdAversionThreshold);
-  }, 0);
+export function getMaxCrowdTolerance(_speciesConfig: SpeciesRecord): number {
+  // With phenotype-based crowd tolerance, max is 50 (sociability = 1.0)
+  // This is the theoretical maximum based on the phenotype formula
+  return 50;
 }

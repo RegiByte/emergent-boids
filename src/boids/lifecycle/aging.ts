@@ -19,7 +19,7 @@ export function checkBoidDeath(
   boid: Boid,
   speciesConfig: SpeciesConfig
 ): "old_age" | "starvation" | null {
-  if (hasDiedFromOldAge(boid, speciesConfig)) {
+  if (hasDiedFromOldAge(boid)) {
     return "old_age";
   }
   if (speciesConfig.role === "predator" && hasDiedFromStarvation(boid)) {

@@ -1,7 +1,10 @@
 import type { Boid } from "./vocabulary/schemas/prelude.ts";
 import type { Vector2 } from "./vocabulary/schemas/prelude.ts";
 import * as vec from "./vector";
-import {SimulationParameters, SpeciesConfig} from "./vocabulary/schemas/prelude.ts";
+import {
+  SimulationParameters,
+  SpeciesConfig,
+} from "./vocabulary/schemas/prelude.ts";
 
 /**
  * Pure predicates for boid state and behavior
@@ -125,7 +128,7 @@ export function isReadyToMate(
   speciesConfig: SpeciesConfig
 ): boolean {
   return (
-    boid.age >= parameters.minReproductionAge &&
+    boid.age >= boid.phenotype.minReproductionAge &&
     hasReproductionEnergy(boid, parameters, speciesConfig) &&
     boid.reproductionCooldown === 0
   );
@@ -202,14 +205,8 @@ export function shouldStayIdle(
 /**
  * Check if boid has died from old age
  */
-export function hasDiedFromOldAge(
-  boid: Boid,
-  speciesConfig: SpeciesConfig
-): boolean {
-  return (
-    speciesConfig.lifecycle.maxAge > 0 &&
-    boid.age >= speciesConfig.lifecycle.maxAge
-  );
+export function hasDiedFromOldAge(boid: Boid): boolean {
+  return boid.phenotype.maxAge > 0 && boid.age >= boid.phenotype.maxAge;
 }
 
 /**

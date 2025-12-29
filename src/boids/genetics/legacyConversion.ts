@@ -45,12 +45,18 @@ export function convertLegacyConfigToGenome(
   // Estimate behavioral traits based on role and movement weights
   const aggression = speciesConfig.role === "predator" ? 0.8 : 0.3;
 
-  // Estimate sociability from cohesion weight
-  const cohesionWeight = speciesConfig.movement?.cohesionWeight || 1.0;
-  const sociability = Math.min(cohesionWeight / 3.0, 1.0); // Normalize to 0-1
+  // Estimate sociability from crowd tolerance (crowdTolerance = 10 + sociability * 40)
+  // Solving for sociability: sociability = (crowdTolerance - 10) / 40
+  const crowdThreshold = speciesConfig.movement?.crowdAversionThreshold || 30;
+  const sociability = Math.max(0, Math.min(1.0, (crowdThreshold - 10) / 40));
 
   // Estimate efficiency (default to medium)
   const efficiency = 0.5;
+
+  // NEW: Set defaults for survival-critical traits
+  const fearResponse = speciesConfig.lifecycle?.fearFactor || 0.5;
+  const maturityRate = 0.5; // Default medium maturity (12.5 seconds)
+  const longevity = 0.5; // Default medium lifespan (200 seconds)
 
   // Convert body parts from legacy format (string array) to new format
   const bodyPartsLegacy = speciesConfig.visual?.bodyParts || [];
@@ -118,6 +124,9 @@ export function convertLegacyConfigToGenome(
       aggression,
       sociability,
       efficiency,
+      fearResponse, // NEW
+      maturityRate, // NEW
+      longevity, // NEW
     },
     visual: {
       color,

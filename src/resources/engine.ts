@@ -139,7 +139,8 @@ export const engine = defineResource({
         const nearbyBoids = getNearbyBoids(
           spatialHash,
           boid.position,
-          maxNeighborsLookup
+          maxNeighborsLookup,
+          config.parameters.perceptionRadius // Only consider boids within perception radius
         );
         profiler.end("boid.spatial.query");
 

@@ -143,6 +143,11 @@ export const genomeSchema = z.object({
     aggression: z.number().min(0).max(1), // Behavioral trait
     sociability: z.number().min(0).max(1), // Behavioral trait
     efficiency: z.number().min(0).max(1), // Energy efficiency (reduces metabolic cost)
+    
+    // Survival-critical traits (evolvable)
+    fearResponse: z.number().min(0).max(1), // Fear intensity (0=fearless, 1=very afraid)
+    maturityRate: z.number().min(0).max(1), // Reproduction age (0=early, 1=late)
+    longevity: z.number().min(0).max(1), // Lifespan (0=short, 1=long)
   }),
 
   // Visual traits
@@ -198,6 +203,20 @@ export const phenotypeSchema = z.object({
   attackDamage: z.number(), // physics.baseDamage * genome.size * (1 + bodyPartBonuses.damage)
   defense: z.number(), // bodyPartBonuses.defense (damage reduction %)
   collisionRadius: z.number(), // genome.size * physics.collisionMultiplier * 10
+
+  // Survival traits (evolvable)
+  fearFactor: z.number(), // genome.traits.fearResponse
+  minReproductionAge: z.number(), // 5 + genome.traits.maturityRate * 15
+  maxAge: z.number(), // 100 + genome.traits.longevity * 200
+
+  // Crowd behavior (from sociability)
+  crowdTolerance: z.number(), // 10 + genome.traits.sociability * 40
+  crowdAversionStrength: z.number(), // 2.0 - genome.traits.sociability * 1.2
+
+  // Flocking weights (from sociability)
+  separationWeight: z.number(), // 1.5 - genome.traits.sociability * 0.5
+  alignmentWeight: z.number(), // 1.0 + genome.traits.sociability * 1.5
+  cohesionWeight: z.number(), // 1.0 + genome.traits.sociability * 2.0
 
   // Visual (from genome)
   color: z.string(), // genome.visual.color

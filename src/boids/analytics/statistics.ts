@@ -95,11 +95,7 @@ export interface AgeDistribution {
   elderCount: number; // Age > 75% of maxAge
 }
 
-export function computeAgeDistribution(
-  boids: Boid[],
-  speciesConfig: SpeciesConfig,
-  minReproductionAge: number
-): AgeDistribution {
+export function computeAgeDistribution(boids: Boid[]): AgeDistribution {
   if (boids.length === 0) {
     return {
       mean: 0,
@@ -116,14 +112,15 @@ export function computeAgeDistribution(
   const min = Math.min(...ages);
   const max = Math.max(...ages);
 
-  const elderThreshold = speciesConfig.lifecycle.maxAge * 0.75;
-
   let youngCount = 0;
   let matureCount = 0;
   let elderCount = 0;
 
   boids.forEach((boid) => {
-    if (boid.age < minReproductionAge) {
+    // Use per-boid phenotype values (evolvable!)
+    const elderThreshold = boid.phenotype.maxAge * 0.75;
+
+    if (boid.age < boid.phenotype.minReproductionAge) {
       youngCount++;
     } else if (boid.age >= elderThreshold) {
       elderCount++;
@@ -137,8 +134,7 @@ export function computeAgeDistribution(
 
 export function computeAgeDistributionBySpecies(
   boids: Boid[],
-  speciesConfigs: Record<string, SpeciesConfig>,
-  minReproductionAge: number
+  speciesConfigs: Record<string, SpeciesConfig>
 ): Record<string, AgeDistribution> {
   const bySpecies: Record<string, Boid[]> = {};
 
@@ -153,11 +149,7 @@ export function computeAgeDistributionBySpecies(
   for (const [typeId, speciesBoids] of Object.entries(bySpecies)) {
     const config = speciesConfigs[typeId];
     if (config) {
-      result[typeId] = computeAgeDistribution(
-        speciesBoids,
-        config,
-        minReproductionAge
-      );
+      result[typeId] = computeAgeDistribution(speciesBoids);
     }
   }
 
@@ -318,8 +310,6 @@ export interface ReproductionMetrics {
 
 export function computeReproductionMetrics(
   boids: Boid[],
-  speciesConfig: SpeciesConfig,
-  minReproductionAge: number,
   reproductionEnergyThreshold: number
 ): ReproductionMetrics {
   if (boids.length === 0) {
@@ -340,11 +330,10 @@ export function computeReproductionMetrics(
     if (boid.seekingMate) seekingMateCount++;
     if (boid.stance === "mating") matingCount++;
 
-    // Check if ready to reproduce
-    const isOldEnough = boid.age >= minReproductionAge;
+    // Check if ready to reproduce (using per-boid phenotype values)
+    const isOldEnough = boid.age >= boid.phenotype.minReproductionAge;
     const hasEnoughEnergy =
-      boid.energy >=
-      speciesConfig.lifecycle.maxEnergy * reproductionEnergyThreshold;
+      boid.energy >= boid.phenotype.maxEnergy * reproductionEnergyThreshold;
     const noCooldown = boid.reproductionCooldown === 0;
 
     if (isOldEnough && hasEnoughEnergy && noCooldown) {
@@ -365,7 +354,6 @@ export function computeReproductionMetrics(
 export function computeReproductionMetricsBySpecies(
   boids: Boid[],
   speciesConfigs: Record<string, SpeciesConfig>,
-  minReproductionAge: number,
   reproductionEnergyThreshold: number
 ): Record<string, ReproductionMetrics> {
   const bySpecies: Record<string, Boid[]> = {};
@@ -383,8 +371,6 @@ export function computeReproductionMetricsBySpecies(
     if (config) {
       result[typeId] = computeReproductionMetrics(
         speciesBoids,
-        config,
-        minReproductionAge,
         reproductionEnergyThreshold
       );
     }

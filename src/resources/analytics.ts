@@ -142,8 +142,7 @@ export const analytics = defineResource({
       const energyStats = computeEnergyStatsBySpecies(engine.boids);
       const ageStats = computeAgeDistributionBySpecies(
         engine.boids,
-        config.species,
-        config.parameters.minReproductionAge
+        config.species
       );
       const spatialPatterns = computeSpatialPatternsBySpecies(
         engine.boids,
@@ -153,7 +152,6 @@ export const analytics = defineResource({
       const reproductionMetrics = computeReproductionMetricsBySpecies(
         engine.boids,
         config.species,
-        config.parameters.minReproductionAge,
         config.parameters.reproductionEnergyThreshold
       );
 

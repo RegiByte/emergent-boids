@@ -394,7 +394,7 @@ function updatePredator(
   let separationWeight = 0;
   if (stance !== "eating") {
     separationWeight = calculatePredatorSeparationWeight(
-      speciesConfig.movement?.separationWeight || 1.5,
+      boid.phenotype.separationWeight,
       stance
     );
     sep = rules.separation(
@@ -614,16 +614,16 @@ function updatePrey(
   // Declarative force composition with explicit weights
   // Clear visual hierarchy makes priorities obvious and easy to tune
   const cohesionWeight = calculatePreyCohesionWeight(
-    speciesConfig.movement?.cohesionWeight || 1.5,
+    boid.phenotype.cohesionWeight,
     stance
   );
 
-  const fearFactor = speciesConfig.lifecycle?.fearFactor || 0.5;
+  const fearFactor = boid.phenotype.fearFactor;
 
   applyWeightedForces(boid, [
     // Core flocking behaviors
-    { force: sep, weight: speciesConfig.movement?.separationWeight || 1.5 },
-    { force: ali, weight: speciesConfig.movement?.alignmentWeight || 1.0 },
+    { force: sep, weight: boid.phenotype.separationWeight },
+    { force: ali, weight: boid.phenotype.alignmentWeight },
     { force: coh, weight: cohesionWeight },
 
     // Avoidance behaviors (high priority)

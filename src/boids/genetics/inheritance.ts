@@ -292,6 +292,9 @@ export function inheritGenome(
     aggression: 0,
     sociability: 0,
     efficiency: 0,
+    fearResponse: 0,
+    maturityRate: 0,
+    longevity: 0,
   };
 
   // Track mutations for genealogy

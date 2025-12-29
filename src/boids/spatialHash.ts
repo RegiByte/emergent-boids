@@ -60,16 +60,32 @@ export function insertBoids(hash: SpatialHash, boids: Boid[]): void {
  *
  * Performance optimization: Caps neighbors at maxNeighbors to prevent
  * concentration bottleneck when many boids cluster in one area
+ *
+ * @param hash - The spatial hash grid
+ * @param position - Position to query from
+ * @param maxNeighbors - Maximum number of neighbors to return
+ * @param maxDistance - Optional maximum distance to consider (for early filtering)
  */
 export function getNearbyBoids(
   hash: SpatialHash,
   position: Vector2,
-  maxNeighbors: number = 60
+  maxNeighbors: number = 60,
+  maxDistance?: number
 ): Boid[] {
-  const nearby: Boid[] = [];
+  // PERFORMANCE OPTIMIZATION:
+  // Instead of collecting ALL neighbors then sorting, we use a more efficient approach:
+  // 1. Collect boids with their distances as we find them
+  // 2. Filter by max distance if provided (early rejection)
+  // 3. Only sort if we exceed maxNeighbors
+  // 4. Use pre-calculated distances to avoid redundant calculations
+  
   const col = Math.floor(position.x / hash.cellSize);
   const row = Math.floor(position.y / hash.cellSize);
 
+  // Collect boids with distances in one pass
+  const boidsWithDist: Array<{ boid: Boid; distSq: number }> = [];
+  const maxDistSq = maxDistance ? maxDistance * maxDistance : Infinity;
+  
   // Check 3x3 grid of cells (including current cell)
   for (let i = -1; i <= 1; i++) {
     for (let j = -1; j <= 1; j++) {
@@ -83,29 +99,39 @@ export function getNearbyBoids(
 
       const key = `${checkCol},${checkRow}`;
       const cell = hash.grid.get(key);
+      
       if (cell) {
-        nearby.push(...cell);
+        // Calculate distances as we collect boids
+        for (let k = 0; k < cell.length; k++) {
+          const boid = cell[k];
+          const dx = boid.position.x - position.x;
+          const dy = boid.position.y - position.y;
+          const distSq = dx * dx + dy * dy;
+          
+          // Skip boids beyond max distance (if specified)
+          if (distSq <= maxDistSq) {
+            boidsWithDist.push({ boid, distSq });
+          }
+        }
       }
     }
   }
 
-  // If too many neighbors (concentration scenario), limit to closest ones
-  if (nearby.length > maxNeighbors) {
-    // Sort by squared distance (avoid sqrt for performance)
-    nearby.sort((a, b) => {
-      const dxA = a.position.x - position.x;
-      const dyA = a.position.y - position.y;
-      const distSqA = dxA * dxA + dyA * dyA;
-
-      const dxB = b.position.x - position.x;
-      const dyB = b.position.y - position.y;
-      const distSqB = dxB * dxB + dyB * dyB;
-
-      return distSqA - distSqB;
-    });
-
-    return nearby.slice(0, maxNeighbors);
+  // If we have few enough neighbors, return them all (no sorting needed)
+  if (boidsWithDist.length <= maxNeighbors) {
+    const result = new Array(boidsWithDist.length);
+    for (let i = 0; i < boidsWithDist.length; i++) {
+      result[i] = boidsWithDist[i].boid;
+    }
+    return result;
   }
 
-  return nearby;
+  // Too many neighbors - sort by distance and return closest
+  boidsWithDist.sort((a, b) => a.distSq - b.distSq);
+
+  const result = new Array(maxNeighbors);
+  for (let i = 0; i < maxNeighbors; i++) {
+    result[i] = boidsWithDist[i].boid;
+  }
+  return result;
 }

@@ -212,7 +212,7 @@ export function avoidObstacles(
   boid: Boid,
   obstacles: Obstacle[],
   parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
+  _speciesConfig: SpeciesConfig,
   _world: WorldConfig,
   profiler?: Profiler
 ): Vector2 {
@@ -262,7 +262,7 @@ export function fear(
   boid: Boid,
   predators: Boid[],
   parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
+  _speciesConfig: SpeciesConfig,
   world: WorldConfig,
   profiler?: Profiler
 ): { force: Vector2; isAfraid: boolean } {
@@ -387,7 +387,7 @@ export function chase(
   predator: Boid,
   prey: Boid[],
   parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
+  _speciesConfig: SpeciesConfig,
   world: WorldConfig,
   profiler?: Profiler
 ): Vector2 {
@@ -437,7 +437,7 @@ function selectBestMate(
   boid: Boid,
   potentialMates: Boid[],
   world: WorldConfig,
-  speciesConfig: SpeciesConfig
+  _speciesConfig: SpeciesConfig
 ): Boid | null {
   if (potentialMates.length === 0) return null;
 
@@ -482,13 +482,11 @@ function selectBestMate(
       // Maturity: prefer mid-age (inverted distance from optimal age)
       {
         value:
-          (speciesConfig.lifecycle?.maxAge || 300) * 0.5 -
-          Math.abs(
-            candidate.age - (speciesConfig.lifecycle?.maxAge || 300) * 0.5
-          ),
+          candidate.phenotype.maxAge * 0.5 -
+          Math.abs(candidate.age - candidate.phenotype.maxAge * 0.5),
         weight: 0.5,
         min: 0,
-        max: (speciesConfig.lifecycle?.maxAge || 300) * 0.5,
+        max: candidate.phenotype.maxAge * 0.5,
       },
     ]);
 
@@ -548,7 +546,7 @@ export function avoidDeathMarkers(
   boid: Boid,
   deathMarkers: Array<DeathMarker>,
   _parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
+  _speciesConfig: SpeciesConfig,
   world: WorldConfig,
   profiler?: Profiler
 ): Vector2 {
@@ -733,7 +731,7 @@ export function seekFood(
 export function orbitFood(
   boid: Boid,
   foodPosition: Vector2,
-  speciesConfig: SpeciesConfig,
+  _speciesConfig: SpeciesConfig,
   world: WorldConfig,
   eatingRadius: number,
   profiler?: Profiler
@@ -810,7 +808,7 @@ export function avoidPredatorFood(
       // Weight by distance and fear factor (closer = stronger)
       const weight = 1 / (dist * dist);
       const weightedDist = vec.multiply(away, weight);
-      const fearFactor = speciesConfig.lifecycle?.fearFactor || 0.5;
+      const fearFactor = boid.phenotype.fearFactor;
       const weightedFear = vec.multiply(away, fearFactor);
 
       steering.x += weightedDist.x;
@@ -848,13 +846,13 @@ export function avoidCrowdedAreas(
   boid: Boid,
   neighbors: Boid[],
   parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
+  _speciesConfig: SpeciesConfig,
   world: WorldConfig,
   profiler?: Profiler
 ): Vector2 {
   profiler?.start("rule.avoidCrowdedAreas");
 
-  const threshold = speciesConfig.movement?.crowdAversionThreshold || 20;
+  const threshold = boid.phenotype.crowdTolerance;
   const nearbyCount = neighbors.length;
 
   // If below threshold, no avoidance needed
@@ -912,10 +910,8 @@ export function avoidCrowdedAreas(
   // Scale by crowdedness (more crowded = stronger avoidance)
   const scaled = vec.multiply(steer, crowdedness);
 
-  // Apply crowd aversion weight
-  const crowdAversionWeight =
-    speciesConfig.movement?.crowdAversionWeight || 1.5;
-  const maxForce = boid.phenotype.maxForce * crowdAversionWeight;
+  // Apply crowd aversion weight (from phenotype)
+  const maxForce = boid.phenotype.maxForce * boid.phenotype.crowdAversionStrength;
 
   profiler?.end("rule.avoidCrowdedAreas");
   return vec.limit(scaled, maxForce);

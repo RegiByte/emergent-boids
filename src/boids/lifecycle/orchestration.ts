@@ -254,7 +254,7 @@ export function processLifecycleUpdates(
 
     // 3. Check for death (health OR energy depletion)
     if (isDead(boid)) {
-      const maxAge = speciesConfig.lifecycle?.maxAge || 0;
+      const maxAge = boid.phenotype.maxAge;
       const deathReason = getDeathCause(boid, maxAge);
       boidsToRemove.push(boid.id);
       deathEvents.push({ boidId: boid.id, reason: deathReason });
