@@ -1,0 +1,561 @@
+{
+  "timestamp": 1767039613988,
+  "date": "2025-12-29T20:20:13.988Z",
+  "populations": {
+    "total": 3074,
+    "byRole": {
+      "prey": 3024,
+      "predator": 50
+    },
+    "byType": {
+      "cautious": 976,
+      "social": 254,
+      "independent": 1000,
+      "explorer": 794,
+      "predator": 50
+    },
+    "preyToPredatorRatio": "60.48"
+  },
+  "energy": {
+    "cautious": {
+      "avg": 21.773947219617277,
+      "min": 13.815000000000486,
+      "max": 44.350096153846216
+    },
+    "social": {
+      "avg": 25.34901037187987,
+      "min": 17.4030000000004,
+      "max": 43.633333333333574
+    },
+    "independent": {
+      "avg": 34.61750617115738,
+      "min": 25.440000000000087,
+      "max": 55.80799999999999
+    },
+    "explorer": {
+      "avg": 38.219749242552105,
+      "min": 28.637999999999728,
+      "max": 52.07999999999993
+    },
+    "predator": {
+      "avg": 69.83855037568566,
+      "min": 64.37399999999741,
+      "max": 103.13999999999999
+    }
+  },
+  "stances": {
+    "cautious": {
+      "flocking": 295,
+      "fleeing": 668,
+      "eating": 9,
+      "seeking_mate": 4
+    },
+    "social": {
+      "flocking": 75,
+      "fleeing": 174,
+      "eating": 3,
+      "seeking_mate": 2
+    },
+    "independent": {
+      "flocking": 516,
+      "fleeing": 462,
+      "eating": 22
+    },
+    "explorer": {
+      "fleeing": 456,
+      "flocking": 308,
+      "seeking_mate": 9,
+      "mating": 9,
+      "eating": 12
+    },
+    "predator": {
+      "hunting": 45,
+      "seeking_mate": 5
+    }
+  },
+  "foodSources": {
+    "prey": 7,
+    "predator": 0,
+    "total": 7
+  },
+  "genetics": {
+    "cautious": {
+      "generationDistribution": {
+        "0": 58,
+        "1": 74,
+        "2": 104,
+        "3": 144,
+        "4": 176,
+        "5": 198,
+        "6": 184,
+        "7": 38
+      },
+      "maxGeneration": 7,
+      "avgGeneration": 3.8709016393442623,
+      "traits": {
+        "speed": {
+          "mean": 0.38854079194987157,
+          "min": 0.29184939763421425,
+          "max": 0.4750706340395846,
+          "stdDev": 0.015875044257663375
+        },
+        "size": {
+          "mean": 0.9525457723892178,
+          "min": 0.634723891376052,
+          "max": 1.2574520736699923,
+          "stdDev": 0.04664356948496416
+        },
+        "vision": {
+          "mean": 0.5020846044107874,
+          "min": 0.39397222927073017,
+          "max": 0.5934846849180758,
+          "stdDev": 0.015331643164561506
+        },
+        "force": {
+          "mean": 0.23898019110777977,
+          "min": 0.14471502593718466,
+          "max": 0.3266905376315117,
+          "stdDev": 0.014780406586043007
+        },
+        "aggression": {
+          "mean": 0.3035435843074834,
+          "min": 0.1971544904168695,
+          "max": 0.4229411803651601,
+          "stdDev": 0.019947112943732574
+        },
+        "sociability": {
+          "mean": 0.9956806799317255,
+          "min": 0.9044738972559572,
+          "max": 1,
+          "stdDev": 0.01267986372870269
+        },
+        "efficiency": {
+          "mean": 0.5002335660836638,
+          "min": 0.38932988601736723,
+          "max": 0.6053439615759998,
+          "stdDev": 0.01642343394365873
+        },
+        "fearResponse": {
+          "mean": 0.5989606730520267,
+          "min": 0.5025839090812951,
+          "max": 0.6999383666552603,
+          "stdDev": 0.013693673188545004
+        },
+        "maturityRate": {
+          "mean": 0.4983747938026272,
+          "min": 0.3960063145961612,
+          "max": 0.5939135770895518,
+          "stdDev": 0.01640065612938718
+        },
+        "longevity": {
+          "mean": 0.49783226315023704,
+          "min": 0.40290345246903597,
+          "max": 0.5869113942142576,
+          "stdDev": 0.012626006632747702
+        }
+      },
+      "colorDiversity": 0.43208602739499846,
+      "uniqueColors": 104,
+      "bodyPartStats": {
+        "avgPartsPerBoid": 2.110655737704918,
+        "minParts": 0,
+        "maxParts": 3,
+        "partTypeCounts": {
+          "eye": 844,
+          "spike": 1192,
+          "shell": 24
+        }
+      },
+      "mutationsSinceLastSnapshot": {
+        "traitMutations": 0,
+        "colorMutations": 0,
+        "bodyPartMutations": 0,
+        "totalOffspring": 0
+      }
+    },
+    "social": {
+      "generationDistribution": {
+        "0": 57,
+        "1": 63,
+        "2": 44,
+        "3": 41,
+        "4": 31,
+        "5": 15,
+        "6": 3
+      },
+      "maxGeneration": 6,
+      "avgGeneration": 1.9330708661417322,
+      "traits": {
+        "speed": {
+          "mean": 0.4046089771556389,
+          "min": 0.33679060246795417,
+          "max": 0.49628694341517987,
+          "stdDev": 0.016883115414052616
+        },
+        "size": {
+          "mean": 1.0003385300828602,
+          "min": 0.7486338340095244,
+          "max": 1.2293948498554528,
+          "stdDev": 0.04449603231017299
+        },
+        "vision": {
+          "mean": 0.5014839466465278,
+          "min": 0.4437032100278884,
+          "max": 0.5935086086858063,
+          "stdDev": 0.011469539735757093
+        },
+        "force": {
+          "mean": 0.40166221348750825,
+          "min": 0.30795118524692955,
+          "max": 0.49985294430516664,
+          "stdDev": 0.012694434928776819
+        },
+        "aggression": {
+          "mean": 0.29719829913026996,
+          "min": 0.2029218168929219,
+          "max": 0.36689117648638786,
+          "stdDev": 0.015181554687439721
+        },
+        "sociability": {
+          "mean": 0.7491732878846071,
+          "min": 0.6540264172945172,
+          "max": 0.8318366719409823,
+          "stdDev": 0.011504980897545957
+        },
+        "efficiency": {
+          "mean": 0.4987318024262245,
+          "min": 0.44441208792850373,
+          "max": 0.5647108173696325,
+          "stdDev": 0.008991717150190153
+        },
+        "fearResponse": {
+          "mean": 0.2993833571935966,
+          "min": 0.20752441631630061,
+          "max": 0.3748620929662138,
+          "stdDev": 0.010878984114038913
+        },
+        "maturityRate": {
+          "mean": 0.4977466799838076,
+          "min": 0.39247395978309213,
+          "max": 0.5685666400007904,
+          "stdDev": 0.015140435791101874
+        },
+        "longevity": {
+          "mean": 0.5003366733066588,
+          "min": 0.4082170675508678,
+          "max": 0.5878280712291598,
+          "stdDev": 0.015815903123382883
+        }
+      },
+      "colorDiversity": 0.2713568697476677,
+      "uniqueColors": 45,
+      "bodyPartStats": {
+        "avgPartsPerBoid": 2.043307086614173,
+        "minParts": 0,
+        "maxParts": 3,
+        "partTypeCounts": {
+          "eye": 266,
+          "fin": 253
+        }
+      },
+      "mutationsSinceLastSnapshot": {
+        "traitMutations": 0,
+        "colorMutations": 0,
+        "bodyPartMutations": 0,
+        "totalOffspring": 0
+      }
+    },
+    "independent": {
+      "generationDistribution": {
+        "0": 66,
+        "1": 127,
+        "2": 175,
+        "3": 221,
+        "4": 205,
+        "5": 66,
+        "6": 66,
+        "7": 66,
+        "8": 8
+      },
+      "maxGeneration": 8,
+      "avgGeneration": 3.212,
+      "traits": {
+        "speed": {
+          "mean": 0.49829202440753567,
+          "min": 0.39712423007003966,
+          "max": 0.5953774851281196,
+          "stdDev": 0.021767029768007227
+        },
+        "size": {
+          "mean": 1.0941375525355197,
+          "min": 0.6619054688140751,
+          "max": 1.3436063995119185,
+          "stdDev": 0.0708992950861967
+        },
+        "vision": {
+          "mean": 0.49920075280177384,
+          "min": 0.39385910774581134,
+          "max": 0.5965164989233017,
+          "stdDev": 0.023997478108418714
+        },
+        "force": {
+          "mean": 0.3016224379433832,
+          "min": 0.2027368595357984,
+          "max": 0.3931480351835489,
+          "stdDev": 0.01957383085272005
+        },
+        "aggression": {
+          "mean": 0.29689973297687694,
+          "min": 0.1129198469687253,
+          "max": 0.46282857325859367,
+          "stdDev": 0.024327856546724983
+        },
+        "sociability": {
+          "mean": 0.0014262656305916604,
+          "min": 0,
+          "max": 0.08475742815062404,
+          "stdDev": 0.00841157693307722
+        },
+        "efficiency": {
+          "mean": 0.501150769987842,
+          "min": 0.32074479837901887,
+          "max": 0.5974085388239473,
+          "stdDev": 0.024551974872428134
+        },
+        "fearResponse": {
+          "mean": 0.800307402870796,
+          "min": 0.7006618152372539,
+          "max": 0.8906504184007645,
+          "stdDev": 0.022323547962537972
+        },
+        "maturityRate": {
+          "mean": 0.498560363672068,
+          "min": 0.3816054772119969,
+          "max": 0.6870378160849213,
+          "stdDev": 0.028051901268059995
+        },
+        "longevity": {
+          "mean": 0.5007474743220489,
+          "min": 0.33426083540543916,
+          "max": 0.5932454084511847,
+          "stdDev": 0.025528037884900236
+        }
+      },
+      "colorDiversity": 0.5880618056782687,
+      "uniqueColors": 44,
+      "bodyPartStats": {
+        "avgPartsPerBoid": 1.001,
+        "minParts": 0,
+        "maxParts": 2,
+        "partTypeCounts": {
+          "eye": 991,
+          "spike": 5,
+          "shell": 3,
+          "antenna": 1,
+          "fin": 1
+        }
+      },
+      "mutationsSinceLastSnapshot": {
+        "traitMutations": 0,
+        "colorMutations": 0,
+        "bodyPartMutations": 0,
+        "totalOffspring": 0
+      }
+    },
+    "explorer": {
+      "generationDistribution": {
+        "0": 68,
+        "1": 86,
+        "2": 98,
+        "3": 134,
+        "4": 148,
+        "5": 162,
+        "6": 98
+      },
+      "maxGeneration": 6,
+      "avgGeneration": 3.367758186397985,
+      "traits": {
+        "speed": {
+          "mean": 0.4384158192996468,
+          "min": 0.31664137710817164,
+          "max": 0.5478867873788114,
+          "stdDev": 0.015524271834006675
+        },
+        "size": {
+          "mean": 0.895825119363666,
+          "min": 0.7011792750039604,
+          "max": 1.123270437971223,
+          "stdDev": 0.02987219384397534
+        },
+        "vision": {
+          "mean": 0.5018827486673998,
+          "min": 0.4051110700238496,
+          "max": 0.6171865773852915,
+          "stdDev": 0.01556030988827109
+        },
+        "force": {
+          "mean": 0.200982161447663,
+          "min": 0.11651347381994129,
+          "max": 0.28684310284443204,
+          "stdDev": 0.016195050072442745
+        },
+        "aggression": {
+          "mean": 0.29904501233053044,
+          "min": 0.2016252658329904,
+          "max": 0.3847222777083516,
+          "stdDev": 0.013705990283147087
+        },
+        "sociability": {
+          "mean": 0.24728761252118214,
+          "min": 0.1503726908005774,
+          "max": 0.33562197335995736,
+          "stdDev": 0.014424739699465207
+        },
+        "efficiency": {
+          "mean": 0.4999017163420641,
+          "min": 0.4001219904050231,
+          "max": 0.5922250753035769,
+          "stdDev": 0.015338959207598667
+        },
+        "fearResponse": {
+          "mean": 0.49585432527317497,
+          "min": 0.39212709299754356,
+          "max": 0.5829615823924541,
+          "stdDev": 0.017419087689108288
+        },
+        "maturityRate": {
+          "mean": 0.5004729199940183,
+          "min": 0.40475833639502523,
+          "max": 0.5944697614293546,
+          "stdDev": 0.01565610793659798
+        },
+        "longevity": {
+          "mean": 0.502587331142849,
+          "min": 0.40965825970051817,
+          "max": 0.6007671230647248,
+          "stdDev": 0.017054478447538927
+        }
+      },
+      "colorDiversity": 0.31794492331490143,
+      "uniqueColors": 103,
+      "bodyPartStats": {
+        "avgPartsPerBoid": 2.0629722921914357,
+        "minParts": 0,
+        "maxParts": 3,
+        "partTypeCounts": {
+          "eye": 840,
+          "tail": 771,
+          "spike": 27
+        }
+      },
+      "mutationsSinceLastSnapshot": {
+        "traitMutations": 0,
+        "colorMutations": 0,
+        "bodyPartMutations": 0,
+        "totalOffspring": 0
+      }
+    },
+    "predator": {
+      "generationDistribution": {
+        "0": 25,
+        "1": 10,
+        "2": 6,
+        "3": 4,
+        "4": 3,
+        "5": 2
+      },
+      "maxGeneration": 5,
+      "avgGeneration": 1.12,
+      "traits": {
+        "speed": {
+          "mean": 0.27999999999999975,
+          "min": 0.27999999999999997,
+          "max": 0.27999999999999997,
+          "stdDev": 2.220446049250313e-16
+        },
+        "size": {
+          "mean": 1.299999999999999,
+          "min": 1.3,
+          "max": 1.3,
+          "stdDev": 1.1102230246251565e-15
+        },
+        "vision": {
+          "mean": 0.5,
+          "min": 0.5,
+          "max": 0.5,
+          "stdDev": 0
+        },
+        "force": {
+          "mean": 0.39999999999999986,
+          "min": 0.4,
+          "max": 0.4,
+          "stdDev": 1.6653345369377348e-16
+        },
+        "aggression": {
+          "mean": 0.7996788507439194,
+          "min": 0.7268549305386842,
+          "max": 0.8380584044381977,
+          "stdDev": 0.011962940298892612
+        },
+        "sociability": {
+          "mean": 0.12934432034124618,
+          "min": 0.125,
+          "max": 0.2215404520276934,
+          "stdDev": 0.016503900166358092
+        },
+        "efficiency": {
+          "mean": 0.5,
+          "min": 0.5,
+          "max": 0.5,
+          "stdDev": 0
+        },
+        "fearResponse": {
+          "mean": 0.5021470357934013,
+          "min": 0.5,
+          "max": 0.5566646184772253,
+          "stdDev": 0.00914138524609089
+        },
+        "maturityRate": {
+          "mean": 0.497419676585705,
+          "min": 0.43928650789894164,
+          "max": 0.5,
+          "stdDev": 0.009790933025075117
+        },
+        "longevity": {
+          "mean": 0.49552152194612425,
+          "min": 0.4462550032418221,
+          "max": 0.5,
+          "stdDev": 0.011877334195329289
+        }
+      },
+      "colorDiversity": 0.08912357437372224,
+      "uniqueColors": 4,
+      "bodyPartStats": {
+        "avgPartsPerBoid": 4.1,
+        "minParts": 0,
+        "maxParts": 5,
+        "partTypeCounts": {
+          "eye": 54,
+          "fin": 50,
+          "tail": 55,
+          "glow": 46
+        }
+      },
+      "mutationsSinceLastSnapshot": {
+        "traitMutations": 0,
+        "colorMutations": 0,
+        "bodyPartMutations": 0,
+        "totalOffspring": 0
+      }
+    }
+  },
+  "config": {
+    "maxBoids": 5000,
+    "maxPreyBoids": 3000,
+    "maxPredatorBoids": 1000,
+    "worldSize": {
+      "width": 2000,
+      "height": 2000
+    }
+  }
+}

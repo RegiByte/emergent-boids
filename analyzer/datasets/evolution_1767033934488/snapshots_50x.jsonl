@@ -1,0 +1,70 @@
+# Emergent Boids - Evolution Data (JSONL Format)
+# Generated: 2025-12-29T18:45:34.492Z
+# Snapshots: 1
+# Time Range: 2025-12-29T18:45:21.126Z to 2025-12-29T18:45:21.126Z
+# Format: One JSON object per line (after config block)
+# Optimization: activeParameters stored once (saves ~0.0% file size)
+#
+# Configuration (applies to all snapshots):
+# CONFIG_START
+# {
+#   "perceptionRadius": 50,
+#   "fearRadius": 150,
+#   "chaseRadius": 150,
+#   "reproductionEnergyThreshold": 0.5,
+#   "speciesConfigs": {
+#     "explorer": {
+#       "role": "prey",
+#       "maxSpeed": 4.4,
+#       "maxForce": 0.1,
+#       "maxEnergy": 84,
+#       "energyLossRate": 0,
+#       "fearFactor": 0.5,
+#       "reproductionType": "sexual",
+#       "offspringCount": 2
+#     },
+#     "social": {
+#       "role": "prey",
+#       "maxSpeed": 4,
+#       "maxForce": 0.08,
+#       "maxEnergy": 60,
+#       "energyLossRate": 0,
+#       "fearFactor": 0.3,
+#       "reproductionType": "sexual",
+#       "offspringCount": 1
+#     },
+#     "independent": {
+#       "role": "prey",
+#       "maxSpeed": 5,
+#       "maxForce": 0.15,
+#       "maxEnergy": 72,
+#       "energyLossRate": 0,
+#       "fearFactor": 0.8,
+#       "reproductionType": "asexual",
+#       "offspringCount": 1
+#     },
+#     "cautious": {
+#       "role": "prey",
+#       "maxSpeed": 3.9,
+#       "maxForce": 0.12,
+#       "maxEnergy": 60,
+#       "energyLossRate": 0,
+#       "fearFactor": 0.6,
+#       "reproductionType": "sexual",
+#       "offspringCount": 2
+#     },
+#     "predator": {
+#       "role": "predator",
+#       "maxSpeed": 3.2,
+#       "maxForce": 0.2,
+#       "maxEnergy": 150,
+#       "energyLossRate": 1,
+#       "fearFactor": 0,
+#       "reproductionType": "sexual",
+#       "offspringCount": 1
+#     }
+#   }
+# }
+# CONFIG_END
+#
+{"tick":3,"timestamp":1767033921126,"deltaSeconds":1.656,"populations":{"cautious":58,"social":57,"independent":66,"explorer":69,"predator":50},"births":{},"deaths":{},"deathsByCause":{"explorer":{"old_age":0,"starvation":0,"predation":0},"social":{"old_age":0,"starvation":0,"predation":0},"independent":{"old_age":0,"starvation":0,"predation":0},"cautious":{"old_age":0,"starvation":0,"predation":0},"predator":{"old_age":0,"starvation":0,"predation":0}},"energy":{"cautious":{"total":4126.455000000004,"mean":71.14577586206903,"min":71.10375,"max":71.25,"stdDev":0.053132391770850336},"social":{"total":4270.4879999999985,"mean":74.92084210526313,"min":74.856,"max":75,"stdDev":0.05997303179710495},"independent":{"total":5439.576000000005,"mean":82.41781818181825,"min":82.35600000000001,"max":82.50000000000001,"stdDev":0.05399969390791934},"explorer":{"total":4650.443999999998,"mean":67.39773913043474,"min":67.356,"max":67.5,"stdDev":0.05162845305121441},"predator":{"total":4871.377499999999,"mean":97.42754999999997,"min":97.42754999999998,"max":97.42754999999998,"stdDev":1.4210854715202004e-14}},"stances":{"cautious":{"fleeing":41,"flocking":17},"social":{"flocking":24,"fleeing":33},"independent":{"flocking":28,"fleeing":38},"explorer":{"fleeing":45,"flocking":24},"predator":{"hunting":50}},"age":{"cautious":{"mean":3,"min":3,"max":3,"youngCount":58,"matureCount":0,"elderCount":0},"social":{"mean":3,"min":3,"max":3,"youngCount":57,"matureCount":0,"elderCount":0},"independent":{"mean":3,"min":3,"max":3,"youngCount":66,"matureCount":0,"elderCount":0},"explorer":{"mean":3,"min":3,"max":3,"youngCount":69,"matureCount":0,"elderCount":0},"predator":{"mean":3,"min":3,"max":3,"youngCount":50,"matureCount":0,"elderCount":0}},"environment":{"foodSources":{"prey":{"count":5,"totalEnergy":400,"meanEnergy":80},"predator":{"count":0,"totalEnergy":0,"meanEnergy":0}},"deathMarkers":{"count":0,"totalStrength":0,"meanStrength":0},"obstacles":{"count":0}},"spatial":{"cautious":{"meanNearestNeighborDistance":103.52119291263368,"clusterCount":40,"largestClusterSize":6,"centerOfMass":{"x":1012.8259460892978,"y":1000.5297265369248},"spreadRadius":817.250081543879},"social":{"meanNearestNeighborDistance":102.19609900050308,"clusterCount":38,"largestClusterSize":3,"centerOfMass":{"x":1089.369354860753,"y":1046.6020477176396},"spreadRadius":749.3536841894692},"independent":{"meanNearestNeighborDistance":120.1948973748442,"clusterCount":48,"largestClusterSize":4,"centerOfMass":{"x":1032.422632865599,"y":1045.4108594469628},"spreadRadius":779.9576405280511},"explorer":{"meanNearestNeighborDistance":97.392363505625,"clusterCount":45,"largestClusterSize":4,"centerOfMass":{"x":968.1302776213312,"y":923.860379019747},"spreadRadius":747.0007497761669},"predator":{"meanNearestNeighborDistance":138.16650887288358,"clusterCount":39,"largestClusterSize":3,"centerOfMass":{"x":889.0648065893275,"y":1045.2604894387855},"spreadRadius":737.2412140236808}},"interactions":{"catches":{},"escapes":{},"averageChaseDistance":0,"averageFleeDistance":0},"reproduction":{"cautious":{"seekingMateCount":0,"matingCount":0,"reproductionReadyCount":0,"avgReproductionCooldown":0},"social":{"seekingMateCount":0,"matingCount":0,"reproductionReadyCount":0,"avgReproductionCooldown":0},"independent":{"seekingMateCount":0,"matingCount":0,"reproductionReadyCount":0,"avgReproductionCooldown":0},"explorer":{"seekingMateCount":0,"matingCount":0,"reproductionReadyCount":0,"avgReproductionCooldown":0},"predator":{"seekingMateCount":0,"matingCount":0,"reproductionReadyCount":0,"avgReproductionCooldown":0}},"activeParameters":{"perceptionRadius":50,"fearRadius":150,"chaseRadius":150,"reproductionEnergyThreshold":0.5,"speciesConfigs":{"explorer":{"role":"prey","maxSpeed":4.4,"maxForce":0.1,"maxEnergy":84,"energyLossRate":0,"fearFactor":0.5,"reproductionType":"sexual","offspringCount":2},"social":{"role":"prey","maxSpeed":4,"maxForce":0.08,"maxEnergy":60,"energyLossRate":0,"fearFactor":0.3,"reproductionType":"sexual","offspringCount":1},"independent":{"role":"prey","maxSpeed":5,"maxForce":0.15,"maxEnergy":72,"energyLossRate":0,"fearFactor":0.8,"reproductionType":"asexual","offspringCount":1},"cautious":{"role":"prey","maxSpeed":3.9,"maxForce":0.12,"maxEnergy":60,"energyLossRate":0,"fearFactor":0.6,"reproductionType":"sexual","offspringCount":2},"predator":{"role":"predator","maxSpeed":3.2,"maxForce":0.2,"maxEnergy":150,"energyLossRate":1,"fearFactor":0,"reproductionType":"sexual","offspringCount":1}}},"genetics":{"cautious":{"generationDistribution":{"0":58},"maxGeneration":0,"avgGeneration":0,"traits":{"speed":{"mean":0.39000000000000035,"min":0.39,"max":0.39,"stdDev":3.3306690738754696e-16},"size":{"mean":0.9500000000000008,"min":0.95,"max":0.95,"stdDev":8.881784197001252e-16},"vision":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"force":{"mean":0.24000000000000019,"min":0.24,"max":0.24,"stdDev":1.942890293094024e-16},"aggression":{"mean":0.3000000000000003,"min":0.3,"max":0.3,"stdDev":3.3306690738754696e-16},"sociability":{"mean":1,"min":1,"max":1,"stdDev":0},"efficiency":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"fearResponse":{"mean":0.6000000000000006,"min":0.6,"max":0.6,"stdDev":6.661338147750939e-16},"maturityRate":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"longevity":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0}},"colorDiversity":0,"uniqueColors":1,"bodyPartStats":{"avgPartsPerBoid":2,"minParts":0,"maxParts":2,"partTypeCounts":{"eye":58,"spike":58}},"mutationsSinceLastSnapshot":{"traitMutations":0,"colorMutations":0,"bodyPartMutations":0,"totalOffspring":0}},"social":{"generationDistribution":{"0":57},"maxGeneration":0,"avgGeneration":0,"traits":{"speed":{"mean":0.3999999999999997,"min":0.4,"max":0.4,"stdDev":3.3306690738754696e-16},"size":{"mean":1,"min":1,"max":1,"stdDev":0},"vision":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"force":{"mean":0.1600000000000001,"min":0.16,"max":0.16,"stdDev":8.326672684688674e-17},"aggression":{"mean":0.3000000000000003,"min":0.3,"max":0.3,"stdDev":3.3306690738754696e-16},"sociability":{"mean":0.75,"min":0.75,"max":0.75,"stdDev":0},"efficiency":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"fearResponse":{"mean":0.3000000000000003,"min":0.3,"max":0.3,"stdDev":3.3306690738754696e-16},"maturityRate":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"longevity":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0}},"colorDiversity":0,"uniqueColors":1,"bodyPartStats":{"avgPartsPerBoid":2,"minParts":0,"maxParts":2,"partTypeCounts":{"eye":57,"fin":57}},"mutationsSinceLastSnapshot":{"traitMutations":0,"colorMutations":0,"bodyPartMutations":0,"totalOffspring":0}},"independent":{"generationDistribution":{"0":66},"maxGeneration":0,"avgGeneration":0,"traits":{"speed":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"size":{"mean":1.1,"min":1.1,"max":1.1,"stdDev":0},"vision":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"force":{"mean":0.3000000000000004,"min":0.3,"max":0.3,"stdDev":3.885780586188048e-16},"aggression":{"mean":0.3000000000000004,"min":0.3,"max":0.3,"stdDev":3.885780586188048e-16},"sociability":{"mean":0,"min":0,"max":0,"stdDev":0},"efficiency":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"fearResponse":{"mean":0.799999999999999,"min":0.8,"max":0.8,"stdDev":9.992007221626409e-16},"maturityRate":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"longevity":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0}},"colorDiversity":0,"uniqueColors":1,"bodyPartStats":{"avgPartsPerBoid":1,"minParts":0,"maxParts":1,"partTypeCounts":{"eye":66}},"mutationsSinceLastSnapshot":{"traitMutations":0,"colorMutations":0,"bodyPartMutations":0,"totalOffspring":0}},"explorer":{"generationDistribution":{"0":69},"maxGeneration":0,"avgGeneration":0,"traits":{"speed":{"mean":0.4400000000000005,"min":0.44000000000000006,"max":0.44000000000000006,"stdDev":4.440892098500626e-16},"size":{"mean":0.899999999999999,"min":0.9,"max":0.9,"stdDev":9.992007221626409e-16},"vision":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"force":{"mean":0.19999999999999976,"min":0.2,"max":0.2,"stdDev":2.498001805406602e-16},"aggression":{"mean":0.3000000000000004,"min":0.3,"max":0.3,"stdDev":3.885780586188048e-16},"sociability":{"mean":0.25,"min":0.25,"max":0.25,"stdDev":0},"efficiency":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"fearResponse":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"maturityRate":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"longevity":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0}},"colorDiversity":0,"uniqueColors":1,"bodyPartStats":{"avgPartsPerBoid":2,"minParts":0,"maxParts":2,"partTypeCounts":{"eye":69,"tail":69}},"mutationsSinceLastSnapshot":{"traitMutations":0,"colorMutations":0,"bodyPartMutations":0,"totalOffspring":0}},"predator":{"generationDistribution":{"0":50},"maxGeneration":0,"avgGeneration":0,"traits":{"speed":{"mean":0.3200000000000001,"min":0.32,"max":0.32,"stdDev":1.1102230246251565e-16},"size":{"mean":1.299999999999999,"min":1.3,"max":1.3,"stdDev":1.1102230246251565e-15},"vision":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"force":{"mean":0.39999999999999986,"min":0.4,"max":0.4,"stdDev":1.6653345369377348e-16},"aggression":{"mean":0.7999999999999997,"min":0.8,"max":0.8,"stdDev":3.3306690738754696e-16},"sociability":{"mean":0.125,"min":0.125,"max":0.125,"stdDev":0},"efficiency":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"fearResponse":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"maturityRate":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0},"longevity":{"mean":0.5,"min":0.5,"max":0.5,"stdDev":0}},"colorDiversity":0,"uniqueColors":1,"bodyPartStats":{"avgPartsPerBoid":4,"minParts":0,"maxParts":4,"partTypeCounts":{"eye":50,"fin":50,"tail":50,"glow":50}},"mutationsSinceLastSnapshot":{"traitMutations":0,"colorMutations":0,"bodyPartMutations":0,"totalOffspring":0}}},"atmosphere":{"activeEvent":null,"eventStartedAtTick":null,"eventDurationTicks":null}}

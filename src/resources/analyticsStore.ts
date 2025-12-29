@@ -71,6 +71,7 @@ export const analyticsStore = defineResource({
         config: {
           snapshotInterval: 3, // Every 3 ticks
           maxSnapshots: 1000, // Keep last 1000 snapshots
+          geneticsSamplingInterval: 1, // Sample genetics every N snapshots (1 = every snapshot)
         },
       },
     }));
@@ -203,10 +204,12 @@ export const analyticsStore = defineResource({
      *
      * @param snapshotInterval - Ticks between snapshots (optional)
      * @param maxSnapshots - Maximum snapshots to keep (optional)
+     * @param geneticsSamplingInterval - Sample genetics every N snapshots (optional, 1 = every snapshot)
      */
     function updateEvolutionConfig(
       snapshotInterval?: number,
-      maxSnapshots?: number
+      maxSnapshots?: number,
+      geneticsSamplingInterval?: number
     ): void {
       store.setState((current) => ({
         ...current,
@@ -216,6 +219,9 @@ export const analyticsStore = defineResource({
             snapshotInterval:
               snapshotInterval ?? current.evolution.config.snapshotInterval,
             maxSnapshots: maxSnapshots ?? current.evolution.config.maxSnapshots,
+            geneticsSamplingInterval:
+              geneticsSamplingInterval ??
+              current.evolution.config.geneticsSamplingInterval,
           },
         },
       }));

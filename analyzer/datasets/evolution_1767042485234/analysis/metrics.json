@@ -1,0 +1,397 @@
+{
+  "population": {
+    "growth_rates": {
+      "cautious": {
+        "initial": 25,
+        "final": 399,
+        "growth_pct": 1496.0
+      },
+      "social": {
+        "initial": 24,
+        "final": 400,
+        "growth_pct": 1566.7
+      },
+      "independent": {
+        "initial": 24,
+        "final": 300,
+        "growth_pct": 1150.0
+      },
+      "explorer": {
+        "initial": 27,
+        "final": 399,
+        "growth_pct": 1377.8
+      },
+      "predator": {
+        "initial": 20,
+        "final": 300,
+        "growth_pct": 1400.0
+      }
+    },
+    "final_total": 1798,
+    "prey_predator_ratio": 4.99,
+    "duration_minutes": 6.92
+  },
+  "evolution": {
+    "trait_changes": {
+      "cautious": {
+        "speed": {
+          "mean": 0.3898,
+          "stdDev": 0.011,
+          "range": [
+            0.3031,
+            0.478
+          ]
+        },
+        "size": {
+          "mean": 0.9505,
+          "stdDev": 0.0441,
+          "range": [
+            0.7119,
+            1.1948
+          ]
+        },
+        "fearResponse": {
+          "mean": 0.5999,
+          "stdDev": 0.0094,
+          "range": [
+            0.521,
+            0.6749
+          ]
+        },
+        "sociability": {
+          "mean": 0.9968,
+          "stdDev": 0.0127,
+          "range": [
+            0.9009,
+            1
+          ]
+        }
+      },
+      "social": {
+        "speed": {
+          "mean": 0.4011,
+          "stdDev": 0.0095,
+          "range": [
+            0.3005,
+            0.4699
+          ]
+        },
+        "size": {
+          "mean": 1.0039,
+          "stdDev": 0.0359,
+          "range": [
+            0.7395,
+            1.2261
+          ]
+        },
+        "fearResponse": {
+          "mean": 0.2995,
+          "stdDev": 0.0128,
+          "range": [
+            0.2065,
+            0.3873
+          ]
+        },
+        "sociability": {
+          "mean": 0.75,
+          "stdDev": 0.0134,
+          "range": [
+            0.6554,
+            0.8389
+          ]
+        }
+      },
+      "independent": {
+        "speed": {
+          "mean": 0.4976,
+          "stdDev": 0.0157,
+          "range": [
+            0.4071,
+            0.5628
+          ]
+        },
+        "size": {
+          "mean": 1.1009,
+          "stdDev": 0.0383,
+          "range": [
+            0.9047,
+            1.3347
+          ]
+        },
+        "fearResponse": {
+          "mean": 0.8012,
+          "stdDev": 0.0156,
+          "range": [
+            0.7015,
+            0.8907
+          ]
+        },
+        "sociability": {
+          "mean": 0.0006,
+          "stdDev": 0.0056,
+          "range": [
+            0,
+            0.0639
+          ]
+        }
+      },
+      "explorer": {
+        "speed": {
+          "mean": 0.4403,
+          "stdDev": 0.0181,
+          "range": [
+            0.3376,
+            0.5351
+          ]
+        },
+        "size": {
+          "mean": 0.9061,
+          "stdDev": 0.0409,
+          "range": [
+            0.6573,
+            1.1391
+          ]
+        },
+        "fearResponse": {
+          "mean": 0.501,
+          "stdDev": 0.0178,
+          "range": [
+            0.4069,
+            0.5998
+          ]
+        },
+        "sociability": {
+          "mean": 0.2524,
+          "stdDev": 0.0181,
+          "range": [
+            0.1732,
+            0.3499
+          ]
+        }
+      },
+      "predator": {
+        "speed": {
+          "mean": 0.4511,
+          "stdDev": 0.0156,
+          "range": [
+            0.3813,
+            0.5411
+          ]
+        },
+        "size": {
+          "mean": 1.2944,
+          "stdDev": 0.0342,
+          "range": [
+            1.0682,
+            1.4707
+          ]
+        },
+        "fearResponse": {
+          "mean": 0.5012,
+          "stdDev": 0.0095,
+          "range": [
+            0.4327,
+            0.5802
+          ]
+        },
+        "sociability": {
+          "mean": 0.1272,
+          "stdDev": 0.0155,
+          "range": [
+            0.0394,
+            0.2228
+          ]
+        }
+      }
+    },
+    "generation_depth": [
+      {
+        "species": "cautious",
+        "max": 5,
+        "avg": 2.69
+      },
+      {
+        "species": "social",
+        "max": 7,
+        "avg": 3.15
+      },
+      {
+        "species": "independent",
+        "max": 4,
+        "avg": 1.82
+      },
+      {
+        "species": "explorer",
+        "max": 8,
+        "avg": 4.14
+      },
+      {
+        "species": "predator",
+        "max": 7,
+        "avg": 3.34
+      }
+    ],
+    "genetic_diversity": [
+      {
+        "species": "cautious",
+        "color_diversity": 0.5279,
+        "unique_colors": 48
+      },
+      {
+        "species": "social",
+        "color_diversity": 0.3287,
+        "unique_colors": 40
+      },
+      {
+        "species": "independent",
+        "color_diversity": 0.2936,
+        "unique_colors": 18
+      },
+      {
+        "species": "explorer",
+        "color_diversity": 0.4485,
+        "unique_colors": 79
+      },
+      {
+        "species": "predator",
+        "color_diversity": 0.1003,
+        "unique_colors": 24
+      }
+    ],
+    "reproduction_strategies": [
+      {
+        "species": "explorer",
+        "type": "sexual",
+        "max_generation": 8,
+        "avg_generation": 4.14
+      },
+      {
+        "species": "social",
+        "type": "sexual",
+        "max_generation": 7,
+        "avg_generation": 3.15
+      },
+      {
+        "species": "independent",
+        "type": "asexual",
+        "max_generation": 4,
+        "avg_generation": 1.82
+      },
+      {
+        "species": "cautious",
+        "type": "sexual",
+        "max_generation": 5,
+        "avg_generation": 2.69
+      },
+      {
+        "species": "predator",
+        "type": "sexual",
+        "max_generation": 7,
+        "avg_generation": 3.34
+      }
+    ]
+  },
+  "selection": {
+    "pressures": {
+      "cautious": [
+        {
+          "trait": "size",
+          "stdDev": 0.0441,
+          "cv": 0.0464,
+          "interpretation": "Moderate selection"
+        }
+      ],
+      "social": [
+        {
+          "trait": "size",
+          "stdDev": 0.0359,
+          "cv": 0.0357,
+          "interpretation": "Moderate selection"
+        },
+        {
+          "trait": "aggression",
+          "stdDev": 0.0156,
+          "cv": 0.052,
+          "interpretation": "Active selection"
+        }
+      ],
+      "independent": [
+        {
+          "trait": "size",
+          "stdDev": 0.0383,
+          "cv": 0.0348,
+          "interpretation": "Moderate selection"
+        },
+        {
+          "trait": "aggression",
+          "stdDev": 0.017,
+          "cv": 0.0566,
+          "interpretation": "Active selection"
+        },
+        {
+          "trait": "sociability",
+          "stdDev": 0.0056,
+          "cv": 8.741,
+          "interpretation": "Active selection"
+        },
+        {
+          "trait": "maturityRate",
+          "stdDev": 0.0309,
+          "cv": 0.0613,
+          "interpretation": "Active selection"
+        }
+      ],
+      "explorer": [
+        {
+          "trait": "size",
+          "stdDev": 0.0409,
+          "cv": 0.0452,
+          "interpretation": "Moderate selection"
+        },
+        {
+          "trait": "force",
+          "stdDev": 0.017,
+          "cv": 0.0852,
+          "interpretation": "Active selection"
+        },
+        {
+          "trait": "aggression",
+          "stdDev": 0.0184,
+          "cv": 0.0619,
+          "interpretation": "Active selection"
+        },
+        {
+          "trait": "sociability",
+          "stdDev": 0.0181,
+          "cv": 0.0716,
+          "interpretation": "Active selection"
+        },
+        {
+          "trait": "maturityRate",
+          "stdDev": 0.0231,
+          "cv": 0.0463,
+          "interpretation": "Moderate selection"
+        }
+      ],
+      "predator": [
+        {
+          "trait": "size",
+          "stdDev": 0.0342,
+          "cv": 0.0264,
+          "interpretation": "Moderate selection"
+        },
+        {
+          "trait": "sociability",
+          "stdDev": 0.0155,
+          "cv": 0.1216,
+          "interpretation": "Active selection"
+        }
+      ]
+    }
+  },
+  "extinction": {
+    "events": [],
+    "count": 0
+  },
+  "performance": {}
+}

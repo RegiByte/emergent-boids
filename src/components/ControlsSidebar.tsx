@@ -3,7 +3,8 @@ import { useResource } from "@/system";
 import { eventKeywords } from "@/boids/vocabulary/keywords";
 import {
   exportCurrentStats,
-  exportEvolutionCSV,
+  exportEvolutionJSONL,
+  exportAndDownloadMultiRate,
   copyToClipboard,
 } from "@/utils/exportData";
 import {
@@ -389,16 +390,47 @@ export function ControlsSidebar({
                   size="sm"
                   className="w-full justify-start"
                   onClick={() => {
-                    const csv = exportEvolutionCSV(analytics.evolutionHistory);
-                    copyToClipboard(csv, "Evolution Data (CSV)");
-                    toast.success("Evolution data copied!");
+                    const jsonl = exportEvolutionJSONL(analytics.evolutionHistory);
+                    copyToClipboard(jsonl, "Evolution Data (JSONL)");
+                    toast.success("Evolution data copied! (JSONL format)");
                   }}
                 >
                   📈 Copy Evolution Data
                 </Button>
 
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={async () => {
+                    try {
+                      toast.loading("Generating multi-rate export...");
+                      await exportAndDownloadMultiRate(
+                        analytics.evolutionHistory,
+                        engine,
+                        runtimeStore,
+                        {
+                          baseFilename: `evolution_${Date.now()}`,
+                          samplingRates: [1, 3, 10, 50, 100],
+                          includeMetadata: true,
+                          includeCurrentStats: true,
+                        }
+                      );
+                      toast.success("Evolution data exported as ZIP!");
+                    } catch (error) {
+                      toast.error("Failed to export evolution data");
+                      console.error(error);
+                    }
+                  }}
+                >
+                  📦 Download Multi-Rate ZIP
+                </Button>
+
                 <p className="text-xs text-muted-foreground">
-                  {analytics.evolutionHistory.length} snapshots collected
+                  {analytics.evolutionHistory.length} snapshots • Multi-rate JSONL
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Rates: 1x, 3x, 10x, 50x, 100x
                 </p>
               </SidebarGroupContent>
             </SidebarGroup>

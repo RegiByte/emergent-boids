@@ -208,11 +208,11 @@ export const phenotypeSchema = z.object({
   fearFactor: z.number(), // genome.traits.fearResponse
   minReproductionAge: z.number(), // 5 + genome.traits.maturityRate * 15
   maxAge: z.number(), // 100 + genome.traits.longevity * 200
-
+  
   // Crowd behavior (from sociability)
   crowdTolerance: z.number(), // 10 + genome.traits.sociability * 40
   crowdAversionStrength: z.number(), // 2.0 - genome.traits.sociability * 1.2
-
+  
   // Flocking weights (from sociability)
   separationWeight: z.number(), // 1.5 - genome.traits.sociability * 0.5
   alignmentWeight: z.number(), // 1.0 + genome.traits.sociability * 1.5

@@ -1,0 +1,115 @@
+{
+  "exportDate": "2025-12-29T19:03:14.965Z",
+  "exportTimestamp": 1767034994965,
+  "totalSnapshots": 701,
+  "timeRange": {
+    "start": {
+      "tick": 3,
+      "timestamp": 1767033921126,
+      "date": "2025-12-29T18:45:21.126Z"
+    },
+    "end": {
+      "tick": 2103,
+      "timestamp": 1767034993442,
+      "date": "2025-12-29T19:03:13.442Z"
+    }
+  },
+  "duration": {
+    "ticks": 2100,
+    "milliseconds": 1072316,
+    "seconds": 1072.316,
+    "minutes": 17.871933333333335
+  },
+  "samplingRates": [
+    {
+      "rate": 1,
+      "filename": "snapshots_1x.jsonl",
+      "snapshotCount": 701
+    },
+    {
+      "rate": 3,
+      "filename": "snapshots_3x.jsonl",
+      "snapshotCount": 234
+    },
+    {
+      "rate": 10,
+      "filename": "snapshots_10x.jsonl",
+      "snapshotCount": 71
+    },
+    {
+      "rate": 50,
+      "filename": "snapshots_50x.jsonl",
+      "snapshotCount": 15
+    },
+    {
+      "rate": 100,
+      "filename": "snapshots_100x.jsonl",
+      "snapshotCount": 8
+    }
+  ],
+  "species": [
+    "cautious",
+    "social",
+    "independent",
+    "explorer",
+    "predator"
+  ],
+  "config": {
+    "perceptionRadius": 50,
+    "fearRadius": 150,
+    "chaseRadius": 150,
+    "reproductionEnergyThreshold": 0.5,
+    "speciesConfigs": {
+      "explorer": {
+        "role": "prey",
+        "maxSpeed": 4.4,
+        "maxForce": 0.1,
+        "maxEnergy": 84,
+        "energyLossRate": 0,
+        "fearFactor": 0.5,
+        "reproductionType": "sexual",
+        "offspringCount": 2
+      },
+      "social": {
+        "role": "prey",
+        "maxSpeed": 4,
+        "maxForce": 0.08,
+        "maxEnergy": 60,
+        "energyLossRate": 0,
+        "fearFactor": 0.3,
+        "reproductionType": "sexual",
+        "offspringCount": 1
+      },
+      "independent": {
+        "role": "prey",
+        "maxSpeed": 5,
+        "maxForce": 0.15,
+        "maxEnergy": 72,
+        "energyLossRate": 0,
+        "fearFactor": 0.8,
+        "reproductionType": "asexual",
+        "offspringCount": 1
+      },
+      "cautious": {
+        "role": "prey",
+        "maxSpeed": 3.9,
+        "maxForce": 0.12,
+        "maxEnergy": 60,
+        "energyLossRate": 0,
+        "fearFactor": 0.6,
+        "reproductionType": "sexual",
+        "offspringCount": 2
+      },
+      "predator": {
+        "role": "predator",
+        "maxSpeed": 3.2,
+        "maxForce": 0.2,
+        "maxEnergy": 150,
+        "energyLossRate": 1,
+        "fearFactor": 0,
+        "reproductionType": "sexual",
+        "offspringCount": 1
+      }
+    }
+  }
+}

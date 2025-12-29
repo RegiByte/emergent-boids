@@ -62,6 +62,8 @@ export const analytics = defineResource({
   }) => {
     let tickCounter = 0;
     let lastSnapshotTime = Date.now();
+    let isFirstSnapshot = true; // Track if this is the first snapshot
+    let snapshotCount = 0; // Track total snapshots for genetics sampling
 
     // Event counters (reset after each snapshot)
     const eventCounters = {
@@ -169,8 +171,9 @@ export const analytics = defineResource({
       // Get atmosphere state
       const atmosphereState = ui.visualSettings.atmosphere.activeEvent;
 
-      // Build configuration snapshot
-      const activeParameters = {
+      // Build configuration snapshot (only for first snapshot to reduce file size)
+      // OPTIMIZATION: activeParameters is ~1KB and never changes, so we only include it once
+      const activeParameters = isFirstSnapshot ? {
         perceptionRadius: config.parameters.perceptionRadius,
         fearRadius: config.parameters.fearRadius,
         chaseRadius: config.parameters.chaseRadius,
@@ -204,7 +207,7 @@ export const analytics = defineResource({
             }
           >
         ),
-      };
+      } : undefined;
 
       // Ensure all species have death cause entries (even if zero)
       const deathsByCause: Record<
@@ -273,12 +276,15 @@ export const analytics = defineResource({
         // Configuration snapshot
         activeParameters,
 
-        // Genetics & Evolution
-        genetics: computeGeneticsStatsBySpecies(
-          engine.boids,
-          config.species,
-          lifecycleManager.getMutationCounters()
-        ),
+        // Genetics & Evolution (sampled based on geneticsSamplingInterval)
+        // OPTIMIZATION: Genetics is ~6KB per snapshot, sampling reduces file size significantly
+        genetics: (snapshotCount % analyticsStore.store.getState().evolution.config.geneticsSamplingInterval === 0)
+          ? computeGeneticsStatsBySpecies(
+              engine.boids,
+              config.species,
+              lifecycleManager.getMutationCounters()
+            )
+          : {}, // Empty object when not sampling (saves ~55% of snapshot size)
 
         // Atmosphere state
         atmosphere: {
@@ -294,8 +300,11 @@ export const analytics = defineResource({
       // Update analyticsStore with new snapshot
       analyticsStore.captureSnapshot(snapshot);
 
+      // Increment snapshot counter
+      snapshotCount++;
+
       // Periodic genetics stats logging (every 300 frames = ~5 seconds at 60fps)
-      if (tickCounter % 300 === 0 && tickCounter > 0) {
+      if (tickCounter % 300 === 0 && tickCounter > 0 && Object.keys(snapshot.genetics).length > 0) {
         console.log("🧬 GENETICS STATS", {
           frame: tickCounter,
           genetics: snapshot.genetics,
@@ -315,6 +324,9 @@ export const analytics = defineResource({
       eventCounters.totalFleeDistance = 0;
       eventCounters.chaseCount = 0;
       eventCounters.fleeCount = 0;
+      
+      // Mark that we've captured the first snapshot (for activeParameters optimization)
+      isFirstSnapshot = false;
     };
 
     return { unsubscribe };

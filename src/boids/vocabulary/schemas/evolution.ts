@@ -169,29 +169,33 @@ export const evolutionSnapshotSchema = z.object({
   // ============================================
   // Configuration Snapshot (what parameters were active)
   // ============================================
+  // OPTIMIZATION: Made optional to reduce file size
+  // Only included in first snapshot or when config changes
   // This allows the AI to learn: "When fearRadius=150 and population=300, X happens"
-  activeParameters: z.object({
-    // Global parameters
-    perceptionRadius: z.number(),
-    fearRadius: z.number(),
-    chaseRadius: z.number(),
-    reproductionEnergyThreshold: z.number(),
+  activeParameters: z
+    .object({
+      // Global parameters
+      perceptionRadius: z.number(),
+      fearRadius: z.number(),
+      chaseRadius: z.number(),
+      reproductionEnergyThreshold: z.number(),
 
-    // Per-species parameters (only store what varies)
-    speciesConfigs: z.record(
-      z.string(), // species ID
-      z.object({
-        role: roleSchema,
-        maxSpeed: z.number(),
-        maxForce: z.number(),
-        maxEnergy: z.number(),
-        energyLossRate: z.number(),
-        fearFactor: z.number(),
-        reproductionType: reproductionTypeSchema,
-        offspringCount: z.number(),
-      })
-    ),
-  }),
+      // Per-species parameters (only store what varies)
+      speciesConfigs: z.record(
+        z.string(), // species ID
+        z.object({
+          role: roleSchema,
+          maxSpeed: z.number(),
+          maxForce: z.number(),
+          maxEnergy: z.number(),
+          energyLossRate: z.number(),
+          fearFactor: z.number(),
+          reproductionType: reproductionTypeSchema,
+          offspringCount: z.number(),
+        })
+      ),
+    })
+    .optional(), // Made optional for size optimization
 
   // ============================================
   // Genetics & Evolution Tracking
@@ -244,6 +248,25 @@ export const evolutionSnapshotSchema = z.object({
           stdDev: z.number(),
         }),
         efficiency: z.object({
+          mean: z.number(),
+          min: z.number(),
+          max: z.number(),
+          stdDev: z.number(),
+        }),
+        // Phase 1 traits (survival-critical, evolvable)
+        fearResponse: z.object({
+          mean: z.number(),
+          min: z.number(),
+          max: z.number(),
+          stdDev: z.number(),
+        }),
+        maturityRate: z.object({
+          mean: z.number(),
+          min: z.number(),
+          max: z.number(),
+          stdDev: z.number(),
+        }),
+        longevity: z.object({
           mean: z.number(),
           min: z.number(),
           max: z.number(),

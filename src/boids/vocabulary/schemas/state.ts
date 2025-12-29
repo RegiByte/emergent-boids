@@ -164,6 +164,7 @@ export const analyticsStoreSchema = z.object({
     config: z.object({
       snapshotInterval: z.number().int().min(1).default(3), // Ticks between snapshots
       maxSnapshots: z.number().int().min(10).max(10000).default(1000), // Max history length
+      geneticsSamplingInterval: z.number().int().min(1).default(1), // Sample genetics every N snapshots (1 = every snapshot, 5 = every 5th)
     }),
   }),
 });

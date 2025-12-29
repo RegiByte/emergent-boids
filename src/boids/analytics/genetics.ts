@@ -50,6 +50,10 @@ export interface GeneticsStats {
     aggression: TraitStats;
     sociability: TraitStats;
     efficiency: TraitStats;
+    // Phase 1 traits (survival-critical)
+    fearResponse: TraitStats;
+    maturityRate: TraitStats;
+    longevity: TraitStats;
   };
   colorDiversity: number;
   uniqueColors: number;
@@ -117,6 +121,9 @@ export function computeGeneticsStats(
         aggression: { mean: 0, min: 0, max: 0, stdDev: 0 },
         sociability: { mean: 0, min: 0, max: 0, stdDev: 0 },
         efficiency: { mean: 0, min: 0, max: 0, stdDev: 0 },
+        fearResponse: { mean: 0, min: 0, max: 0, stdDev: 0 },
+        maturityRate: { mean: 0, min: 0, max: 0, stdDev: 0 },
+        longevity: { mean: 0, min: 0, max: 0, stdDev: 0 },
       },
       colorDiversity: 0,
       uniqueColors: 0,
@@ -153,6 +160,9 @@ export function computeGeneticsStats(
   const aggressions = boids.map((b) => b.genome.traits.aggression);
   const sociabilities = boids.map((b) => b.genome.traits.sociability);
   const efficiencies = boids.map((b) => b.genome.traits.efficiency);
+  const fearResponses = boids.map((b) => b.genome.traits.fearResponse);
+  const maturityRates = boids.map((b) => b.genome.traits.maturityRate);
+  const longevities = boids.map((b) => b.genome.traits.longevity);
 
   // Compute trait statistics
   const traits = {
@@ -163,6 +173,9 @@ export function computeGeneticsStats(
     aggression: computeTraitStats(aggressions),
     sociability: computeTraitStats(sociabilities),
     efficiency: computeTraitStats(efficiencies),
+    fearResponse: computeTraitStats(fearResponses),
+    maturityRate: computeTraitStats(maturityRates),
+    longevity: computeTraitStats(longevities),
   };
 
   // Color diversity - average LAB distance from species base color
@@ -259,4 +272,190 @@ export function computeGeneticsStatsBySpecies(
   }
 
   return result;
+}
+
+// ============================================
+// Evolution Metrics
+// ============================================
+
+/**
+ * Evolution metrics - Rates of change between snapshots
+ *
+ * Tracks how fast traits are evolving, how quickly generations turn over,
+ * and how strong selection pressure is.
+ */
+export interface EvolutionMetrics {
+  // Trait drift (change per tick)
+  traitDrift: {
+    speed: number;
+    size: number;
+    vision: number;
+    force: number;
+    aggression: number;
+    sociability: number;
+    efficiency: number;
+    fearResponse: number;
+    maturityRate: number;
+    longevity: number;
+  };
+
+  // Generation turnover (generations per tick)
+  generationRate: number;
+
+  // Mutation effectiveness (mutations per offspring)
+  mutationRate: {
+    traitMutations: number;
+    colorMutations: number;
+    bodyPartMutations: number;
+  };
+
+  // Selection pressure (trait variance change per tick)
+  selectionPressure: {
+    speed: number;
+    size: number;
+    vision: number;
+    force: number;
+    aggression: number;
+    sociability: number;
+    efficiency: number;
+    fearResponse: number;
+    maturityRate: number;
+    longevity: number;
+  };
+}
+
+/**
+ * Compute evolution metrics for a single species
+ *
+ * Measures how fast evolution is happening by comparing two snapshots.
+ *
+ * @param current - Current genetics stats
+ * @param previous - Previous genetics stats (or null if first snapshot)
+ * @param tickDelta - Ticks elapsed between snapshots
+ * @returns Evolution metrics
+ */
+export function computeEvolutionMetrics(
+  current: GeneticsStats,
+  previous: GeneticsStats | null,
+  tickDelta: number
+): EvolutionMetrics {
+  if (!previous || tickDelta === 0) {
+    // First snapshot or no time elapsed - return zero rates
+    return {
+      traitDrift: {
+        speed: 0,
+        size: 0,
+        vision: 0,
+        force: 0,
+        aggression: 0,
+        sociability: 0,
+        efficiency: 0,
+        fearResponse: 0,
+        maturityRate: 0,
+        longevity: 0,
+      },
+      generationRate: 0,
+      mutationRate: {
+        traitMutations: 0,
+        colorMutations: 0,
+        bodyPartMutations: 0,
+      },
+      selectionPressure: {
+        speed: 0,
+        size: 0,
+        vision: 0,
+        force: 0,
+        aggression: 0,
+        sociability: 0,
+        efficiency: 0,
+        fearResponse: 0,
+        maturityRate: 0,
+        longevity: 0,
+      },
+    };
+  }
+
+  // Trait drift - change in mean per tick
+  const traitDrift = {
+    speed: (current.traits.speed.mean - previous.traits.speed.mean) / tickDelta,
+    size: (current.traits.size.mean - previous.traits.size.mean) / tickDelta,
+    vision:
+      (current.traits.vision.mean - previous.traits.vision.mean) / tickDelta,
+    force: (current.traits.force.mean - previous.traits.force.mean) / tickDelta,
+    aggression:
+      (current.traits.aggression.mean - previous.traits.aggression.mean) /
+      tickDelta,
+    sociability:
+      (current.traits.sociability.mean - previous.traits.sociability.mean) /
+      tickDelta,
+    efficiency:
+      (current.traits.efficiency.mean - previous.traits.efficiency.mean) /
+      tickDelta,
+    fearResponse:
+      (current.traits.fearResponse.mean - previous.traits.fearResponse.mean) /
+      tickDelta,
+    maturityRate:
+      (current.traits.maturityRate.mean - previous.traits.maturityRate.mean) /
+      tickDelta,
+    longevity:
+      (current.traits.longevity.mean - previous.traits.longevity.mean) /
+      tickDelta,
+  };
+
+  // Generation turnover - change in max generation per tick
+  const generationRate =
+    (current.maxGeneration - previous.maxGeneration) / tickDelta;
+
+  // Mutation rates - mutations per offspring
+  const totalOffspring = current.mutationsSinceLastSnapshot.totalOffspring || 1; // Avoid division by zero
+  const mutationRate = {
+    traitMutations:
+      current.mutationsSinceLastSnapshot.traitMutations / totalOffspring,
+    colorMutations:
+      current.mutationsSinceLastSnapshot.colorMutations / totalOffspring,
+    bodyPartMutations:
+      current.mutationsSinceLastSnapshot.bodyPartMutations / totalOffspring,
+  };
+
+  // Selection pressure - change in trait variance (stdDev) per tick
+  // Positive = increasing variance (diversifying selection)
+  // Negative = decreasing variance (directional selection)
+  const selectionPressure = {
+    speed:
+      (current.traits.speed.stdDev - previous.traits.speed.stdDev) / tickDelta,
+    size:
+      (current.traits.size.stdDev - previous.traits.size.stdDev) / tickDelta,
+    vision:
+      (current.traits.vision.stdDev - previous.traits.vision.stdDev) /
+      tickDelta,
+    force:
+      (current.traits.force.stdDev - previous.traits.force.stdDev) / tickDelta,
+    aggression:
+      (current.traits.aggression.stdDev - previous.traits.aggression.stdDev) /
+      tickDelta,
+    sociability:
+      (current.traits.sociability.stdDev - previous.traits.sociability.stdDev) /
+      tickDelta,
+    efficiency:
+      (current.traits.efficiency.stdDev - previous.traits.efficiency.stdDev) /
+      tickDelta,
+    fearResponse:
+      (current.traits.fearResponse.stdDev -
+        previous.traits.fearResponse.stdDev) /
+      tickDelta,
+    maturityRate:
+      (current.traits.maturityRate.stdDev -
+        previous.traits.maturityRate.stdDev) /
+      tickDelta,
+    longevity:
+      (current.traits.longevity.stdDev - previous.traits.longevity.stdDev) /
+      tickDelta,
+  };
+
+  return {
+    traitDrift,
+    generationRate,
+    mutationRate,
+    selectionPressure,
+  };
 }

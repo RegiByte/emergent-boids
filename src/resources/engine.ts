@@ -15,6 +15,7 @@ import type { Profiler } from "./profiler";
 import { RandomnessResource } from "./randomness";
 import type { RuntimeStoreResource } from "./runtimeStore";
 import { defaultWorldPhysics } from "./defaultPhysics";
+import { WorldPhysics } from "@/boids/vocabulary/schemas/genetics";
 
 export type CatchEvent = {
   predatorId: string;
@@ -60,7 +61,9 @@ export const engine = defineResource({
     const boids: Boid[] = [];
 
     // Get physics from config (or use defaults)
-    const physics = (initialConfig as any).physics || defaultWorldPhysics;
+    const physics =
+      (initialConfig as unknown as { physics?: WorldPhysics }).physics ||
+      defaultWorldPhysics;
 
     // Build creation context
     const creationContext = {
@@ -283,7 +286,9 @@ export const engine = defineResource({
       predatorTypeIds = [...currentPredatorTypeIds];
 
       // Get physics from config (or use defaults)
-      const resetPhysics = (cfg as any).physics || defaultWorldPhysics;
+      const resetPhysics =
+        (cfg as unknown as { physics?: WorldPhysics }).physics ||
+        defaultWorldPhysics;
 
       // Build creation context
       const creationContext = {

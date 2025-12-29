@@ -3,21 +3,38 @@ Data Loading Module - Pure functional data loading and parsing
 
 Philosophy: Simple functions compose. Each loader is a pure function.
 No classes, just functions that transform data.
+
+Supports both legacy CSV format and new JSONL format.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import pandas as pd
 import json
 
+# Import JSONL loader
+try:
+    from .jsonl_loader import (
+        load_evolution_jsonl,
+        load_evolution_data as load_evolution_auto,
+        detect_species_from_snapshots,
+    )
+except ImportError:
+    # Running as main script
+    from jsonl_loader import (
+        load_evolution_jsonl,
+        load_evolution_data as load_evolution_auto,
+        detect_species_from_snapshots,
+    )
+
 
 # ============================================
-# CSV Data Loading
+# CSV Data Loading (Legacy)
 # ============================================
 
 def load_evolution_csv(csv_path: str) -> pd.DataFrame:
     """
-    Load evolution CSV data with new schema
+    Load evolution CSV data with legacy schema
     
     Returns DataFrame with all evolution snapshot data including:
     - Population counts per species
@@ -25,6 +42,8 @@ def load_evolution_csv(csv_path: str) -> pd.DataFrame:
     - Energy statistics
     - Environment state
     - Atmosphere events
+    
+    Note: CSV format is deprecated. Use JSONL format for full data coverage.
     """
     df = pd.read_csv(csv_path)
     df['date'] = pd.to_datetime(df['date'])
@@ -35,6 +54,36 @@ def load_stats_json(json_path: str) -> Dict:
     """Load current stats JSON snapshot"""
     with open(json_path, 'r') as f:
         return json.load(f)
+
+
+# ============================================
+# Unified Data Loading (CSV or JSONL)
+# ============================================
+
+def load_evolution_data(file_path: str, format: str = 'auto') -> Tuple[pd.DataFrame, Optional[Dict], Dict]:
+    """
+    Load evolution data from CSV or JSONL (auto-detect)
+    
+    Args:
+        file_path: Path to data file (.csv or .jsonl)
+        format: Output format - 'auto', 'flat', 'csv', or 'raw'
+            - 'auto': Auto-detect and use CSV-compatible format (default)
+            - 'flat': Flatten nested structures
+            - 'csv': Legacy CSV-compatible format
+            - 'raw': Keep nested structures
+    
+    Returns tuple of (DataFrame, config, metadata).
+    - For CSV files: config and metadata will be None and {}
+    - For JSONL files: config and metadata extracted from headers
+    
+    Example:
+        # Auto-detect format
+        df, config, metadata = load_evolution_data('evolution.jsonl')
+        
+        # Force CSV compatibility
+        df, _, _ = load_evolution_data('evolution.jsonl', format='csv')
+    """
+    return load_evolution_auto(file_path, format)
 
 
 # ============================================
@@ -275,22 +324,45 @@ def compose(*functions):
 # ============================================
 
 if __name__ == '__main__':
-    # Test with actual data
-    csv_path = '../../evolution.csv'
+    import sys
     
-    if not Path(csv_path).exists():
-        print(f"❌ {csv_path} not found")
-        exit(1)
+    # Test with actual data (prefer JSONL, fallback to CSV)
+    if len(sys.argv) > 1:
+        data_path = sys.argv[1]
+    else:
+        # Try JSONL first, then CSV
+        jsonl_path = '../../datasets/evolution.jsonl'
+        csv_path = '../../datasets/evolution.csv'
+        
+        if Path(jsonl_path).exists():
+            data_path = jsonl_path
+        elif Path(csv_path).exists():
+            data_path = csv_path
+        else:
+            print(f"❌ No data file found")
+            print(f"   Tried: {jsonl_path}, {csv_path}")
+            sys.exit(1)
+    
+    if not Path(data_path).exists():
+        print(f"❌ {data_path} not found")
+        sys.exit(1)
     
     print("🧪 Testing data loader...")
+    print(f"📂 Loading: {data_path}\n")
     
-    # Load data
-    df = load_evolution_csv(csv_path)
+    # Load data (auto-detect format)
+    df, config, metadata = load_evolution_data(data_path, format='csv')
     print(f"✅ Loaded {len(df)} snapshots")
+    
+    # Print metadata if available
+    if metadata:
+        print(f"\n📋 Metadata:")
+        for key, value in list(metadata.items())[:5]:  # Show first 5
+            print(f"  {key}: {value}")
     
     # Detect species
     species = detect_species_from_columns(df)
-    print(f"✅ Detected species: {', '.join(species)}")
+    print(f"\n🦠 Detected {len(species)} species: {', '.join(species)}")
     
     # Partition by role
     by_role = partition_species_by_role(species)

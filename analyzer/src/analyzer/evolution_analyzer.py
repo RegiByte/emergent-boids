@@ -1,10 +1,14 @@
 """
 Evolution Analyzer - Analyze boid simulation evolution data
 
-Updated to work with new schema including death causes and atmosphere events.
+Updated to work with new JSONL format and legacy CSV format.
 Functional approach - each plot is a pure function.
 
 Philosophy: Simple functions compose. Each plot is a pure function.
+
+Supports both:
+- Legacy CSV format (deprecated, ~10% data coverage)
+- New JSONL format (recommended, 100% data coverage)
 """
 
 import json
@@ -15,15 +19,32 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# Import unified data loader
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent / 'ml'))
+from jsonl_loader import load_evolution_data as load_evolution_auto
+
 
 # ============================================
 # Data Loading & Species Detection
 # ============================================
 
-def load_evolution_data(csv_path: str) -> pd.DataFrame:
-    """Load evolution CSV data with new schema"""
-    df = pd.read_csv(csv_path)
-    df['date'] = pd.to_datetime(df['date'])
+def load_evolution_data(file_path: str) -> pd.DataFrame:
+    """
+    Load evolution data from CSV or JSONL (auto-detect)
+    
+    Args:
+        file_path: Path to data file (.csv or .jsonl)
+    
+    Returns DataFrame with evolution snapshot data.
+    For JSONL files, converts to CSV-compatible format.
+    """
+    df, config, metadata = load_evolution_auto(file_path, format='csv')
+    
+    # Ensure 'date' column exists (JSONL uses 'timestamp')
+    if 'timestamp' in df.columns and 'date' not in df.columns:
+        df['date'] = df['timestamp']
+    
     return df
 
 
@@ -453,18 +474,31 @@ def print_summary_report(stats: Dict, species: List[str], equilibrium_tick: Opti
     print("\n" + "="*70)
 
 
-def generate_full_report(csv_path: str, output_dir: str = './analysis', 
+def generate_full_report(data_path: str, output_dir: str = './analysis', 
                         stats_json_path: Optional[str] = None):
     """
     Generate complete analysis report with all plots
     
-    Main entry point for analysis
+    Main entry point for analysis.
+    Supports both CSV and JSONL formats (auto-detect).
+    
+    Args:
+        data_path: Path to evolution data file (.csv or .jsonl)
+        output_dir: Directory to save plots
+        stats_json_path: Optional path to stats.json file
     """
     print("\n🚀 Starting Evolution Analysis...")
-    print(f"📂 Loading data from: {csv_path}")
+    print(f"📂 Loading data from: {data_path}")
+    
+    # Detect format
+    file_ext = Path(data_path).suffix
+    if file_ext == '.jsonl':
+        print(f"   Format: JSONL (100% data coverage)")
+    elif file_ext == '.csv':
+        print(f"   Format: CSV (legacy, ~10% data coverage)")
     
     # Load data
-    df = load_evolution_data(csv_path)
+    df = load_evolution_data(data_path)
     
     # Detect species
     species = detect_species_from_csv(df)
@@ -513,16 +547,34 @@ def generate_full_report(csv_path: str, output_dir: str = './analysis',
 # ============================================
 
 if __name__ == '__main__':
-    # Default paths (can be overridden)
-    csv_path = 'evolution.csv'
-    stats_path = 'stats.json'
+    import sys
+    
+    # Default paths (can be overridden via command line)
+    if len(sys.argv) > 1:
+        data_path = sys.argv[1]
+    else:
+        # Try JSONL first (preferred), then CSV (legacy)
+        jsonl_path = 'datasets/evolution.jsonl'
+        csv_path = 'datasets/evolution.csv'
+        
+        if Path(jsonl_path).exists():
+            data_path = jsonl_path
+        elif Path(csv_path).exists():
+            data_path = csv_path
+        else:
+            print(f"❌ Error: No evolution data file found")
+            print(f"   Tried: {jsonl_path}, {csv_path}")
+            print(f"   Usage: python evolution_analyzer.py [path/to/evolution.jsonl]")
+            sys.exit(1)
+    
+    stats_path = 'datasets/stats.json'
     output_dir = './analysis'
     
-    # Check if files exist
-    if not Path(csv_path).exists():
-        print(f"❌ Error: {csv_path} not found")
-        print(f"   Please run this script from the analyzer directory")
-        exit(1)
+    # Check if data file exists
+    if not Path(data_path).exists():
+        print(f"❌ Error: {data_path} not found")
+        print(f"   Usage: python evolution_analyzer.py [path/to/evolution.jsonl]")
+        sys.exit(1)
     
     # Run analysis
-    generate_full_report(csv_path, output_dir, stats_path)
+    generate_full_report(data_path, output_dir, stats_path)

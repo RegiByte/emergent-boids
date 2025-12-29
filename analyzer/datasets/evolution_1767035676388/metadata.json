@@ -1,0 +1,58 @@
+{
+  "exportDate": "2025-12-29T19:14:36.388Z",
+  "exportTimestamp": 1767035676388,
+  "totalSnapshots": 1000,
+  "timeRange": {
+    "start": {
+      "tick": 447,
+      "timestamp": 1767034148715,
+      "date": "2025-12-29T18:49:08.715Z"
+    },
+    "end": {
+      "tick": 3444,
+      "timestamp": 1767035676111,
+      "date": "2025-12-29T19:14:36.111Z"
+    }
+  },
+  "duration": {
+    "ticks": 2997,
+    "milliseconds": 1527396,
+    "seconds": 1527.396,
+    "minutes": 25.4566
+  },
+  "samplingRates": [
+    {
+      "rate": 1,
+      "filename": "snapshots_1x.jsonl",
+      "snapshotCount": 1000
+    },
+    {
+      "rate": 3,
+      "filename": "snapshots_3x.jsonl",
+      "snapshotCount": 334
+    },
+    {
+      "rate": 10,
+      "filename": "snapshots_10x.jsonl",
+      "snapshotCount": 100
+    },
+    {
+      "rate": 50,
+      "filename": "snapshots_50x.jsonl",
+      "snapshotCount": 20
+    },
+    {
+      "rate": 100,
+      "filename": "snapshots_100x.jsonl",
+      "snapshotCount": 10
+    }
+  ],
+  "species": [
+    "cautious",
+    "social",
+    "independent",
+    "explorer",
+    "predator"
+  ],
+  "config": null
+}
