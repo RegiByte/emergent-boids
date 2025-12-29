@@ -2,6 +2,7 @@ import type { BoidEngine } from "../resources/engine";
 
 import { RuntimeStore } from "../boids/vocabulary/schemas/state.ts";
 import { EvolutionSnapshot } from "@/boids/vocabulary/schemas/evolution.ts";
+import { computeGeneticsStatsBySpecies } from "@/boids/analytics/genetics";
 
 /**
  * Export Utilities
@@ -17,7 +18,13 @@ import { EvolutionSnapshot } from "@/boids/vocabulary/schemas/evolution.ts";
  */
 export function exportCurrentStats(
   engine: BoidEngine,
-  runtimeStore: RuntimeStore
+  runtimeStore: RuntimeStore,
+  mutationCounters?: Record<string, {
+    traitMutations: number;
+    colorMutations: number;
+    bodyPartMutations: number;
+    totalOffspring: number;
+  }>
 ): string {
   const { config, simulation } = runtimeStore;
 
@@ -86,6 +93,13 @@ export function exportCurrentStats(
     total: simulation.foodSources.length,
   };
 
+  // Compute genetics statistics
+  const genetics = computeGeneticsStatsBySpecies(
+    engine.boids,
+    config.species,
+    mutationCounters || {}
+  );
+
   // Build export object
   const exportData = {
     timestamp: Date.now(),
@@ -102,6 +116,7 @@ export function exportCurrentStats(
     energy: energyStats,
     stances: stancesByType,
     foodSources,
+    genetics, // NEW: Evolution & genetics data
     config: {
       maxBoids: config.parameters.maxBoids,
       maxPreyBoids: config.parameters.maxPreyBoids,

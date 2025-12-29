@@ -178,3 +178,20 @@ export const saturate = (color: string, amount = 1): string => {
 export const desaturate = (color: string, amount = 1): string => {
   return chroma(color).desaturate(amount).hex();
 };
+
+/**
+ * Calculate perceptual distance between two colors using DeltaE (LAB color space)
+ * Uses CIE76 formula - perceptually uniform distance metric
+ *
+ * @param color1 - First color
+ * @param color2 - Second color
+ * @returns Distance value (0 = identical, 100 = very different)
+ *          < 1.0 = imperceptible difference
+ *          1-2 = perceptible through close observation
+ *          2-10 = perceptible at a glance
+ *          11-49 = colors are more similar than opposite
+ *          100+ = colors are exact opposite
+ */
+export const colorDistance = (color1: string, color2: string): number => {
+  return chroma.deltaE(color1, color2);
+};

@@ -69,6 +69,7 @@ export function ControlsSidebar({
   const analytics = useAnalyticsStore((state) => state.evolution.data);
   const runtimeController = useResource("runtimeController");
   const engine = useResource("engine");
+  const lifecycleManager = useResource("lifecycleManager");
   const randomness = useResource("randomness");
   const time = useResource("time");
   const timeState = time.useStore((state) => state);
@@ -371,7 +372,11 @@ export function ControlsSidebar({
                   size="sm"
                   className="w-full justify-start"
                   onClick={() => {
-                    const json = exportCurrentStats(engine, runtimeStore);
+                    const json = exportCurrentStats(
+                      engine,
+                      runtimeStore,
+                      lifecycleManager.getMutationCounters()
+                    );
                     copyToClipboard(json, "Current Stats (JSON)");
                     toast.success("Stats copied to clipboard!");
                   }}

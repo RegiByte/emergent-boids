@@ -22,8 +22,8 @@ export const stableEcosystemProfile: SimulationProfile = {
     width: 2000,
     height: 2000,
     backgroundColor: "#0369a1", // Deep space blue-black
-    initialPreyCount: 200,
-    initialPredatorCount: 100, // Predators emerge from prey evolution
+    initialPreyCount: 250,
+    initialPredatorCount: 50, // Predators emerge from prey evolution
   },
 
   parameters: {

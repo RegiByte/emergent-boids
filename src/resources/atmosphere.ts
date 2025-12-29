@@ -184,16 +184,14 @@ export const atmosphere = defineResource({
 
       // 5. Population boom
       if (totalPop > initialPop * 1.5 && totalPop > 100) {
-        const event = {
+        runtimeController.dispatch({
           type: eventKeywords.atmosphere.eventStarted,
           eventType: "population-boom",
           settings: {
             fogColor: "rgba(0, 200, 100, 0.5)", // Bright green
           },
           minDurationTicks: MIN_EVENT_DURATION,
-        } as const;
-        console.log("Population boom event:", event);
-        runtimeController.dispatch(event);
+        } as const);
         resetDetectionWindow();
         return;
       }

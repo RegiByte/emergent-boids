@@ -182,6 +182,14 @@ export const speciesConfigSchema = z.object({
     offspringCount: z.number(), // Number of offspring per reproduction (1-2 for twins)
     offspringEnergyBonus: z.number(), // Extra starting energy for offspring (0-1 ratio)
     cooldownTicks: z.number().optional(), // Ticks to wait before reproducing again (overrides global)
+    mutationConfig: z
+      .object({
+        traitRate: z.number().min(0).max(1).optional(), // Mutation chance per trait (default 0.05)
+        traitMagnitude: z.number().min(0).max(1).optional(), // Mutation magnitude (default 0.1)
+        visualRate: z.number().min(0).max(1).optional(), // Body part mutation chance (default 0.02)
+        colorRate: z.number().min(0).max(1).optional(), // Color mutation chance (default 0.1)
+      })
+      .optional(), // Optional mutation configuration (uses defaults if not provided)
   }),
 
   // Limits - Population caps and parameter overrides

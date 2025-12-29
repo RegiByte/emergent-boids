@@ -194,6 +194,86 @@ export const evolutionSnapshotSchema = z.object({
   }),
 
   // ============================================
+  // Genetics & Evolution Tracking
+  // ============================================
+  // Tracks genome-level changes and trait drift over generations
+  genetics: z.record(
+    z.string(), // species ID
+    z.object({
+      // Generation distribution
+      generationDistribution: z.record(z.string(), z.number()), // {"0": 10, "1": 45, "2": 23, ...}
+      maxGeneration: z.number(),
+      avgGeneration: z.number(),
+
+      // Trait statistics (raw values, 0-1 range for most traits)
+      traits: z.object({
+        speed: z.object({
+          mean: z.number(),
+          min: z.number(),
+          max: z.number(),
+          stdDev: z.number(),
+        }),
+        size: z.object({
+          mean: z.number(),
+          min: z.number(),
+          max: z.number(),
+          stdDev: z.number(),
+        }),
+        vision: z.object({
+          mean: z.number(),
+          min: z.number(),
+          max: z.number(),
+          stdDev: z.number(),
+        }),
+        force: z.object({
+          mean: z.number(),
+          min: z.number(),
+          max: z.number(),
+          stdDev: z.number(),
+        }),
+        aggression: z.object({
+          mean: z.number(),
+          min: z.number(),
+          max: z.number(),
+          stdDev: z.number(),
+        }),
+        sociability: z.object({
+          mean: z.number(),
+          min: z.number(),
+          max: z.number(),
+          stdDev: z.number(),
+        }),
+        efficiency: z.object({
+          mean: z.number(),
+          min: z.number(),
+          max: z.number(),
+          stdDev: z.number(),
+        }),
+      }),
+
+      // Color diversity metrics
+      colorDiversity: z.number(), // Average LAB distance from species base color
+      uniqueColors: z.number(), // Count of distinct colors (quantized to reduce noise)
+
+      // Body parts statistics
+      bodyPartStats: z.object({
+        avgPartsPerBoid: z.number(),
+        minParts: z.number(),
+        maxParts: z.number(),
+        partTypeCounts: z.record(z.string(), z.number()), // {"eyes": 45, "fins": 23, ...}
+      }),
+
+      // Mutation tracking (since last snapshot)
+      mutationsSinceLastSnapshot: z.object({
+        traitMutations: z.number(), // Count of trait mutations
+        colorMutations: z.number(), // Count of color mutations
+        bodyPartMutations: z.number(), // Count of body part changes
+        totalOffspring: z.number(), // Total offspring created
+      }),
+    })
+  ),
+
+  // ============================================
   // Atmosphere/Events (emergent drama detection)
   // ============================================
   atmosphere: z.object({

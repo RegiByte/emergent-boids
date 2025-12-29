@@ -13,7 +13,9 @@ import {
   computeFoodSourceStatsByType,
   computeDeathMarkerStats,
 } from "@/boids/analytics/statistics";
+import { computeGeneticsStatsBySpecies } from "@/boids/analytics/genetics";
 import { EvolutionSnapshot } from "@/boids/vocabulary/schemas/evolution.ts";
+import { LifecycleManagerResource } from "./lifecycleManager";
 
 /**
  * Analytics Resource
@@ -43,17 +45,20 @@ export const analytics = defineResource({
     "runtimeController",
     "runtimeStore",
     "analyticsStore",
+    "lifecycleManager",
   ],
   start: ({
     engine,
     runtimeController,
     runtimeStore,
     analyticsStore,
+    lifecycleManager,
   }: {
     engine: BoidEngine;
     runtimeController: RuntimeController;
     runtimeStore: RuntimeStoreResource;
     analyticsStore: AnalyticsStoreResource;
+    lifecycleManager: LifecycleManagerResource;
   }) => {
     let tickCounter = 0;
     let lastSnapshotTime = Date.now();
@@ -270,6 +275,13 @@ export const analytics = defineResource({
         // Configuration snapshot
         activeParameters,
 
+        // Genetics & Evolution
+        genetics: computeGeneticsStatsBySpecies(
+          engine.boids,
+          config.species,
+          lifecycleManager.getMutationCounters()
+        ),
+
         // Atmosphere state
         atmosphere: {
           activeEvent: atmosphereState?.eventType || null,
@@ -284,12 +296,23 @@ export const analytics = defineResource({
       // Update analyticsStore with new snapshot
       analyticsStore.captureSnapshot(snapshot);
 
+      // Periodic genetics stats logging (every 300 frames = ~5 seconds at 60fps)
+      if (tickCounter % 300 === 0 && tickCounter > 0) {
+        console.log("🧬 GENETICS STATS", {
+          frame: tickCounter,
+          genetics: snapshot.genetics,
+        });
+      }
+
       // Reset event counters
       eventCounters.births = {};
       eventCounters.deaths = {};
       eventCounters.deathsByCause = {};
       eventCounters.catches = {};
       eventCounters.escapes = {};
+
+      // Reset mutation counters
+      lifecycleManager.resetMutationCounters();
       eventCounters.totalChaseDistance = 0;
       eventCounters.totalFleeDistance = 0;
       eventCounters.chaseCount = 0;

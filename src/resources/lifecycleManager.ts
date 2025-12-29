@@ -1,4 +1,4 @@
-import { defineResource } from "braided";
+import { defineResource, StartedResource } from "braided";
 import type { BoidEngine } from "./engine";
 import type { RuntimeController } from "./runtimeController";
 import type { RuntimeStoreResource } from "./runtimeStore";
@@ -22,6 +22,7 @@ import {
 } from "../boids/foodManager";
 import { processDeathMarkers, fadeDeathMarkers } from "../boids/deathMarkers";
 import { RandomnessResource } from "./randomness";
+import type { WorldPhysics } from "../boids/vocabulary/schemas/genetics";
 
 /**
  * Lifecycle Manager
@@ -64,6 +65,21 @@ export const lifecycleManager = defineResource({
     const store = runtimeStore.store;
     // Tick counter for periodic events
     let tickCounter = 0;
+
+    // Evolution tracking (temporary for debugging)
+    let totalOffspring = 0;
+    const generationStats = new Map<number, number>(); // generation -> count
+
+    // Mutation counters per species (reset after each snapshot)
+    const mutationCountersBySpecies: Record<
+      string,
+      {
+        traitMutations: number;
+        colorMutations: number;
+        bodyPartMutations: number;
+        totalOffspring: number;
+      }
+    > = {};
 
     // Subscribe to events
     const unsubscribe = runtimeController.subscribe((event) => {
@@ -136,6 +152,32 @@ export const lifecycleManager = defineResource({
         profiler.end("lifecycle.spawnFood");
       }
 
+      // Log evolution stats every 300 ticks (~5 seconds at 60fps)
+      if (tickCounter % 300 === 0 && totalOffspring > 0) {
+        const currentBoids = engine.boids;
+        const genCounts = new Map<number, number>();
+        const colorVariety = new Map<string, number>();
+
+        currentBoids.forEach((boid) => {
+          if (boid.genome) {
+            const gen = boid.genome.generation;
+            genCounts.set(gen, (genCounts.get(gen) || 0) + 1);
+
+            const color = boid.genome.visual.color;
+            colorVariety.set(color, (colorVariety.get(color) || 0) + 1);
+          }
+        });
+
+        console.log("📊 EVOLUTION STATS", {
+          tick: tickCounter,
+          totalOffspring: totalOffspring,
+          currentPopulation: currentBoids.length,
+          generationDistribution: Object.fromEntries(genCounts),
+          uniqueColors: colorVariety.size,
+          maxGeneration: Math.max(...Array.from(genCounts.keys())),
+        });
+      }
+
       profiler.end("lifecycle.total");
     };
 
@@ -165,7 +207,10 @@ export const lifecycleManager = defineResource({
         typeId: string;
         position: { x: number; y: number };
       }>;
-      deathEvents: Array<{ boidId: string; reason: "old_age" | "starvation" }>;
+      deathEvents: Array<{
+        boidId: string;
+        reason: "old_age" | "starvation" | "predation";
+      }>;
       reproductionEvents: Array<{
         parent1Id: string;
         parent2Id?: string;
@@ -221,6 +266,12 @@ export const lifecycleManager = defineResource({
         const energyBonus =
           speciesConfig.reproduction.offspringEnergyBonus || 0;
 
+        // Get parent genomes for inheritance
+        const parent1 = engine.getBoidById(offspring.parent1Id);
+        const parent2 = offspring.parent2Id
+          ? engine.getBoidById(offspring.parent2Id)
+          : undefined;
+
         // Spawn multiple offspring if configured
         for (let i = 0; i < offspringCount; i++) {
           // Count current population of this specific type
@@ -246,7 +297,11 @@ export const lifecycleManager = defineResource({
 
           if (canSpawn) {
             const { width, height } = store.getState().config.world;
-            const physics = (store.getState().config as any).physics;
+            const configState = store.getState().config;
+            const physics =
+              "physics" in configState
+                ? (configState as { physics: WorldPhysics }).physics
+                : undefined;
             const creationContext = {
               world: {
                 width,
@@ -256,13 +311,50 @@ export const lifecycleManager = defineResource({
               rng: randomness.domain("reproduction"),
               physics,
             };
-            const newBoid = createBoidOfType(
+
+            // Build parent genomes for inheritance (if parents exist)
+            const parentGenomes =
+              parent1 && parent1.genome
+                ? {
+                    parent1: parent1.genome,
+                    parent2: parent2?.genome,
+                  }
+                : undefined;
+
+            const result = createBoidOfType(
               offspring.position,
               offspring.typeId,
               creationContext,
-              energyBonus // Apply energy bonus
+              energyBonus, // Apply energy bonus
+              parentGenomes // Pass parent genomes for inheritance
             );
+            const newBoid = result.boid;
             engine.addBoid(newBoid);
+
+            // Track evolution stats (temporary for debugging)
+            totalOffspring++;
+            const gen = newBoid.genome.generation;
+            generationStats.set(gen, (generationStats.get(gen) || 0) + 1);
+
+            // Track mutations per species
+            if (result.mutationMetadata) {
+              if (!mutationCountersBySpecies[offspring.typeId]) {
+                mutationCountersBySpecies[offspring.typeId] = {
+                  traitMutations: 0,
+                  colorMutations: 0,
+                  bodyPartMutations: 0,
+                  totalOffspring: 0,
+                };
+              }
+              const counters = mutationCountersBySpecies[offspring.typeId];
+              counters.totalOffspring++;
+              if (result.mutationMetadata.hadTraitMutation)
+                counters.traitMutations++;
+              if (result.mutationMetadata.hadColorMutation)
+                counters.colorMutations++;
+              if (result.mutationMetadata.hadBodyPartMutation)
+                counters.bodyPartMutations++;
+            }
 
             // Dispatch reproduction event (only for first offspring to avoid spam)
             if (i === 0) {
@@ -327,11 +419,12 @@ export const lifecycleManager = defineResource({
         species: runtimeTypes,
         rng: randomness.domain("spawning"),
       };
-      const newPredator = createBoidOfType(
+      const result = createBoidOfType(
         { x, y },
         predatorTypeId,
         creationContext
       );
+      const newPredator = result.boid;
 
       engine.addBoid(newPredator);
     };
@@ -433,9 +526,19 @@ export const lifecycleManager = defineResource({
       }
     };
 
-    return { unsubscribe };
+    return {
+      unsubscribe,
+      getMutationCounters: () => mutationCountersBySpecies,
+      resetMutationCounters: () => {
+        for (const key of Object.keys(mutationCountersBySpecies)) {
+          delete mutationCountersBySpecies[key];
+        }
+      },
+    };
   },
   halt: ({ unsubscribe }) => {
     unsubscribe();
   },
 });
+
+export type LifecycleManagerResource = StartedResource<typeof lifecycleManager>;

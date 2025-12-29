@@ -20,10 +20,11 @@ import * as vec from "./vector";
 import type { DomainRNG } from "@/lib/seededRandom";
 import type { Vector2 } from "./vocabulary/schemas/prelude.ts";
 import { roleKeywords } from "./vocabulary/keywords.ts";
-import type { WorldPhysics } from "./vocabulary/schemas/genetics";
+import type { WorldPhysics, Genome, MutationConfig } from "./vocabulary/schemas/genetics";
 import { computePhenotype, createGenesisGenome } from "./genetics/phenotype";
 import { convertLegacyConfigToGenome } from "./genetics/legacyConversion";
 import { defaultWorldPhysics } from "@/resources/defaultPhysics";
+import { inheritGenome, DEFAULT_MUTATION_CONFIG } from "./genetics/inheritance";
 
 let boidIdCounter = 0;
 
@@ -73,11 +74,9 @@ export function createBoid(
 
   const role = speciesConfig?.role || roleKeywords.prey;
 
-  // Randomize initial age to prevent synchronized deaths
-  // Start between 0 and 30% of max age to create age diversity
-  const maxAge = speciesConfig?.lifecycle?.maxAge || 90;
-  const randomAge = rng.range(0, maxAge * 0.3);
-  const effectiveAge = age !== null ? age : randomAge;
+  // Start all genesis boids at age 0 to prevent immediate reproduction explosion
+  // Age diversity will naturally emerge over time through births/deaths
+  const effectiveAge = age !== null ? age : 0;
 
   // Create genome from species config (new or legacy format)
   const genome = speciesConfig.baseGenome
@@ -111,7 +110,7 @@ export function createBoid(
     energy: phenotype.maxEnergy / 2, // Start at half energy
     health: phenotype.maxHealth, // Start at full health
 
-    age: effectiveAge, // Randomized initial age (0-30% of max age)
+    age: effectiveAge, // Age 0 for genesis boids, actual age for offspring
     reproductionCooldown: 0, // Start ready to mate
     seekingMate: false, // Not seeking initially
     mateId: null, // No mate initially
@@ -126,26 +125,75 @@ export function createBoid(
 
 /**
  * Create a new boid of a specific type (for reproduction)
+ * 
+ * If parent genomes are provided, offspring inherits from parent(s) with mutations.
+ * Otherwise, creates a genesis genome from species config (initial spawning).
+ * 
+ * @returns Boid and mutation metadata (if inherited from parents)
  */
 export function createBoidOfType(
   position: { x: number; y: number },
   typeId: string,
   context: BoidCreationContext,
-  energyBonus: number = 0 // Optional energy bonus for offspring (0-1)
-): Boid {
+  energyBonus: number = 0, // Optional energy bonus for offspring (0-1)
+  parentGenomes?: { parent1: Genome; parent2?: Genome } // Optional parent genomes for inheritance
+): {
+  boid: Boid;
+  mutationMetadata: {
+    hadTraitMutation: boolean;
+    hadColorMutation: boolean;
+    hadBodyPartMutation: boolean;
+  } | null;
+} {
   const { world, species, rng, physics = defaultWorldPhysics } = context;
   const speciesConfig = species[typeId];
 
   // Spawn near parent with slight offset
   const offset = 20;
 
-  // Create genome from species config (new or legacy format)
-  const genome = speciesConfig.baseGenome
-    ? createGenesisGenome(
-        speciesConfig.baseGenome.traits,
-        speciesConfig.baseGenome.visual
-      )
-    : convertLegacyConfigToGenome(speciesConfig, physics);
+  // Create genome: Inherit from parents OR create genesis genome
+  let genome: Genome;
+  let mutationMetadata: {
+    hadTraitMutation: boolean;
+    hadColorMutation: boolean;
+    hadBodyPartMutation: boolean;
+  } | null = null;
+  
+  if (parentGenomes) {
+    // Offspring: Inherit genome from parent(s) with mutations
+    // Merge species mutation config with defaults
+    const mutationConfig: MutationConfig = {
+      traitRate: speciesConfig.reproduction?.mutationConfig?.traitRate ?? DEFAULT_MUTATION_CONFIG.traitRate,
+      traitMagnitude: speciesConfig.reproduction?.mutationConfig?.traitMagnitude ?? DEFAULT_MUTATION_CONFIG.traitMagnitude,
+      visualRate: speciesConfig.reproduction?.mutationConfig?.visualRate ?? DEFAULT_MUTATION_CONFIG.visualRate,
+      colorRate: speciesConfig.reproduction?.mutationConfig?.colorRate ?? DEFAULT_MUTATION_CONFIG.colorRate,
+    };
+    
+    // Enable logging for inheritance (temporary for debugging)
+    const enableLogging = false;
+    
+    const inheritanceResult = inheritGenome(
+      parentGenomes.parent1,
+      parentGenomes.parent2,
+      mutationConfig,
+      rng,
+      enableLogging
+    );
+    genome = inheritanceResult.genome;
+    mutationMetadata = {
+      hadTraitMutation: inheritanceResult.hadTraitMutation,
+      hadColorMutation: inheritanceResult.hadColorMutation,
+      hadBodyPartMutation: inheritanceResult.hadBodyPartMutation,
+    };
+  } else {
+    // Genesis: Create genome from species config (new or legacy format)
+    genome = speciesConfig.baseGenome
+      ? createGenesisGenome(
+          speciesConfig.baseGenome.traits,
+          speciesConfig.baseGenome.visual
+        )
+      : convertLegacyConfigToGenome(speciesConfig, physics);
+  }
 
   // Compute phenotype from genome + physics
   const phenotype = computePhenotype(genome, physics);
@@ -158,7 +206,7 @@ export function createBoidOfType(
     phenotype.maxEnergy
   );
 
-  return {
+  const boid: Boid = {
     id: `boid-${boidIdCounter++}`,
     position: {
       x:
@@ -194,6 +242,8 @@ export function createBoidOfType(
     previousStance: null, // No previous stance
     positionHistory: [], // Empty trail initially
   };
+
+  return { boid, mutationMetadata };
 }
 
 /**

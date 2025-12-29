@@ -275,8 +275,8 @@ export const renderTrails = (rc: RenderContext): void => {
     const energyRatio = boid.energy / speciesConfig.lifecycle.maxEnergy;
     const baseAlpha = 0.3 + energyRatio * 0.5;
 
-    // Use custom trail color if specified, otherwise use species color
-    const color = speciesConfig.visual.trailColor || speciesConfig.visual.color;
+    // Use custom trail color if specified, otherwise use individual genome color
+    const color = speciesConfig.visual.trailColor || boid.phenotype.color;
     const [r, g, b] = toRgb(color);
     const lineWidth = speciesConfig.role === "predator" ? 2 : 1.5;
 
@@ -373,7 +373,7 @@ export const renderBoidBodies = (rc: RenderContext): void => {
     // Energy-based color brightness
     const energyRatio = boid.energy / boid.phenotype.maxEnergy;
     const dynamicColor = adjustColorBrightness(
-      speciesConfig.visual.color,
+      boid.phenotype.color, // Use individual genome color, not species color
       energyRatio
     );
 
@@ -407,11 +407,11 @@ export const renderBoidBodies = (rc: RenderContext): void => {
       if (partName === "glow") continue; // Already handled above
       const partRenderer = getBodyPartRenderer(partName);
       if (partRenderer) {
-        // Use custom tail color if specified, otherwise use species color
+        // Use custom tail color if specified, otherwise use individual genome color
         const partColor =
           partName === "tail" && speciesConfig.visual.tailColor
             ? speciesConfig.visual.tailColor
-            : speciesConfig.visual.color;
+            : boid.phenotype.color;
         partRenderer(rc.ctx, size, partColor);
       }
     }
