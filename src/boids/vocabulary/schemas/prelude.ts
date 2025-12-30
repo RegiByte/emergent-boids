@@ -238,15 +238,15 @@ export const boidSchema = z.object({
   stance: stanceSchema, // Current behavioral stance
   previousStance: stanceSchema.nullable(), // Previous stance (for returning from fleeing)
   positionHistory: z.array(vectorSchema), // Trail of recent positions for rendering motion trails
-  
+
   // Target tracking (NEW - Session 74: Behavior Scoring System)
   targetId: z.string().nullable().default(null), // ID of locked target (predators only)
   targetLockTime: z.number().default(0), // Ticks spent locked on current target
   targetLockStrength: z.number().min(0).max(1).default(0), // Lock strength (1.0 = full lock, decays when target escapes)
-  
+
   // Mate commitment tracking (NEW - Session 75: Mate Persistence)
   mateCommitmentTime: z.number().default(0), // Ticks spent with current mate (prevents switching)
-  
+
   // Stance transition tracking (Session 74: Behavior Scoring System)
   // Session 76: Now tracks physics frames (30-60 Hz) instead of lifecycle ticks (1 Hz)
   stanceEnteredAt: z.number().default(0), // Frame when current stance was entered

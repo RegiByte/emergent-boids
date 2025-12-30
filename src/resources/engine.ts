@@ -1,7 +1,11 @@
 import { defineResource } from "braided";
 import { getMaxCrowdTolerance } from "../boids/affinity";
 import { createBoid, updateBoid } from "../boids/boid";
-import type { BoidUpdateContext, ConfigContext, SimulationContext } from "../boids/context";
+import type {
+  BoidUpdateContext,
+  ConfigContext,
+  SimulationContext,
+} from "../boids/context";
 import { getPredators, getPrey } from "../boids/filters";
 import { isDead } from "../boids/lifecycle/health";
 import {
@@ -148,7 +152,7 @@ export const engine = defineResource({
         },
         deltaSeconds,
         profiler,
-        frame: time.getFrame(), 
+        frame: time.getFrame(),
       };
 
       // Insert all boids into spatial hash for efficient neighbor queries
@@ -206,10 +210,22 @@ export const engine = defineResource({
 
       for (let i = 0; i < boids.length; i++) {
         const boid = boids[i];
-        
+
         // Staggered: each boid checks every 30 frames
-        if (currentFrame % BEHAVIOR_STAGGER_FRAMES === i % BEHAVIOR_STAGGER_FRAMES) {
-          evaluateBoidBehavior(boid, i, boids, predators, prey, context.config, context.simulation, currentFrame);
+        if (
+          currentFrame % BEHAVIOR_STAGGER_FRAMES ===
+          i % BEHAVIOR_STAGGER_FRAMES
+        ) {
+          evaluateBoidBehavior(
+            boid,
+            i,
+            boids,
+            predators,
+            prey,
+            context.config,
+            context.simulation,
+            currentFrame
+          );
         }
       }
       profiler.end("behavior.evaluate");
@@ -235,16 +251,21 @@ export const engine = defineResource({
       const parameters = config.parameters;
 
       // Gather nearby entities
-      const nearbyPredators = role === roleKeywords.prey
-        ? predators.filter((p) => {
-            const fearRadius = speciesConfig.limits.fearRadius ?? parameters.fearRadius;
-            return isWithinRadius(boid.position, p.position, fearRadius);
-          })
-        : [];
+      const nearbyPredators =
+        role === roleKeywords.prey
+          ? predators.filter((p) => {
+              const fearRadius =
+                speciesConfig.limits.fearRadius ?? parameters.fearRadius;
+              return isWithinRadius(boid.position, p.position, fearRadius);
+            })
+          : [];
 
-      const nearbyPrey = role === roleKeywords.predator
-        ? prey.filter((p) => isWithinRadius(boid.position, p.position, parameters.chaseRadius))
-        : [];
+      const nearbyPrey =
+        role === roleKeywords.predator
+          ? prey.filter((p) =>
+              isWithinRadius(boid.position, p.position, parameters.chaseRadius)
+            )
+          : [];
 
       const nearbyFood = simulation.foodSources.filter((f) => {
         if (f.sourceType !== role || f.energy <= 0) return false;
@@ -279,7 +300,7 @@ export const engine = defineResource({
 
       // Evaluate and apply
       const decision = evaluateBehavior(behaviorContext, behaviorRuleset, role);
-      
+
       if (decision) {
         applyBehaviorDecision(
           boid,

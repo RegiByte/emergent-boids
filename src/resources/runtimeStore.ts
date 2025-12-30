@@ -53,7 +53,7 @@ export const runtimeStore = defineResource({
             energyBarsEnabled: false,
             healthBarsEnabled: true, // NEW: Show health bars for wounded boids
             matingHeartsEnabled: true,
-            stanceSymbolsEnabled: false,
+            stanceSymbolsEnabled: true,
             deathMarkersEnabled: true,
             foodSourcesEnabled: true,
             atmosphere: {

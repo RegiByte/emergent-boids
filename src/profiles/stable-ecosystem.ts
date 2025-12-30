@@ -107,7 +107,7 @@ export const stableEcosystemProfile: SimulationProfile = {
     chaseRadius: 150,
     catchRadius: 10,
     mateRadius: 20, // Proximity-based reproduction
-    minDistance: 22, // Prevents overlap/stacking
+    minDistance: 15, // Prevents overlap/stacking
     fearFactor: 0.5, // Baseline fear factor for all species
 
     // Population limits (FAST EVOLUTION: Lower caps for performance)
