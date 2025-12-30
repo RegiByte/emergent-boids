@@ -125,6 +125,7 @@ function SimulationView() {
       });
 
       // Helper function to find closest boid to screen position
+      // Optimized: Only search boids near cursor
       const findClosestBoidToScreen = (
         screenX: number,
         screenY: number,
@@ -133,7 +134,20 @@ function SimulationView() {
         let closestBoid: string | null = null;
         let closestDistance = maxScreenDistance;
 
+        // Convert screen position to world position for early rejection
+        const worldPos = camera.screenToWorld(screenX, screenY);
+        const searchRadiusWorld = maxScreenDistance / camera.zoom;
+
         for (const boid of engine.boids) {
+          // Quick world-space distance check first (cheaper than screen transform)
+          const worldDx = boid.position.x - worldPos.x;
+          const worldDy = boid.position.y - worldPos.y;
+          const worldDistSq = worldDx * worldDx + worldDy * worldDy;
+          
+          // Skip if too far in world space (early rejection)
+          if (worldDistSq > searchRadiusWorld * searchRadiusWorld * 4) continue;
+
+          // Now do accurate screen-space distance check
           const boidScreen = camera.worldToScreen(
             boid.position.x,
             boid.position.y
@@ -200,9 +214,18 @@ function SimulationView() {
         }
       };
 
+      // Throttle picker updates to avoid performance issues
+      let lastPickerUpdate = 0;
+      const PICKER_UPDATE_INTERVAL = 16; // ~60 FPS (16ms)
+
       // Add mouse move handler for picker mode
       const handleCanvasMouseMove = (e: MouseEvent) => {
         if (camera.mode.type !== "picker") return;
+
+        // Throttle updates to avoid excessive computation
+        const now = performance.now();
+        if (now - lastPickerUpdate < PICKER_UPDATE_INTERVAL) return;
+        lastPickerUpdate = now;
 
         const rect = canvas.canvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
