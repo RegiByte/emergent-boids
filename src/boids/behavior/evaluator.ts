@@ -72,11 +72,12 @@ export function applyBehaviorDecision(
   boid: Boid,
   decision: BehaviorScore,
   tick: number,
+  frame: number,
   minDurations: MinimumStanceDuration
 ): StanceDecision | null {
-  const ticksSinceTransition = tick - boid.stanceEnteredAt;
+  const framesSinceTransition = frame - boid.stanceEnteredAt;
   const minDuration = minDurations[boid.stance] ?? 0;
-  const canTransition = ticksSinceTransition >= minDuration || decision.urgent;
+  const canTransition = framesSinceTransition >= minDuration || decision.urgent;
 
   if (!canTransition) {
     return null; // Blocked by minimum duration
@@ -95,6 +96,7 @@ export function applyBehaviorDecision(
     boidId: boid.id,
     boidIndex: -1, // Will be set by caller
     tick,
+    frame,
     previousStance: boid.stance,
     previousSubstate: boid.substate,
     newStance: decision.stance,
@@ -113,7 +115,7 @@ export function applyBehaviorDecision(
   boid.previousStance = boid.stance;
   boid.stance = decision.stance;
   boid.substate = decision.substate;
-  boid.stanceEnteredAt = tick;
+  boid.stanceEnteredAt = frame;
 
   return stanceDecision;
 }
@@ -132,6 +134,8 @@ export function applyBehaviorDecision(
  * @param tick - Current simulation tick
  * @param role - "prey" or "predator"
  * @param reproductionType - "sexual" or "asexual"
+ * @param readyToMate - Is boid ready to mate (from isReadyToMate predicate)
+ * @param populationRatio - Current population / max population (0-1)
  * @returns BehaviorContext object
  */
 export function buildBehaviorContext(
@@ -143,15 +147,39 @@ export function buildBehaviorContext(
   nearbyFlock: Boid[],
   tick: number,
   role: SpeciesRole,
-  reproductionType: ReproductionType
+  reproductionType: ReproductionType,
+  readyToMate: boolean,
+  populationRatio: number
 ): BehaviorContext {
   // Find closest distances (inline for performance)
   let closestPredatorDistance: number | null = null;
+  let closestPredatorStance: string | null = null;
+  let threatLevel = 0;
+
   if (nearbyPredators.length > 0) {
-    // Assume sorted by distance (from spatial hash)
-    const dx = boid.position.x - nearbyPredators[0].position.x;
-    const dy = boid.position.y - nearbyPredators[0].position.y;
+    const closestPredator = nearbyPredators[0];
+    const dx = boid.position.x - closestPredator.position.x;
+    const dy = boid.position.y - closestPredator.position.y;
     closestPredatorDistance = Math.sqrt(dx * dx + dy * dy);
+    closestPredatorStance = closestPredator.stance;
+
+    // Threat assessment based on predator stance (Session 75)
+    // hunting = full threat, idle/eating = reduced, mating = minimal
+    const stanceThreatMultiplier =
+      closestPredatorStance === "hunting"
+        ? 1.0 // Full threat
+        : closestPredatorStance === "idle" || closestPredatorStance === "eating"
+        ? 0.5 // Half threat
+        : 0.25; // Minimal threat (mating, seeking_mate)
+
+    // Distance factor: closer = higher threat (inverse square for realism)
+    const maxThreatDistance = 200; // Beyond this, no threat
+    const distanceFactor = Math.max(
+      0,
+      1.0 - closestPredatorDistance / maxThreatDistance
+    );
+
+    threatLevel = stanceThreatMultiplier * distanceFactor;
   }
 
   let closestPreyDistance: number | null = null;
@@ -168,6 +196,16 @@ export function buildBehaviorContext(
     closestFoodDistance = Math.sqrt(dx * dx + dy * dy);
   }
 
+  // Count available mates (Session 75: Seeking mates that are ready)
+  // Only count flock members that are seeking mates or ready to mate
+  const nearbyAvailableMatesCount = nearbyFlock.filter(
+    (b) => b.seekingMate || b.stance === "seeking_mate"
+  ).length;
+
+  // Calculate environment pressure from population ratio
+  // 0.0-0.7 = no pressure, 0.7-0.9 = moderate, 0.9-1.0 = extreme
+  const environmentPressure = Math.max(0, (populationRatio - 0.7) / 0.3);
+
   return {
     boidId: boid.id,
     boidIndex,
@@ -180,13 +218,20 @@ export function buildBehaviorContext(
     nearbyPreyCount: nearbyPrey.length,
     nearbyFoodCount: nearbyFood.length,
     nearbyFlockCount: nearbyFlock.length,
+    nearbyAvailableMatesCount, // NEW - Session 75
     closestPredatorDistance,
     closestPreyDistance,
     closestFoodDistance,
+    closestPredatorStance, // NEW - Session 75: Stance-aware threat
+    threatLevel, // NEW - Session 75: Calculated threat based on stance + distance
     hasLockedTarget: boid.targetId !== null && boid.targetLockStrength > 0,
     targetLockStrength: boid.targetLockStrength,
     targetLockDuration: boid.targetLockTime,
     hasMate: boid.mateId !== null,
+    mateCommitmentTime: boid.mateCommitmentTime,
+    readyToMate,
+    populationRatio,
+    environmentPressure,
     tick,
     ticksSinceTransition: tick - boid.stanceEnteredAt,
     role,

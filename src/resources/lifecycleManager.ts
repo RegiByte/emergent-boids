@@ -124,6 +124,7 @@ export const lifecycleManager = defineResource({
           species: config.species,
         },
         deltaSeconds,
+        frame: time.getFrame(), // LifecycleManager doesn't track simulation frames (only engine does)
       };
 
       // Process all lifecycle updates (pure logic)

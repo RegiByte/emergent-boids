@@ -53,32 +53,54 @@ export const desperateEatingRule: BehaviorRule = {
 };
 
 /**
- * Fleeing Rule
+ * Fleeing Rule (UPDATED - Session 75: Stance-Aware Threat Assessment)
  *
  * Maps: Priority 1 from updatePreyStance
  * Flee from predators with panic/tactical substates.
+ * 
+ * NEW: Threat assessment based on predator stance:
+ * - hunting = full threat (flee immediately)
+ * - idle/eating = reduced threat (cautious but less urgent)
+ * - mating/seeking_mate = minimal threat (barely react)
+ * 
+ * This makes prey behave intelligently - they recognize when predators
+ * are distracted and don't waste energy fleeing unnecessarily.
  */
 export const fleeingRule: BehaviorRule = {
   metadata: {
     name: "fleeing",
     role: roleKeywords.prey,
-    description: "Flee from nearby predators",
+    description: "Flee from nearby predators (stance-aware)",
     enabled: true,
   },
   evaluate: (ctx) => {
     if (ctx.nearbyPredatorCount === 0) return null;
     if (ctx.closestPredatorDistance === null) return null;
 
-    // Score based on danger level (closer = higher score)
-    const dangerScore = 1.0 - ctx.closestPredatorDistance / 200;
+    // Use pre-calculated threat level (includes stance + distance)
+    // threatLevel ranges from 0 (no threat) to 1 (imminent danger)
+    const threatScore = ctx.threatLevel;
 
-    // Panic if very close, tactical if farther
-    const isPanic = ctx.closestPredatorDistance < 50;
+    // Don't flee if threat is too low (predator distracted/far away)
+    // Threshold: 0.2 means only flee when threat is above 20%
+    if (threatScore < 0.2) return null;
+
+    // Panic threshold is higher for non-hunting predators
+    // hunting predator + close = always panic
+    // idle/eating predator = only panic if VERY close
+    const isPanic =
+      ctx.closestPredatorStance === "hunting"
+        ? ctx.closestPredatorDistance < 50
+        : ctx.closestPredatorDistance < 30; // Closer threshold for idle predators
+
+    // Score: 800 = max, scaled by threat level
+    // hunting + close = 800, idle + far = 200-400
+    const fleeScore = 800 * threatScore;
 
     return {
       stance: prey.fleeing,
       substate: isPanic ? substates.panic : substates.tactical,
-      score: 800 * dangerScore,
+      score: fleeScore,
       reason: reasons.predator_nearby,
       urgent: isPanic, // Panic overrides duration
       ruleName: fleeingRule.metadata.name,
@@ -87,10 +109,13 @@ export const fleeingRule: BehaviorRule = {
 };
 
 /**
- * Normal Eating Rule
+ * Normal Eating Rule (UPDATED - Session 75: Stance-Aware Safety)
  *
  * Maps: Priority 2 from updatePreyStance
- * Eat when energy is low (< 70%) and safe (no predators).
+ * Eat when energy is low (< 70%) and reasonably safe.
+ * 
+ * NEW: Uses threat level instead of binary predator check.
+ * Prey will eat near idle/eating predators if threat is low enough.
  */
 export const normalEatingRule: BehaviorRule = {
   metadata: {
@@ -103,9 +128,12 @@ export const normalEatingRule: BehaviorRule = {
     if (ctx.energyRatio > 0.7) return null; // Not hungry
     if (ctx.nearbyFoodCount === 0) return null;
     if (ctx.closestFoodDistance === null) return null;
-    if (ctx.closestFoodDistance > FOOD_CONSTANTS.FOOD_EATING_RADIUS)
-      return null;
-    if (ctx.nearbyPredatorCount > 0) return null; // Not safe
+    if (ctx.closestFoodDistance > FOOD_CONSTANTS.FOOD_EATING_RADIUS) return null;
+    
+    // NEW: Check threat level instead of binary predator count
+    // Allow eating if threat is low (< 0.3) even with predators nearby
+    // This means: idle/mating predators won't stop eating, only hunting ones
+    if (ctx.threatLevel > 0.3) return null; // Not safe enough!
 
     return {
       stance: prey.eating,
@@ -119,27 +147,34 @@ export const normalEatingRule: BehaviorRule = {
 };
 
 /**
- * Mating Rule
+ * Mating Rule (UPDATED - Session 75: Mate Commitment)
  *
  * Maps: Priority 3 from updatePreyStance
  * Currently mating with paired mate.
+ * 
+ * NEW: Commitment bonus prevents switching mates midway through mating.
+ * Score increases with time spent together (commitment time).
  */
 export const matingRule: BehaviorRule = {
   metadata: {
     name: "mating",
     role: roleKeywords.prey,
-    description: "Currently mating (has mate)",
+    description: "Currently mating (has mate with commitment)",
     enabled: true,
   },
   evaluate: (ctx) => {
     if (ctx.reproductionType !== reproductionTypeKeywords.sexual) return null; // Asexual boids don't mate
     if (!ctx.hasMate) return null; // No mate
 
+    // Commitment bonus: score increases with time spent with mate
+    // Prevents switching mates midway through mating buildup
+    const commitmentBonus = Math.min(ctx.mateCommitmentTime * 10, 200);
+
     return {
       stance: prey.mating,
       substate: null,
-      score: 500,
-      reason: reasons.mate_found,
+      score: 500 + commitmentBonus, // Higher score with more commitment
+      reason: ctx.mateCommitmentTime > 0 ? reasons.mate_committed : reasons.mate_found,
       urgent: false,
       ruleName: matingRule.metadata.name,
     };
@@ -147,10 +182,14 @@ export const matingRule: BehaviorRule = {
 };
 
 /**
- * Seeking Mate Rule
+ * Seeking Mate Rule (UPDATED - Session 75: Ready Check + Environment Pressure + Availability)
  *
  * Maps: Priority 4 from updatePreyStance
  * Looking for a mate (ready to reproduce).
+ * 
+ * NEW: Checks readyToMate flag (age, cooldown, energy requirements).
+ * NEW: Environment pressure reduces mating desire when overpopulated.
+ * NEW: Only seek mate if available mates nearby (prevents pointless stance switch).
  */
 export const seekingMateRule: BehaviorRule = {
   metadata: {
@@ -162,17 +201,59 @@ export const seekingMateRule: BehaviorRule = {
   evaluate: (ctx) => {
     if (ctx.reproductionType !== reproductionTypeKeywords.sexual) return null; // Asexual boids don't mate
     if (ctx.hasMate) return null; // Already has mate
-    // Note: isReadyToMate check is done by lifecycleManager, reflected in seekingMate field
-    // For now, we assume if this rule is evaluated, the boid is ready
-    // TODO: Add readyToMate flag to context
+    if (!ctx.readyToMate) return null; // Not ready (age, cooldown, energy)
+    if (ctx.nearbyAvailableMatesCount === 0) return null; // No available mates nearby
+
+    // Environment pressure penalty: reduce score when overpopulated
+    // 0% pressure = full score (400), 100% pressure = 50% score (200)
+    const pressurePenalty = 1.0 - (ctx.environmentPressure * 0.5);
+    const adjustedScore = 400 * pressurePenalty;
 
     return {
       stance: prey.seeking_mate,
       substate: null,
-      score: 400,
-      reason: reasons.mate_ready,
+      score: adjustedScore,
+      reason: ctx.environmentPressure > 0.5 ? reasons.environment_pressure : reasons.mate_ready,
       urgent: false,
       ruleName: seekingMateRule.metadata.name,
+    };
+  },
+};
+
+/**
+ * Foraging Rule (NEW - Session 75)
+ *
+ * Search for food when hungry but no food nearby.
+ * This gives prey active food-seeking behavior instead of just waiting.
+ * 
+ * Score increases with hunger level (more hungry = higher priority).
+ */
+export const foragingRule: BehaviorRule = {
+  metadata: {
+    name: "foraging",
+    role: roleKeywords.prey,
+    description: "Search for food when hungry",
+    enabled: true,
+  },
+  evaluate: (ctx) => {
+    // Don't forage if food is already nearby (should eat instead)
+    if (ctx.nearbyFoodCount > 0) return null;
+    // Don't forage if predators nearby (should flee instead)
+    if (ctx.nearbyPredatorCount > 0) return null;
+    // Don't forage if not hungry (> 70% energy)
+    if (ctx.energyRatio > 0.7) return null;
+
+    // Score increases with hunger: 60-70% energy = 250, 0-60% energy = 350
+    const hungerBonus = (1.0 - ctx.energyRatio) * 100;
+    const baseScore = 250;
+
+    return {
+      stance: prey.flocking, // Use flocking stance but with food-seeking intent
+      substate: "wandering", // Substate indicates foraging behavior
+      score: baseScore + hungerBonus,
+      reason: "searching_for_food",
+      urgent: false,
+      ruleName: foragingRule.metadata.name,
     };
   },
 };
@@ -208,6 +289,7 @@ export const preyRules: BehaviorRule[] = [
   desperateEatingRule,
   fleeingRule,
   normalEatingRule,
+  foragingRule, // NEW - Session 75
   matingRule,
   seekingMateRule,
   flockingRule,

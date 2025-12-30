@@ -36,4 +36,5 @@ export type BoidUpdateContext = {
   config: ConfigContext;
   deltaSeconds: number;
   profiler?: Profiler;
+  frame: number;
 };

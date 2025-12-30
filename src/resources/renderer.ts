@@ -292,6 +292,8 @@ export const renderer = defineResource({
           },
         },
         timeState, // NEW: Pass time state to renderer
+        simulationTick: Math.floor(timeState.simulationElapsedSeconds), // NEW - Session 75: Approximate tick from elapsed seconds
+        simulationFrame: timeState.simulationFrame, // NEW - Session 75: Current simulation frame
         profiler,
         camera, // NEW: Pass camera to renderer for coordinate transforms
       };

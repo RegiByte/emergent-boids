@@ -128,6 +128,7 @@ export const engine = defineResource({
         },
         deltaSeconds,
         profiler,
+        frame: 0, 
       };
 
       // Insert all boids into spatial hash for efficient neighbor queries

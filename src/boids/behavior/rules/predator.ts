@@ -25,6 +25,9 @@ const { predator, substates, reasons } = behaviorKeywords;
  *
  * Maps: Priority 1 from updatePredatorStance
  * Eat when food is nearby or on cooldown.
+ * 
+ * FIXED (Session 75): Use actual eating radius, not detection radius.
+ * Old code used 1.5x which caused eating stance to trigger too far away.
  */
 export const eatingRule: BehaviorRule = {
   metadata: {
@@ -36,8 +39,9 @@ export const eatingRule: BehaviorRule = {
   evaluate: (ctx) => {
     if (ctx.nearbyFoodCount === 0) return null;
     if (ctx.closestFoodDistance === null) return null;
-    if (ctx.closestFoodDistance > FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5)
-      return null; // Too far
+    // Use actual eating radius (30px), not detection radius (45px)
+    if (ctx.closestFoodDistance > FOOD_CONSTANTS.FOOD_EATING_RADIUS)
+      return null; // Too far to eat
 
     return {
       stance: predator.eating,
@@ -114,27 +118,34 @@ export const newHuntRule: BehaviorRule = {
 };
 
 /**
- * Mating Rule
+ * Mating Rule (UPDATED - Session 75: Mate Commitment)
  *
  * Maps: Priority 2 from updatePredatorStance
  * Currently mating with paired mate.
+ * 
+ * NEW: Commitment bonus prevents switching mates midway through mating.
+ * Score increases with time spent together (commitment time).
  */
 export const matingRule: BehaviorRule = {
   metadata: {
     name: "mating",
     role: roleKeywords.predator,
-    description: "Currently mating (has mate)",
+    description: "Currently mating (has mate with commitment)",
     enabled: true,
   },
   evaluate: (ctx) => {
     if (ctx.reproductionType !== "sexual") return null; // Asexual boids don't mate
     if (!ctx.hasMate) return null; // No mate
 
+    // Commitment bonus: score increases with time spent with mate
+    // Prevents switching mates midway through mating buildup
+    const commitmentBonus = Math.min(ctx.mateCommitmentTime * 10, 200);
+
     return {
       stance: predator.mating,
       substate: null,
-      score: 500,
-      reason: reasons.mate_found,
+      score: 500 + commitmentBonus, // Higher score with more commitment
+      reason: ctx.mateCommitmentTime > 0 ? reasons.mate_committed : reasons.mate_found,
       urgent: false,
       ruleName: matingRule.metadata.name,
     };
@@ -142,10 +153,14 @@ export const matingRule: BehaviorRule = {
 };
 
 /**
- * Seeking Mate Rule
+ * Seeking Mate Rule (UPDATED - Session 75: Ready Check + Environment Pressure + Availability)
  *
  * Maps: Priority 3 from updatePredatorStance
  * Looking for a mate (ready to reproduce).
+ * 
+ * NEW: Checks readyToMate flag (age, cooldown, energy requirements).
+ * NEW: Environment pressure reduces mating desire when overpopulated.
+ * NEW: Only seek mate if available mates nearby (prevents pointless stance switch).
  */
 export const seekingMateRule: BehaviorRule = {
   metadata: {
@@ -157,12 +172,19 @@ export const seekingMateRule: BehaviorRule = {
   evaluate: (ctx) => {
     if (ctx.reproductionType !== "sexual") return null; // Asexual boids don't mate
     if (ctx.hasMate) return null; // Already has mate
+    if (!ctx.readyToMate) return null; // Not ready (age, cooldown, energy)
+    if (ctx.nearbyAvailableMatesCount === 0) return null; // No available mates nearby
+
+    // Environment pressure penalty: reduce score when overpopulated
+    // 0% pressure = full score (400), 100% pressure = 50% score (200)
+    const pressurePenalty = 1.0 - (ctx.environmentPressure * 0.5);
+    const adjustedScore = 400 * pressurePenalty;
 
     return {
       stance: predator.seeking_mate,
       substate: null,
-      score: 400,
-      reason: reasons.mate_ready,
+      score: adjustedScore,
+      reason: ctx.environmentPressure > 0.5 ? reasons.environment_pressure : reasons.mate_ready,
       urgent: false,
       ruleName: seekingMateRule.metadata.name,
     };

@@ -410,7 +410,7 @@ export const stableEcosystemProfile: SimulationProfile = {
       // longevity = (100 - 100) / 200 = 0.0
       baseGenome: {
         traits: {
-          speed: 0.45, // 45% of maxSpeed (4.5) - CRITICAL for catch rate
+          speed: 0.40, // 40% of maxSpeed (4) - CRITICAL for catch rate
           force: 0.4, // 40% of maxForce (0.2) - high turning
           vision: 0.5,
           size: 1.3, // Larger and menacing
@@ -458,7 +458,7 @@ export const stableEcosystemProfile: SimulationProfile = {
       },
 
       affinities: {
-        predator: 0.7, // Moderate affinity (tolerate but compete)
+        predator: 0.6, // Moderate affinity (tolerate but compete)
       },
     },
   },

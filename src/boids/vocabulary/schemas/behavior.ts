@@ -39,19 +39,30 @@ export const behaviorContextSchema = z.object({
   nearbyPreyCount: z.number(),
   nearbyFoodCount: z.number(),
   nearbyFlockCount: z.number(),
+  nearbyAvailableMatesCount: z.number(), // NEW - Session 75: Boids ready to mate
 
   // Distances (closest of each type)
   closestPredatorDistance: z.number().nullable(),
   closestPreyDistance: z.number().nullable(),
   closestFoodDistance: z.number().nullable(),
 
+  // Threat assessment (NEW - Session 75: Stance-aware prey)
+  closestPredatorStance: z.string().nullable(), // Stance of closest predator
+  threatLevel: z.number().min(0).max(1), // 0 = no threat, 1 = imminent danger
+
   // Target tracking (NEW - for predator commitment)
   hasLockedTarget: z.boolean(),
   targetLockStrength: z.number().min(0).max(1),
   targetLockDuration: z.number(),
 
-  // Mating state
+  // Mating state (NEW - Session 75: mate commitment)
   hasMate: z.boolean(),
+  mateCommitmentTime: z.number().default(0), // Ticks spent with current mate
+  readyToMate: z.boolean(), // isReadyToMate() result (age, cooldown, energy checks)
+
+  // Environment pressure (NEW - Session 75)
+  populationRatio: z.number().min(0).max(1), // current / max population
+  environmentPressure: z.number().min(0).max(1), // 0 = no pressure, 1 = max pressure
 
   // Timing
   tick: z.number(),
@@ -112,6 +123,7 @@ export const stanceDecisionSchema = z.object({
   boidId: z.string(),
   boidIndex: z.number(),
   tick: z.number(),
+  frame: z.number(),
 
   // Transition
   previousStance: z.string(),

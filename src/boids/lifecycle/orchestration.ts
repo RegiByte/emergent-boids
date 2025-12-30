@@ -223,7 +223,7 @@ export function processLifecycleUpdates(
   }>;
 } {
   // Extract context for convenience
-  const { config, simulation, deltaSeconds } = context;
+  const { config, simulation, deltaSeconds, frame } = context;
   const { parameters, species: speciesTypes } = config;
   const { foodSources } = simulation;
 
@@ -290,6 +290,9 @@ export function processLifecycleUpdates(
         isWithinRadius(boid.position, b.position, parameters.perceptionRadius)
     );
 
+    // Calculate population ratio for environment pressure
+    const populationRatio = boids.length / parameters.maxBoids;
+
     // Build behavior context
     const behaviorContext = buildBehaviorContext(
       boid,
@@ -300,7 +303,9 @@ export function processLifecycleUpdates(
       nearbyFlock,
       simulation.tick,
       role,
-      speciesConfig.reproduction.type
+      speciesConfig.reproduction.type,
+      boid.seekingMate, // readyToMate (updated in step 7)
+      populationRatio
     );
 
     // Evaluate behavior rules
@@ -312,6 +317,7 @@ export function processLifecycleUpdates(
         boid,
         decision,
         simulation.tick,
+        timerState.simulationFrame,
         MINIMUM_STANCE_DURATION
       );
 
@@ -360,17 +366,27 @@ export function processLifecycleUpdates(
     const context: MatingContext = { boidsMap, matedBoids, boidsToAdd };
     applyMatingResult(boid, matingResult, context);
 
-    // Track reproduction events
+    // Track reproduction events and handle failures (Session 75)
     if (matingResult.type === "reproduction_complete") {
       reproductionEvents.push({
         parent1Id: matingResult.offspring.parent1Id,
         parent2Id: matingResult.offspring.parent2Id,
         typeId: matingResult.offspring.typeId,
       });
-    } else if (matingResult.type === "mate_lost" && boid.mateId === null) {
+      // Reset mate commitment after successful reproduction
+      boid.mateCommitmentTime = 0;
+    } else if (matingResult.type === "mate_lost") {
       // Mate was lost, unpair if needed
       const mate = lookupBoid(boid.mateId!, boidsMap);
       unpairBoids(boid, mate);
+      // Reset mate commitment when mate lost
+      boid.mateCommitmentTime = 0;
+    } else if (matingResult.type === "pair_found") {
+      // Just paired with new mate, reset commitment
+      boid.mateCommitmentTime = 0;
+    } else if (boid.mateId !== null) {
+      // Still has mate, increment commitment time
+      boid.mateCommitmentTime++;
     }
   }
 

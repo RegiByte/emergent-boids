@@ -47,7 +47,9 @@ export type RenderContext = {
     };
   };
   timeState: TimeState; // Time state for pause overlay and speed indicator
+  simulationFrame: number; // NEW - Session 75: Current simulation frame (for stance indicators)
   camera: CameraAPI; // Camera for coordinate transforms
+  simulationTick: number; // NEW - Session 75: Current lifecycle tick (for stance indicators)
   profiler?: Profiler;
 };
 
@@ -514,7 +516,10 @@ export const renderBoidBodies = (rc: RenderContext): void => {
 };
 
 /**
- * Render stance symbols above boids
+ * Render stance symbols above boids (Session 75: Temporary indicators with fade-out)
+ *
+ * Shows stance symbol for 3-4 seconds after stance change, then fades out.
+ * This keeps the UI engaging without constant visual clutter.
  */
 export const renderStanceSymbols = (rc: RenderContext): void => {
   if (!rc.visualSettings.stanceSymbolsEnabled) {
@@ -530,6 +535,16 @@ export const renderStanceSymbols = (rc: RenderContext): void => {
   for (const boid of rc.boids) {
     const speciesConfig = rc.speciesConfigs[boid.typeId];
     if (!speciesConfig) continue;
+
+    // Session 75: Only show symbol if stance changed recently
+    const framesSinceChange = rc.simulationFrame - boid.stanceEnteredAt;
+    const DISPLAY_DURATION = 90; // Show for 30 ticks (~1 second at 30 UPS)
+    const FADE_START = 60; // Start fading at 20 ticks (~1 second)
+
+    // Don't render if stance change was too long ago
+    if (framesSinceChange > DISPLAY_DURATION) {
+      continue;
+    }
 
     const stance = boid.stance;
     let stanceSymbol = "";
@@ -578,10 +593,25 @@ export const renderStanceSymbols = (rc: RenderContext): void => {
           stanceSymbol = "😱";
           stanceColor = "#ffaa00";
           break;
+        case "eating":
+          stanceSymbol = "🌿";
+          stanceColor = "#4CAF50";
+          break;
       }
     }
 
     if (stanceSymbol) {
+      // Calculate fade-out alpha (Session 75)
+      let alpha = 1.0;
+      if (framesSinceChange > FADE_START) {
+        // Fade from 1.0 to 0.0 over the last (DISPLAY_DURATION - FADE_START) ticks
+        const fadeProgress =
+          (framesSinceChange - FADE_START) / (DISPLAY_DURATION - FADE_START);
+        alpha = 1.0 - fadeProgress;
+      }
+
+      rc.ctx.save();
+      rc.ctx.globalAlpha = alpha;
       rc.ctx.fillStyle = stanceColor;
       rc.ctx.font = "bold 12px monospace";
       rc.ctx.textAlign = "center";
@@ -589,6 +619,7 @@ export const renderStanceSymbols = (rc: RenderContext): void => {
       // Draw below the boid (offset by -12 for prey, -15 for predators)
       const yOffset = speciesConfig.role === "predator" ? -15 : -12;
       rc.ctx.fillText(stanceSymbol, boid.position.x, boid.position.y + yOffset);
+      rc.ctx.restore();
     }
   }
 };

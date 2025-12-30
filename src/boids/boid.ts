@@ -127,12 +127,15 @@ export function createBoid(
     previousStance: null, // No previous stance
     positionHistory: [], // Empty trail initially
 
-    // Target tracking (NEW - Session 73)
+    // Target tracking (NEW - Session 74)
     targetId: null, // No target initially
     targetLockTime: 0, // No lock time
     targetLockStrength: 0, // No lock strength
 
-    // Stance transition tracking (NEW - Session 73)
+    // Mate commitment tracking (NEW - Session 75)
+    mateCommitmentTime: 0, // No mate commitment initially
+
+    // Stance transition tracking (NEW - Session 74)
     stanceEnteredAt: 0, // Entered at tick 0
     substate: null, // No substate initially
   };
@@ -261,12 +264,15 @@ export function createBoidOfType(
     previousStance: null, // No previous stance
     positionHistory: [], // Empty trail initially
 
-    // Target tracking (NEW - Session 73)
+    // Target tracking (NEW - Session 74)
     targetId: null, // No target initially
     targetLockTime: 0, // No lock time
     targetLockStrength: 0, // No lock strength
 
-    // Stance transition tracking (NEW - Session 73)
+    // Mate commitment tracking (NEW - Session 75)
+    mateCommitmentTime: 0, // No mate commitment initially
+
+    // Stance transition tracking (NEW - Session 74)
     stanceEnteredAt: 0, // Entered at tick 0
     substate: null, // No substate initially
   };
@@ -370,8 +376,8 @@ function updatePredator(
         context.profiler
       );
     }
-  } else if (stance === "seeking_mate" || stance === "mating") {
-    // Seek predator mates, not prey
+  } else if (stance === "seeking_mate") {
+    // SEEKING_MATE: Actively search for potential mates (Session 75 fix)
     mateSeekingForce = rules.seekMate(
       boid,
       otherPredators,
@@ -380,7 +386,12 @@ function updatePredator(
       world,
       context.profiler
     );
-    // Opportunistic food seeking
+  } else if (stance === "mating") {
+    // MATING: Stay near paired mate, but don't actively seek (Session 75 fix)
+    // Just use normal flocking to stay together, no special seeking force
+    // The mate should be nearby already from the pairing process
+    
+    // Opportunistic food seeking while mating (low priority)
     const foodSeek = rules.seekFood(
       boid,
       foodSources,
@@ -390,7 +401,7 @@ function updatePredator(
       context.profiler
     );
     if (foodSeek.targetFoodId) {
-      foodSeekingForce = vec.multiply(foodSeek.force, 0.5);
+      foodSeekingForce = vec.multiply(foodSeek.force, 0.3); // Reduced priority
     }
   } else if (stance === "idle") {
     // Seek food to recover energy
@@ -626,9 +637,10 @@ function updatePrey(
     }
   }
 
-  // Mate-seeking behavior (stance-based)
+  // Mate-seeking behavior (stance-based) - Session 75 fix
   let mateSeekingForce = { x: 0, y: 0 };
-  if (stance === "seeking_mate" || stance === "mating") {
+  if (stance === "seeking_mate") {
+    // SEEKING_MATE: Actively search for potential mates
     mateSeekingForce = rules.seekMate(
       boid,
       allBoids,
@@ -638,6 +650,8 @@ function updatePrey(
       context.profiler
     );
   }
+  // MATING: Just use normal flocking to stay near mate, no active seeking
+  // This prevents the "spiraling" behavior when already paired
 
   // Declarative force composition with explicit weights
   // Clear visual hierarchy makes priorities obvious and easy to tune
@@ -646,13 +660,16 @@ function updatePrey(
     stance
   );
 
+  // Session 75: Reduce ALL flocking forces when eating to stay at food
+  const flockingMultiplier = stance === "eating" ? 0.3 : 1.0;
+
   const fearFactor = boid.phenotype.fearFactor;
 
   applyWeightedForces(boid, [
-    // Core flocking behaviors
-    { force: sep, weight: boid.phenotype.separationWeight },
-    { force: ali, weight: boid.phenotype.alignmentWeight },
-    { force: coh, weight: cohesionWeight },
+    // Core flocking behaviors (reduced when eating)
+    { force: sep, weight: boid.phenotype.separationWeight * flockingMultiplier },
+    { force: ali, weight: boid.phenotype.alignmentWeight * flockingMultiplier },
+    { force: coh, weight: cohesionWeight * flockingMultiplier },
 
     // Avoidance behaviors (high priority)
     { force: avoid, weight: parameters.obstacleAvoidanceWeight },
@@ -672,8 +689,8 @@ function updatePrey(
     { force: orbitForce, weight: 3.0 }, // Strong orbit when eating
   ]);
 
-  // Mate-seeking (conditional, high priority when active)
-  if (stance === "seeking_mate" || stance === "mating") {
+  // Mate-seeking (conditional, high priority when active) - Session 75 fix
+  if (stance === "seeking_mate") {
     applyWeightedForces(boid, [{ force: mateSeekingForce, weight: 2.5 }]);
   }
 

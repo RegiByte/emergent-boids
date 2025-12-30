@@ -177,6 +177,7 @@ export function PopulationGraph({ compact = false }: PopulationGraphProps) {
       },
       y: {
         display: true,
+        max: 2000,
         title: {
           display: !compact,
           text: "Population",

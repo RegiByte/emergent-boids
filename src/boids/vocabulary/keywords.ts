@@ -179,6 +179,9 @@ export const behaviorKeywords = {
     desperate: "desperate", // Critical energy (< 30%)
     normal: "normal", // Normal eating (< 70%)
 
+    // Foraging substates (NEW - Session 75)
+    wandering: "wandering", // Searching for food
+
     // Idle substates
     resting: "resting", // Recovering energy
   },
@@ -190,12 +193,27 @@ export const behaviorKeywords = {
     predator_nearby: "predator_nearby", // Prey fleeing
     prey_detected: "prey_detected", // Predator hunting
     food_nearby: "food_nearby", // Food within eating radius
+    searching_for_food: "searching_for_food", // Foraging (Session 75)
     locked_on_target: "locked_on_target", // Continuing chase
     new_target: "new_target", // Starting new chase
     target_escaped: "target_escaped", // Lost target
     recovering_energy: "recovering_energy", // Idle/resting
     mate_ready: "mate_ready", // Ready to mate
     mate_found: "mate_found", // Has mate
+    mate_committed: "mate_committed", // Committed to mate (minimum duration)
+    mate_lost: "mate_lost", // Mate died or disappeared
+    reproduction_failed: "reproduction_failed", // Reproduction couldn't complete
+    environment_pressure: "environment_pressure", // Overpopulation pressure
     default: "default", // Fallback behavior
+  },
+
+  // Reproduction failure reasons (NEW - Session 75)
+  reproductionFailures: {
+    population_at_cap: "population_at_cap", // Max population reached
+    insufficient_energy: "insufficient_energy", // Parent(s) lack energy
+    mate_too_far: "mate_too_far", // Mates separated during buildup
+    mate_lost: "mate_lost", // Mate died or disappeared
+    cooldown_active: "cooldown_active", // Still on reproduction cooldown
+    not_ready: "not_ready", // Conditions not met (age, health, etc.)
   },
 } as const;
