@@ -116,7 +116,8 @@ export const lifecycleManager = defineResource({
           obstacles: simulation.obstacles,
           deathMarkers: simulation.deathMarkers,
           foodSources: simulation.foodSources,
-          tick: tickCounter, // NEW - Session 73: for behavior system
+          tick: tickCounter, // Lifecycle tick (1 Hz)
+          frame: time.getFrame(), // Physics frame (30-60 Hz) - Session 76
         },
         config: {
           parameters: config.parameters,
@@ -124,7 +125,7 @@ export const lifecycleManager = defineResource({
           species: config.species,
         },
         deltaSeconds,
-        frame: time.getFrame(), // LifecycleManager doesn't track simulation frames (only engine does)
+        frame: time.getFrame(),
       };
 
       // Process all lifecycle updates (pure logic)

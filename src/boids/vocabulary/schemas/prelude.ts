@@ -247,8 +247,9 @@ export const boidSchema = z.object({
   // Mate commitment tracking (NEW - Session 75: Mate Persistence)
   mateCommitmentTime: z.number().default(0), // Ticks spent with current mate (prevents switching)
   
-  // Stance transition tracking (NEW - Session 74: Behavior Scoring System)
-  stanceEnteredAt: z.number().default(0), // Tick when current stance was entered
+  // Stance transition tracking (Session 74: Behavior Scoring System)
+  // Session 76: Now tracks physics frames (30-60 Hz) instead of lifecycle ticks (1 Hz)
+  stanceEnteredAt: z.number().default(0), // Frame when current stance was entered
   substate: z.string().nullable().default(null), // Rich substate (e.g., "searching", "chasing", "panic")
 });
 

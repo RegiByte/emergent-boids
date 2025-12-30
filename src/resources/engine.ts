@@ -1,7 +1,7 @@
 import { defineResource } from "braided";
 import { getMaxCrowdTolerance } from "../boids/affinity";
 import { createBoid, updateBoid } from "../boids/boid";
-import type { BoidUpdateContext } from "../boids/context";
+import type { BoidUpdateContext, ConfigContext, SimulationContext } from "../boids/context";
 import { getPredators, getPrey } from "../boids/filters";
 import { isDead } from "../boids/lifecycle/health";
 import {
@@ -16,6 +16,19 @@ import { RandomnessResource } from "./randomness";
 import type { RuntimeStoreResource } from "./runtimeStore";
 import { defaultWorldPhysics } from "./defaultPhysics";
 import { WorldPhysics } from "@/boids/vocabulary/schemas/genetics";
+import {
+  createBehaviorRuleset,
+  MINIMUM_STANCE_DURATION,
+} from "../boids/behavior/rules";
+import {
+  evaluateBehavior,
+  applyBehaviorDecision,
+  buildBehaviorContext,
+} from "../boids/behavior/evaluator";
+import { isWithinRadius, isReadyToMate } from "../boids/predicates";
+import { FOOD_CONSTANTS } from "../boids/food";
+import { roleKeywords } from "../boids/vocabulary/keywords";
+import type { TimeResource } from "./time";
 
 export type CatchEvent = {
   predatorId: string;
@@ -36,15 +49,17 @@ export type BoidEngine = {
 };
 
 export const engine = defineResource({
-  dependencies: ["runtimeStore", "profiler", "randomness"],
+  dependencies: ["runtimeStore", "profiler", "randomness", "time"],
   start: ({
     runtimeStore,
     profiler,
     randomness,
+    time,
   }: {
     runtimeStore: RuntimeStoreResource;
     profiler: Profiler;
     randomness: RandomnessResource;
+    time: TimeResource;
   }) => {
     const { config: initialConfig } = runtimeStore.store.getState();
     const { world: initialWorld, species: initialSpecies } = initialConfig;
@@ -93,6 +108,10 @@ export const engine = defineResource({
       initialConfig.parameters.perceptionRadius
     );
 
+    // Create behavior ruleset for stance evaluation (Session 76)
+    const behaviorRuleset = createBehaviorRuleset();
+    const BEHAVIOR_STAGGER_FRAMES = 30;
+
     // Frame counter for trail sampling (update trails every other frame)
     let frameCounter = 0;
 
@@ -120,6 +139,7 @@ export const engine = defineResource({
           deathMarkers: simulation.deathMarkers,
           foodSources: simulation.foodSources,
           tick: 0, // Engine doesn't track lifecycle ticks (only lifecycleManager does)
+          frame: time.getFrame(), // Physics frame for behavior evaluation (Session 76)
         },
         config: {
           parameters: config.parameters,
@@ -128,7 +148,7 @@ export const engine = defineResource({
         },
         deltaSeconds,
         profiler,
-        frame: 0, 
+        frame: time.getFrame(), 
       };
 
       // Insert all boids into spatial hash for efficient neighbor queries
@@ -178,7 +198,97 @@ export const engine = defineResource({
       }
       profiler.end("boids.update.loop");
 
+      // Session 76: Behavior evaluation at frame rate (30-60 Hz) with staggering
+      profiler.start("behavior.evaluate");
+      const currentFrame = time.getFrame();
+      const predators = getPredators(boids, config.species);
+      const prey = getPrey(boids, config.species);
+
+      for (let i = 0; i < boids.length; i++) {
+        const boid = boids[i];
+        
+        // Staggered: each boid checks every 30 frames
+        if (currentFrame % BEHAVIOR_STAGGER_FRAMES === i % BEHAVIOR_STAGGER_FRAMES) {
+          evaluateBoidBehavior(boid, i, boids, predators, prey, context.config, context.simulation, currentFrame);
+        }
+      }
+      profiler.end("behavior.evaluate");
+
       profiler.end("engine.update");
+    };
+
+    // Evaluate behavior for a single boid (Session 76: Frame-rate evaluation)
+    const evaluateBoidBehavior = (
+      boid: Boid,
+      boidIndex: number,
+      allBoids: Boid[],
+      predators: Boid[],
+      prey: Boid[],
+      config: ConfigContext,
+      simulation: SimulationContext,
+      currentFrame: number
+    ) => {
+      const speciesConfig = config.species[boid.typeId];
+      if (!speciesConfig) return;
+
+      const role = speciesConfig.role;
+      const parameters = config.parameters;
+
+      // Gather nearby entities
+      const nearbyPredators = role === roleKeywords.prey
+        ? predators.filter((p) => {
+            const fearRadius = speciesConfig.limits.fearRadius ?? parameters.fearRadius;
+            return isWithinRadius(boid.position, p.position, fearRadius);
+          })
+        : [];
+
+      const nearbyPrey = role === roleKeywords.predator
+        ? prey.filter((p) => isWithinRadius(boid.position, p.position, parameters.chaseRadius))
+        : [];
+
+      const nearbyFood = simulation.foodSources.filter((f) => {
+        if (f.sourceType !== role || f.energy <= 0) return false;
+        const detectionRadius = FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5;
+        return isWithinRadius(boid.position, f.position, detectionRadius);
+      });
+
+      const nearbyFlock = allBoids.filter(
+        (b) =>
+          b.typeId === boid.typeId &&
+          b.id !== boid.id &&
+          isWithinRadius(boid.position, b.position, parameters.perceptionRadius)
+      );
+
+      const populationRatio = allBoids.length / parameters.maxBoids;
+      const readyToMate = isReadyToMate(boid, parameters, speciesConfig);
+
+      // Build context
+      const behaviorContext = buildBehaviorContext(
+        boid,
+        boidIndex,
+        nearbyPredators,
+        nearbyPrey,
+        nearbyFood,
+        nearbyFlock,
+        simulation.tick,
+        role,
+        speciesConfig.reproduction.type,
+        readyToMate,
+        populationRatio
+      );
+
+      // Evaluate and apply
+      const decision = evaluateBehavior(behaviorContext, behaviorRuleset, role);
+      
+      if (decision) {
+        applyBehaviorDecision(
+          boid,
+          decision,
+          simulation.tick,
+          currentFrame, // Use frame for stance tracking!
+          MINIMUM_STANCE_DURATION
+        );
+      }
     };
 
     // Check for catches - returns list of catches without side effects

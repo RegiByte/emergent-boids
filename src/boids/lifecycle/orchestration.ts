@@ -1,32 +1,14 @@
 import { boidsById, lookupBoid } from "../conversions";
 import type { BoidUpdateContext } from "../context";
-import { getPredators, getPrey } from "../filters";
-import { FOOD_CONSTANTS } from "../food";
 import type { MatingContext, OffspringData } from "../mating";
 import { applyMatingResult, unpairBoids } from "../mating";
-import { isReadyToMate, isWithinRadius } from "../predicates";
+import { isReadyToMate } from "../predicates";
 import type { Boid } from "../vocabulary/schemas/prelude.ts";
 import { updateBoidAge } from "./aging";
 import { updateBoidCooldowns } from "./cooldowns";
 import { updateBoidEnergy } from "./energy";
 import { processBoidReproduction } from "./reproduction";
 import { regenerateHealth, isDead, getDeathCause } from "./health";
-
-// NEW: Behavior scoring system (Session 73)
-import {
-  createBehaviorRuleset,
-  MINIMUM_STANCE_DURATION,
-} from "../behavior/rules";
-import {
-  evaluateBehavior,
-  applyBehaviorDecision,
-  buildBehaviorContext,
-} from "../behavior/evaluator";
-import type { StanceDecision } from "../vocabulary/schemas/behavior";
-import { roleKeywords } from "../vocabulary/keywords.ts";
-
-// Create behavior ruleset once (reused for all evaluations)
-const behaviorRuleset = createBehaviorRuleset();
 
 /**
  * DEPRECATED (Session 73): Replaced by behavior scoring system
@@ -223,9 +205,8 @@ export function processLifecycleUpdates(
   }>;
 } {
   // Extract context for convenience
-  const { config, simulation, deltaSeconds, frame } = context;
+  const { config, deltaSeconds } = context;
   const { parameters, species: speciesTypes } = config;
-  const { foodSources } = simulation;
 
   const boidsToRemove: string[] = [];
   const boidsToAdd: OffspringData[] = [];
@@ -241,13 +222,6 @@ export function processLifecycleUpdates(
   const matedBoids = new Set<string>();
   const boidsMap = boidsById(boids);
 
-  // Pre-calculate predators and prey for behavior evaluation
-  const predators = getPredators(boids, speciesTypes);
-  const prey = getPrey(boids, speciesTypes);
-
-  // Track stance decisions for analytics (optional)
-  const stanceDecisions: StanceDecision[] = [];
-
   // Process each boid
   for (let i = 0; i < boids.length; i++) {
     const boid = boids[i];
@@ -257,79 +231,8 @@ export function processLifecycleUpdates(
     // 1. Age the boid
     boid.age = updateBoidAge(boid, deltaSeconds);
 
-    // 2. Update stance using NEW behavior scoring system (Session 73)
-    const role = speciesConfig.role;
-
-    // Gather nearby entities for behavior context
-    const nearbyPredators =
-      role === roleKeywords.prey
-        ? predators.filter((p) => {
-            const fearRadius =
-              speciesConfig.limits.fearRadius ?? parameters.fearRadius;
-            return isWithinRadius(boid.position, p.position, fearRadius);
-          })
-        : [];
-
-    const nearbyPrey =
-      role === roleKeywords.predator
-        ? prey.filter((p) =>
-            isWithinRadius(boid.position, p.position, parameters.chaseRadius)
-          )
-        : [];
-
-    const nearbyFood = foodSources.filter((f) => {
-      if (f.sourceType !== role || f.energy <= 0) return false;
-      const detectionRadius = FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5;
-      return isWithinRadius(boid.position, f.position, detectionRadius);
-    });
-
-    const nearbyFlock = boids.filter(
-      (b) =>
-        b.typeId === boid.typeId &&
-        b.id !== boid.id &&
-        isWithinRadius(boid.position, b.position, parameters.perceptionRadius)
-    );
-
-    // Calculate population ratio for environment pressure
-    const populationRatio = boids.length / parameters.maxBoids;
-
-    // Build behavior context
-    const behaviorContext = buildBehaviorContext(
-      boid,
-      i,
-      nearbyPredators,
-      nearbyPrey,
-      nearbyFood,
-      nearbyFlock,
-      simulation.tick,
-      role,
-      speciesConfig.reproduction.type,
-      boid.seekingMate, // readyToMate (updated in step 7)
-      populationRatio
-    );
-
-    // Evaluate behavior rules
-    const decision = evaluateBehavior(behaviorContext, behaviorRuleset, role);
-
-    // Apply decision if valid
-    if (decision) {
-      const stanceDecision = applyBehaviorDecision(
-        boid,
-        decision,
-        simulation.tick,
-        timerState.simulationFrame,
-        MINIMUM_STANCE_DURATION
-      );
-
-      if (stanceDecision) {
-        stanceDecision.boidIndex = i;
-        stanceDecision.nearbyPredatorCount = nearbyPredators.length;
-        stanceDecision.nearbyPreyCount = nearbyPrey.length;
-        stanceDecisions.push(stanceDecision);
-      }
-    }
-
-    // 3. Check for death (health OR energy depletion)
+    // 2. Check for death (health OR energy depletion)
+    // NOTE: Behavior evaluation moved to engine.ts at frame rate (Session 76)
     if (isDead(boid)) {
       const maxAge = boid.phenotype.maxAge;
       const deathReason = getDeathCause(boid, maxAge);
@@ -338,22 +241,22 @@ export function processLifecycleUpdates(
       continue; // Skip remaining updates for dead boid
     }
 
-    // 4. Update energy
+    // 3. Update energy
     boid.energy = updateBoidEnergy(boid, speciesConfig, deltaSeconds);
 
-    // 5. Regenerate health (passive, slow)
+    // 4. Regenerate health (passive, slow)
     boid.health = regenerateHealth(boid).health;
 
-    // 6. Update cooldowns
+    // 5. Update cooldowns
     const cooldowns = updateBoidCooldowns(boid);
     boid.reproductionCooldown = cooldowns.reproductionCooldown;
     boid.eatingCooldown = cooldowns.eatingCooldown;
     boid.attackCooldown = cooldowns.attackCooldown;
 
-    // 7. Update seeking state
+    // 6. Update seeking state
     boid.seekingMate = isReadyToMate(boid, parameters, speciesConfig);
 
-    // 8. Process reproduction
+    // 7. Process reproduction
     const matingResult = processBoidReproduction(
       boid,
       boids,
