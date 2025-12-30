@@ -1,4 +1,2 @@
-datasets/*.csv
-datasets/*.json
-datasets/*.jsonl
+datasets/
 .venv/

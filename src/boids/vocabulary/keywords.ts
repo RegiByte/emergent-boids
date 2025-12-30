@@ -113,6 +113,7 @@ export const deathCauseKeywords = {
 export const roleKeywords = {
   prey: "prey",
   predator: "predator",
+  both: "both",
 } as const;
 
 export const reproductionTypeKeywords = {
@@ -136,4 +137,65 @@ export const bodyPartKeywords = {
   antenna: "antenna",
   glow: "glow",
   shell: "shell",
+} as const;
+
+/**
+ * Behavior Keywords - Stances and Substates for Behavior System
+ *
+ * Maps existing imperative stance system to new scoring system.
+ * Substates allow rich behaviors (e.g., hunting → searching/stalking/chasing).
+ */
+export const behaviorKeywords = {
+  // Prey stances (existing)
+  prey: {
+    flocking: "flocking", // Default: normal flocking behavior
+    fleeing: "fleeing", // Running from predators
+    eating: "eating", // Orbiting food source
+    seeking_mate: "seeking_mate", // Looking for mate (sexual reproduction)
+    mating: "mating", // Currently mating
+  },
+
+  // Predator stances (existing)
+  predator: {
+    hunting: "hunting", // Default: chasing prey
+    eating: "eating", // Orbiting food source
+    seeking_mate: "seeking_mate", // Looking for mate (sexual reproduction)
+    mating: "mating", // Currently mating
+    idle: "idle", // Low energy, conserving
+  },
+
+  // Substates (NEW - for rich behaviors)
+  substates: {
+    // Hunting substates
+    searching: "searching", // Looking for prey
+    stalking: "stalking", // Approaching prey
+    chasing: "chasing", // Active pursuit (locked target)
+
+    // Fleeing substates
+    panic: "panic", // Very close predator
+    tactical: "tactical", // Farther predator
+
+    // Eating substates
+    desperate: "desperate", // Critical energy (< 30%)
+    normal: "normal", // Normal eating (< 70%)
+
+    // Idle substates
+    resting: "resting", // Recovering energy
+  },
+
+  // Decision reasons (for analytics)
+  reasons: {
+    critical_energy: "critical_energy", // < 30% energy
+    low_energy: "low_energy", // < 70% energy
+    predator_nearby: "predator_nearby", // Prey fleeing
+    prey_detected: "prey_detected", // Predator hunting
+    food_nearby: "food_nearby", // Food within eating radius
+    locked_on_target: "locked_on_target", // Continuing chase
+    new_target: "new_target", // Starting new chase
+    target_escaped: "target_escaped", // Lost target
+    recovering_energy: "recovering_energy", // Idle/resting
+    mate_ready: "mate_ready", // Ready to mate
+    mate_found: "mate_found", // Has mate
+    default: "default", // Fallback behavior
+  },
 } as const;

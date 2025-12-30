@@ -1,0 +1,175 @@
+import { z } from "zod";
+import { reproductionTypeKeywords, roleKeywords } from "../keywords";
+import { stanceSchema } from "./prelude";
+
+/**
+ * Behavior Schemas - Type-safe behavior scoring system
+ *
+ * This file defines the core types for the behavior scoring system.
+ * The system replaces imperative stance ladders with composable rules
+ * that "vote" on what a boid should do.
+ *
+ * Philosophy: Simple rules compose. Highest score wins.
+ */
+
+/**
+ * Behavior Context Schema
+ *
+ * All information a behavior rule needs to make decisions.
+ * Passed to every rule evaluation.
+ *
+ * Design: Minimal allocations - reuse context object when possible.
+ */
+export const behaviorContextSchema = z.object({
+  // Boid identity
+  boidId: z.string(),
+  boidIndex: z.number(),
+
+  // Current state
+  currentStance: z.string(),
+  currentSubstate: z.string().nullable(),
+  stanceEnteredAt: z.number(),
+
+  // Resources
+  energyRatio: z.number().min(0).max(1),
+  healthRatio: z.number().min(0).max(1),
+
+  // Nearby entities (counts for performance)
+  nearbyPredatorCount: z.number(),
+  nearbyPreyCount: z.number(),
+  nearbyFoodCount: z.number(),
+  nearbyFlockCount: z.number(),
+
+  // Distances (closest of each type)
+  closestPredatorDistance: z.number().nullable(),
+  closestPreyDistance: z.number().nullable(),
+  closestFoodDistance: z.number().nullable(),
+
+  // Target tracking (NEW - for predator commitment)
+  hasLockedTarget: z.boolean(),
+  targetLockStrength: z.number().min(0).max(1),
+  targetLockDuration: z.number(),
+
+  // Mating state
+  hasMate: z.boolean(),
+
+  // Timing
+  tick: z.number(),
+  ticksSinceTransition: z.number(),
+
+  // Species config (for rule customization)
+  role: z.enum([roleKeywords.prey, roleKeywords.predator]),
+  reproductionType: z.enum([
+    reproductionTypeKeywords.sexual,
+    reproductionTypeKeywords.asexual,
+  ]),
+});
+
+/**
+ * Behavior Score Schema
+ *
+ * Result of evaluating a behavior rule.
+ * Describes what the boid should do and why.
+ */
+export const behaviorScoreSchema = z.object({
+  // What to do
+  stance: stanceSchema,
+  substate: z.string().nullable(),
+
+  // Priority (higher = more important)
+  score: z.number().min(0),
+
+  // Why (for analytics and debugging)
+  reason: z.string(),
+
+  // Overrides minimum duration?
+  urgent: z.boolean(),
+
+  // Rule that produced this score
+  ruleName: z.string(),
+});
+
+/**
+ * Behavior Rule Metadata Schema
+ *
+ * Metadata about a behavior rule.
+ * Actual evaluation function is not in schema (it's a function).
+ */
+export const behaviorRuleMetadataSchema = z.object({
+  name: z.string(),
+  role: z.enum([roleKeywords.prey, roleKeywords.predator, roleKeywords.both]),
+  description: z.string(),
+  enabled: z.boolean().default(true),
+});
+
+/**
+ * Stance Decision Schema
+ *
+ * Record of a stance transition for analytics.
+ * Captures context + decision for ML training and debugging.
+ */
+export const stanceDecisionSchema = z.object({
+  boidId: z.string(),
+  boidIndex: z.number(),
+  tick: z.number(),
+
+  // Transition
+  previousStance: z.string(),
+  previousSubstate: z.string().nullable(),
+  newStance: z.string(),
+  newSubstate: z.string().nullable(),
+
+  // Decision metadata
+  score: z.number(),
+  reason: z.string(),
+  ruleName: z.string(),
+  urgent: z.boolean(),
+
+  // Context snapshot (for ML training)
+  energyRatio: z.number(),
+  healthRatio: z.number(),
+  nearbyPredatorCount: z.number(),
+  nearbyPreyCount: z.number(),
+});
+
+/**
+ * Minimum Stance Duration Config Schema
+ *
+ * How long boids must stay in each stance before transitioning.
+ * Prevents rapid flickering between states.
+ */
+export const minimumStanceDurationSchema = z.record(
+  z.string(),
+  z.number().int().min(0)
+);
+
+// Type exports
+export type BehaviorContext = z.infer<typeof behaviorContextSchema>;
+export type BehaviorScore = z.infer<typeof behaviorScoreSchema>;
+export type BehaviorRuleMetadata = z.infer<typeof behaviorRuleMetadataSchema>;
+export type StanceDecision = z.infer<typeof stanceDecisionSchema>;
+export type MinimumStanceDuration = z.infer<typeof minimumStanceDurationSchema>;
+
+/**
+ * Behavior Rule Type
+ *
+ * A function that evaluates whether a boid should adopt a behavior.
+ * Returns a score if the behavior is applicable, null otherwise.
+ *
+ * Design: Pure function - no side effects, easy to test.
+ */
+export type BehaviorRule = {
+  metadata: BehaviorRuleMetadata;
+  evaluate: (context: BehaviorContext) => BehaviorScore | null;
+};
+
+/**
+ * Behavior Ruleset Type
+ *
+ * Collection of rules for prey and predators.
+ * Created once at initialization, reused for all evaluations.
+ */
+export type BehaviorRuleset = {
+  preyRules: BehaviorRule[];
+  predatorRules: BehaviorRule[];
+};

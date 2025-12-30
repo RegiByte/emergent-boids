@@ -393,7 +393,55 @@ export function chase(
 ): Vector2 {
   profiler?.start("rule.chase");
 
-  // Use weighted selection to find best prey target
+  // NEW (Session 73): Target tracking with lock persistence
+  // Check for locked target first (commitment to chase)
+  if (predator.targetId && predator.targetLockStrength > 0) {
+    const lockedPrey = prey.find((p) => p.id === predator.targetId);
+    
+    if (lockedPrey) {
+      const dist = vec.toroidalDistance(
+        predator.position,
+        lockedPrey.position,
+        world.width,
+        world.height
+      );
+      
+      // Grace distance: 20% extra range while locked (commitment!)
+      const graceRadius = parameters.chaseRadius * 1.2;
+      
+      if (dist < graceRadius) {
+        // Continue chasing locked target
+        const desired = vec.toroidalSubtract(
+          lockedPrey.position,
+          predator.position,
+          world.width,
+          world.height
+        );
+        const desiredVelocity = vec.setMagnitude(desired, predator.phenotype.maxSpeed);
+        const steer = vec.subtract(desiredVelocity, predator.velocity);
+        
+        // Increment lock time (tracks commitment duration)
+        predator.targetLockTime++;
+        
+        profiler?.end("rule.chase");
+        return vec.limit(steer, predator.phenotype.maxForce);
+      }
+      
+      // Target escaped grace radius → decay lock
+      predator.targetLockStrength = Math.max(0, predator.targetLockStrength - 0.1);
+      if (predator.targetLockStrength === 0) {
+        predator.targetId = null;
+        predator.targetLockTime = 0;
+      }
+    } else {
+      // Target no longer exists (died or removed) → clear lock
+      predator.targetId = null;
+      predator.targetLockStrength = 0;
+      predator.targetLockTime = 0;
+    }
+  }
+
+  // No locked target or target lost → select new target
   const targetPrey = selectBestPrey(
     predator,
     prey,
@@ -403,6 +451,13 @@ export function chase(
   );
 
   if (targetPrey) {
+    // Lock onto new target
+    if (predator.targetId !== targetPrey.id) {
+      predator.targetId = targetPrey.id;
+      predator.targetLockStrength = 1.0;
+      predator.targetLockTime = 0;
+    }
+    
     // Steer toward selected prey
     const desired = vec.toroidalSubtract(
       targetPrey.position,

@@ -20,7 +20,11 @@ import * as vec from "./vector";
 import type { DomainRNG } from "@/lib/seededRandom";
 import type { Vector2 } from "./vocabulary/schemas/prelude.ts";
 import { roleKeywords } from "./vocabulary/keywords.ts";
-import type { WorldPhysics, Genome, MutationConfig } from "./vocabulary/schemas/genetics";
+import type {
+  WorldPhysics,
+  Genome,
+  MutationConfig,
+} from "./vocabulary/schemas/genetics";
 import { computePhenotype, createGenesisGenome } from "./genetics/phenotype";
 import { defaultWorldPhysics } from "@/resources/defaultPhysics";
 import { inheritGenome, DEFAULT_MUTATION_CONFIG } from "./genetics/inheritance";
@@ -39,7 +43,7 @@ export type Force = {
  * Makes force priorities clear and easy to tune.
  *
  * Philosophy: Simple rules compose. Weighted forces create emergent behavior.
- * 
+ *
  * PERFORMANCE OPTIMIZATION (Session 71):
  * Inline vector operations to avoid function call overhead
  * Reduces ~8-10 function calls per boid per frame to 0
@@ -122,15 +126,24 @@ export function createBoid(
     stance: role === "predator" ? "hunting" : "flocking", // Initial stance based on role
     previousStance: null, // No previous stance
     positionHistory: [], // Empty trail initially
+
+    // Target tracking (NEW - Session 73)
+    targetId: null, // No target initially
+    targetLockTime: 0, // No lock time
+    targetLockStrength: 0, // No lock strength
+
+    // Stance transition tracking (NEW - Session 73)
+    stanceEnteredAt: 0, // Entered at tick 0
+    substate: null, // No substate initially
   };
 }
 
 /**
  * Create a new boid of a specific type (for reproduction)
- * 
+ *
  * If parent genomes are provided, offspring inherits from parent(s) with mutations.
  * Otherwise, creates a genesis genome from species config (initial spawning).
- * 
+ *
  * @returns Boid and mutation metadata (if inherited from parents)
  */
 export function createBoidOfType(
@@ -160,20 +173,26 @@ export function createBoidOfType(
     hadColorMutation: boolean;
     hadBodyPartMutation: boolean;
   } | null = null;
-  
+
   if (parentGenomes) {
     // Offspring: Inherit genome from parent(s) with mutations
     // Use species mutation config (top-level) or defaults
     const mutationConfig: MutationConfig = {
-      traitRate: speciesConfig.mutation?.traitRate ?? DEFAULT_MUTATION_CONFIG.traitRate,
-      traitMagnitude: speciesConfig.mutation?.traitMagnitude ?? DEFAULT_MUTATION_CONFIG.traitMagnitude,
-      visualRate: speciesConfig.mutation?.visualRate ?? DEFAULT_MUTATION_CONFIG.visualRate,
-      colorRate: speciesConfig.mutation?.colorRate ?? DEFAULT_MUTATION_CONFIG.colorRate,
+      traitRate:
+        speciesConfig.mutation?.traitRate ?? DEFAULT_MUTATION_CONFIG.traitRate,
+      traitMagnitude:
+        speciesConfig.mutation?.traitMagnitude ??
+        DEFAULT_MUTATION_CONFIG.traitMagnitude,
+      visualRate:
+        speciesConfig.mutation?.visualRate ??
+        DEFAULT_MUTATION_CONFIG.visualRate,
+      colorRate:
+        speciesConfig.mutation?.colorRate ?? DEFAULT_MUTATION_CONFIG.colorRate,
     };
-    
+
     // Enable logging for inheritance (temporary for debugging)
     const enableLogging = false;
-    
+
     const inheritanceResult = inheritGenome(
       parentGenomes.parent1,
       parentGenomes.parent2,
@@ -241,6 +260,15 @@ export function createBoidOfType(
     stance: speciesConfig.role === "predator" ? "hunting" : "flocking", // Initial stance based on role
     previousStance: null, // No previous stance
     positionHistory: [], // Empty trail initially
+
+    // Target tracking (NEW - Session 73)
+    targetId: null, // No target initially
+    targetLockTime: 0, // No lock time
+    targetLockStrength: 0, // No lock strength
+
+    // Stance transition tracking (NEW - Session 73)
+    stanceEnteredAt: 0, // Entered at tick 0
+    substate: null, // No substate initially
   };
 
   return { boid, mutationMetadata };
@@ -691,7 +719,7 @@ export function updateBoid(
   // Update position (common for all boids)
   // Scale velocity by deltaSeconds for frame-rate independent movement
   // PERFORMANCE OPTIMIZATION (Session 71): Inline vector operations
-  const scale = context.deltaSeconds * 60; // 60 = reference FPS
+  const scale = context.deltaSeconds * 30; // 60 = reference FPS
   boid.position.x += boid.velocity.x * scale;
   boid.position.y += boid.velocity.y * scale;
 
@@ -733,7 +761,8 @@ function enforceMinimumDistance(
   speciesTypes: Record<string, SpeciesConfig>
 ): void {
   const speciesConfig = speciesTypes[boid.typeId];
-  const minDist = speciesConfig?.overrides?.minDistance || parameters.minDistance;
+  const minDist =
+    speciesConfig?.overrides?.minDistance || parameters.minDistance;
   if (!speciesConfig) {
     console.warn(`Unknown species: ${boid.typeId}`);
     return;

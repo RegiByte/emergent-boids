@@ -15,6 +15,7 @@ export type SimulationContext = {
   obstacles: Obstacle[];
   deathMarkers: DeathMarker[];
   foodSources: FoodSource[];
+  tick: number; // Current simulation tick (NEW - Session 73: for behavior system)
 };
 
 /**

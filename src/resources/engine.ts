@@ -119,6 +119,7 @@ export const engine = defineResource({
           obstacles: simulation.obstacles,
           deathMarkers: simulation.deathMarkers,
           foodSources: simulation.foodSources,
+          tick: 0, // Engine doesn't track lifecycle ticks (only lifecycleManager does)
         },
         config: {
           parameters: config.parameters,
@@ -160,7 +161,7 @@ export const engine = defineResource({
          * Each boid updates on its designated frame (i % 3 === frameCounter % 3)
          * This reduces trail update cost by 33% with minimal visual impact
          */
-        const shouldUpdateTrail = (i % 3) === (frameCounter % 3);
+        const shouldUpdateTrail = i % 3 === frameCounter % 3;
         if (speciesConfig && shouldUpdateTrail) {
           // Add current position to history
           boid.positionHistory.push({ x: boid.position.x, y: boid.position.y });

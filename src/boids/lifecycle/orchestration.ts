@@ -1,6 +1,6 @@
 import { boidsById, lookupBoid } from "../conversions";
 import type { BoidUpdateContext } from "../context";
-import { getPredators } from "../filters";
+import { getPredators, getPrey } from "../filters";
 import { FOOD_CONSTANTS } from "../food";
 import type { MatingContext, OffspringData } from "../mating";
 import { applyMatingResult, unpairBoids } from "../mating";
@@ -18,10 +18,30 @@ import type {
   SpeciesConfig,
 } from "../vocabulary/schemas/prelude.ts";
 
+// NEW: Behavior scoring system (Session 73)
+import {
+  createBehaviorRuleset,
+  MINIMUM_STANCE_DURATION,
+} from "../behavior/rules";
+import {
+  evaluateBehavior,
+  applyBehaviorDecision,
+  buildBehaviorContext,
+} from "../behavior/evaluator";
+import type { StanceDecision } from "../vocabulary/schemas/behavior";
+import { roleKeywords } from "../vocabulary/keywords.ts";
+
+// Create behavior ruleset once (reused for all evaluations)
+const behaviorRuleset = createBehaviorRuleset();
+
 /**
+ * DEPRECATED (Session 73): Replaced by behavior scoring system
+ * Keeping for reference during migration
+ *
  * Update prey stance based on current state (declarative)
  */
-function updatePreyStance(
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function updatePreyStance_DEPRECATED(
   boid: Boid,
   speciesConfig: SpeciesConfig,
   parameters: SimulationParameters,
@@ -113,9 +133,14 @@ function updatePreyStance(
 }
 
 /**
+ * DEPRECATED (Session 73): Replaced by behavior scoring system
+ * Keeping for reference during migration
+ *
  * Update predator stance based on current state (declarative)
  */
-function updatePredatorStance(
+// @ts-ignore - Keeping for reference
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function updatePredatorStance_DEPRECATED(
   boid: Boid,
   speciesConfig: SpeciesConfig,
   parameters: SimulationParameters,
@@ -196,7 +221,10 @@ export function processLifecycleUpdates(
 ): {
   boidsToRemove: string[];
   boidsToAdd: OffspringData[];
-  deathEvents: Array<{ boidId: string; reason: "old_age" | "starvation" | "predation" }>;
+  deathEvents: Array<{
+    boidId: string;
+    reason: "old_age" | "starvation" | "predation";
+  }>;
   reproductionEvents: Array<{
     parent1Id: string;
     parent2Id?: string;
@@ -222,34 +250,86 @@ export function processLifecycleUpdates(
   const matedBoids = new Set<string>();
   const boidsMap = boidsById(boids);
 
-  // Pre-calculate predators for prey stance updates
+  // Pre-calculate predators and prey for behavior evaluation
   const predators = getPredators(boids, speciesTypes);
+  const prey = getPrey(boids, speciesTypes);
+
+  // Track stance decisions for analytics (optional)
+  const stanceDecisions: StanceDecision[] = [];
 
   // Process each boid
-  for (const boid of boids) {
+  for (let i = 0; i < boids.length; i++) {
+    const boid = boids[i];
     const speciesConfig = speciesTypes[boid.typeId];
     if (!speciesConfig) continue;
 
     // 1. Age the boid
     boid.age = updateBoidAge(boid, deltaSeconds);
 
-    // 2. Update stance based on current state
-    if (speciesConfig.role === "predator") {
-      updatePredatorStance(boid, speciesConfig, parameters, foodSources);
-    } else {
-      // Use type-specific fear radius if available, otherwise use global
-      const fearRadius =
-        speciesConfig.limits.fearRadius ?? parameters.fearRadius;
-      const nearbyPredators = predators.filter((p) =>
-        isWithinRadius(boid.position, p.position, fearRadius)
-      );
-      updatePreyStance(
+    // 2. Update stance using NEW behavior scoring system (Session 73)
+    const role = speciesConfig.role;
+
+    // Gather nearby entities for behavior context
+    const nearbyPredators =
+      role === roleKeywords.prey
+        ? predators.filter((p) => {
+            const fearRadius =
+              speciesConfig.limits.fearRadius ?? parameters.fearRadius;
+            return isWithinRadius(boid.position, p.position, fearRadius);
+          })
+        : [];
+
+    const nearbyPrey =
+      role === roleKeywords.predator
+        ? prey.filter((p) =>
+            isWithinRadius(boid.position, p.position, parameters.chaseRadius)
+          )
+        : [];
+
+    const nearbyFood = foodSources.filter((f) => {
+      if (f.sourceType !== role || f.energy <= 0) return false;
+      const detectionRadius = FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5;
+      return isWithinRadius(boid.position, f.position, detectionRadius);
+    });
+
+    const nearbyFlock = boids.filter(
+      (b) =>
+        b.typeId === boid.typeId &&
+        b.id !== boid.id &&
+        isWithinRadius(boid.position, b.position, parameters.perceptionRadius)
+    );
+
+    // Build behavior context
+    const behaviorContext = buildBehaviorContext(
+      boid,
+      i,
+      nearbyPredators,
+      nearbyPrey,
+      nearbyFood,
+      nearbyFlock,
+      simulation.tick,
+      role,
+      speciesConfig.reproduction.type
+    );
+
+    // Evaluate behavior rules
+    const decision = evaluateBehavior(behaviorContext, behaviorRuleset, role);
+
+    // Apply decision if valid
+    if (decision) {
+      const stanceDecision = applyBehaviorDecision(
         boid,
-        speciesConfig,
-        parameters,
-        nearbyPredators,
-        foodSources
+        decision,
+        simulation.tick,
+        MINIMUM_STANCE_DURATION
       );
+
+      if (stanceDecision) {
+        stanceDecision.boidIndex = i;
+        stanceDecision.nearbyPredatorCount = nearbyPredators.length;
+        stanceDecision.nearbyPreyCount = nearbyPrey.length;
+        stanceDecisions.push(stanceDecision);
+      }
     }
 
     // 3. Check for death (health OR energy depletion)

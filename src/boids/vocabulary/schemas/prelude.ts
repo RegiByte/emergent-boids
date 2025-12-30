@@ -238,6 +238,15 @@ export const boidSchema = z.object({
   stance: stanceSchema, // Current behavioral stance
   previousStance: stanceSchema.nullable(), // Previous stance (for returning from fleeing)
   positionHistory: z.array(vectorSchema), // Trail of recent positions for rendering motion trails
+  
+  // Target tracking (NEW - Session 73: Behavior Scoring System)
+  targetId: z.string().nullable().default(null), // ID of locked target (predators only)
+  targetLockTime: z.number().default(0), // Ticks spent locked on current target
+  targetLockStrength: z.number().min(0).max(1).default(0), // Lock strength (1.0 = full lock, decays when target escapes)
+  
+  // Stance transition tracking (NEW - Session 73: Behavior Scoring System)
+  stanceEnteredAt: z.number().default(0), // Tick when current stance was entered
+  substate: z.string().nullable().default(null), // Rich substate (e.g., "searching", "chasing", "panic")
 });
 
 /**

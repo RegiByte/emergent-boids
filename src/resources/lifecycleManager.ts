@@ -116,6 +116,7 @@ export const lifecycleManager = defineResource({
           obstacles: simulation.obstacles,
           deathMarkers: simulation.deathMarkers,
           foodSources: simulation.foodSources,
+          tick: tickCounter, // NEW - Session 73: for behavior system
         },
         config: {
           parameters: config.parameters,
