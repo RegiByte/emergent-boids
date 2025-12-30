@@ -24,6 +24,7 @@ export const renderer = defineResource({
       "runtimeStore",
       "runtimeController",
       "time",
+      "webglRenderer",
     ],
     optional: ["profiler"],
   },
@@ -34,6 +35,7 @@ export const renderer = defineResource({
     runtimeStore,
     runtimeController,
     time,
+    webglRenderer,
     profiler,
   }: {
     canvas: CanvasAPI;
@@ -42,6 +44,7 @@ export const renderer = defineResource({
     runtimeStore: RuntimeStoreResource;
     runtimeController: RuntimeController;
     time: TimeResource;
+    webglRenderer: { render: () => void; canvas: HTMLCanvasElement };
     profiler: Profiler | undefined;
   }) => {
     let animationId: number | null = null;
@@ -151,6 +154,30 @@ export const renderer = defineResource({
           });
           console.log("Food sources:", !currentSettings.foodSourcesEnabled);
           break;
+        case "g": {
+          // Toggle renderer (Canvas vs WebGL)
+          const newMode = ui.rendererMode === "canvas" ? "webgl" : "canvas";
+          runtimeStore.store.setState({
+            ui: {
+              ...ui,
+              rendererMode: newMode,
+            },
+          });
+          
+          // Show/hide appropriate canvas
+          if (newMode === "webgl") {
+            canvas.canvas.style.display = "none";
+            webglRenderer.canvas.style.display = "block";
+          } else {
+            canvas.canvas.style.display = "block";
+            webglRenderer.canvas.style.display = "none";
+          }
+          
+          console.log(
+            `🎮 Renderer: ${newMode.toUpperCase()} ${newMode === "webgl" ? "⚡" : "🖌️"}`
+          );
+          break;
+        }
         case " ": {
           // Toggle pause (space bar)
           e.preventDefault();
@@ -226,6 +253,7 @@ export const renderer = defineResource({
 ║ S - Toggle stance symbols              ║
 ║ D - Toggle death markers               ║
 ║ F - Toggle food sources                ║
+║ G - Toggle renderer (Canvas/WebGL)     ║
 ║                                        ║
 ║ TIME CONTROL:                          ║
 ║ Space - Pause/Resume simulation        ║
@@ -249,6 +277,16 @@ export const renderer = defineResource({
 
     // Register keyboard listener
     document.addEventListener("keydown", handleKeyPress);
+
+    // Set initial canvas visibility based on renderer mode
+    const initialMode = runtimeStore.store.getState().ui.rendererMode;
+    if (initialMode === "webgl") {
+      canvas.canvas.style.display = "none";
+      webglRenderer.canvas.style.display = "block";
+    } else {
+      canvas.canvas.style.display = "block";
+      webglRenderer.canvas.style.display = "none";
+    }
 
     const draw = () => {
       const { ctx, width, height } = canvas;
@@ -429,13 +467,21 @@ export const renderer = defineResource({
       }
 
       // Rendering at fixed rate (Session 72: Decouple render from physics)
-      // Physics runs at 60 UPS, rendering runs at 30 FPS for performance
+      // Physics runs at 30 UPS, rendering runs at 60 FPS for performance
       // Accumulate render time and only draw when interval is reached
       renderAccumulator += realDeltaMs / 1000;
 
       if (renderAccumulator >= RENDER_INTERVAL) {
         profiler?.start("frame.render");
-        draw();
+        
+        // Choose renderer based on UI setting
+        const { ui } = runtimeStore.store.getState();
+        if (ui.rendererMode === "webgl") {
+          webglRenderer.render();
+        } else {
+          draw();
+        }
+        
         profiler?.end("frame.render");
 
         // Subtract interval (not reset) to maintain consistent timing

@@ -44,6 +44,7 @@ export type CameraAPI = {
     top: number;
     bottom: number;
   };
+  getTransformMatrix: () => number[];
   enterPickerMode: () => void;
   updatePickerTarget: (
     boidId: string | null,
@@ -317,6 +318,46 @@ export const camera = defineResource({
       }
     };
 
+    // WebGL matrix generation (mat3 for 2D transforms)
+    // Single combined matrix: world -> NDC
+    // Matches Canvas 2D: ctx.translate(w/2, h/2); ctx.scale(zoom, zoom); ctx.translate(-x, -y)
+    // Then converts screen space to NDC: ndc = (screen / size) * 2 - 1
+    const getTransformMatrix = (): number[] => {
+      const w = canvas.width;
+      const h = canvas.height;
+      
+      // Canvas 2D transform (applied right-to-left):
+      // screen = ((world - camera) * zoom) + center
+      // screen_x = (px - x) * zoom + w/2
+      // screen_y = (py - y) * zoom + h/2
+      //
+      // Then to NDC:
+      // ndc_x = (screen_x / w) * 2 - 1
+      // ndc_y = -(screen_y / h) * 2 + 1  (flip Y for WebGL)
+      //
+      // Combined:
+      // ndc_x = ((px - x) * zoom + w/2) / w * 2 - 1
+      //       = px * (2*zoom/w) - x * (2*zoom/w) + 1 - 1
+      //       = px * (2*zoom/w) + (-x*zoom + w/2) * (2/w) - 1
+      //
+      // ndc_y = -(((py - y) * zoom + h/2) / h * 2 - 1)
+      //       = -py * (2*zoom/h) + y * (2*zoom/h) - 1 + 1
+      //       = py * (-2*zoom/h) + (-y*zoom + h/2) * (-2/h) + 1
+      
+      const scaleX = (2 * zoom) / w;
+      const scaleY = (-2 * zoom) / h;
+      const translateX = ((-x * zoom + w / 2) * 2) / w - 1;
+      const translateY = ((-y * zoom + h / 2) * (-2)) / h + 1;
+      
+      // Return in COLUMN-MAJOR order for WebGL (mat3 in GLSL)
+      // Column 0 (x-axis), Column 1 (y-axis), Column 2 (translation)
+      return [
+        scaleX,     0,          0,      // Column 0: affects x
+        0,          scaleY,     0,      // Column 1: affects y
+        translateX, translateY, 1       // Column 2: translation + homogeneous
+      ];
+    };
+
     // Register event listeners
     document.addEventListener("keydown", handleKeyboard);
     canvas.canvas.addEventListener("wheel", handleWheel, { passive: false });
@@ -363,6 +404,7 @@ export const camera = defineResource({
       screenToWorld,
       isInViewport,
       getViewportBounds,
+      getTransformMatrix,
       enterPickerMode,
       updatePickerTarget,
       setMouseInCanvas,

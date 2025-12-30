@@ -14,6 +14,7 @@ import { runtimeController } from "./resources/runtimeController";
 import { runtimeStore } from "./resources/runtimeStore";
 import { time } from "./resources/time";
 import { timer } from "./resources/timer";
+import { webglRenderer } from "./resources/webglRenderer";
 
 export const systemConfig = {
   time,
@@ -30,6 +31,7 @@ export const systemConfig = {
   analytics,
   atmosphere,
   renderer,
+  webglRenderer,
   profiler,
 };
 

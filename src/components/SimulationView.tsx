@@ -25,6 +25,7 @@ function SimulationView() {
   const camera = useResource("camera");
   const renderer = useResource("renderer");
   const engine = useResource("engine");
+  const webglRenderer = useResource("webglRenderer");
   const { useStore } = runtimeStore;
   const sidebarOpen = useStore((state) => state.ui.sidebarOpen);
   const headerCollapsed = useStore((state) => state.ui.headerCollapsed);
@@ -71,9 +72,10 @@ function SimulationView() {
     };
   };
   const updateCanvasDebouncer = useDebouncer(
-    (canvas: CanvasAPI) => {
+    (canvas: CanvasAPI, webglRenderer: { resize: (w: number, h: number) => void }) => {
       const { width, height } = getParentDimensions();
       canvas.resize(width, height);
+      webglRenderer.resize(width, height);
     },
     {
       wait: 200,
@@ -84,7 +86,7 @@ function SimulationView() {
 
   useEffect(() => {
     // Mount canvas when system is ready
-    if (canvas && canvasContainerRef.current && canvasAreaRef.current) {
+    if (canvas && webglRenderer && canvasContainerRef.current && canvasAreaRef.current) {
       const container = canvasContainerRef.current;
       canvasElementRef.current = canvas.canvas;
 
@@ -102,11 +104,13 @@ function SimulationView() {
         container.appendChild(canvasWrapper);
       }
 
-      // Only append canvas if it's not already in the wrapper
-      // This prevents React StrictMode from causing issues
+      // Mount both Canvas 2D and WebGL canvases
+      // Only append if not already in the wrapper (prevents React StrictMode issues)
       if (!canvasWrapper.contains(canvas.canvas)) {
-        canvasWrapper.innerHTML = "";
         canvasWrapper.appendChild(canvas.canvas);
+      }
+      if (!canvasWrapper.contains(webglRenderer.canvas)) {
+        canvasWrapper.appendChild(webglRenderer.canvas);
       }
 
       // Calculate initial canvas size based on container
@@ -116,6 +120,7 @@ function SimulationView() {
         const { width, height } = getParentDimensions();
         if (width > 0 && height > 0) {
           canvas.resize(width, height);
+          webglRenderer.resize(width, height);
         }
       });
 
@@ -240,7 +245,7 @@ function SimulationView() {
         canvas.canvas.removeEventListener("mouseleave", handleCanvasMouseLeave);
       };
     }
-  }, [spawnMode, canvas, renderer, runtimeController, camera, engine]);
+  }, [spawnMode, canvas, webglRenderer, renderer, runtimeController, camera, engine]);
 
   // Use reactive camera mode for cursor updates
   const cameraMode = camera.useModeStore((state) => state.mode);
@@ -273,7 +278,7 @@ function SimulationView() {
         const canvasHeight = Math.floor(areaHeight);
 
         if (canvasWidth > 0 && canvasHeight > 0) {
-          updateCanvasDebouncer.maybeExecute(canvas);
+          updateCanvasDebouncer.maybeExecute(canvas, webglRenderer);
         }
       }
     });
@@ -285,7 +290,7 @@ function SimulationView() {
     return () => {
       resizeObserver.disconnect();
     };
-  }, [canvas, updateCanvasDebouncer]);
+  }, [canvas, webglRenderer, updateCanvasDebouncer]);
 
   // Keyboard shortcuts
   useEffect(() => {

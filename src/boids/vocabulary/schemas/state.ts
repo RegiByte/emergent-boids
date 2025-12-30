@@ -111,6 +111,7 @@ export const runtimeStoreSchema = z.object({
     visualSettings: visualSettingsSchema, // Rendering preferences
     sidebarOpen: z.boolean(), // Whether the sidebar is open
     headerCollapsed: z.boolean(), // Whether the header navbar is collapsed
+    rendererMode: z.enum(["canvas", "webgl"]).default("canvas"), // Which renderer to use
   }),
 });
 

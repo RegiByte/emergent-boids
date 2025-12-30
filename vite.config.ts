@@ -12,4 +12,5 @@ export default defineConfig({
     },
   },
   base: "/emergent-boids/",
+  assetsInclude: ["**/*.vert", "**/*.frag"],
 });
