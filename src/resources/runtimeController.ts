@@ -36,13 +36,17 @@ const handlers = {
     event,
     ctx
   ) => {
+    // Note: This handler now updates genome traits instead of movement params
+    // Fields should be trait names like 'speed', 'force', 'sociability', etc.
     return [
       {
         type: effectKeywords.state.update,
         state: ctx.nextState(state, (draft) => {
-          if (draft.config.species[event.typeId]) {
-            draft.config.species[event.typeId].movement[event.field] =
-              event.value;
+          if (draft.config.species[event.typeId]?.baseGenome?.traits) {
+            const traits = draft.config.species[event.typeId].baseGenome.traits as Record<string, number>;
+            if (event.field in traits) {
+              traits[event.field] = event.value;
+            }
           }
         }),
       },

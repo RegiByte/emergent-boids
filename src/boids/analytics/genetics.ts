@@ -179,7 +179,7 @@ export function computeGeneticsStats(
   };
 
   // Color diversity - average LAB distance from species base color
-  const baseColor = speciesConfig.visual.color;
+  const baseColor = speciesConfig.baseGenome.visual.color;
   const colorDistances = boids.map((b) => {
     try {
       return colorDistance(b.genome.visual.color, baseColor);

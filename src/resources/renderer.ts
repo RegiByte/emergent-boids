@@ -50,10 +50,18 @@ export const renderer = defineResource({
     let fps = 60;
 
     // Fixed timestep configuration
-    const FIXED_UPDATE_RATE = 60; // Updates per second (60 UPS)
-    const FIXED_TIMESTEP = 1 / FIXED_UPDATE_RATE; // 0.01667 seconds (16.67ms)
+    // Session 72B: Reduced physics rate for more natural movement and better performance
+    // Slower boids = less spatial hash churn, fewer trail segments, better UX
+    const FIXED_UPDATE_RATE = 30; // Updates per second (30 UPS) - was 60 UPS
+    const FIXED_TIMESTEP = 1 / FIXED_UPDATE_RATE; // 0.0238 seconds (23.8ms)
     const MAX_ACCUMULATED_TIME = FIXED_TIMESTEP * 5; // Prevent spiral of death
     let accumulator = 0;
+
+    // Rendering configuration (Session 72: Decouple render rate from physics)
+    // Physics at 30 UPS (natural movement), rendering at 60 FPS (smooth visuals)
+    const RENDER_RATE = 60; // Frames per second (60 FPS) - was 30 FPS
+    const RENDER_INTERVAL = 1 / RENDER_RATE; // 0.01667 seconds (16.67ms)
+    let renderAccumulator = 0;
 
     // Lifecycle tick tracking (dispatch time.passed every second of simulation time)
     let lastLifecycleTickTime = 0;
@@ -418,10 +426,24 @@ export const renderer = defineResource({
         }
       }
 
-      // Always render (even when paused)
-      profiler?.start("frame.render");
-      draw();
-      profiler?.end("frame.render");
+      // Rendering at fixed rate (Session 72: Decouple render from physics)
+      // Physics runs at 60 UPS, rendering runs at 30 FPS for performance
+      // Accumulate render time and only draw when interval is reached
+      renderAccumulator += realDeltaMs / 1000;
+
+      if (renderAccumulator >= RENDER_INTERVAL) {
+        profiler?.start("frame.render");
+        draw();
+        profiler?.end("frame.render");
+
+        // Subtract interval (not reset) to maintain consistent timing
+        renderAccumulator -= RENDER_INTERVAL;
+
+        // Clamp render accumulator to prevent spiral of death
+        if (renderAccumulator > RENDER_INTERVAL * 2) {
+          renderAccumulator = RENDER_INTERVAL;
+        }
+      }
 
       profiler?.end("frame.total");
 

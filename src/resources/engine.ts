@@ -151,26 +151,23 @@ export const engine = defineResource({
         updateBoid(boid, nearbyBoids, context);
         profiler.end("boid.rules.apply");
 
-        // Update position history for motion trails (every other frame for performance)
+        // Update position history for motion trails (every 3rd frame for performance)
         profiler.start("boid.trail.update");
         const speciesConfig = config.species[boid.typeId];
         /**
-         * Performance optimization:
-         * Distribute the trail update workload evenly across all boids
-         * This ensures that even boids update on even frames and odd boids update on odd frames
-         * Instead of trying to update them all in one frame, we distribute the load evenly across time
+         * Performance optimization (Session 71):
+         * Distribute trail updates across 3 frames instead of 2
+         * Each boid updates on its designated frame (i % 3 === frameCounter % 3)
+         * This reduces trail update cost by 33% with minimal visual impact
          */
-        const isBoidEven = i % 2 === 0;
-        const isFrameEven = frameCounter % 2 === 0;
-        const shouldUpdateTrail =
-          (isBoidEven && isFrameEven) || (!isBoidEven && !isFrameEven);
+        const shouldUpdateTrail = (i % 3) === (frameCounter % 3);
         if (speciesConfig && shouldUpdateTrail) {
-          // Add current position to history (only on even frames)
+          // Add current position to history
           boid.positionHistory.push({ x: boid.position.x, y: boid.position.y });
 
           // Keep only the last N positions based on type config
           if (
-            boid.positionHistory.length > speciesConfig.movement.trailLength
+            boid.positionHistory.length > speciesConfig.visualConfig.trailLength
           ) {
             boid.positionHistory.shift(); // Remove oldest position
           }

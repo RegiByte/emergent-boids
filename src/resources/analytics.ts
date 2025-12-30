@@ -181,13 +181,15 @@ export const analytics = defineResource({
           config.parameters.reproductionEnergyThreshold,
         speciesConfigs: Object.entries(config.species).reduce(
           (acc, [id, species]) => {
+            // Use genome traits converted to absolute values (multiply by physics limits)
+            // These are approximations since we don't have access to physics here
             acc[id] = {
               role: species.role,
-              maxSpeed: species.movement.maxSpeed,
-              maxForce: species.movement.maxForce,
-              maxEnergy: species.lifecycle.maxEnergy,
-              energyLossRate: species.lifecycle.energyLossRate,
-              fearFactor: species.lifecycle.fearFactor,
+              maxSpeed: species.baseGenome.traits.speed * 10, // Assuming physics.maxSpeed = 10
+              maxForce: species.baseGenome.traits.force * 0.5, // Assuming physics.maxForce = 0.5
+              maxEnergy: 100 * species.baseGenome.traits.size * 1.5, // From phenotype formula
+              energyLossRate: 0.01 * (1 - species.baseGenome.traits.efficiency * 0.5), // From phenotype formula
+              fearFactor: species.baseGenome.traits.fearResponse,
               reproductionType: species.reproduction.type,
               offspringCount: species.reproduction.offspringCount,
             };

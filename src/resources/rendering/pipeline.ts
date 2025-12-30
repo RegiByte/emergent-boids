@@ -5,7 +5,6 @@
  * Each function takes a RenderContext and draws one aspect of the simulation.
  */
 
-import { bodyPartKeywords } from "@/boids/vocabulary/keywords";
 import type {
   Boid,
   DeathMarker,
@@ -50,6 +49,56 @@ export type RenderContext = {
   timeState: TimeState; // Time state for pause overlay and speed indicator
   camera: CameraAPI; // Camera for coordinate transforms
   profiler?: Profiler;
+};
+
+/**
+ * Level of Detail (LOD) Configuration
+ * Session 72: Dynamic quality scaling based on boid count
+ */
+type LODConfig = {
+  renderBodyParts: boolean; // Render eyes, fins, tails, etc.
+  renderStanceSymbols: boolean; // Render stance emojis
+  renderMatingHearts: boolean; // Render mating hearts
+  trailSkipMod: number; // Modulo for trail updates (3 = every 3rd boid)
+};
+
+/**
+ * Calculate LOD settings based on total boid count
+ * Gracefully degrades visual quality to maintain performance
+ *
+ * Session 72B: Adjusted thresholds after physics slowdown (30 UPS)
+ * Physics at 30 UPS provides much better performance, so we can keep
+ * full quality at much higher boid counts before degrading visuals.
+ */
+const calculateLOD = (boidCount: number): LODConfig => {
+  // High quality: < 2500 boids - all features enabled
+  // With 30 UPS physics, we get 50 FPS at 1800 boids, so plenty of headroom
+  if (boidCount < 2500) {
+    return {
+      renderBodyParts: true,
+      renderStanceSymbols: true,
+      renderMatingHearts: true,
+      trailSkipMod: 1, // Render all trails - no blinking!
+    };
+  }
+
+  // Medium quality: 2500-3500 boids - disable decorative elements
+  if (boidCount < 3500) {
+    return {
+      renderBodyParts: false, // Disable body parts (eyes, fins, etc)
+      renderStanceSymbols: false, // Disable stance emojis
+      renderMatingHearts: false, // Disable mating hearts
+      trailSkipMod: 1, // Still render all trails (no blinking)
+    };
+  }
+
+  // Low quality: 3500+ boids - skip some trails if needed
+  return {
+    renderBodyParts: false,
+    renderStanceSymbols: false,
+    renderMatingHearts: false,
+    trailSkipMod: 2, // Only skip trails at very high counts
+  };
 };
 
 /**
@@ -159,8 +208,8 @@ export const renderDeathMarkers = (rc: RenderContext): void => {
 
     // Draw colored circle behind skull (intensity shows danger level)
     rc.ctx.globalAlpha = opacity * 0.4 * strengthRatio;
-    rc.ctx.fillStyle = speciesConfig.visual.color;
-    rc.ctx.shadowColor = speciesConfig.visual.color;
+    rc.ctx.fillStyle = speciesConfig.baseGenome.visual.color;
+    rc.ctx.shadowColor = speciesConfig.baseGenome.visual.color;
     rc.ctx.shadowBlur = glowIntensity;
     rc.ctx.beginPath();
     rc.ctx.arc(
@@ -238,6 +287,21 @@ export const renderFoodSources = (rc: RenderContext): void => {
   rc.profiler?.end("render.foodSources");
 };
 
+// PERFORMANCE OPTIMIZATION (Session 71): Reusable trail batch map
+// Reduces allocations from 1 Map + ~20-50 arrays per frame to 0 allocations
+type TrailSegment = {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+};
+type TrailBatch = {
+  segments: TrailSegment[];
+  lineWidth: number;
+};
+
+let trailBatchCache: Map<string, TrailBatch> | null = null;
+
 /**
  * Render boid trails (batched for performance)
  */
@@ -248,35 +312,41 @@ export const renderTrails = (rc: RenderContext): void => {
 
   rc.profiler?.start("render.trails.collect");
 
-  // Group segments by color and alpha (quantized to reduce batches)
-  type TrailSegment = {
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-  };
-  type TrailBatch = {
-    segments: TrailSegment[];
-    lineWidth: number;
-  };
+  // OPTIMIZATION: Reuse batch map from previous frame
+  if (!trailBatchCache) {
+    trailBatchCache = new Map();
+  }
+
+  // Clear segment arrays without deallocating batch objects
+  for (const batch of trailBatchCache.values()) {
+    batch.segments.length = 0; // Clear in-place
+  }
 
   // Map key: "color|alpha|lineWidth"
-  const trailBatches = new Map<string, TrailBatch>();
+  const trailBatches = trailBatchCache;
 
-  for (const boid of rc.boids) {
+  // Session 72: Dynamic LOD based on boid count
+  const lod = calculateLOD(rc.allBoids.length);
+
+  for (let boidIdx = 0; boidIdx < rc.boids.length; boidIdx++) {
+    const boid = rc.boids[boidIdx];
+
+    // Session 72: Skip trails based on LOD (render every Nth boid's trail)
+    if (boidIdx % lod.trailSkipMod !== 0) continue;
+
     const speciesConfig = rc.speciesConfigs[boid.typeId];
     if (!speciesConfig || boid.positionHistory.length <= 1) continue;
 
     // Check if this species should render trails
-    const shouldRenderTrail = speciesConfig.visual?.trail ?? true;
+    const shouldRenderTrail = speciesConfig.visualConfig?.trail ?? true;
     if (!shouldRenderTrail) continue;
 
     // Calculate energy ratio for trail visibility
-    const energyRatio = boid.energy / speciesConfig.lifecycle.maxEnergy;
+    const energyRatio = boid.energy / boid.phenotype.maxEnergy;
     const baseAlpha = 0.3 + energyRatio * 0.5;
 
     // Use custom trail color if specified, otherwise use individual genome color
-    const color = speciesConfig.visual.trailColor || boid.phenotype.color;
+    const color = speciesConfig.visualConfig.trailColor || boid.phenotype.color;
     const [r, g, b] = toRgb(color);
     const lineWidth = speciesConfig.role === "predator" ? 2 : 1.5;
 
@@ -355,6 +425,9 @@ export const renderTrails = (rc: RenderContext): void => {
 export const renderBoidBodies = (rc: RenderContext): void => {
   rc.profiler?.start("render.boids");
 
+  // Session 72: Dynamic LOD based on boid count
+  const lod = calculateLOD(rc.allBoids.length);
+
   for (const boid of rc.boids) {
     const angle = Math.atan2(boid.velocity.y, boid.velocity.x);
     const speciesConfig = rc.speciesConfigs[boid.typeId];
@@ -365,8 +438,8 @@ export const renderBoidBodies = (rc: RenderContext): void => {
     rc.ctx.rotate(angle);
 
     // Get shape and size from species config
-    const shape = speciesConfig.visual?.shape || "circle";
-    const sizeMultiplier = speciesConfig.visual?.size || 1.0;
+    const shape = speciesConfig.visualConfig?.shape || "circle";
+    const sizeMultiplier = speciesConfig.baseGenome?.traits?.size || 1.0;
     const baseSize = speciesConfig.role === "predator" ? 12 : 8;
     const size = baseSize * sizeMultiplier;
 
@@ -377,9 +450,11 @@ export const renderBoidBodies = (rc: RenderContext): void => {
       energyRatio
     );
 
-    // Check if glow effect is requested
-    const bodyParts = speciesConfig.visual?.bodyParts || [];
-    const hasGlow = bodyParts.includes(bodyPartKeywords.glow);
+    // Check if glow effect is requested (from genome body parts)
+    const bodyParts = speciesConfig.baseGenome?.visual?.bodyParts || [];
+    const hasGlow = bodyParts.some(
+      (part: { type: string }) => part.type === "glow"
+    );
 
     if (hasGlow) {
       rc.ctx.shadowBlur = size * 0.8;
@@ -403,16 +478,24 @@ export const renderBoidBodies = (rc: RenderContext): void => {
     }
 
     // Render body parts (eyes, fins, spikes, tail)
-    for (const partName of bodyParts) {
-      if (partName === "glow") continue; // Already handled above
-      const partRenderer = getBodyPartRenderer(partName);
-      if (partRenderer) {
-        // Use custom tail color if specified, otherwise use individual genome color
-        const partColor =
-          partName === "tail" && speciesConfig.visual.tailColor
-            ? speciesConfig.visual.tailColor
-            : boid.phenotype.color;
-        partRenderer(rc.ctx, size, partColor);
+    // Session 72: Skip body parts at high boid counts for performance
+    if (lod.renderBodyParts && bodyParts.length > 0) {
+      // PERFORMANCE OPTIMIZATION (Session 71): Reduce function lookups
+      // Pre-determine tail color once instead of per-part
+      const tailColor =
+        speciesConfig.visualConfig?.tailColor || boid.phenotype.color;
+
+      for (const part of bodyParts) {
+        const partType = typeof part === "string" ? part : part.type;
+        if (partType === "glow") continue; // Already handled above
+
+        // Inline renderer lookup to avoid function call overhead
+        const partRenderer = getBodyPartRenderer(partType);
+        if (partRenderer) {
+          const partColor =
+            partType === "tail" ? tailColor : boid.phenotype.color;
+          partRenderer(rc.ctx, size, partColor);
+        }
       }
     }
 
@@ -435,6 +518,12 @@ export const renderBoidBodies = (rc: RenderContext): void => {
  */
 export const renderStanceSymbols = (rc: RenderContext): void => {
   if (!rc.visualSettings.stanceSymbolsEnabled) {
+    return;
+  }
+
+  // Session 72: Skip stance symbols at high boid counts for performance
+  const lod = calculateLOD(rc.allBoids.length);
+  if (!lod.renderStanceSymbols) {
     return;
   }
 
@@ -586,6 +675,12 @@ export const renderHealthBars = (rc: RenderContext): void => {
  */
 export const renderMatingHearts = (rc: RenderContext): void => {
   if (!rc.visualSettings.matingHeartsEnabled) {
+    return;
+  }
+
+  // Session 72: Skip mating hearts at high boid counts for performance
+  const lod = calculateLOD(rc.allBoids.length);
+  if (!lod.renderMatingHearts) {
     return;
   }
 

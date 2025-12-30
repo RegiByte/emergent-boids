@@ -69,7 +69,7 @@ export function Minimap({ backgroundColor }: { backgroundColor: string }) {
         const speciesConfig = speciesConfigs[typeId];
         if (!speciesConfig) continue;
 
-        ctx.fillStyle = speciesConfig.visual.color;
+        ctx.fillStyle = speciesConfig.baseGenome.visual.color;
 
         // Draw all boids of this species
         for (const boid of boids) {
@@ -123,7 +123,14 @@ export function Minimap({ backgroundColor }: { backgroundColor: string }) {
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [engine, camera, worldWidth, worldHeight, speciesConfigs]);
+  }, [
+    engine,
+    camera,
+    worldWidth,
+    worldHeight,
+    speciesConfigs,
+    backgroundColor,
+  ]);
 
   // Drag state for minimap navigation
   const [isDragging, setIsDragging] = useState(false);

@@ -212,16 +212,14 @@ export function processFoodConsumption(
  */
 export function applyEnergyGains(
   boidsToUpdate: Array<{ boid: Boid; energyGain: number }>,
-  speciesTypes: Record<string, SpeciesConfig>
+  _speciesTypes: Record<string, SpeciesConfig>
 ): void {
   for (const { boid, energyGain } of boidsToUpdate) {
-    const speciesConfig = speciesTypes[boid.typeId];
-    if (speciesConfig) {
-      boid.energy = Math.min(
-        boid.energy + energyGain,
-        speciesConfig.lifecycle.maxEnergy
-      );
-    }
+    // Use individual phenotype.maxEnergy instead of species config
+    boid.energy = Math.min(
+      boid.energy + energyGain,
+      boid.phenotype.maxEnergy
+    );
   }
 }
 

@@ -37,22 +37,34 @@ function getCellKey(x: number, y: number, cellSize: number): string {
 /**
  * Insert all boids into the spatial hash
  * Call this once per frame before querying neighbors
+ * 
+ * PERFORMANCE OPTIMIZATION (Session 71):
+ * Reuses cell arrays instead of clearing the map, reducing GC pressure.
+ * This avoids allocating ~100-200 arrays per frame at high boid counts.
  */
 export function insertBoids(hash: SpatialHash, boids: Boid[]): void {
-  // Clear previous frame's data
-  hash.grid.clear();
+  // OPTIMIZATION: Clear arrays without deallocating them
+  // This reuses existing cell arrays, reducing garbage collection pressure
+  for (const cell of hash.grid.values()) {
+    cell.length = 0; // Clear array in-place (keeps capacity)
+  }
 
-  // Insert each boid into its cell
+  // Insert each boid into its cell (reuse existing arrays when possible)
   for (const boid of boids) {
     const key = getCellKey(boid.position.x, boid.position.y, hash.cellSize);
-    const cell = hash.grid.get(key);
-    if (cell) {
-      cell.push(boid);
-    } else {
-      hash.grid.set(key, [boid]);
+    let cell = hash.grid.get(key);
+    if (!cell) {
+      // Only allocate new array if cell doesn't exist yet
+      cell = [];
+      hash.grid.set(key, cell);
     }
+    cell.push(boid);
   }
 }
+
+// PERFORMANCE OPTIMIZATION (Session 71): Reusable arrays for neighbor queries
+// Reduces allocations from ~1800 arrays/frame to 0 arrays/frame
+const neighborQueryCache: Array<{ boid: Boid; distSq: number }> = [];
 
 /**
  * Get all boids in the same cell and adjacent cells (9 cells total)
@@ -78,12 +90,14 @@ export function getNearbyBoids(
   // 2. Filter by max distance if provided (early rejection)
   // 3. Only sort if we exceed maxNeighbors
   // 4. Use pre-calculated distances to avoid redundant calculations
+  // 5. Reuse array from previous query (Session 71 optimization)
   
   const col = Math.floor(position.x / hash.cellSize);
   const row = Math.floor(position.y / hash.cellSize);
 
-  // Collect boids with distances in one pass
-  const boidsWithDist: Array<{ boid: Boid; distSq: number }> = [];
+  // OPTIMIZATION: Reuse array from previous query
+  const boidsWithDist = neighborQueryCache;
+  boidsWithDist.length = 0; // Clear without deallocating
   const maxDistSq = maxDistance ? maxDistance * maxDistance : Infinity;
   
   // Check 3x3 grid of cells (including current cell)

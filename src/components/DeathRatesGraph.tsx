@@ -83,8 +83,8 @@ export function DeathRatesGraph({ compact = false }: DeathRatesGraphProps) {
     return {
       label: typeConfig.name,
       data: snapshots.map((snap) => snap.deaths[typeId] || 0),
-      borderColor: typeConfig.visual.color,
-      backgroundColor: typeConfig.visual.color + "40", // Add transparency
+      borderColor: typeConfig.baseGenome.visual.color,
+      backgroundColor: typeConfig.baseGenome.visual.color + "40", // Add transparency
       borderWidth: 2,
       pointRadius: 0, // Hide points for cleaner look
       pointHoverRadius: 4,

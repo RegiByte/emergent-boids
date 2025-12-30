@@ -1,18 +1,19 @@
 /**
  * Profile Registry - Central registry of all available simulation profiles
  *
+ * Session 69: Simplified to single stable-ecosystem profile for migration.
+ * Future profiles can be added following the genome-based format.
+ *
  * To add a new profile:
- * 1. Create a new file in this directory (e.g., predator-paradise.ts)
- * 2. Define your SimulationProfile
+ * 1. Create a new file in this directory
+ * 2. Define your SimulationProfile with baseGenome and visualConfig
  * 3. Import and add it to the profiles object below
  * 4. Users can then select it from the UI
  */
 
 import { stableEcosystemProfile } from "./stable-ecosystem";
-import { predatorParadiseProfile } from "./predator-paradise";
-import { peacefulCoexistenceProfile } from "./peaceful-coexistence";
 
-import { SimulationProfile } from "../boids/vocabulary/schemas/prelude.ts";
+import type { SimulationProfile } from "../boids/vocabulary/schemas/prelude.ts";
 
 /**
  * All available simulation profiles
@@ -20,11 +21,6 @@ import { SimulationProfile } from "../boids/vocabulary/schemas/prelude.ts";
  */
 export const profiles: Record<string, SimulationProfile> = {
   "stable-ecosystem": stableEcosystemProfile,
-  "predator-paradise": predatorParadiseProfile,
-  "peaceful-coexistence": peacefulCoexistenceProfile,
-  // Future profiles:
-  // "chaos-mode": chaosModeProfile,
-  // "extinction-event": extinctionEventProfile,
 };
 
 /**

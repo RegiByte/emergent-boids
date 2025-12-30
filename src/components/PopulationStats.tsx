@@ -162,12 +162,12 @@ export function PopulationStats() {
                 padding: "8px",
                 background: "#0a0a0a",
                 borderRadius: "4px",
-                borderLeft: `3px solid ${speciesConfig.visual.color}`,
+                borderLeft: `3px solid ${speciesConfig.baseGenome.visual.color}`,
               }}
             >
               <div
                 style={{
-                  color: speciesConfig.visual.color,
+                  color: speciesConfig.baseGenome.visual.color,
                   fontWeight: "bold",
                   marginBottom: "6px",
                   fontSize: "13px",

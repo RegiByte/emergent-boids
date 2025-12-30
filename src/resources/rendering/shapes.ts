@@ -218,11 +218,13 @@ export const shapeRenderers: Record<RenderShapeType, ShapeRenderer> = {
  * Body parts registry - Maps part names to rendering functions
  */
 export const bodyPartRenderers: Record<RenderBodyPartType, BodyPartRenderer> = {
-  eyes: renderEyes,
-  fins: renderFins,
-  spikes: renderSpikes,
+  eye: renderEyes,
+  fin: renderFins,
+  spike: renderSpikes,
   tail: renderTail,
+  antenna: renderEyes, // Reuse eyes renderer for now
   glow: renderGlow,
+  shell: renderSpikes, // Reuse spikes renderer for now
 };
 
 /**

@@ -111,20 +111,26 @@ export const shapeSchema = z.enum([
   shapeKeywords.triangle,
 ]);
 export const bodyPartSchema = z.enum([
-  bodyPartKeywords.eyes,
-  bodyPartKeywords.fins,
-  bodyPartKeywords.spikes,
+  bodyPartKeywords.eye,
+  bodyPartKeywords.fin,
+  bodyPartKeywords.spike,
   bodyPartKeywords.tail,
+  bodyPartKeywords.antenna,
   bodyPartKeywords.glow,
+  bodyPartKeywords.shell,
 ]);
 
 /**
  * Species Configuration - Defines behavior and characteristics of a species
  *
- * Updated with genetics system:
- * - baseGenome: Starting traits for genesis boids
- * - mutation: Mutation rates for evolution
- * - Legacy fields kept for backward compatibility (will be phased out)
+ * UNIFIED GENOME-BASED ARCHITECTURE (Session 69)
+ * - baseGenome: Required - Starting traits for genesis boids (evolvable)
+ * - visualConfig: Required - Non-evolvable visual preferences (shape, trails)
+ * - mutation: Optional - Mutation rates for evolution
+ * - overrides: Optional - Species-specific parameter tweaks
+ *
+ * Legacy fields (movement, lifecycle, visual) have been removed.
+ * All behavior now flows from genome → phenotype → behavior.
  *
  * Each species has its own configuration.
  */
@@ -133,72 +139,60 @@ export const speciesConfigSchema = z.object({
   name: z.string(), // Display name
   role: speciesRoleSchema, // "predator" or "prey"
 
-  // Genetics (NEW) - Base genome and mutation configuration
-  baseGenome: z
-    .object({
-      traits: z.object({
-        speed: z.number().min(0).max(1), // % of physics.maxSpeed
-        force: z.number().min(0).max(1), // % of physics.maxForce
-        vision: z.number().min(0).max(1), // % of physics.maxVision
-        size: z.number().min(0.5).max(3.0), // Absolute size
-        aggression: z.number().min(0).max(1), // Behavioral trait
-        sociability: z.number().min(0).max(1), // Behavioral trait
-        efficiency: z.number().min(0).max(1), // Energy efficiency
-      }),
-      visual: z.object({
-        color: z.string(), // LAB color (hex string)
-        bodyParts: z.array(z.any()), // Will be properly typed as BodyPart[]
-      }),
-    })
-    .optional(), // Optional for backward compatibility
+  // ✅ REQUIRED: Base genome (evolvable traits)
+  baseGenome: z.object({
+    traits: z.object({
+      speed: z.number().min(0).max(1), // % of physics.maxSpeed
+      force: z.number().min(0).max(1), // % of physics.maxForce
+      vision: z.number().min(0).max(1), // % of physics.maxVision
+      size: z.number().min(0.5).max(3.0), // Absolute size
+      aggression: z.number().min(0).max(1), // Behavioral trait
+      sociability: z.number().min(0).max(1), // Behavioral trait
+      efficiency: z.number().min(0).max(1), // Energy efficiency
+      fearResponse: z.number().min(0).max(1), // Fear intensity (0=fearless, 1=very afraid)
+      maturityRate: z.number().min(0).max(1), // Reproduction age (0=early, 1=late)
+      longevity: z.number().min(0).max(1), // Lifespan (0=short, 1=long)
+    }),
+    visual: z.object({
+      color: z.string(), // LAB color (hex string)
+      bodyParts: z.array(z.any()), // Will be properly typed as BodyPart[]
+    }),
+  }),
 
+  // ✅ REQUIRED: Visual configuration (non-evolvable, species-level)
+  visualConfig: z.object({
+    shape: shapeSchema, // Render shape (diamond, circle, hexagon, etc.)
+    trail: z.boolean().default(true), // Enable motion trails
+    trailLength: z.number().default(10), // Trail history size (positions to keep)
+    trailColor: z.string().optional(), // Custom trail color override (hex)
+    tailColor: z.string().optional(), // Custom tail color override (hex)
+  }),
+
+  // ✅ Optional: Mutation configuration
   mutation: mutationConfigSchema.optional(), // Mutation rates (optional, uses defaults if not specified)
 
-  // Movement behavior - Flocking rules and physics (LEGACY - will be moved to baseGenome)
-  movement: z.object({
-    minDistance: z.number().optional(), // Minimum distance from other boids (overrides global)
-    separationWeight: z.number(), // How strongly to avoid crowding
-    alignmentWeight: z.number(), // How strongly to match neighbor velocities
-    cohesionWeight: z.number(), // How strongly to move toward group center
-    maxSpeed: z.number(), // Maximum velocity magnitude
-    maxForce: z.number(), // Maximum steering force (affects turning speed)
-    trailLength: z.number(), // Number of positions to keep for motion trails
-    crowdAversionThreshold: z.number(), // Max nearby boids before avoiding crowded areas
-    crowdAversionWeight: z.number(), // Strength of crowd avoidance force (0-3)
-  }),
-
-  // Lifecycle - Energy, aging, and survival (LEGACY - will be moved to baseGenome)
-  lifecycle: z.object({
-    maxEnergy: z.number(), // Maximum energy capacity
-    energyGainRate: z.number(), // Energy gained per second (prey) or per catch (predator)
-    energyLossRate: z.number(), // Energy lost per second (movement cost)
-    maxAge: z.number(), // Maximum lifespan in seconds (0 = immortal)
-    fearFactor: z.number(), // Fear response strength (0 = fearless, 1 = very afraid)
-  }),
-
-  // Reproduction - Mating and offspring
+  // ✅ Reproduction - Mating and offspring
   reproduction: z.object({
     type: reproductionTypeSchema, // "sexual" (needs mate) or "asexual" (solo)
     offspringCount: z.number(), // Number of offspring per reproduction (1-2 for twins)
     offspringEnergyBonus: z.number(), // Extra starting energy for offspring (0-1 ratio)
     cooldownTicks: z.number().optional(), // Ticks to wait before reproducing again (overrides global)
-    mutationConfig: z
-      .object({
-        traitRate: z.number().min(0).max(1).optional(), // Mutation chance per trait (default 0.05)
-        traitMagnitude: z.number().min(0).max(1).optional(), // Mutation magnitude (default 0.1)
-        visualRate: z.number().min(0).max(1).optional(), // Body part mutation chance (default 0.02)
-        colorRate: z.number().min(0).max(1).optional(), // Color mutation chance (default 0.1)
-      })
-      .optional(), // Optional mutation configuration (uses defaults if not provided)
   }),
 
-  // Limits - Population caps and parameter overrides
+  // ✅ Limits - Population caps and parameter overrides
   limits: z.object({
     maxPopulation: z.number().optional(), // Maximum population for this species
     fearRadius: z.number().optional(), // How far this species can sense predators (overrides global)
   }),
 
-  // Affinities - Inter-species relationships (optional)
+  // ✅ Optional: Parameter overrides (species-specific tweaks)
+  overrides: z
+    .object({
+      minDistance: z.number().optional(), // Personal space override
+    })
+    .optional(),
+
+  // ✅ Affinities - Inter-species relationships (optional)
   // Maps species ID to affinity value (-1.0 to 1.0)
   // - 1.0: Strong attraction (flock together)
   // - 0.5: Neutral (default if not specified)
@@ -206,17 +200,6 @@ export const speciesConfigSchema = z.object({
   // - -0.5: Repulsion (actively avoid)
   // Same species always defaults to 1.0 if not specified
   affinities: z.record(z.string(), z.number().min(-1).max(1)).optional(),
-
-  // Visual appearance - How this species is rendered (LEGACY - kept for backward compatibility)
-  visual: z.object({
-    color: z.string(), // Hex color for rendering (e.g., "#00ff88")
-    shape: shapeSchema, // Shape type for rendering
-    size: z.number().min(0.5).max(2.0).default(1.0), // Size multiplier
-    trail: z.boolean().default(true), // Whether this species leaves motion trails
-    trailColor: z.string().optional(), // Optional trail color override (hex color, defaults to species color)
-    bodyParts: z.array(bodyPartSchema).optional(), // Optional body parts for visual variety
-    tailColor: z.string().optional(), // Optional tail color override (hex color)
-  }),
 });
 
 export const speciesRecordSchema = z.record(z.string(), speciesConfigSchema);

@@ -129,9 +129,11 @@ export const shapeKeywords = {
 } as const;
 
 export const bodyPartKeywords = {
-  eyes: "eyes",
-  fins: "fins",
-  spikes: "spikes",
+  eye: "eye",
+  fin: "fin",
+  spike: "spike",
   tail: "tail",
+  antenna: "antenna",
   glow: "glow",
+  shell: "shell",
 } as const;

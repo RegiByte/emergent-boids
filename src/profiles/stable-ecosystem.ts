@@ -1,7 +1,11 @@
-import { SimulationProfile } from "../boids/vocabulary/schemas/prelude.ts";
+import type { SimulationProfile } from "../boids/vocabulary/schemas/prelude.ts";
+import type { BodyPart } from "../boids/vocabulary/schemas/genetics.ts";
+import { bodyPartKeywords } from "../boids/vocabulary/keywords.ts";
 
 /**
  * Stable Ecosystem Profile - Fast Evolution Testbed
+ *
+ * UNIFIED GENOME-BASED ARCHITECTURE (Session 69)
  *
  * Optimized for rapid evolutionary experimentation:
  * - FAST GENERATION TURNOVER: Reduced lifespans and reproduction ages
@@ -10,14 +14,77 @@ import { SimulationProfile } from "../boids/vocabulary/schemas/prelude.ts";
  * - RICH DATA: Reach Gen 20-30+ in 5-10 minutes
  *
  * Key Parameters (Session 68 tuning):
- * - Predator speed: 4.5 (critical for balance)
- * - Reproduction age: 2 seconds (was 5)
- * - Max age: 80-120 seconds (was 150-350)
- * - Population caps: 300-400 per species (was 800+)
- * - World size: 2500x2500 (was 4000x4000)
+ * - Predator speed: 0.45 (45% of physics maxSpeed = 4.5)
+ * - Reproduction age: 2 seconds (maturityRate = 0.0)
+ * - Max age: 80-120 seconds (longevity = 0.0 to 0.1)
+ * - Population caps: 300-400 per species
+ * - World size: 2500x2500
  *
  * This profile is our TESTBED for evolution experiments.
  */
+
+// Helper to create body parts with proper typing using keywords
+const createBodyParts = (
+  parts: Array<{
+    type: string;
+    position?: { x: number; y: number };
+    rotation?: number;
+  }>
+): BodyPart[] => {
+  return parts.map((part, index) => {
+    switch (part.type) {
+      case bodyPartKeywords.eye:
+        return {
+          type: bodyPartKeywords.eye,
+          size: 1.0,
+          position: part.position || { x: index === 0 ? -0.2 : 0.2, y: -0.4 },
+          rotation: part.rotation || 0,
+          effects: { visionBonus: 0.1 },
+        };
+      case bodyPartKeywords.fin:
+        return {
+          type: bodyPartKeywords.fin,
+          size: 1.0,
+          position: part.position || { x: index % 2 === 0 ? -0.3 : 0.3, y: 0 },
+          rotation: part.rotation || (index % 2 === 0 ? -90 : 90),
+          effects: { turnRateBonus: 0.05 },
+        };
+      case bodyPartKeywords.tail:
+        return {
+          type: bodyPartKeywords.tail,
+          size: 1.0,
+          position: part.position || { x: 0, y: 0.5 },
+          rotation: part.rotation || 180,
+          effects: { speedBonus: 0.05 },
+        };
+      case bodyPartKeywords.spike:
+        return {
+          type: bodyPartKeywords.spike,
+          size: 1.0,
+          position: part.position || { x: 0, y: -0.3 },
+          rotation: part.rotation || 0,
+          effects: { damageBonus: 0.15, energyCost: 0.05 },
+        };
+      case bodyPartKeywords.glow:
+        return {
+          type: bodyPartKeywords.glow,
+          size: 1.0,
+          position: part.position || { x: 0, y: 0 },
+          rotation: part.rotation || 0,
+          effects: { energyCost: 0.02 },
+        };
+      default:
+        return {
+          type: bodyPartKeywords.eye,
+          size: 1.0,
+          position: { x: 0, y: -0.4 },
+          rotation: 0,
+          effects: { visionBonus: 0.05 },
+        };
+    }
+  });
+};
+
 export const stableEcosystemProfile: SimulationProfile = {
   id: "stable-ecosystem",
   seed: "stable-ecosystem-42",
@@ -58,195 +125,255 @@ export const stableEcosystemProfile: SimulationProfile = {
   },
 
   species: {
+    // ============================================
+    // EXPLORER - Fast scout, high curiosity
+    // ============================================
     explorer: {
       id: "explorer",
       name: "Explorer",
       role: "prey",
 
-      visual: {
-        color: "#00ff88", // Green
-        shape: "diamond", // Fast and agile - diamond shape
-        size: 0.9, // Slightly smaller than average
-        trail: true, // Birds leave trails (flight paths)
-        trailColor: "#ffffff", // White trails for contrast
-        bodyParts: ["eyes", "tail"], // Eyes for character, tail for direction
-        tailColor: "#ffffff", // White tail for contrast
+      // Genetics (evolvable traits)
+      // Formulas: speed = 4.4/10 = 0.44, force = 0.1/0.5 = 0.20
+      // sociability = (1.8 - 1.0) / 2.0 = 0.4
+      // longevity = (100 - 100) / 200 = 0.0 (short lifespan)
+      baseGenome: {
+        traits: {
+          speed: 0.44, // 44% of maxSpeed (4.4)
+          force: 0.2, // 20% of maxForce (0.1)
+          vision: 0.5, // 50% of maxVision
+          size: 0.9, // Slightly smaller
+          aggression: 0.3, // Prey default
+          sociability: 0.4, // Medium-high (from cohesion 1.8)
+          efficiency: 0.5, // Default
+          fearResponse: 0.5, // Balanced fear
+          maturityRate: 0.0, // Fast maturity (2 seconds)
+          longevity: 0.0, // Short lifespan (100 seconds)
+        },
+        visual: {
+          color: "#00ff88", // Green
+          bodyParts: createBodyParts([
+            { type: bodyPartKeywords.eye },
+            { type: bodyPartKeywords.eye },
+            { type: bodyPartKeywords.tail },
+          ]),
+        },
       },
 
-      movement: {
-        separationWeight: 1.5,
-        alignmentWeight: 1.0,
-        cohesionWeight: 1.8,
-        maxSpeed: 4.4, // +10% speed (endurance specialist)
-        maxForce: 0.1,
-        trailLength: 8, // Reduced for performance (was 15)
-        crowdAversionThreshold: 20, // Moderate tolerance for groups
-        crowdAversionWeight: 1.5, // Moderate avoidance when crowded
+      // Visual configuration (non-evolvable)
+      visualConfig: {
+        shape: "diamond", // Fast and agile
+        trail: true,
+        trailLength: 4,
+        trailColor: "#ffffff",
+        tailColor: "#ffffff",
       },
 
-      lifecycle: {
-        maxEnergy: 84, // +40% energy (140 * 0.6 scaled to food system)
-        energyGainRate: 2.0, // FAST EVOLUTION: 2.0 (was 1.2) - reproduce in ~40 seconds
-        energyLossRate: 0, // No passive loss (only lose energy when fleeing)
-        maxAge: 100, // FAST EVOLUTION: 100 (was 300) - 3x faster turnover
-        fearFactor: 0.5, // Balanced fear response
+      // Mutation rates
+      mutation: {
+        traitRate: 0.05,
+        traitMagnitude: 0.1,
+        visualRate: 0.02,
+        colorRate: 0.1,
       },
 
       reproduction: {
         type: "sexual",
-        offspringCount: 2, // Twins! (compensate for rarity when finding mates)
-        offspringEnergyBonus: 0, // Standard offspring
+        offspringCount: 2, // Twins
+        offspringEnergyBonus: 0,
       },
 
       limits: {
-        maxPopulation: 400, // FAST EVOLUTION: 400 (was 800) - performance target
+        maxPopulation: 400,
       },
 
-      // Affinity System: Inter-species relationships
       affinities: {
-        explorer: 1.0, // High affinity with own species
-        social: 0.65, // Medium-high affinity (comfortable together, but not tight)
-        cautious: 0.55, // Medium affinity (tolerate each other)
-        independent: 0.2, // Low affinity (independents prefer solitude)
-        predator: -0.5, // Negative (fear overrides this anyway)
+        explorer: 1.0,
+        social: 0.65,
+        cautious: 0.55,
+        independent: 0.2,
+        predator: -0.5,
       },
     },
 
+    // ============================================
+    // SOCIAL - Group-oriented, safety in numbers
+    // ============================================
     social: {
       id: "social",
       name: "Social",
       role: "prey",
 
-      visual: {
-        color: "#ff4488", // Pink
-        shape: "circle", // Smooth and social - circle shape
-        size: 1.0, // Average size
-        trail: true, // Fish leave trails (water currents)
-        bodyParts: ["eyes", "fins"], // Eyes for character, fins for aquatic look
+      // Formulas: speed = 4.0/10 = 0.40, force = 0.2/0.5 = 0.40
+      // sociability = (2.5 - 1.0) / 2.0 = 0.75 (very social)
+      // longevity = (120 - 100) / 200 = 0.1
+      baseGenome: {
+        traits: {
+          speed: 0.4, // 40% of maxSpeed (4.0)
+          force: 0.4, // 40% of maxForce (0.2)
+          vision: 0.5,
+          size: 1.0, // Average
+          aggression: 0.3,
+          sociability: 0.75, // Very social (from cohesion 2.5)
+          efficiency: 0.5,
+          fearResponse: 0.3, // Low fear, stays in group
+          maturityRate: 0.0,
+          longevity: 0.1, // Slightly longer (120 seconds)
+        },
+        visual: {
+          color: "#ff4488", // Pink
+          bodyParts: createBodyParts([
+            { type: bodyPartKeywords.eye },
+            { type: bodyPartKeywords.eye },
+            { type: bodyPartKeywords.fin },
+            { type: bodyPartKeywords.fin },
+          ]),
+        },
       },
 
-      movement: {
-        separationWeight: 0.5,
-        alignmentWeight: 2.4,
-        cohesionWeight: 2.5,
-        maxSpeed: 4.0, // Baseline speed
-        maxForce: 0.2,
-        trailLength: 6, // Reduced for performance (was 12)
-        crowdAversionThreshold: 40, // High tolerance (loves groups)
-        crowdAversionWeight: 1.0, // Mild avoidance when very crowded
+      visualConfig: {
+        shape: "circle", // Smooth and social
+        trail: true,
+        trailLength: 3,
       },
 
-      lifecycle: {
-        maxEnergy: 60, // Baseline energy (100 * 0.6 scaled to food system)
-        energyGainRate: 2.2, // FAST EVOLUTION: 2.2 (was 1.3) - reproduce in ~27 seconds
-        energyLossRate: 0, // No passive loss (only lose energy when fleeing)
-        maxAge: 120, // FAST EVOLUTION: 120 (was 350) - 3x faster turnover
-        fearFactor: 0.3, // Low fear, stays in group
+      mutation: {
+        traitRate: 0.05,
+        traitMagnitude: 0.1,
+        visualRate: 0.02,
+        colorRate: 0.1,
       },
 
       reproduction: {
         type: "sexual",
-        offspringCount: 1, // Standard single offspring
-        offspringEnergyBonus: 0, // Standard offspring
+        offspringCount: 1,
+        offspringEnergyBonus: 0,
       },
 
       limits: {
-        maxPopulation: 400, // FAST EVOLUTION: 400 (was 800) - performance target
+        maxPopulation: 400,
       },
 
-      // Affinity System: Ultra-social species
       affinities: {
-        social: 1.0, // Ultra-high affinity with own species
-        cautious: 0.75, // High affinity (both prefer groups, safety in numbers)
-        explorer: 0.65, // Medium-high affinity (like explorers, both are social)
-        independent: 0.15, // Very low (independents avoid groups)
+        social: 1.0,
+        cautious: 0.75,
+        explorer: 0.65,
+        independent: 0.15,
         predator: -0.5,
       },
     },
 
+    // ============================================
+    // INDEPENDENT - Solitary, self-sufficient
+    // ============================================
     independent: {
       id: "independent",
       name: "Independent",
       role: "prey",
 
-      visual: {
-        color: "#ffaa00", // Orange
-        shape: "hexagon", // Sturdy and grounded - hexagon shape
-        size: 1.1, // Slightly larger
-        trail: false, // Ground animals don't leave trails (cleaner look)
-        bodyParts: ["eyes"], // Just eyes, simple ground animal
+      // Formulas: speed = 5.0/10 = 0.50, force = 0.15/0.5 = 0.30
+      // sociability = (0.5 - 1.0) / 2.0 = -0.25 → clamp to 0.0 (very low)
+      // longevity = (80 - 100) / 200 = -0.1 → clamp to 0.0
+      baseGenome: {
+        traits: {
+          speed: 0.5, // 50% of maxSpeed (5.0) - fast solo
+          force: 0.3, // 30% of maxForce (0.15)
+          vision: 0.5,
+          size: 1.1, // Slightly larger
+          aggression: 0.3,
+          sociability: 0.0, // Very low (solitary)
+          efficiency: 0.5,
+          fearResponse: 0.8, // High fear, scatters immediately
+          maturityRate: 0.0,
+          longevity: 0.0, // Short lifespan (80 seconds)
+        },
+        visual: {
+          color: "#ffaa00", // Orange
+          bodyParts: createBodyParts([
+            { type: bodyPartKeywords.eye },
+            { type: bodyPartKeywords.eye },
+          ]),
+        },
       },
 
-      movement: {
-        separationWeight: 2.3,
-        alignmentWeight: 0.5,
-        cohesionWeight: 0.5,
-        maxSpeed: 5.0, // +25% speed (fast solo hunters)
-        maxForce: 0.15,
-        trailLength: 10, // Reduced for performance (was 20)
-        crowdAversionThreshold: 8, // Very low tolerance (solitary)
-        crowdAversionWeight: 2.0, // Strong avoidance when crowded
+      visualConfig: {
+        shape: "hexagon", // Sturdy and grounded
+        trail: false, // Ground animals don't leave trails
+        trailLength: 5,
       },
 
-      lifecycle: {
-        maxEnergy: 72, // +20% energy (120 * 0.6 scaled to food system)
-        energyGainRate: 2.5, // FAST EVOLUTION: 2.5 (was 1.5) - reproduce in ~29 seconds
-        energyLossRate: 0, // No passive loss (only lose energy when fleeing)
-        maxAge: 80, // FAST EVOLUTION: 80 (was 150) - fastest turnover (solitary lifestyle)
-        fearFactor: 0.8, // High fear, scatters immediately
+      mutation: {
+        traitRate: 0.05,
+        traitMagnitude: 0.1,
+        visualRate: 0.02,
+        colorRate: 0.1,
       },
 
       reproduction: {
-        type: "asexual", // KEY: Solo reproduction!
-        offspringCount: 1, // Single offspring
-        offspringEnergyBonus: 0, // Standard offspring
-        cooldownTicks: 8, // FAST EVOLUTION: 8 (was 50) - still longer than sexual (3)
+        type: "asexual", // Solo reproduction
+        offspringCount: 1,
+        offspringEnergyBonus: 0,
+        cooldownTicks: 8, // Longer cooldown for asexual
       },
 
       limits: {
-        maxPopulation: 300, // FAST EVOLUTION: 300 (was 800) - lower cap for diversity
+        maxPopulation: 300,
       },
 
-      // Affinity System: Solitary species
       affinities: {
-        independent: 0.6, // Even independents tolerate their own kind somewhat
-        explorer: 0.52, // Low affinity but not zero (prefer solitude)
-        social: 0.15, // Very low (avoid crowds)
-        cautious: 0.25, // Low affinity (different strategies)
+        independent: 0.6,
+        explorer: 0.52,
+        social: 0.15,
+        cautious: 0.25,
         predator: -0.5,
       },
     },
 
+    // ============================================
+    // CAUTIOUS - Defensive, coordinated escape
+    // ============================================
     cautious: {
       id: "cautious",
       name: "Cautious",
       role: "prey",
 
-      visual: {
-        color: "#00aaff", // Blue
-        shape: "hexagon", // Sturdy and grounded - hexagon shape
-        size: 0.95, // Slightly smaller, defensive
-        trail: false, // Ground animals don't leave trails (cleaner look)
-        bodyParts: ["eyes", "spikes"], // Just eyes, cautious and simple
+      // Formulas: speed = 3.9/10 = 0.39, force = 0.12/0.5 = 0.24
+      // sociability = (2.0 - 1.0) / 2.0 = 0.5 (moderate)
+      // longevity = (100 - 100) / 200 = 0.0
+      baseGenome: {
+        traits: {
+          speed: 0.39, // 39% of maxSpeed (3.9) - slower, defensive
+          force: 0.24, // 24% of maxForce (0.12)
+          vision: 0.5,
+          size: 0.95, // Slightly smaller, defensive
+          aggression: 0.3,
+          sociability: 0.5, // Moderate (safety in numbers)
+          efficiency: 0.5,
+          fearResponse: 0.6, // Medium-high fear, coordinated escape
+          maturityRate: 0.0,
+          longevity: 0.0, // Short lifespan (100 seconds)
+        },
+        visual: {
+          color: "#00aaff", // Blue
+          bodyParts: createBodyParts([
+            { type: bodyPartKeywords.eye },
+            { type: bodyPartKeywords.eye },
+            { type: bodyPartKeywords.spike },
+          ]),
+        },
       },
 
-      movement: {
-        separationWeight: 2.0,
-        alignmentWeight: 1.5,
-        cohesionWeight: 2.0,
-        maxSpeed: 3.9, // Slower, defensive
-        maxForce: 0.12,
-        trailLength: 5, // Reduced for performance (was 10)
-        crowdAversionThreshold: 50, // Very high tolerance (safety in numbers)
-        crowdAversionWeight: 0.8, // Weak avoidance (prefer staying together)
+      visualConfig: {
+        shape: "hexagon",
+        trail: false,
+        trailLength: 2,
       },
 
-      lifecycle: {
-        maxEnergy: 60, // -10% energy (90 * 0.6 scaled to food system)
-        energyGainRate: 2.7, // FAST EVOLUTION: 2.7 (was 1.6) - reproduce in ~22 seconds
-        energyLossRate: 0, // No passive loss (only lose energy when fleeing)
-        maxAge: 100, // FAST EVOLUTION: 100 (was 300) - 3x faster turnover
-        fearFactor: 0.6, // Medium-high fear, coordinated escape
+      mutation: {
+        traitRate: 0.05,
+        traitMagnitude: 0.1,
+        visualRate: 0.02,
+        colorRate: 0.1,
       },
 
       reproduction: {
@@ -256,66 +383,82 @@ export const stableEcosystemProfile: SimulationProfile = {
       },
 
       limits: {
-        maxPopulation: 400, // FAST EVOLUTION: 400 (was 800) - performance target
-        fearRadius: 175, // +33% detection range (150 → 175)
+        maxPopulation: 400,
+        fearRadius: 175, // +33% detection range
       },
 
-      // Affinity System: Defensive group-oriented species
       affinities: {
-        cautious: 1.0, // High affinity with own species
-        social: 0.75, // High affinity (both prefer groups, safety in numbers)
-        explorer: 0.55, // Medium affinity (different strategies but compatible)
-        independent: 0.25, // Low affinity (independents don't fit defensive strategy)
+        cautious: 1.0,
+        social: 0.75,
+        explorer: 0.55,
+        independent: 0.25,
         predator: -0.5,
       },
     },
 
+    // ============================================
+    // PREDATOR - Hunter, apex species
+    // ============================================
     predator: {
       id: "predator",
       name: "Predator",
       role: "predator",
 
-      visual: {
-        color: "#ff0000", // Bright red
-        shape: "diamond", // Fast and aggressive - diamond shape
-        size: 1.3, // Larger and more menacing
-        trail: true, // Predators leave trails (hunting paths)
-        bodyParts: ["eyes", "fins", "tail", "glow"], // Eyes, fins on sides, tail fin, glow for menace
+      // Formulas: speed = 4.5/10 = 0.45 (CRITICAL for balance)
+      // force = 0.2/0.5 = 0.40
+      // sociability = (0.0 - 1.0) / 2.0 = -0.5 → clamp to 0.0 (solitary hunter)
+      // longevity = (100 - 100) / 200 = 0.0
+      baseGenome: {
+        traits: {
+          speed: 0.45, // 45% of maxSpeed (4.5) - CRITICAL for catch rate
+          force: 0.4, // 40% of maxForce (0.2) - high turning
+          vision: 0.5,
+          size: 1.3, // Larger and menacing
+          aggression: 0.8, // Predator high aggression
+          sociability: 0.1, // Very low (solitary hunter)
+          efficiency: 0.5,
+          fearResponse: 0.0, // Fearless
+          maturityRate: 0.0,
+          longevity: 0.0, // Short lifespan (100 seconds)
+        },
+        visual: {
+          color: "#ff0000", // Bright red
+          bodyParts: createBodyParts([
+            { type: bodyPartKeywords.eye },
+            { type: bodyPartKeywords.eye },
+            { type: bodyPartKeywords.fin },
+            { type: bodyPartKeywords.fin },
+            { type: bodyPartKeywords.tail },
+            { type: bodyPartKeywords.glow },
+          ]),
+        },
       },
 
-      movement: {
-        separationWeight: 2.5, // Spread out more
-        alignmentWeight: 0.0, // Don't align with prey
-        cohesionWeight: 0.0, // Don't flock with prey
-        maxSpeed: 4.5, // CRITICAL: 4.5 (Session 68 finding) - must catch prey!
-        maxForce: 0.2, // High turning ability
-        trailLength: 12, // Reduced for performance (was 25)
-        crowdAversionThreshold: 15, // Moderate tolerance (territorial)
-        crowdAversionWeight: 1.8, // Strong avoidance (maintain hunting territory)
+      visualConfig: {
+        shape: "diamond", // Fast and aggressive
+        trail: true,
+        trailLength: 5,
       },
 
-      lifecycle: {
-        maxEnergy: 150, // Need ~4 catches to reproduce
-        energyGainRate: 40, // FAST EVOLUTION: 40 (was 25) - easier to feed
-        energyLossRate: 1.2, // FAST EVOLUTION: 1.2 (was 1.0) - starve in ~125 seconds
-        maxAge: 100, // FAST EVOLUTION: 100 (was 300) - 3x faster turnover
-        fearFactor: 0, // Predators don't fear
+      mutation: {
+        traitRate: 0.05,
+        traitMagnitude: 0.1,
+        visualRate: 0.02,
+        colorRate: 0.1,
       },
 
       reproduction: {
         type: "sexual",
-        offspringCount: 1, // Single offspring
-        offspringEnergyBonus: 0, // Standard offspring
+        offspringCount: 1,
+        offspringEnergyBonus: 0,
       },
 
       limits: {
-        maxPopulation: 300, // FAST EVOLUTION: 300 (was 800) - performance target
+        maxPopulation: 300,
       },
 
-      // Affinity System: Solitary hunters
       affinities: {
-        predator: 0.7, // Moderate affinity with other predators (tolerate but compete)
-        // Prey affinities don't matter (chase/fear overrides flocking)
+        predator: 0.7, // Moderate affinity (tolerate but compete)
       },
     },
   },

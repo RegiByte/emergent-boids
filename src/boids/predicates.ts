@@ -86,9 +86,9 @@ export function isSameType(boid1: Boid, boid2: Boid): boolean {
  */
 export function isEnergyBelowIdleThreshold(
   boid: Boid,
-  speciesConfig: SpeciesConfig
+  _speciesConfig: SpeciesConfig
 ): boolean {
-  return boid.energy < speciesConfig.lifecycle.maxEnergy * 0.3;
+  return boid.energy < boid.phenotype.maxEnergy * 0.3;
 }
 
 /**
@@ -97,9 +97,9 @@ export function isEnergyBelowIdleThreshold(
  */
 export function isEnergyAboveActiveThreshold(
   boid: Boid,
-  speciesConfig: SpeciesConfig
+  _speciesConfig: SpeciesConfig
 ): boolean {
-  return boid.energy >= speciesConfig.lifecycle.maxEnergy * 0.5;
+  return boid.energy >= boid.phenotype.maxEnergy * 0.5;
 }
 
 /**
@@ -108,10 +108,10 @@ export function isEnergyAboveActiveThreshold(
 export function hasReproductionEnergy(
   boid: Boid,
   parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig
+  _speciesConfig: SpeciesConfig
 ): boolean {
   const threshold =
-    speciesConfig.lifecycle.maxEnergy * parameters.reproductionEnergyThreshold;
+    boid.phenotype.maxEnergy * parameters.reproductionEnergyThreshold;
   return boid.energy >= threshold;
 }
 

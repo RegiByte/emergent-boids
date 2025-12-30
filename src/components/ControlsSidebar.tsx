@@ -542,9 +542,9 @@ export function ControlsSidebar({
                         style={{
                           backgroundColor:
                             activeSpecies === typeId
-                              ? sp.visual.color
+                              ? sp.baseGenome.visual.color
                               : undefined,
-                          borderColor: sp.visual.color,
+                          borderColor: sp.baseGenome.visual.color,
                           color: activeSpecies === typeId ? "#000" : undefined,
                         }}
                       >
@@ -558,145 +558,61 @@ export function ControlsSidebar({
 
             <Separator />
 
-            {/* Species Settings */}
+            {/* Species Settings - Now displays genome traits */}
             {species && (
               <SidebarGroup className="px-0">
-                <SidebarGroupLabel style={{ color: species.visual.color }}>
-                  {species.name} Settings
+                <SidebarGroupLabel style={{ color: species.baseGenome.visual.color }}>
+                  {species.name} Traits
                 </SidebarGroupLabel>
                 <SidebarGroupContent className="px-4">
-                  <Accordion defaultValue={["movement"]}>
-                    <AccordionItem value="movement">
-                      <AccordionTrigger>Movement</AccordionTrigger>
+                  <Accordion defaultValue={["traits"]}>
+                    <AccordionItem value="traits">
+                      <AccordionTrigger>Genome Traits</AccordionTrigger>
                       <AccordionContent className="space-y-4 px-2">
+                        {/* Display genome traits (read-only for now) */}
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
-                            <Label className="text-xs">Separation</Label>
+                            <Label className="text-xs">Speed</Label>
                             <span className="text-xs font-mono text-primary">
-                              {species.movement.separationWeight.toFixed(2)}
+                              {(species.baseGenome.traits.speed * 100).toFixed(0)}%
                             </span>
                           </div>
-                          <Slider
-                            value={[species.movement.separationWeight]}
-                            onValueChange={(values) => {
-                              const value = Array.isArray(values)
-                                ? values[0]
-                                : values;
-                              runtimeController.dispatch({
-                                type: eventKeywords.controls.typeConfigChanged,
-                                typeId: activeSpecies,
-                                field: "separationWeight",
-                                value,
-                              });
-                            }}
-                            min={0}
-                            max={3}
-                            step={0.1}
-                          />
                         </div>
 
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
-                            <Label className="text-xs">Alignment</Label>
+                            <Label className="text-xs">Force</Label>
                             <span className="text-xs font-mono text-primary">
-                              {species.movement.alignmentWeight.toFixed(2)}
+                              {(species.baseGenome.traits.force * 100).toFixed(0)}%
                             </span>
                           </div>
-                          <Slider
-                            value={[species.movement.alignmentWeight]}
-                            onValueChange={(values) => {
-                              const value = Array.isArray(values)
-                                ? values[0]
-                                : values;
-                              runtimeController.dispatch({
-                                type: eventKeywords.controls.typeConfigChanged,
-                                typeId: activeSpecies,
-                                field: "alignmentWeight",
-                                value,
-                              });
-                            }}
-                            min={0}
-                            max={3}
-                            step={0.1}
-                          />
                         </div>
 
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
-                            <Label className="text-xs">Cohesion</Label>
+                            <Label className="text-xs">Sociability</Label>
                             <span className="text-xs font-mono text-primary">
-                              {species.movement.cohesionWeight.toFixed(2)}
+                              {(species.baseGenome.traits.sociability * 100).toFixed(0)}%
                             </span>
                           </div>
-                          <Slider
-                            value={[species.movement.cohesionWeight]}
-                            onValueChange={(values) => {
-                              const value = Array.isArray(values)
-                                ? values[0]
-                                : values;
-                              runtimeController.dispatch({
-                                type: eventKeywords.controls.typeConfigChanged,
-                                typeId: activeSpecies,
-                                field: "cohesionWeight",
-                                value,
-                              });
-                            }}
-                            min={0}
-                            max={3}
-                            step={0.1}
-                          />
                         </div>
 
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
-                            <Label className="text-xs">Max Speed</Label>
+                            <Label className="text-xs">Fear Response</Label>
                             <span className="text-xs font-mono text-primary">
-                              {species.movement.maxSpeed.toFixed(2)}
+                              {(species.baseGenome.traits.fearResponse * 100).toFixed(0)}%
                             </span>
                           </div>
-                          <Slider
-                            value={[species.movement.maxSpeed]}
-                            onValueChange={(values) => {
-                              const value = Array.isArray(values)
-                                ? values[0]
-                                : values;
-                              runtimeController.dispatch({
-                                type: eventKeywords.controls.typeConfigChanged,
-                                typeId: activeSpecies,
-                                field: "maxSpeed",
-                                value,
-                              });
-                            }}
-                            min={1}
-                            max={10}
-                            step={0.5}
-                          />
                         </div>
 
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
-                            <Label className="text-xs">Max Force</Label>
+                            <Label className="text-xs">Size</Label>
                             <span className="text-xs font-mono text-primary">
-                              {species.movement.maxForce.toFixed(3)}
+                              {species.baseGenome.traits.size.toFixed(2)}
                             </span>
                           </div>
-                          <Slider
-                            value={[species.movement.maxForce]}
-                            onValueChange={(values) => {
-                              const value = Array.isArray(values)
-                                ? values[0]
-                                : values;
-                              runtimeController.dispatch({
-                                type: eventKeywords.controls.typeConfigChanged,
-                                typeId: activeSpecies,
-                                field: "maxForce",
-                                value,
-                              });
-                            }}
-                            min={0.01}
-                            max={0.5}
-                            step={0.01}
-                          />
                         </div>
                       </AccordionContent>
                     </AccordionItem>

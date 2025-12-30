@@ -91,7 +91,7 @@ export function processAsexualReproduction(
 ): MatingResult {
   // Asexual reproduction is instant - no mate needed, no buildup
   const reproductionEnergy = calculateReproductionEnergyCost(
-    speciesConfig.lifecycle.maxEnergy
+    boid.phenotype.maxEnergy
   );
 
   // Use type-specific cooldown if available, otherwise use global
@@ -172,7 +172,7 @@ export function processMatingCycle(
       // Buildup complete - reproduce!
       if (newBuildup >= parameters.matingBuildupTicks) {
         const reproductionEnergy = calculateReproductionEnergyCost(
-          speciesConfig.lifecycle.maxEnergy
+          boid.phenotype.maxEnergy
         );
 
         // Use type-specific cooldown if available, otherwise use global

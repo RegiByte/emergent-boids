@@ -83,8 +83,8 @@ export function EnergyGraph({ compact = false }: EnergyGraphProps) {
     return {
       label: typeConfig.name,
       data: snapshots.map((snap) => snap.energy[typeId]?.mean || 0),
-      borderColor: typeConfig.visual.color,
-      backgroundColor: typeConfig.visual.color + "40", // Add transparency
+      borderColor: typeConfig.baseGenome.visual.color,
+      backgroundColor: typeConfig.baseGenome.visual.color + "40", // Add transparency
       borderWidth: 2,
       pointRadius: 0, // Hide points for cleaner look
       pointHoverRadius: 4,
