@@ -1,9 +1,9 @@
 /**
  * WebGL Renderer - Modular Architecture
- * 
+ *
  * This module provides a clean, modular structure for WebGL rendering.
  * Each concern is separated into its own module for easier debugging and maintenance.
- * 
+ *
  * Architecture:
  * - atlases/: Texture atlas generation (shapes, body parts, emojis, fonts)
  * - drawCommands/: REGL draw commands (one per visual element type)
@@ -59,11 +59,7 @@ export {
 // ============================================
 // DATA PREPARATION
 // ============================================
-export {
-  colorToRgb,
-  calculateBoidRotation,
-  calculateBoidScale,
-} from "./dataPreparation/utils";
+export { colorToRgb, calculateBoidRotation } from "./dataPreparation/utils";
 
 export {
   prepareShapeBoidData,
@@ -80,10 +76,7 @@ export {
   type TriangleBoidInstanceData,
 } from "./dataPreparation/triangleBoids";
 
-export {
-  prepareFoodData,
-  type FoodInstanceData,
-} from "./dataPreparation/food";
+export { prepareFoodData, type FoodInstanceData } from "./dataPreparation/food";
 
 export {
   prepareTrailData,
@@ -113,10 +106,7 @@ export {
   type StanceSymbolInstanceData,
 } from "./dataPreparation/stanceSymbols";
 
-export {
-  layoutText,
-  type TextInstanceData,
-} from "./dataPreparation/text";
+export { layoutText, type TextInstanceData } from "./dataPreparation/text";
 
 // ============================================
 // DRAW COMMANDS
@@ -140,6 +130,10 @@ export {
   STANCE_SYMBOL_CONFIG,
 } from "./drawCommands/stanceSymbols";
 export { createTextDrawCommand } from "./drawCommands/text";
+export {
+  createDebugCollisionCirclesDrawCommand,
+  prepareDebugCollisionCirclesData,
+} from "./drawCommands/debugCollisionCircles";
 
 // ============================================
 // UTILITIES
@@ -159,4 +153,3 @@ export {
   createClickHandler,
   attachEventHandlers,
 } from "./utils/eventHandlers";
-

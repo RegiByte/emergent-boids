@@ -26,10 +26,8 @@ import {
 import { createShapeBoidsDrawCommand } from "@/resources/webgl/drawCommands/shapeBoids";
 import { createBodyPartsDrawCommand } from "@/resources/webgl/drawCommands/bodyParts";
 import { colorToRgb } from "@/resources/webgl/dataPreparation/utils";
-import {
-  transformBodyPartWebGL,
-  type BodyPartType,
-} from "@/lib/coordinates";
+import { transformBodyPartWebGL, type BodyPartType } from "@/lib/coordinates";
+import { shapeSizeParamFromBaseSize } from "@/lib/shapeSizing";
 
 /**
  * Minimal WebGL context for static boid rendering
@@ -150,14 +148,14 @@ export function createMinimalWebGLContext(
  * @returns Column-major mat3 for WebGL
  */
 function createStaticTransformMatrix(
-  scale: number,
+  _scale: number,
   width: number,
   height: number
 ): number[] {
   // Simple orthographic projection that centers content
-  // Scale determines how large the boid appears
-  const scaleX = (2 * scale) / width;
-  const scaleY = (2 * scale) / height; // Positive Y (WebGL coords, not flipped)
+  // Note: We apply visual scaling in boidScale, so keep projection unscaled
+  const scaleX = 2 / width;
+  const scaleY = 2 / height; // Positive Y (WebGL coords, not flipped)
 
   // Column-major mat3 for WebGL (matches shader expectations)
   // Column 0 (x-axis), Column 1 (y-axis), Column 2 (translation)
@@ -236,6 +234,12 @@ export function renderBoidWebGL(
       transform,
     });
   }
+
+  // DEBUG: Draw collision radius circle (Session 96)
+  // Shows the actual physics collision boundary for comparison
+  // Use a simple circle rendering approach
+  const collisionRadius = boid.phenotype.collisionRadius * scale;
+  drawDebugCollisionCircle(regl, transform, boid.position, collisionRadius);
 }
 
 /**
@@ -248,7 +252,7 @@ function prepareShapeBoidInstanceData(
   shapeAtlas: ShapeAtlasResult,
   scale: number
 ) {
-  const { position, velocity, phenotype, genome } = boid;
+  const { position, velocity, phenotype } = boid;
 
   // Calculate rotation from velocity
   const rotation = Math.atan2(velocity.y, velocity.x);
@@ -256,17 +260,14 @@ function prepareShapeBoidInstanceData(
   // Get color (normalized to 0-1)
   const [r, g, b] = colorToRgb(phenotype.color);
 
-  // Calculate scale (match Canvas 2D sizing)
-  const sizeMultiplier = genome.traits?.size || 1.0;
-  const isPredator = speciesConfig?.role === "predator";
-  const baseSize = isPredator ? 12 : 8;
-  // Shape atlas fills ~50% of cell, Canvas 2D renders at ~70% radius
-  // Compensation: (0.7 / 0.5) = 1.4x to match visual size
-  const shapeAtlasCompensation = 1.4;
-  const boidScale = baseSize * sizeMultiplier * scale * shapeAtlasCompensation;
+  // Session 96-97: use phenotype baseSize (== collisionRadius) and per-shape extent factor
+  // shapeSizeParamFromBaseSize compensates for each shape's internal max extent
+  // Shader multiplies by 2.0 to treat scale attribute as radius (produces diameter)
+  const baseSize = phenotype.baseSize;
 
   // Get shape UV coordinates from atlas
   const shapeName = speciesConfig?.visualConfig?.shape || "triangle";
+  const boidScale = shapeSizeParamFromBaseSize(shapeName, baseSize) * scale;
   const shapeUV = shapeAtlas.shapeUVMap.get(shapeName);
   const uvCoords = shapeUV ||
     shapeAtlas.shapeUVMap.get("triangle") || { u: 0, v: 0 };
@@ -292,7 +293,7 @@ function prepareBodyPartsInstanceData(
   bodyPartsAtlas: BodyPartsAtlasResult,
   scale: number
 ) {
-  const { position, velocity, phenotype, genome } = boid;
+  const { position, velocity, phenotype } = boid;
   // Use species config body parts (matches main simulation pattern)
   const bodyParts = speciesConfig?.baseGenome?.visual?.bodyParts || [];
 
@@ -309,12 +310,8 @@ function prepareBodyPartsInstanceData(
   // Boid properties
   const boidRotation = Math.atan2(velocity.y, velocity.x);
   const boidColor = colorToRgb(phenotype.color);
-  const sizeMultiplier = genome.traits?.size || 1.0;
-  const isPredator = speciesConfig?.role === "predator";
-  const baseSize = isPredator ? 12 : 8;
-  // Match the shape boid scale calculation
-  const shapeAtlasCompensation = 1.4;
-  const boidScale = baseSize * sizeMultiplier * scale * shapeAtlasCompensation;
+  // Session 96: Body parts should use physics size (baseSize == collisionRadius)
+  const boidScale = phenotype.baseSize * scale;
 
   // Get tail color override if present
   const tailColor = speciesConfig?.visualConfig?.tailColor
@@ -404,6 +401,60 @@ function prepareBodyPartsInstanceData(
     partScales: new Float32Array(partDataArrays.partScale),
     count,
   };
+}
+
+/**
+ * Draw debug collision circle (Session 96)
+ * Simple circle outline to show collision radius
+ */
+function drawDebugCollisionCircle(
+  regl: REGL.Regl,
+  transform: number[],
+  position: { x: number; y: number },
+  radius: number
+): void {
+  // Create circle vertices
+  const segments = 32;
+  const positions: number[] = [];
+  
+  for (let i = 0; i <= segments; i++) {
+    const angle = (i / segments) * Math.PI * 2;
+    positions.push(
+      position.x + Math.cos(angle) * radius,
+      position.y + Math.sin(angle) * radius
+    );
+  }
+
+  const drawCircle = regl({
+    vert: `
+      precision mediump float;
+      attribute vec2 position;
+      uniform mat3 transform;
+      
+      void main() {
+        vec3 pos = transform * vec3(position, 1.0);
+        gl_Position = vec4(pos.xy, 0.0, 1.0);
+      }
+    `,
+    frag: `
+      precision mediump float;
+      
+      void main() {
+        gl_FragColor = vec4(1.0, 0.0, 0.0, 0.5); // Red semi-transparent
+      }
+    `,
+    attributes: {
+      position: positions,
+    },
+    uniforms: {
+      transform,
+    },
+    count: segments + 1,
+    primitive: "line strip",
+    // Note: WebGL only supports lineWidth = 1 on most platforms
+  });
+
+  drawCircle();
 }
 
 /**

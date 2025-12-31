@@ -37,7 +37,7 @@ const createBodyParts = (
         return {
           type: bodyPartKeywords.eye,
           size: 1.0,
-          position: part.position || { x: index === 0 ? -0.2 : 0.2, y: -0.4 },
+          position: part.position || { x: index === 0 ? -0.2 : 0.2, y: -0.1 },
           rotation: part.rotation || 0,
           effects: { visionBonus: 0.1 },
         };
@@ -45,17 +45,22 @@ const createBodyParts = (
         return {
           type: bodyPartKeywords.fin,
           size: 1.0,
-          // Position fins toward the back of the body (positive y = back)
-          position: part.position || { x: index % 2 === 0 ? -0.4 : 0.4, y: 0.4 },
-          rotation: part.rotation || (index % 2 === 0 ? -90 : 90),
+          // Position fins toward the sides of the body
+          // Left fin: x = -0.4 (left side), rotation = -90 (pointing down-left)
+          // Right fin: x = 0.4 (right side), rotation = 90 (pointing down-right)
+          position: part.position || {
+            x: index % 2 === 0 ? -0.5 : 0.5,
+            y: 0.3,
+          },
+          rotation: part.rotation || (index % 2 === 0 ? -130 : 130),
           effects: { turnRateBonus: 0.05 },
         };
       case bodyPartKeywords.tail:
         return {
           type: bodyPartKeywords.tail,
           size: 1.0,
-          position: part.position || { x: 0, y: 0.5 },
-          rotation: part.rotation || 180,
+          position: part.position || { x: 0, y: 0.75 },
+          rotation: part.rotation || -180,
           effects: { speedBonus: 0.05 },
         };
       case bodyPartKeywords.spike:
@@ -362,10 +367,10 @@ export const stableEcosystemProfile: SimulationProfile = {
             // Six spikes matching Canvas 2D pattern (3 top, 3 bottom)
             { type: bodyPartKeywords.spike, position: { x: -0.4, y: -0.5 } }, // Top left
             { type: bodyPartKeywords.spike, position: { x: -0.2, y: -0.5 } }, // Top center
-            { type: bodyPartKeywords.spike, position: { x: 0, y: -0.5 } },    // Top right
-            { type: bodyPartKeywords.spike, position: { x: -0.4, y: 0.5 } },  // Bottom left
-            { type: bodyPartKeywords.spike, position: { x: -0.2, y: 0.5 } },  // Bottom center
-            { type: bodyPartKeywords.spike, position: { x: 0, y: 0.5 } },     // Bottom right
+            { type: bodyPartKeywords.spike, position: { x: 0, y: -0.5 } }, // Top right
+            { type: bodyPartKeywords.spike, position: { x: -0.4, y: 0.5 } }, // Bottom left
+            { type: bodyPartKeywords.spike, position: { x: -0.2, y: 0.5 } }, // Bottom center
+            { type: bodyPartKeywords.spike, position: { x: 0, y: 0.5 } }, // Bottom right
           ]),
         },
       },
@@ -417,7 +422,7 @@ export const stableEcosystemProfile: SimulationProfile = {
       // longevity = (100 - 100) / 200 = 0.0
       baseGenome: {
         traits: {
-          speed: 0.40, // 40% of maxSpeed (4) - CRITICAL for catch rate
+          speed: 0.4, // 40% of maxSpeed (4) - CRITICAL for catch rate
           force: 0.4, // 40% of maxForce (0.2) - high turning
           vision: 0.5,
           size: 1.3, // Larger and menacing

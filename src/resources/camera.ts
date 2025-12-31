@@ -325,7 +325,7 @@ export const camera = defineResource({
     const getTransformMatrix = (): number[] => {
       const w = canvas.width;
       const h = canvas.height;
-      
+
       // Canvas 2D transform (applied right-to-left):
       // screen = ((world - camera) * zoom) + center
       // screen_x = (px - x) * zoom + w/2
@@ -343,18 +343,24 @@ export const camera = defineResource({
       // ndc_y = -(((py - y) * zoom + h/2) / h * 2 - 1)
       //       = -py * (2*zoom/h) + y * (2*zoom/h) - 1 + 1
       //       = py * (-2*zoom/h) + (-y*zoom + h/2) * (-2/h) + 1
-      
+
       const scaleX = (2 * zoom) / w;
       const scaleY = (-2 * zoom) / h;
       const translateX = ((-x * zoom + w / 2) * 2) / w - 1;
-      const translateY = ((-y * zoom + h / 2) * (-2)) / h + 1;
-      
+      const translateY = ((-y * zoom + h / 2) * -2) / h + 1;
+
       // Return in COLUMN-MAJOR order for WebGL (mat3 in GLSL)
       // Column 0 (x-axis), Column 1 (y-axis), Column 2 (translation)
       return [
-        scaleX,     0,          0,      // Column 0: affects x
-        0,          scaleY,     0,      // Column 1: affects y
-        translateX, translateY, 1       // Column 2: translation + homogeneous
+        scaleX,
+        0,
+        0, // Column 0: affects x
+        0,
+        scaleY,
+        0, // Column 1: affects y
+        translateX,
+        translateY,
+        1, // Column 2: translation + homogeneous
       ];
     };
 

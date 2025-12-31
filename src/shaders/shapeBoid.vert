@@ -7,7 +7,7 @@ attribute vec2 position;  // Quad vertices (0,0) to (1,1)
 attribute vec2 offset;      // Boid world position
 attribute float rotation;   // Boid heading angle
 attribute vec3 color;       // Boid color (from genome)
-attribute float scale;      // Boid size
+attribute float scale;      // Boid size (radius)
 attribute vec2 shapeUV;     // UV offset in shape atlas
 
 // Camera uniform (single combined matrix)
@@ -31,7 +31,8 @@ void main() {
   vec2 rotatedPos = rot * centeredPos;
   
   // Scale and translate to world position
-  vec2 worldPos = rotatedPos * scale + offset;
+  // Session 97: scale represents radius; multiply by 2.0 to get diameter for quad
+  vec2 worldPos = rotatedPos * (scale * 2.0) + offset;
   
   // Apply combined camera transform (world -> NDC)
   vec3 transformed = transform * vec3(worldPos, 1.0);

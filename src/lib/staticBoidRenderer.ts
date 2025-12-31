@@ -13,6 +13,8 @@
 
 import type { Boid, SpeciesConfig } from "@/boids/vocabulary/schemas/prelude";
 import type { Genome } from "@/boids/vocabulary/schemas/genetics";
+import type { BodyPartType } from "@/lib/coordinates";
+import { shapeSizeParamFromBaseSize } from "@/lib/shapeSizing";
 import { computePhenotype } from "@/boids/genetics/phenotype";
 import { defaultWorldPhysics } from "@/resources/defaultPhysics";
 import { getShapeRenderer, getBodyPartRenderer } from "@/resources/rendering/shapes";
@@ -87,11 +89,11 @@ export function renderBoidCanvas2D(
 ): void {
   const { velocity, genome } = boid;
   
-  // Match main simulation sizing (see pipeline.ts lines 444-446)
-  const sizeMultiplier = genome.traits?.size || 1.0;
-  const isPredator = speciesConfig?.role === "predator";
-  const baseSize = isPredator ? 12 : 8;
-  const size = baseSize * sizeMultiplier * scale;
+  // Session 96: Single source of truth for sizing comes from phenotype
+  const baseSize = boid.phenotype.baseSize; // == collisionRadius
+  const shapeName = speciesConfig?.visualConfig?.shape || "triangle";
+  const shapeSize = shapeSizeParamFromBaseSize(shapeName, baseSize) * scale;
+  const bodySize = baseSize * scale;
   
   // Calculate rotation from velocity
   const angle = Math.atan2(velocity.y, velocity.x);
@@ -108,12 +110,26 @@ export function renderBoidCanvas2D(
   ctx.lineWidth = 2;
   
   // Draw body shape using shape renderer
-  const shapeName = speciesConfig?.visualConfig?.shape || "triangle";
   const shapeRenderer = getShapeRenderer(shapeName);
-  shapeRenderer(ctx, size);
+  shapeRenderer(ctx, shapeSize);
   ctx.fill();
   ctx.stroke();
   
+  // DEBUG: Draw collision radius circle (Session 96-97)
+  // Shows the actual physics collision boundary for comparison
+  ctx.save();
+  ctx.strokeStyle = "rgba(255, 0, 0, 0.5)"; // Red semi-transparent
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]); // Dashed line
+  // Collision radius from phenotype (should match visual size!)
+  // Session 97: Apply scale parameter to match the scaled boid rendering
+  const collisionRadius = boid.phenotype.collisionRadius * scale;
+  ctx.beginPath();
+  ctx.arc(0, 0, collisionRadius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]); // Reset dash
+  ctx.restore();
+
   // Draw body parts (eyes, fins, spikes, etc.)
   // GENOME-DRIVEN RENDERING (Session 92): Pass body part data to renderers
   if (genome.visual?.bodyParts && genome.visual.bodyParts.length > 0) {
@@ -132,11 +148,13 @@ export function renderBoidCanvas2D(
       // Skip glow (it's handled via shadow effects)
       if (partType === "glow") continue;
       
-      const partRenderer = getBodyPartRenderer(partType);
+      const partRenderer = getBodyPartRenderer(partType as BodyPartType);
       if (partRenderer) {
         // Use tailColor for tails, body color for everything else
         const partColor = partType === "tail" ? tailColor : color;
-        partRenderer(ctx, size, partColor, parts);
+        // Body parts scale/offset should be relative to collision radius (baseSize),
+        // not the shape renderer's internal size parameter.
+        partRenderer(ctx, bodySize, partColor, parts);
       }
     }
   }
@@ -246,7 +264,8 @@ export function prepareBoidWebGL(boid: Boid): BoidInstanceData {
   return {
     position: [position.x, position.y],
     rotation,
-    scale: phenotype.renderSize,
+    // Use baseSize (collisionRadius) as the render scale
+    scale: phenotype.baseSize,
     color,
   };
 }

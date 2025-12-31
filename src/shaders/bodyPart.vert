@@ -5,13 +5,13 @@ attribute vec2 position;  // Quad vertices (0,0) to (1,1)
 
 // Per-instance attributes (different for each body part)
 attribute vec2 boidPos;     // Boid world position
-attribute float boidRotation; // Boid heading angle
+attribute float boidRotation; // Boid heading angle (radians)
 attribute vec3 boidColor;   // Boid color (from genome)
-attribute float boidScale;  // Boid size
+attribute float boidScale;  // Boid size (collision radius)
 attribute vec2 partUV;      // UV offset in body parts atlas
-attribute vec2 partOffset;  // Part position relative to boid center
-attribute float partRotation; // Part rotation relative to boid
-attribute float partScale;  // Part size relative to boid
+attribute vec2 partOffset;  // Part position relative to boid center (world units)
+attribute float partRotation; // Part rotation relative to boid (radians)
+attribute float partScale;  // Part radius (world units) - multiplied by 2.0 for diameter
 
 // Camera uniform
 uniform mat3 transform;
@@ -24,8 +24,10 @@ varying vec3 vColor;
 varying vec2 vPartUV;
 
 void main() {
-  // Center the quad
-  vec2 centeredPos = (position - 0.5) * partScale;
+  // Center the quad and scale by part size
+  // Session 97: partScale represents radius; multiply by 2.0 to get diameter
+  // This matches the main boid shader's semantics (scale = radius)
+  vec2 centeredPos = (position - 0.5) * (partScale * 2.0);
   
   // Rotate part by combined rotation (boid + part local rotation)
   float totalRotation = boidRotation + partRotation;

@@ -1,6 +1,6 @@
 /**
  * Body Parts Draw Command
- * 
+ *
  * REGL draw command for rendering body parts using texture atlas
  * One instance per body part per boid
  */
@@ -101,5 +101,3 @@ export const createBodyPartsDrawCommand = (
     instances: (regl.prop as unknown as (name: string) => number)("count"),
   });
 };
-
-

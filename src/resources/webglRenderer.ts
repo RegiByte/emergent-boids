@@ -58,6 +58,8 @@ import {
   createSelectionCirclesDrawCommand,
   createStanceSymbolsDrawCommand,
   createTextDrawCommand,
+  createDebugCollisionCirclesDrawCommand,
+  prepareDebugCollisionCirclesData,
   // Event Handlers
   attachEventHandlers,
 } from "./webgl";
@@ -225,6 +227,9 @@ export const webglRenderer = defineResource({
         ? createTextDrawCommand(regl, fontTexture, fontAtlas.cellSize)
         : null;
 
+    // Create draw command for debug collision circles (Session 96)
+    const drawDebugCollisionCircles = createDebugCollisionCirclesDrawCommand(regl);
+
     const render = () => {
       // CRITICAL: Tell regl to update its internal state (canvas size, viewport, etc.)
       // This ensures WebGL viewport matches canvas dimensions
@@ -327,6 +332,16 @@ export const webglRenderer = defineResource({
             transform,
           });
         }
+      }
+
+      // DEBUG Layer: Collision radius circles (Session 96)
+      // Visual verification that rendered size matches physics collision
+      if (visibleBoids.length > 0) {
+        const collisionData = prepareDebugCollisionCirclesData(visibleBoids);
+        drawDebugCollisionCircles({
+          ...collisionData,
+          transform,
+        });
       }
 
       // Layer 4: Energy Bars (render fourth, on top of boids)

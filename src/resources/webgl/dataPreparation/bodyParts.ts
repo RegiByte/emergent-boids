@@ -1,13 +1,14 @@
 /**
  * Body Parts Data Preparation
- * 
+ *
  * Prepares per-instance data for body parts rendering
  * Each body part becomes a separate instance with its own position/rotation/scale
  */
 
 import type { Boid, SpeciesConfig } from "@/boids/vocabulary/schemas/prelude";
 import type { BodyPartsAtlasResult } from "../atlases/bodyPartsAtlas";
-import { colorToRgb, calculateBoidRotation, calculateBoidScale } from "./utils";
+import { colorToRgb, calculateBoidRotation } from "./utils";
+import { transformBodyPartWebGL, type BodyPartType } from "@/lib/coordinates";
 
 export type BodyPartsInstanceData = {
   boidPositions: Float32Array;
@@ -53,15 +54,14 @@ export const prepareBodyPartsData = (
     if (bodyParts.length === 0) continue;
 
     // Boid properties
-    const boidRotation = calculateBoidRotation(boid.velocity.x, boid.velocity.y);
-    const boidColor = colorToRgb(boid.phenotype.color);
-    const sizeMultiplier = speciesConfig?.baseGenome?.traits?.size || 1.0;
-    const isPredator = speciesConfig?.role === "predator";
-    const boidScale = calculateBoidScale(
-      isPredator,
-      sizeMultiplier,
-      boid.phenotype.renderSize
+    const boidRotation = calculateBoidRotation(
+      boid.velocity.x,
+      boid.velocity.y
     );
+    const boidColor = colorToRgb(boid.phenotype.color);
+    // Session 96: Use phenotype baseSize (== collisionRadius) for body parts.
+    // Body parts should be positioned/scaled relative to physics size.
+    const boidScale = boid.phenotype.baseSize;
 
     // Add each body part
     for (const part of bodyParts) {
@@ -79,9 +79,19 @@ export const prepareBodyPartsData = (
       const partSize = partData?.size || 1.0;
       const partPosX = partData?.position?.x || 0;
       const partPosY = partData?.position?.y || 0;
-      const partRot = partData?.rotation
-        ? (partData.rotation * Math.PI) / 180
-        : 0;
+      const partRotation = partData?.rotation || 0; // Degrees
+
+      // Session 97: Use proper coordinate transformation
+      // transformBodyPartWebGL handles:
+      // - Genome position → WebGL offset (with Y-flip)
+      // - Degrees → Radians
+      // - Per-part-type scale factors
+      const { offset, rotation } = transformBodyPartWebGL(
+        { x: partPosX, y: partPosY },
+        partRotation,
+        partType as BodyPartType,
+        boidScale
+      );
 
       parts.push({
         boidPos: [boid.position.x, boid.position.y],
@@ -89,20 +99,16 @@ export const prepareBodyPartsData = (
         boidColor,
         boidScale,
         partUV: [partUV.u, partUV.v],
-        // Offset in boid-local space (before rotation by boid heading)
-        // Genome uses: x = left/right, y = front/back (negative = front)
-        // WebGL boid faces right (positive X), so we need to swap:
-        // - genome.y (front/back) → offset.x (forward in boid space)
-        // - genome.x (left/right) → offset.y (sideways in boid space)
-        // Negate Y because genome uses negative-Y-is-front
-        partOffset: [
-          -partPosY * boidScale * 0.25, // Front/back (reduced from 0.4)
-          partPosX * boidScale * 0.25, // Left/right (reduced from 0.4)
-        ],
-        partRotation: partRot,
-        // Scale parts relative to boid body
-        // Increased from 0.15 to 0.2 for better visibility
-        partScale: partSize * boidScale * 0.2,
+        // Use transformed offset from coordinate system
+        partOffset: [offset.x, offset.y],
+        // Use transformed rotation (degrees → radians)
+        partRotation: rotation,
+        // Session 97: Scale parts relative to boid body (radius semantics)
+        // partScale represents the RADIUS of the body part in world units
+        // Shader multiplies by 2.0 to get diameter for quad rendering
+        // Formula: partSize (genome) * boidScale (collision radius) * 0.7
+        // Effective visual size: 0.7 * 2.0 = 1.4x collision radius
+        partScale: partSize * boidScale * 0.7,
       });
     }
   }
@@ -150,5 +156,3 @@ export const prepareBodyPartsData = (
     count,
   };
 };
-
-

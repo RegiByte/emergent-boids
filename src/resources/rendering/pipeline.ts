@@ -15,6 +15,8 @@ import type {
 import type { Profiler } from "../profiler";
 import type { TimeState } from "../time";
 import type { CameraAPI, CameraMode } from "../camera";
+import type { BodyPartType } from "@/lib/coordinates";
+import { shapeSizeParamFromBaseSize } from "@/lib/shapeSizing";
 import { getBodyPartRenderer, getShapeRenderer } from "./shapes";
 import { adjustColorBrightness, hexToRgba, toRgb } from "@/lib/colors";
 import { shouldShowHealthBar, getWoundedTint } from "@/boids/lifecycle/health";
@@ -439,11 +441,11 @@ export const renderBoidBodies = (rc: RenderContext): void => {
     rc.ctx.translate(boid.position.x, boid.position.y);
     rc.ctx.rotate(angle);
 
-    // Get shape and size from species config
+    // Session 96: Single source of truth for sizing comes from phenotype
     const shape = speciesConfig.visualConfig?.shape || "circle";
-    const sizeMultiplier = speciesConfig.baseGenome?.traits?.size || 1.0;
-    const baseSize = speciesConfig.role === "predator" ? 12 : 8;
-    const size = baseSize * sizeMultiplier;
+    const baseSize = boid.phenotype.baseSize; // == collisionRadius
+    // Shapes have different internal max extent factors, so we invert per-shape.
+    const shapeSize = shapeSizeParamFromBaseSize(shape, baseSize);
 
     // Energy-based color brightness
     const energyRatio = boid.energy / boid.phenotype.maxEnergy;
@@ -459,14 +461,14 @@ export const renderBoidBodies = (rc: RenderContext): void => {
     );
 
     if (hasGlow) {
-      rc.ctx.shadowBlur = size * 0.8;
+      rc.ctx.shadowBlur = baseSize * 0.8;
       rc.ctx.shadowColor = dynamicColor;
     }
 
     // Render main body shape
     rc.ctx.fillStyle = dynamicColor;
     const shapeRenderer = getShapeRenderer(shape);
-    shapeRenderer(rc.ctx, size);
+    shapeRenderer(rc.ctx, shapeSize);
     rc.ctx.fill();
 
     // Add subtle outline for better visibility
@@ -493,7 +495,7 @@ export const renderBoidBodies = (rc: RenderContext): void => {
       for (const part of bodyParts) {
         const partType = typeof part === "string" ? part : part.type;
         if (partType === "glow") continue; // Already handled above
-        
+
         const existing = partsByType.get(partType) || [];
         existing.push(part);
         partsByType.set(partType, existing);
@@ -501,11 +503,13 @@ export const renderBoidBodies = (rc: RenderContext): void => {
 
       // Render each part type with its genome data
       for (const [partType, parts] of partsByType.entries()) {
-        const partRenderer = getBodyPartRenderer(partType);
+        const partRenderer = getBodyPartRenderer(partType as BodyPartType);
         if (partRenderer) {
           const partColor =
             partType === "tail" ? tailColor : boid.phenotype.color;
-          partRenderer(rc.ctx, size, partColor, parts);
+          // Body parts scale/offset should be relative to collision radius (baseSize),
+          // not the shape renderer's internal size parameter.
+          partRenderer(rc.ctx, baseSize, partColor, parts);
         }
       }
     }
@@ -514,9 +518,23 @@ export const renderBoidBodies = (rc: RenderContext): void => {
     const woundedTint = getWoundedTint(boid);
     if (woundedTint) {
       rc.ctx.fillStyle = woundedTint;
-      shapeRenderer(rc.ctx, size);
+      shapeRenderer(rc.ctx, shapeSize);
       rc.ctx.fill();
     }
+
+    // DEBUG: Draw collision radius circle (Session 96)
+    // Shows the actual physics collision boundary for comparison
+    rc.ctx.save();
+    rc.ctx.strokeStyle = "rgba(255, 0, 0, 0.5)"; // Red semi-transparent
+    rc.ctx.lineWidth = 1;
+    rc.ctx.setLineDash([3, 3]); // Dashed line
+    // Collision radius from phenotype (should match visual size!)
+    const collisionRadius = boid.phenotype.collisionRadius;
+    rc.ctx.beginPath();
+    rc.ctx.arc(0, 0, collisionRadius, 0, Math.PI * 2);
+    rc.ctx.stroke();
+    rc.ctx.setLineDash([]); // Reset dash
+    rc.ctx.restore();
 
     rc.ctx.restore();
   }

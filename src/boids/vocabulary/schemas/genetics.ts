@@ -105,7 +105,7 @@ export const bodyPartSchema = z.object({
     x: z.number().min(-1).max(1), // Relative to body center
     y: z.number().min(-1).max(1),
   }),
-  rotation: z.number().min(0).max(360), // Degrees
+  rotation: z.number().min(-360).max(360), // Degrees
 
   // Mechanical effects (additive across all parts)
   effects: z.object({
@@ -203,6 +203,7 @@ export const phenotypeSchema = z.object({
   attackDamage: z.number(), // physics.baseDamage * genome.size * (1 + bodyPartBonuses.damage)
   defense: z.number(), // bodyPartBonuses.defense (damage reduction %)
   collisionRadius: z.number(), // genome.size * physics.collisionMultiplier * 10
+  baseSize: z.number(), // same as collisionRadius (render/physics base)
 
   // Survival traits (evolvable)
   fearFactor: z.number(), // genome.traits.fearResponse
@@ -220,7 +221,6 @@ export const phenotypeSchema = z.object({
 
   // Visual (from genome)
   color: z.string(), // genome.visual.color
-  renderSize: z.number(), // genome.size
   bodyParts: z.array(bodyPartSchema), // genome.visual.bodyParts
 });
 

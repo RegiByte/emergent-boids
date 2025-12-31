@@ -1,12 +1,13 @@
 /**
  * Shape Boids Data Preparation
- * 
+ *
  * Prepares per-instance data for shape-based boid rendering
  */
 
 import type { Boid, SpeciesConfig } from "@/boids/vocabulary/schemas/prelude";
 import type { ShapeAtlasResult } from "../atlases/shapeAtlas";
-import { colorToRgb, calculateBoidRotation, calculateBoidScale } from "./utils";
+import { colorToRgb, calculateBoidRotation } from "./utils";
+import { shapeSizeParamFromBaseSize } from "@/lib/shapeSizing";
 
 export type ShapeBoidInstanceData = {
   positions: Float32Array;
@@ -48,19 +49,16 @@ export const prepareShapeBoidData = (
     colors[i * 3 + 1] = g;
     colors[i * 3 + 2] = b;
 
-    // Scale (match Canvas 2D sizing)
-    const speciesConfig = speciesConfigs[boid.typeId];
-    const sizeMultiplier = speciesConfig?.baseGenome?.traits?.size || 1.0;
-    const isPredator = speciesConfig?.role === "predator";
-    scales[i] = calculateBoidScale(
-      isPredator,
-      sizeMultiplier,
-      boid.phenotype.renderSize
-    );
-
-    // Shape UV coordinates (lookup from atlas)
+    // Shape UV coordinates (lookup from atlas) + per-shape size
     if (shapeAtlas) {
+      const speciesConfig = speciesConfigs[boid.typeId];
       const shapeName = speciesConfig?.visualConfig?.shape || "triangle";
+      // Session 96-97: Scale is derived from phenotype baseSize (== collisionRadius)
+      // and the shape's max extent factor. Shader multiplies by 2.0 to treat as radius.
+      scales[i] = shapeSizeParamFromBaseSize(
+        shapeName,
+        boid.phenotype.baseSize
+      );
       const shapeUV = shapeAtlas.shapeUVMap.get(shapeName);
 
       if (shapeUV) {
@@ -73,9 +71,14 @@ export const prepareShapeBoidData = (
         shapeUVs[i * 2 + 1] = triangleUV?.v || 0;
       }
     }
+    // Fallback: if no atlas, default to triangle sizing
+    if (!shapeAtlas) {
+      scales[i] = shapeSizeParamFromBaseSize(
+        "triangle",
+        boid.phenotype.baseSize
+      );
+    }
   }
 
   return { positions, rotations, colors, scales, shapeUVs, count };
 };
-
-

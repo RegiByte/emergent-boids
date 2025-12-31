@@ -1,11 +1,15 @@
 /**
- * Shape Rendering Functions - Geometric Shapes Edition
+ * Shape Rendering Functions - Atlas Edition (Session 95)
  *
- * Clean geometric shapes for high-performance boid rendering.
- * Direction is encoded via motion trails, not shape orientation.
- * Each shape is centered at (0, 0) and renderer handles rotation.
+ * UNIFIED RENDERING: Canvas 2D now uses the same texture atlases as WebGL
+ * for pixel-perfect visual parity across renderers.
  *
- * Philosophy: Simple shapes + color + size + trails = instant species recognition
+ * Architecture:
+ * - Base shapes: Manual drawing (kept for performance)
+ * - Body parts: Atlas-based rendering (single source of truth)
+ * - Coordinate system: Unified transformations via coordinates.ts
+ *
+ * Philosophy: Simple shapes + atlas parts + unified coordinates = visual consistency
  */
 
 import type {
@@ -17,11 +21,37 @@ import {
   transformBodyPartCanvas2D,
   type BodyPartType,
 } from "@/lib/coordinates";
+import {
+  createBodyPartsAtlas,
+  type BodyPartsAtlasResult,
+} from "@/resources/webgl/atlases/bodyPartsAtlas";
 
 export type ShapeRenderer = (
   _ctx: CanvasRenderingContext2D,
   _size: number
 ) => void;
+
+// ============================================================================
+// ATLAS INITIALIZATION (Lazy Loading)
+// ============================================================================
+
+let bodyPartsAtlas: BodyPartsAtlasResult | null = null;
+
+/**
+ * Get or create the body parts atlas
+ * Lazy initialization ensures atlas is only created when needed
+ */
+function getBodyPartsAtlas(): BodyPartsAtlasResult | null {
+  if (!bodyPartsAtlas) {
+    bodyPartsAtlas = createBodyPartsAtlas();
+    if (!bodyPartsAtlas) {
+      console.error("Failed to create body parts atlas for Canvas 2D");
+      return null;
+    }
+    console.log("✅ Body parts atlas loaded for Canvas 2D rendering");
+  }
+  return bodyPartsAtlas;
+}
 
 /**
  * Diamond - Rotated square, pointed and agile
@@ -29,10 +59,11 @@ export type ShapeRenderer = (
  */
 const renderDiamond: ShapeRenderer = (ctx, size) => {
   ctx.beginPath();
-  ctx.moveTo(size, 0); // Right point (forward)
-  ctx.lineTo(0, size * 0.7); // Bottom point
-  ctx.lineTo(-size * 0.6, 0); // Left point (back)
-  ctx.lineTo(0, -size * 0.7); // Top point
+  // Match WebGL atlas shape definition (`src/resources/webgl/atlases/shapeAtlas.ts`)
+  ctx.moveTo(size * 0.9, 0); // Right point (forward)
+  ctx.lineTo(-size * 0.3, size * 0.55); // Bottom point
+  ctx.lineTo(-size * 0.8, 0); // Left point (back)
+  ctx.lineTo(-size * 0.3, -size * 0.55); // Top point
   ctx.closePath();
 };
 
@@ -79,7 +110,8 @@ const renderSquare: ShapeRenderer = (ctx, size) => {
  */
 const renderTriangle: ShapeRenderer = (ctx, size) => {
   ctx.beginPath();
-  ctx.moveTo(size, 0);
+  // Match WebGL atlas shape definition (`src/resources/webgl/atlases/shapeAtlas.ts`)
+  ctx.moveTo(size * 0.8, 0); // Tip (right)
   ctx.lineTo(-size * 0.5, size * 0.5);
   ctx.lineTo(-size * 0.5, -size * 0.5);
   ctx.closePath();
@@ -89,10 +121,9 @@ const renderTriangle: ShapeRenderer = (ctx, size) => {
  * Body Parts System - Composable visual elements
  * These are rendered AFTER the main body shape to add character
  *
- * GENOME-DRIVEN RENDERING (Session 92):
- * Body part renderers now read positions, sizes, and rotations from genome data
- * instead of using hardcoded values. This ensures visual parity between Canvas 2D
- * and WebGL renderers.
+ * ATLAS-BASED RENDERING (Session 95):
+ * Body parts are now rendered from texture atlases for visual parity with WebGL.
+ * Uses unified coordinate transformations and samples from the same atlas canvas.
  */
 
 export type BodyPartRenderer = (
@@ -103,153 +134,126 @@ export type BodyPartRenderer = (
 ) => void;
 
 /**
- * Eyes - Two dots for character
- * UNIFIED COORDINATES (Session 94, Phase 3):
- * Uses transformBodyPartCanvas2D for consistent positioning across renderers
+ * Generic atlas-based body part renderer
+ *
+ * Renders a body part by sampling from the atlas texture.
+ * Applies position, rotation, and scale transformations using unified coordinate system.
+ *
+ * @param ctx - Canvas rendering context
+ * @param boidSize - Size of the boid (for scaling)
+ * @param color - Color to tint the part (hex string)
+ * @param bodyParts - Array of body parts from genome
+ * @param partTypeName - Name of the part type (for UV lookup)
+ * @param sizeMultiplier - Visual size adjustment (matches WebGL)
  */
-const renderEyes: BodyPartRenderer = (ctx, boidSize, _color, bodyParts) => {
-  // Render each eye from genome data
+function renderAtlasPart(
+  ctx: CanvasRenderingContext2D,
+  boidSize: number,
+  _color: string,
+  bodyParts: BodyPart[],
+  partTypeName: string,
+  sizeMultiplier: number = 0.7
+): void {
+  const atlas = getBodyPartsAtlas();
+  if (!atlas) {
+    // Fallback: render nothing (atlas failed to load)
+    return;
+  }
+
+  // Get UV coordinates for this part type
+  const partUV = atlas.partUVMap.get(partTypeName);
+  if (!partUV) {
+    console.warn(`Part type "${partTypeName}" not found in atlas`);
+    return;
+  }
+
+  // Calculate source rectangle in atlas canvas
+  const atlasSize = atlas.canvas.width;
+  const cellPixelSize = atlasSize / atlas.gridSize;
+  const srcX = partUV.u * atlasSize;
+  const srcY = partUV.v * atlasSize;
+  const srcWidth = cellPixelSize;
+  const srcHeight = cellPixelSize;
+
+  // Render each body part instance
   for (const part of bodyParts) {
-    // Get eye properties from genome
-    const eyePartSize = part.size || 1.0;
-    const eyePosX = part.position?.x || 0;
-    const eyePosY = part.position?.y || -0.4;
-    const eyeRotation = part.rotation || 0;
-
-    // Use unified coordinate transformation
-    const { offset } = transformBodyPartCanvas2D(
-      { x: eyePosX, y: eyePosY },
-      eyeRotation,
-      "eye" as BodyPartType,
-      boidSize
-    );
-
-    const eyeSize = boidSize * 0.15 * eyePartSize;
-
-    // Draw eye white
-    ctx.fillStyle = "white";
-    ctx.beginPath();
-    ctx.arc(offset.x, offset.y, eyeSize, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Draw pupil
-    ctx.fillStyle = "#000";
-    const pupilSize = eyeSize * 0.5;
-    ctx.beginPath();
-    ctx.arc(offset.x, offset.y, pupilSize, 0, Math.PI * 2);
-    ctx.fill();
-  }
-};
-
-/**
- * Fins - Side fins for aquatic look (more visible)
- * GENOME-DRIVEN: Reads positions from body part data
- * Uses original Canvas 2D geometry (simple triangles from body center)
- */
-const renderFins: BodyPartRenderer = (ctx, boidSize, color, _bodyParts) => {
-  // Make fins more opaque and add outline
-  ctx.fillStyle = `${color}DD`; // Much more opaque (87% opacity)
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.5;
-
-  // Original Canvas 2D rendered fins from body center, not positioned by genome
-  // So we render the original geometry without translation
-  // Top fin (larger and more prominent)
-  ctx.beginPath();
-  ctx.moveTo(-boidSize * 0.1, 0);
-  ctx.lineTo(-boidSize * 0.6, -boidSize * 0.7);
-  ctx.lineTo(-boidSize * 0.2, -boidSize * 0.4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  // Bottom fin (larger and more prominent)
-  ctx.beginPath();
-  ctx.moveTo(-boidSize * 0.1, 0);
-  ctx.lineTo(-boidSize * 0.6, boidSize * 0.7);
-  ctx.lineTo(-boidSize * 0.2, boidSize * 0.4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-};
-
-/**
- * Spikes - Defensive spikes for predators (symmetrical)
- * GENOME-DRIVEN: Reads positions from body part data
- * Uses original Canvas 2D geometry (lines from body)
- */
-const renderSpikes: BodyPartRenderer = (ctx, boidSize, color, _bodyParts) => {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.lineCap = "round";
-
-  // Original Canvas 2D rendered spikes from body, not positioned by genome
-  // Three spikes on top
-  for (let i = 0; i < 3; i++) {
-    const x = -boidSize * 0.4 + i * boidSize * 0.2;
-    ctx.beginPath();
-    ctx.moveTo(x, -boidSize * 0.5);
-    ctx.lineTo(x - boidSize * 0.1, -boidSize * 0.8);
-    ctx.stroke();
-  }
-
-  // Three spikes on bottom (symmetrical)
-  for (let i = 0; i < 3; i++) {
-    const x = -boidSize * 0.4 + i * boidSize * 0.2;
-    ctx.beginPath();
-    ctx.moveTo(x, boidSize * 0.5);
-    ctx.lineTo(x - boidSize * 0.1, boidSize * 0.8);
-    ctx.stroke();
-  }
-};
-
-/**
- * Tail - Prominent tail fin
- * UNIFIED COORDINATES (Session 94, Phase 3):
- * Uses transformBodyPartCanvas2D for consistent positioning across renderers
- */
-const renderTail: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
-  ctx.fillStyle = `${color}EE`; // More opaque (93% opacity)
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.5;
-
-  // Render each tail from genome data (usually just one)
-  for (const part of bodyParts) {
-    // Get tail properties from genome
-    const tailPartSize = part.size || 1.0;
-    const tailPosX = part.position?.x || 0;
-    const tailPosY = part.position?.y || 0.5;
-    const tailRotation = part.rotation || 0;
+    const partSize = part.size || 1.0;
+    const partPosX = part.position?.x || 0;
+    const partPosY = part.position?.y || 0;
+    const partRotation = part.rotation || 0;
 
     // Use unified coordinate transformation
     const { offset, rotation } = transformBodyPartCanvas2D(
-      { x: tailPosX, y: tailPosY },
-      tailRotation,
-      "tail" as BodyPartType,
+      { x: partPosX, y: partPosY },
+      partRotation,
+      partTypeName as BodyPartType,
       boidSize
     );
 
-    // Tail geometry (angular V-shape)
-    const tailLength = boidSize * 1.0 * tailPartSize;
-    const tailWidth = boidSize * 0.4 * tailPartSize;
+    // Calculate destination size (matches WebGL scaling)
+    // WebGL uses: partSize * boidScale * 0.7
+    // We need to match that without over-compensating
+    const destSize = boidSize * sizeMultiplier * partSize;
 
     ctx.save();
     ctx.translate(offset.x, offset.y);
     ctx.rotate(rotation);
 
-    // Two merged triangles creating angular perspective
-    // Points RIGHT in base state (matching atlas)
-    ctx.beginPath();
-    ctx.moveTo(-tailLength * 0.5, 0); // Base (at boid body)
-    ctx.lineTo(tailLength * 1.0, -tailWidth); // Top tip (pointing right)
-    ctx.lineTo(tailLength * 0.8, 0); // Middle point (creates angular V)
-    ctx.lineTo(tailLength * 1.0, tailWidth); // Bottom tip (pointing right)
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    // Draw part from atlas (centered)
+    ctx.drawImage(
+      atlas.canvas,
+      srcX,
+      srcY,
+      srcWidth,
+      srcHeight, // Source rect in atlas
+      -destSize / 2,
+      -destSize / 2,
+      destSize,
+      destSize // Dest rect (centered)
+    );
 
     ctx.restore();
   }
+}
+
+// Size multiplier to match WebGL's bodyPartScaleMultiplier
+// Session 97: WebGL shader applies * 2.0, so we use 0.7 * 2.0 = 1.4 effective size
+// Canvas doesn't have the shader doubling, so we need higher value for parity
+// Testing shows 1.4 works well for Canvas to match WebGL's (0.7 * 2.0)
+const sizeMultiplier = 1.4;
+/**
+ * Eyes - Rendered from atlas (Session 95)
+ * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
+ */
+const renderEyes: BodyPartRenderer = (ctx, boidSize, _color, bodyParts) => {
+  // Eyes should remain white/black (not tinted), so we pass white color
+  // The atlas already has white eyes with black pupils
+  // Size multiplier empirically tuned to match WebGL visual scale
+  renderAtlasPart(ctx, boidSize, "#FFFFFF", bodyParts, "eye", sizeMultiplier);
+};
+
+/**
+ * Fins - Rendered from atlas (Session 95)
+ * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
+ */
+const renderFins: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
+  renderAtlasPart(ctx, boidSize, color, bodyParts, "fin", sizeMultiplier);
+};
+
+/**
+ * Spikes - Rendered from atlas (Session 95)
+ * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
+ */
+const renderSpikes: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
+  renderAtlasPart(ctx, boidSize, color, bodyParts, "spike", sizeMultiplier);
+};
+
+/**
+ * Tail - Rendered from atlas (Session 95)
+ * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
+ */
+const renderTail: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
+  renderAtlasPart(ctx, boidSize, color, bodyParts, "tail", sizeMultiplier);
 };
 
 /**
@@ -260,7 +264,7 @@ const renderGlow: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
   // Use the first glow part's size (usually only one)
   const glowPart = bodyParts[0];
   const glowSize = glowPart?.size || 1.0;
-  
+
   ctx.shadowBlur = boidSize * 0.8 * glowSize;
   ctx.shadowColor = color;
   // The glow is applied to the main body, so we don't draw anything here

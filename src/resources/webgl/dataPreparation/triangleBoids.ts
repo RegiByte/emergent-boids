@@ -52,11 +52,9 @@ export const prepareTriangleBoidData = (
     colors[i * 3 + 1] = g / 255;
     colors[i * 3 + 2] = b / 255;
 
-    // Scale (from phenotype renderSize)
-    // renderSize is typically 0.8-1.2 (size multiplier from genome)
-    scales[i] = boid.phenotype.renderSize;
+    // Scale: use collision radius (baseSize) directly
+    scales[i] = boid.phenotype.collisionRadius;
   }
 
   return { positions, rotations, colors, scales, count };
 };
-

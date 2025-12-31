@@ -1,8 +1,9 @@
-import type {
-  Genome,
-  Phenotype,
-  WorldPhysics,
-  BodyPart,
+import {
+  type Genome,
+  type Phenotype,
+  type WorldPhysics,
+  type BodyPart,
+  genomeSchema,
 } from "../vocabulary/schemas/genetics";
 
 /**
@@ -64,9 +65,10 @@ function computeBodyPartBonuses(bodyParts: BodyPart[]) {
  * @returns Computed phenotype (effective values)
  */
 export function computePhenotype(
-  genome: Genome,
+  genomeBase: Genome,
   physics: WorldPhysics
 ): Phenotype {
+  const genome = genomeSchema.parse(genomeBase);
   // 1. Compute body part bonuses (additive)
   const bonuses = computeBodyPartBonuses(genome.visual.bodyParts);
 
@@ -110,6 +112,8 @@ export function computePhenotype(
   // 7. Compute collision radius (size-based)
   const collisionRadius =
     genome.traits.size * physics.size.collisionMultiplier * 10;
+  // Base size for rendering/physics (same as collision radius)
+  const baseSize = collisionRadius;
 
   // 8. Compute survival-critical traits
   const fearFactor = genome.traits.fearResponse;
@@ -145,6 +149,7 @@ export function computePhenotype(
     attackDamage,
     defense,
     collisionRadius,
+    baseSize,
 
     // Survival traits (evolvable)
     fearFactor,
@@ -162,7 +167,6 @@ export function computePhenotype(
 
     // Visual (pass through from genome)
     color: genome.visual.color,
-    renderSize: genome.traits.size,
     bodyParts: genome.visual.bodyParts,
   };
 }

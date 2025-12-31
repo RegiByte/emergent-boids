@@ -1,14 +1,26 @@
 /**
  * Transform Utilities
- * 
- * Camera and projection matrix calculations for WebGL rendering
+ *
+ * Session 96 Note: This module is DEPRECATED and should not be used.
+ *
+ * The functions here were created in an earlier session but were never
+ * properly integrated. They return mat4 (16 elements) but our shaders
+ * expect mat3 (9 elements).
+ *
+ * CORRECT APPROACH:
+ * Use camera.getTransformMatrix() instead - it's already implemented,
+ * tested, and returns the correct mat3 format for our shaders.
+ *
+ * See: src/resources/camera.ts line 325 (getTransformMatrix function)
+ *
+ * This file is kept for reference only and may be removed in the future.
  */
 
 import type { CameraAPI } from "../../camera";
 
 /**
- * Create projection matrix for 2D orthographic projection
- * Maps world coordinates to clip space (-1 to 1)
+ * @deprecated Use camera.getTransformMatrix() instead
+ * This returns mat4 but shaders expect mat3
  */
 export const createProjectionMatrix = (
   width: number,
@@ -25,6 +37,7 @@ export const createProjectionMatrix = (
   const top = camera.y - halfHeight;
 
   // Orthographic projection matrix (column-major for WebGL)
+  // WARNING: This is mat4 (4x4 = 16 elements) but our shaders use mat3!
   return [
     2 / (right - left),
     0,
@@ -46,12 +59,13 @@ export const createProjectionMatrix = (
 };
 
 /**
- * Create view matrix for camera transform
- * (Alternative to projection matrix approach)
+ * @deprecated Use camera.getTransformMatrix() instead
+ * This returns mat4 but shaders expect mat3
  */
 export const createViewMatrix = (camera: CameraAPI): number[] => {
   // View matrix (column-major for WebGL)
   // Translation + scale
+  // WARNING: This is mat4 (4x4 = 16 elements) but our shaders use mat3!
   return [
     camera.zoom,
     0,
@@ -74,9 +88,11 @@ export const createViewMatrix = (camera: CameraAPI): number[] => {
 
 /**
  * Calculate screen-space resolution for shader uniforms
+ * This one is fine to use
  */
-export const getResolution = (width: number, height: number): [number, number] => {
+export const getResolution = (
+  width: number,
+  height: number
+): [number, number] => {
   return [width, height];
 };
-
-
