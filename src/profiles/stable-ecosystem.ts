@@ -45,7 +45,8 @@ const createBodyParts = (
         return {
           type: bodyPartKeywords.fin,
           size: 1.0,
-          position: part.position || { x: index % 2 === 0 ? -0.3 : 0.3, y: 0 },
+          // Position fins toward the back of the body (positive y = back)
+          position: part.position || { x: index % 2 === 0 ? -0.4 : 0.4, y: 0.4 },
           rotation: part.rotation || (index % 2 === 0 ? -90 : 90),
           effects: { turnRateBonus: 0.05 },
         };
@@ -358,7 +359,13 @@ export const stableEcosystemProfile: SimulationProfile = {
           bodyParts: createBodyParts([
             { type: bodyPartKeywords.eye },
             { type: bodyPartKeywords.eye },
-            { type: bodyPartKeywords.spike },
+            // Six spikes matching Canvas 2D pattern (3 top, 3 bottom)
+            { type: bodyPartKeywords.spike, position: { x: -0.4, y: -0.5 } }, // Top left
+            { type: bodyPartKeywords.spike, position: { x: -0.2, y: -0.5 } }, // Top center
+            { type: bodyPartKeywords.spike, position: { x: 0, y: -0.5 } },    // Top right
+            { type: bodyPartKeywords.spike, position: { x: -0.4, y: 0.5 } },  // Bottom left
+            { type: bodyPartKeywords.spike, position: { x: -0.2, y: 0.5 } },  // Bottom center
+            { type: bodyPartKeywords.spike, position: { x: 0, y: 0.5 } },     // Bottom right
           ]),
         },
       },

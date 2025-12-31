@@ -78,3 +78,4 @@ export const prepareShapeBoidData = (
   return { positions, rotations, colors, scales, shapeUVs, count };
 };
 
+

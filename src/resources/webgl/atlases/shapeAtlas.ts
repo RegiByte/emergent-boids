@@ -75,8 +75,8 @@ export const createShapeAtlas = (): ShapeAtlasResult | null => {
     const centerX = cellX + cellSize / 2;
     const centerY = cellY + cellSize / 2;
 
-    // Size of shape (70% of cell for padding)
-    const size = cellSize * 0.35;
+    // Size of shape (use most of cell with minimal padding)
+    const size = cellSize * 0.5; // Increased from 0.35 to 0.45 (90% total width)
 
     // Save context and translate to cell center
     ctx.save();
@@ -93,10 +93,10 @@ export const createShapeAtlas = (): ShapeAtlasResult | null => {
     switch (shapeName) {
       case "diamond":
         // Rotated square, pointed and agile
-        ctx.moveTo(size, 0); // Right point (forward)
-        ctx.lineTo(0, size * 0.7); // Bottom point
-        ctx.lineTo(-size * 0.6, 0); // Left point (back)
-        ctx.lineTo(0, -size * 0.7); // Top point
+        ctx.moveTo(size * 0.9, 0); // Right point (forward)
+        ctx.lineTo(-size * 0.3, size * 0.55); // Bottom point
+        ctx.lineTo(-size * 0.8, 0); // Left point (back)
+        ctx.lineTo(-size * 0.3, -size * 0.55); // Top point
         ctx.closePath();
         break;
 
@@ -128,7 +128,7 @@ export const createShapeAtlas = (): ShapeAtlasResult | null => {
 
       case "triangle":
         // Classic boid shape
-        ctx.moveTo(size, 0); // Tip (right)
+        ctx.moveTo(size * 0.8, 0); // Tip (right)
         ctx.lineTo(-size * 0.5, size * 0.5); // Bottom left
         ctx.lineTo(-size * 0.5, -size * 0.5); // Top left
         ctx.closePath();

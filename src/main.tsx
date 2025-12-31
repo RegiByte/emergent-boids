@@ -11,7 +11,7 @@ declare global {
   }
 }
 
-const rootElement = document.getElementById("root")!
+const rootElement = document.getElementById("root")!;
 
 // Create a new router instance
 const router = createRouter({ routeTree });

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coordinate System Tests</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #00ff00;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #00ffff;
+      border-bottom: 2px solid #00ffff;
+      padding-bottom: 10px;
+    }
+    .test-results {
+      background: #2a2a2a;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    .success {
+      color: #00ff00;
+    }
+    .error {
+      color: #ff0000;
+    }
+    pre {
+      background: #000;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    button {
+      background: #00ffff;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #00cc99;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Unified Coordinate System Tests</h1>
+  <p>Testing the pure function coordinate converters from <code>src/lib/coordinates.ts</code></p>
+  
+  <button onclick="runTests()">Run Tests</button>
+  
+  <div class="test-results" id="results">
+    <p>Click "Run Tests" to validate the coordinate system converters.</p>
+  </div>
+
+  <script type="module">
+    import { runValidationTests, TEST_CASES, genomeToCanvas2D, genomeToWebGL, genomeRotationToRadians } from '/emergent-boids/src/lib/coordinates.ts';
+    
+    window.runTests = function() {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '<h2>Running tests...</h2>';
+      
+      // Capture console.log output
+      const logs = [];
+      const originalLog = console.log;
+      console.log = function(...args) {
+        logs.push(args.join(' '));
+        originalLog.apply(console, args);
+      };
+      
+      // Run validation tests
+      const allPass = runValidationTests();
+      
+      // Restore console.log
+      console.log = originalLog;
+      
+      // Display results
+      let html = '<h2>Test Results</h2>';
+      html += `<p class="${allPass ? 'success' : 'error'}">`;
+      html += allPass ? '✅ ALL TESTS PASSED!' : '❌ SOME TESTS FAILED';
+      html += '</p>';
+      
+      html += '<pre>';
+      html += logs.join('\n');
+      html += '</pre>';
+      
+      // Additional test info
+      html += '<h3>Test Cases:</h3>';
+      html += '<pre>';
+      html += JSON.stringify(TEST_CASES, null, 2);
+      html += '</pre>';
+      
+      // Show example conversions
+      html += '<h3>Example Conversions:</h3>';
+      html += '<pre>';
+      const leftEye = { x: -0.2, y: -0.4 };
+      const canvas2d = genomeToCanvas2D(leftEye, 100);
+      const webgl = genomeToWebGL(leftEye, 100);
+      const rotation = genomeRotationToRadians(90);
+      
+      html += `Left Eye Position:\n`;
+      html += `  Genome: (${leftEye.x}, ${leftEye.y})\n`;
+      html += `  Canvas 2D: (${canvas2d.x.toFixed(2)}, ${canvas2d.y.toFixed(2)})\n`;
+      html += `  WebGL: (${webgl.x.toFixed(2)}, ${webgl.y.toFixed(2)})\n\n`;
+      html += `90° rotation:\n`;
+      html += `  Radians: ${rotation.toFixed(4)} (${(rotation / Math.PI).toFixed(2)}π)\n`;
+      html += '</pre>';
+      
+      resultsDiv.innerHTML = html;
+    };
+  </script>
+</body>
+</html>
+

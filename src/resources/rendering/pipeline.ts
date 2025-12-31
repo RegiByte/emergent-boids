@@ -481,22 +481,31 @@ export const renderBoidBodies = (rc: RenderContext): void => {
 
     // Render body parts (eyes, fins, spikes, tail)
     // Session 72: Skip body parts at high boid counts for performance
+    // Session 92: GENOME-DRIVEN RENDERING - Pass body part data to renderers
     if (lod.renderBodyParts && bodyParts.length > 0) {
       // PERFORMANCE OPTIMIZATION (Session 71): Reduce function lookups
       // Pre-determine tail color once instead of per-part
       const tailColor =
         speciesConfig.visualConfig?.tailColor || boid.phenotype.color;
 
+      // Group body parts by type for genome-driven rendering
+      const partsByType = new Map<string, typeof bodyParts>();
       for (const part of bodyParts) {
         const partType = typeof part === "string" ? part : part.type;
         if (partType === "glow") continue; // Already handled above
+        
+        const existing = partsByType.get(partType) || [];
+        existing.push(part);
+        partsByType.set(partType, existing);
+      }
 
-        // Inline renderer lookup to avoid function call overhead
+      // Render each part type with its genome data
+      for (const [partType, parts] of partsByType.entries()) {
         const partRenderer = getBodyPartRenderer(partType);
         if (partRenderer) {
           const partColor =
             partType === "tail" ? tailColor : boid.phenotype.color;
-          partRenderer(rc.ctx, size, partColor);
+          partRenderer(rc.ctx, size, partColor, parts);
         }
       }
     }

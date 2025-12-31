@@ -79,3 +79,4 @@ export const getResolution = (width: number, height: number): [number, number] =
   return [width, height];
 };
 
+

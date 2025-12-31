@@ -34,3 +34,4 @@ export const calculateBoidScale = (
   return baseSize * sizeMultiplier * renderSize * atlasScaleFactor;
 };
 
+

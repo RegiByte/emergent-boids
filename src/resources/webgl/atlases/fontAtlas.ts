@@ -121,3 +121,4 @@ export const createFontTexture = (
 export const DEFAULT_FONT_CHARS =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 :.,-+()[]{}!?@#$%&*=/";
 
+

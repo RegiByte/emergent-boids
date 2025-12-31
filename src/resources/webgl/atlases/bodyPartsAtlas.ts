@@ -8,7 +8,19 @@
  * Parts are rendered in white and colorized in the shader to match the boid's color.
  * This allows dynamic coloring without needing separate textures per color.
  *
- * CRITICAL: Each texture cell contains ONE part (one eye, one fin, etc.)
+ * CRITICAL DESIGN CONVENTIONS:
+ * 1. Each part is CENTERED in its atlas cell as a standalone graphic
+ * 2. ALL directional parts point RIGHT (0°, along +X axis) in base state
+ * 3. Positioning/rotation happens during rendering via genome values
+ * 4. No hardcoded rotation offsets needed - genome rotation is applied directly
+ *
+ * UNIFIED ORIENTATION STANDARD (Session 94, Phase 2):
+ * - Fin: Points RIGHT (base at left, tip extends right)
+ * - Spike: Points RIGHT (base at origin, tip extends right)
+ * - Tail: Points RIGHT (base at left, tips extend right in V-shape)
+ * - Eye/Glow/Shell: Circular (no orientation)
+ * - Antenna: Vertical (no directional preference)
+ *
  * The genome specifies multiple instances if needed (e.g., [eye, eye] = two eyes)
  */
 
@@ -67,8 +79,8 @@ export const createBodyPartsAtlas = (): BodyPartsAtlasResult | null => {
     const centerX = cellX + cellSize / 2;
     const centerY = cellY + cellSize / 2;
 
-    // Size of part (relative to boid size, which will be ~10-20 world units)
-    const size = cellSize * 0.35;
+    // Size of part (use most of cell with minimal padding)
+    const size = cellSize * 0.4; // Increased from 0.35 to 0.45 (90% total width)
 
     // Save context and translate to cell center
     ctx.save();
@@ -84,15 +96,17 @@ export const createBodyPartsAtlas = (): BodyPartsAtlasResult | null => {
     switch (partName) {
       case "eye": {
         // Single eye (will be rendered multiple times at different positions)
-        const eyeSize = size * 0.4; // Larger since it's just one eye
+        // Match Canvas 2D size: 0.15 (not 0.4)
+        const eyeSize = size * 0.2;
 
         // Outer eye (white)
+        ctx.fillStyle = "white";
         ctx.beginPath();
         ctx.arc(0, 0, eyeSize, 0, Math.PI * 2);
         ctx.fill();
 
-        // Pupil (darker white for contrast)
-        ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+        // Pupil (black for contrast, matching Canvas 2D)
+        ctx.fillStyle = "#000000";
         const pupilSize = eyeSize * 0.5;
         ctx.beginPath();
         ctx.arc(0, 0, pupilSize, 0, Math.PI * 2);
@@ -100,57 +114,72 @@ export const createBodyPartsAtlas = (): BodyPartsAtlasResult | null => {
         break;
       }
 
-      case "fin":
-        // Single fin (will be rendered multiple times at different positions/rotations)
+      case "fin": {
+        // Angular fin - POINTS RIGHT (0°) in base state
+        // Genome rotation will orient the fin as needed
         ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
 
+        // Create angular fin pointing RIGHT (base at left, tip at right)
         ctx.beginPath();
-        ctx.moveTo(-size * 0.1, 0);
-        ctx.lineTo(-size * 0.6, -size * 0.7);
-        ctx.lineTo(-size * 0.2, -size * 0.4);
+        ctx.moveTo(-size * 0.2, -size * 0.15); // Top base (at body)
+        ctx.lineTo(size * 0.6, 0); // Pointy tip (pointing right)
+        ctx.lineTo(-size * 0.2, size * 0.15); // Bottom base (at body)
+        ctx.lineTo(-size * 0.1, 0); // Inner point (creates angular shape)
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
         break;
+      }
 
       case "spike":
-        // Single defensive spike (will be rendered multiple times)
+        // Single defensive spike - POINTS RIGHT (0°) in base state
+        // Genome rotation will orient the spike as needed
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.lineCap = "round";
+
+        // Spike pointing RIGHT (along +X axis)
         ctx.beginPath();
-        ctx.moveTo(0, -size * 0.3);
-        ctx.lineTo(-size * 0.15, -size * 0.8);
-        ctx.lineTo(size * 0.15, -size * 0.8);
-        ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(0, 0); // Base (at boid body)
+        ctx.lineTo(size * 0.8, size * 0.1); // Tip (pointing right with slight tilt)
         ctx.stroke();
         break;
 
       case "tail":
-        // Prominent tail fin
+        // Prominent tail fin - POINTS RIGHT (0°) in base state
+        // Two merged triangles creating angular perspective
+        // Genome rotation will orient the tail (typically 180° to point backward)
         ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
 
+        // V-shape pointing RIGHT (base at left, tips extending right)
         ctx.beginPath();
-        ctx.moveTo(-size * 0.5, 0);
-        ctx.lineTo(-size * 1.0, -size * 0.4);
-        ctx.lineTo(-size * 0.8, 0);
-        ctx.lineTo(-size * 1.0, size * 0.4);
+        ctx.moveTo(-size * 0.5, 0); // Base (at boid body)
+        ctx.lineTo(size * 1.0, -size * 0.4); // Top tip (pointing right)
+        ctx.lineTo(size * 0.8, 0); // Middle point (creates angular V)
+        ctx.lineTo(size * 1.0, size * 0.4); // Bottom tip (pointing right)
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
         break;
 
       case "antenna": {
-        // Single antenna (will be rendered multiple times at different positions)
-        const antennaLength = size * 0.6;
+        // Single antenna - CENTERED in cell (extends vertically)
+        const antennaLength = size * 0.7;
 
-        // Antenna stalk
+        // Antenna stalk (centered vertically around origin)
         ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(0, -antennaLength);
+        ctx.moveTo(0, -antennaLength / 2);
+        ctx.lineTo(0, antennaLength / 2);
         ctx.stroke();
 
-        // Antenna bulb
+        // Antenna bulb at top
         ctx.beginPath();
-        ctx.arc(0, -antennaLength, size * 0.15, 0, Math.PI * 2);
+        ctx.arc(0, -antennaLength / 2, size * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Small bulb at bottom for symmetry
+        ctx.beginPath();
+        ctx.arc(0, antennaLength / 2, size * 0.1, 0, Math.PI * 2);
         ctx.fill();
         break;
       }
@@ -179,22 +208,23 @@ export const createBodyPartsAtlas = (): BodyPartsAtlasResult | null => {
         break;
 
       case "shell":
-        // Protective shell (overlapping arcs)
+        // Protective shell - CENTERED in cell (circular armor pattern)
         ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
 
-        // Draw overlapping shell segments
+        // Draw concentric shell segments (centered)
         for (let i = 0; i < 3; i++) {
-          const offset = -size * 0.3 + i * size * 0.2;
+          ctx.globalAlpha = 0.3 + i * 0.2;
           ctx.beginPath();
-          ctx.arc(offset, 0, size * 0.4, -Math.PI / 2, Math.PI / 2);
+          ctx.arc(0, 0, size * 0.3 * (3 - i), 0, Math.PI * 2);
           ctx.stroke();
         }
+        ctx.globalAlpha = 1.0;
 
-        // Outer shell outline
+        // Outer shell outline (full circle, centered)
         ctx.strokeStyle = "white";
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, size * 0.6, -Math.PI / 2, Math.PI / 2);
+        ctx.arc(0, 0, size * 0.7, 0, Math.PI * 2);
         ctx.stroke();
         break;
 

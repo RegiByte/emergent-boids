@@ -1,8 +1,9 @@
 import { cn } from "@/lib/utils";
 import { GraphBar } from "./GraphBar";
 import { ProfileSelector } from "./ProfileSelector";
-import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
+import { IconChevronDown, IconChevronUp, IconPalette, IconFish } from "@tabler/icons-react";
 import { motion } from "motion/react";
+import { Link } from "@tanstack/react-router";
 
 type MissionControlHeaderProps = {
   showGraphs?: boolean;
@@ -44,13 +45,33 @@ export function MissionControlHeader({
   return (
     <header className="relative flex items-center gap-2 border-b bg-card px-4 py-3 w-full">
       <div className="flex-1 flex flex-col items-center gap-4">
-        <div>
-          <h1 className="text-lg font-bold text-primary">
-            🐦 Emergent Boids: Predator/Prey Ecosystem
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            Simple rules → Complex dynamics
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-lg font-bold text-primary">
+              🐦 Emergent Boids: Predator/Prey Ecosystem
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Simple rules → Complex dynamics
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Link
+              to="/atlases"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-background hover:bg-accent transition-colors text-xs font-medium"
+              title="View texture atlases"
+            >
+              <IconPalette size={14} />
+              Atlases
+            </Link>
+            <Link
+              to="/boids-atlas"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-background hover:bg-accent transition-colors text-xs font-medium"
+              title="View boids atlas"
+            >
+              <IconFish size={14} />
+              Boids
+            </Link>
+          </div>
         </div>
         {/* Profile Selector */}
         <ProfileSelector />
