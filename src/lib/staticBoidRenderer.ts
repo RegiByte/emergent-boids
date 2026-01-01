@@ -11,7 +11,8 @@
  * - Side-by-side renderer comparison
  */
 
-import type { Boid, SpeciesConfig } from "@/boids/vocabulary/schemas/prelude";
+import type { Boid } from "@/boids/vocabulary/schemas/entities";
+import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
 import type { Genome } from "@/boids/vocabulary/schemas/genetics";
 import type { BodyPartType } from "@/lib/coordinates";
 import { shapeSizeParamFromBaseSize } from "@/lib/shapeSizing";
@@ -34,7 +35,7 @@ export function createStaticBoid(
   genome: Genome,
   typeId: string,
   position: { x: number; y: number } = { x: 0, y: 0 },
-  rotation: number = 0
+  rotation: number = 0,
 ): Boid {
   const phenotype = computePhenotype(genome, defaultWorldPhysics);
 
@@ -88,7 +89,7 @@ export function renderBoidCanvas2D(
   ctx: CanvasRenderingContext2D,
   boid: Boid,
   scale: number = 1,
-  speciesConfig?: SpeciesConfig
+  speciesConfig?: SpeciesConfig,
 ): void {
   const { velocity, genome } = boid;
 
@@ -180,7 +181,7 @@ export function applyCameraTransform(
   ctx: CanvasRenderingContext2D,
   camera: StaticCamera,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
 ): void {
   // Center the canvas
   ctx.translate(canvasWidth / 2, canvasHeight / 2);
@@ -204,7 +205,7 @@ export function renderBoidsCanvas2D(
     scale?: number;
     clearCanvas?: boolean;
     speciesConfig?: SpeciesConfig;
-  }
+  },
 ): void {
   const {
     camera = { position: { x: 0, y: 0 }, zoom: 1 },

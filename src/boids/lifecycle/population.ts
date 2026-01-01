@@ -1,4 +1,4 @@
-import {SpeciesConfig} from "../vocabulary/schemas/prelude.ts";
+import { SpeciesConfig } from "../vocabulary/schemas/species";
 
 /**
  * Check if offspring can be spawned given population caps
@@ -16,7 +16,7 @@ export function canSpawnOffspring(
     totalPrey: number;
     totalPredators: number;
   },
-  currentTypeCount: number = 0 // Current count of this specific type
+  currentTypeCount: number = 0, // Current count of this specific type
 ): boolean {
   const speciesConfig = speciesTypes[typeId];
   if (!speciesConfig) {

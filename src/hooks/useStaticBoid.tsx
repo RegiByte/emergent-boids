@@ -1,9 +1,9 @@
 /**
  * useStaticBoid Hook
- * 
+ *
  * React hook for rendering static boids with Canvas 2D or WebGL.
  * Handles canvas lifecycle, context management, and rendering.
- * 
+ *
  * Supports three modes:
  * - "canvas2d": Render using Canvas 2D only
  * - "webgl": Render using WebGL only
@@ -12,7 +12,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Genome } from "@/boids/vocabulary/schemas/genetics";
-import type { SpeciesConfig } from "@/boids/vocabulary/schemas/prelude";
+import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
 import {
   createStaticBoid,
   renderBoidCanvas2D,
@@ -48,11 +48,11 @@ export interface UseStaticBoidResult {
 
 /**
  * Hook for rendering a static boid with Canvas 2D and/or WebGL
- * 
+ *
  * @param genome - The boid's genome
  * @param options - Rendering options
  * @returns Canvas refs and render mode
- * 
+ *
  * @example
  * ```tsx
  * function BoidCard({ genome }: { genome: Genome }) {
@@ -63,14 +63,14 @@ export interface UseStaticBoidResult {
  *     width: 200,
  *     height: 200,
  *   });
- *   
+ *
  *   return <canvas ref={canvas2dRef} width={200} height={200} />;
  * }
  * ```
  */
 export function useStaticBoid(
   genome: Pick<Genome, "traits" | "visual"> | Genome | null,
-  options?: UseStaticBoidOptions
+  options?: UseStaticBoidOptions,
 ): UseStaticBoidResult {
   const {
     mode = "canvas2d",
@@ -137,7 +137,12 @@ export function useStaticBoid(
       generation: 0,
       mutations: undefined,
     } as Genome;
-    const boid = createStaticBoid(completeGenome, typeId, { x: 0, y: 0 }, rotation);
+    const boid = createStaticBoid(
+      completeGenome,
+      typeId,
+      { x: 0, y: 0 },
+      rotation,
+    );
 
     // Apply camera transform
     ctx.save();
@@ -147,7 +152,18 @@ export function useStaticBoid(
     renderBoidCanvas2D(ctx, boid, scale, speciesConfig);
 
     ctx.restore();
-  }, [genome, typeId, mode, rotation, scale, width, height, camera, backgroundColor, speciesConfig]);
+  }, [
+    genome,
+    typeId,
+    mode,
+    rotation,
+    scale,
+    width,
+    height,
+    camera,
+    backgroundColor,
+    speciesConfig,
+  ]);
 
   // Render WebGL
   useEffect(() => {
@@ -163,7 +179,12 @@ export function useStaticBoid(
       generation: 0,
       mutations: undefined,
     } as Genome;
-    const boid = createStaticBoid(completeGenome, typeId, { x: 0, y: 0 }, rotation);
+    const boid = createStaticBoid(
+      completeGenome,
+      typeId,
+      { x: 0, y: 0 },
+      rotation,
+    );
 
     // Render boid using WebGL
     renderBoidWebGL(webglContextRef.current, boid, speciesConfig, {
@@ -182,7 +203,7 @@ export function useStaticBoid(
 
 /**
  * Simpler hook for Canvas 2D only rendering
- * 
+ *
  * @example
  * ```tsx
  * function SimpleBoid({ genome }: { genome: Genome }) {
@@ -193,9 +214,11 @@ export function useStaticBoid(
  */
 export function useStaticBoidCanvas2D(
   genome: Genome | null,
-  options?: Omit<UseStaticBoidOptions, "mode">
+  options?: Omit<UseStaticBoidOptions, "mode">,
 ) {
-  const { canvas2dRef } = useStaticBoid(genome, { ...options, mode: "canvas2d" });
+  const { canvas2dRef } = useStaticBoid(genome, {
+    ...options,
+    mode: "canvas2d",
+  });
   return canvas2dRef;
 }
-

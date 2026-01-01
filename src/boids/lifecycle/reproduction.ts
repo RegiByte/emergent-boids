@@ -1,8 +1,8 @@
-
 import { processMatingCycle, type MatingResult } from "../mating";
 import { isReadyToMate } from "../predicates";
-import type { Boid } from "../vocabulary/schemas/prelude.ts";
-import {SimulationParameters, SpeciesConfig} from "../vocabulary/schemas/prelude.ts";
+import type { Boid } from "../vocabulary/schemas/entities";
+import { SimulationParameters } from "../vocabulary/schemas/world";
+import { SpeciesConfig } from "../vocabulary/schemas/species";
 
 /**
  * Process reproduction for a single boid
@@ -13,7 +13,7 @@ export function processBoidReproduction(
   allBoids: Boid[],
   parameters: SimulationParameters,
   speciesConfig: SpeciesConfig,
-  matedBoids: Set<string>
+  matedBoids: Set<string>,
 ): MatingResult {
   const ready = isReadyToMate(boid, parameters, speciesConfig);
 
@@ -23,7 +23,7 @@ export function processBoidReproduction(
       allBoids,
       parameters,
       speciesConfig,
-      matedBoids
+      matedBoids,
     );
   } else if (boid.mateId && !ready) {
     // No longer ready to mate

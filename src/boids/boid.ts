@@ -1,7 +1,5 @@
-import type {
-  SimulationParameters,
-  SpeciesConfig,
-} from "./vocabulary/schemas/prelude.ts";
+import type { DomainRNG } from "@/lib/seededRandom";
+import { defaultWorldPhysics } from "@/resources/defaultPhysics";
 import {
   calculateEatingSpeedFactor,
   calculateEnergySpeedFactor,
@@ -13,21 +11,20 @@ import {
 import type { BoidUpdateContext } from "./context";
 import { getPredators, getPrey } from "./filters";
 import { FOOD_CONSTANTS } from "./food";
-import * as rules from "./rules";
-import { Boid } from "./vocabulary/schemas/prelude.ts";
-import { PredatorStance } from "./vocabulary/schemas/prelude.ts";
-import * as vec from "./vector";
-import type { DomainRNG } from "@/lib/seededRandom";
-import type { Vector2 } from "./vocabulary/schemas/prelude.ts";
-import { roleKeywords } from "./vocabulary/keywords.ts";
-import type {
-  WorldPhysics,
-  Genome,
-  MutationConfig,
-} from "./vocabulary/schemas/genetics";
+import { DEFAULT_MUTATION_CONFIG, inheritGenome } from "./genetics/inheritance";
 import { computePhenotype, createGenesisGenome } from "./genetics/phenotype";
-import { defaultWorldPhysics } from "@/resources/defaultPhysics";
-import { inheritGenome, DEFAULT_MUTATION_CONFIG } from "./genetics/inheritance";
+import * as rules from "./rules";
+import * as vec from "./vector";
+import { roleKeywords } from "./vocabulary/keywords.ts";
+import { Boid } from "./vocabulary/schemas/entities";
+import type { Genome, MutationConfig } from "./vocabulary/schemas/genetics";
+import type { Vector2 } from "./vocabulary/schemas/primitives";
+import type { PredatorStance } from "./vocabulary/schemas/primitives";
+import type { SpeciesConfig } from "./vocabulary/schemas/species";
+import type {
+  SimulationParameters,
+  WorldPhysics,
+} from "./vocabulary/schemas/world";
 
 let boidIdCounter = 0;
 
@@ -72,7 +69,7 @@ export type BoidCreationContext = {
 export function createBoid(
   typeIds: string[],
   context: BoidCreationContext,
-  age: number | null = null
+  age: number | null = null,
 ): Boid {
   const { world, species, rng, physics = defaultWorldPhysics } = context;
 
@@ -89,7 +86,7 @@ export function createBoid(
   // Create genome from species config
   const genome = createGenesisGenome(
     speciesConfig.baseGenome.traits,
-    speciesConfig.baseGenome.visual
+    speciesConfig.baseGenome.visual,
   );
 
   // Compute phenotype from genome + physics
@@ -154,7 +151,7 @@ export function createBoidOfType(
   typeId: string,
   context: BoidCreationContext,
   energyBonus: number = 0, // Optional energy bonus for offspring (0-1)
-  parentGenomes?: { parent1: Genome; parent2?: Genome } // Optional parent genomes for inheritance
+  parentGenomes?: { parent1: Genome; parent2?: Genome }, // Optional parent genomes for inheritance
 ): {
   boid: Boid;
   mutationMetadata: {
@@ -201,7 +198,7 @@ export function createBoidOfType(
       parentGenomes.parent2,
       mutationConfig,
       rng,
-      enableLogging
+      enableLogging,
     );
     genome = inheritanceResult.genome;
     mutationMetadata = {
@@ -213,7 +210,7 @@ export function createBoidOfType(
     // Genesis: Create genome from species config
     genome = createGenesisGenome(
       speciesConfig.baseGenome.traits,
-      speciesConfig.baseGenome.visual
+      speciesConfig.baseGenome.visual,
     );
   }
 
@@ -225,7 +222,7 @@ export function createBoidOfType(
   const bonusEnergy = phenotype.maxEnergy * energyBonus;
   const startingEnergy = Math.min(
     baseEnergy + bonusEnergy,
-    phenotype.maxEnergy
+    phenotype.maxEnergy,
   );
 
   const boid: Boid = {
@@ -286,7 +283,7 @@ export function createBoidOfType(
 function updatePredator(
   boid: Boid,
   allBoids: Boid[],
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): void {
   // Extract context for convenience
   const { simulation, config } = context;
@@ -304,7 +301,7 @@ function updatePredator(
 
   // Find other predators (using pure filter)
   const otherPredators = getPredators(allBoids, speciesTypes).filter(
-    (b) => b.id !== boid.id
+    (b) => b.id !== boid.id,
   );
 
   // Stance-based behavior
@@ -329,13 +326,13 @@ function updatePredator(
         speciesConfig,
         world,
         FOOD_CONSTANTS.FOOD_EATING_RADIUS,
-        context.profiler
+        context.profiler,
       );
     }
   } else if (stance === "hunting") {
     // Check if predator food sources are at cap
     const predatorFoodCount = foodSources.filter(
-      (f) => f.sourceType === "predator"
+      (f) => f.sourceType === "predator",
     ).length;
     const atFoodCap =
       predatorFoodCount >= FOOD_CONSTANTS.MAX_PREDATOR_FOOD_SOURCES;
@@ -347,7 +344,7 @@ function updatePredator(
       speciesConfig,
       world,
       FOOD_CONSTANTS.FOOD_DETECTION_RADIUS,
-      context.profiler
+      context.profiler,
     );
     if (foodSeek.targetFoodId) {
       foodSeekingForce = foodSeek.force;
@@ -360,7 +357,7 @@ function updatePredator(
         speciesConfig,
         world,
         Infinity, // No distance limit - seek any food
-        context.profiler
+        context.profiler,
       );
       if (anyFoodSeek.targetFoodId) {
         foodSeekingForce = anyFoodSeek.force;
@@ -373,7 +370,7 @@ function updatePredator(
         parameters,
         speciesConfig,
         world,
-        context.profiler
+        context.profiler,
       );
     }
   } else if (stance === "seeking_mate") {
@@ -384,13 +381,13 @@ function updatePredator(
       parameters,
       speciesConfig,
       world,
-      context.profiler
+      context.profiler,
     );
   } else if (stance === "mating") {
     // MATING: Stay near paired mate, but don't actively seek (Session 75 fix)
     // Just use normal flocking to stay together, no special seeking force
     // The mate should be nearby already from the pairing process
-    
+
     // Opportunistic food seeking while mating (low priority)
     const foodSeek = rules.seekFood(
       boid,
@@ -398,7 +395,7 @@ function updatePredator(
       speciesConfig,
       world,
       FOOD_CONSTANTS.FOOD_DETECTION_RADIUS,
-      context.profiler
+      context.profiler,
     );
     if (foodSeek.targetFoodId) {
       foodSeekingForce = vec.multiply(foodSeek.force, 0.3); // Reduced priority
@@ -411,7 +408,7 @@ function updatePredator(
       speciesConfig,
       world,
       FOOD_CONSTANTS.FOOD_DETECTION_RADIUS,
-      context.profiler
+      context.profiler,
     );
     if (foodSeek.targetFoodId) {
       foodSeekingForce = foodSeek.force;
@@ -425,7 +422,7 @@ function updatePredator(
     parameters,
     speciesConfig,
     world,
-    context.profiler
+    context.profiler,
   );
 
   // Calculate separation (conditional based on stance)
@@ -434,7 +431,7 @@ function updatePredator(
   if (stance !== "eating") {
     separationWeight = calculatePredatorSeparationWeight(
       boid.phenotype.separationWeight,
-      stance
+      stance,
     );
     sep = rules.separation(
       boid,
@@ -442,7 +439,7 @@ function updatePredator(
       parameters,
       speciesConfig,
       world,
-      context.profiler
+      context.profiler,
     );
   }
 
@@ -453,7 +450,7 @@ function updatePredator(
     parameters,
     speciesConfig,
     world,
-    context.profiler
+    context.profiler,
   );
 
   // Declarative force composition with explicit weights
@@ -484,7 +481,7 @@ function updatePredator(
   // Energy affects speed
   const energySpeedFactor = calculateEnergySpeedFactor(
     boid.energy,
-    boid.phenotype.maxEnergy
+    boid.phenotype.maxEnergy,
   );
   let effectiveMaxSpeed = boid.phenotype.maxSpeed * energySpeedFactor;
 
@@ -502,7 +499,7 @@ function updatePredator(
 function updatePrey(
   boid: Boid,
   allBoids: Boid[],
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): void {
   // Extract context for convenience
   const { simulation, config } = context;
@@ -527,7 +524,7 @@ function updatePrey(
     parameters,
     speciesConfig,
     world,
-    context.profiler
+    context.profiler,
   );
   const ali = rules.alignment(
     boid,
@@ -535,7 +532,7 @@ function updatePrey(
     parameters,
     speciesConfig,
     world,
-    context.profiler
+    context.profiler,
   );
   const coh = rules.cohesion(
     boid,
@@ -543,7 +540,7 @@ function updatePrey(
     parameters,
     speciesConfig,
     world,
-    context.profiler
+    context.profiler,
   );
   const avoid = rules.avoidObstacles(
     boid,
@@ -551,7 +548,7 @@ function updatePrey(
     parameters,
     speciesConfig,
     world,
-    context.profiler
+    context.profiler,
   );
 
   // Fear of predators (using pure filter)
@@ -562,7 +559,7 @@ function updatePrey(
     parameters,
     speciesConfig,
     world,
-    context.profiler
+    context.profiler,
   );
 
   // Avoid death markers (natural deaths create danger zones)
@@ -572,7 +569,7 @@ function updatePrey(
     parameters,
     speciesConfig,
     world,
-    context.profiler
+    context.profiler,
   );
 
   // Avoid predator food sources (death sites)
@@ -582,7 +579,7 @@ function updatePrey(
     parameters,
     speciesConfig,
     world,
-    context.profiler
+    context.profiler,
   );
 
   // Avoid crowded areas (species-specific tolerance)
@@ -592,7 +589,7 @@ function updatePrey(
     parameters,
     speciesConfig,
     world,
-    context.profiler
+    context.profiler,
   );
 
   // Food seeking and eating
@@ -616,7 +613,7 @@ function updatePrey(
         speciesConfig,
         world,
         FOOD_CONSTANTS.FOOD_EATING_RADIUS,
-        context.profiler
+        context.profiler,
       );
     }
   } else if (
@@ -630,7 +627,7 @@ function updatePrey(
       speciesConfig,
       world,
       FOOD_CONSTANTS.FOOD_DETECTION_RADIUS,
-      context.profiler
+      context.profiler,
     );
     if (foodSeek.targetFoodId) {
       foodSeekingForce = foodSeek.force;
@@ -647,7 +644,7 @@ function updatePrey(
       parameters,
       speciesConfig,
       world,
-      context.profiler
+      context.profiler,
     );
   }
   // MATING: Just use normal flocking to stay near mate, no active seeking
@@ -657,7 +654,7 @@ function updatePrey(
   // Clear visual hierarchy makes priorities obvious and easy to tune
   const cohesionWeight = calculatePreyCohesionWeight(
     boid.phenotype.cohesionWeight,
-    stance
+    stance,
   );
 
   // Session 75: Reduce ALL flocking forces when eating to stay at food
@@ -667,7 +664,10 @@ function updatePrey(
 
   applyWeightedForces(boid, [
     // Core flocking behaviors (reduced when eating)
-    { force: sep, weight: boid.phenotype.separationWeight * flockingMultiplier },
+    {
+      force: sep,
+      weight: boid.phenotype.separationWeight * flockingMultiplier,
+    },
     { force: ali, weight: boid.phenotype.alignmentWeight * flockingMultiplier },
     { force: coh, weight: cohesionWeight * flockingMultiplier },
 
@@ -714,7 +714,7 @@ function updatePrey(
 export function updateBoid(
   boid: Boid,
   allBoids: Boid[],
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): void {
   // Get this boid's type config
   const speciesConfig = context.config.species[boid.typeId];
@@ -752,7 +752,7 @@ export function updateBoid(
       height: context.config.world.height,
     },
     context.config.parameters,
-    context.config.species
+    context.config.species,
   );
 }
 
@@ -775,7 +775,7 @@ function enforceMinimumDistance(
   allBoids: Boid[],
   worldSize: { width: number; height: number },
   parameters: SimulationParameters,
-  speciesTypes: Record<string, SpeciesConfig>
+  speciesTypes: Record<string, SpeciesConfig>,
 ): void {
   const speciesConfig = speciesTypes[boid.typeId];
   const minDist =
@@ -806,7 +806,7 @@ function enforceMinimumDistance(
       boid.position,
       other.position,
       worldSize.width,
-      worldSize.height
+      worldSize.height,
     );
 
     // If too close, push apart
@@ -818,7 +818,7 @@ function enforceMinimumDistance(
         boid.position,
         other.position,
         worldSize.width,
-        worldSize.height
+        worldSize.height,
       );
 
       // Normalize and scale by half the overlap

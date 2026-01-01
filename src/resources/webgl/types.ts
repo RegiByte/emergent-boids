@@ -66,5 +66,3 @@ export type StanceSymbol = {
  * Stance symbols registry
  */
 export type StanceSymbols = Record<string, StanceSymbol>;
-
-

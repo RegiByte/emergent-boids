@@ -1,14 +1,13 @@
 import { z } from "zod";
 import {
   deathMarkerSchema,
-  foodSourceSchemas,
+  foodSourceSchema,
   obstacleSchema,
-  simulationParametersSchema,
-  speciesRecordSchema,
-  worldConfigSchema,
-} from "./prelude.ts";
-import { evolutionSnapshotSchema } from "@/boids/vocabulary/schemas/evolution.ts";
-import { allEventSchema } from "./events.ts";
+} from "./entities";
+import { simulationParametersSchema, worldConfigSchema } from "./world";
+import { speciesRecordSchema } from "./species";
+import { evolutionSnapshotSchema } from "./evolution";
+import { allEventSchema } from "./events";
 
 /**
  * State Schemas - Runtime state management
@@ -104,7 +103,7 @@ export const runtimeStoreSchema = z.object({
   }),
   simulation: z.object({
     obstacles: z.array(obstacleSchema), // Physical barriers
-    foodSources: z.array(foodSourceSchemas), // Available energy
+    foodSources: z.array(foodSourceSchema), // Available energy
     deathMarkers: z.array(deathMarkerSchema), // Danger zones
   }),
   ui: z.object({
@@ -137,7 +136,7 @@ export const analyticsStoreSchema = z.object({
           timestamp: z.number(), // Real-world timestamp (for display)
           tick: z.number(), // Simulation tick (for aggregation)
           event: allEventSchema, // The event data
-        })
+        }),
       ),
     }),
     config: z.object({

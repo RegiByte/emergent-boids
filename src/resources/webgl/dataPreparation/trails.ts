@@ -5,10 +5,8 @@
  * Trails are batched by color and alpha to minimize draw calls.
  */
 
-import type {
-  Boid,
-  SpeciesConfig,
-} from "../../../boids/vocabulary/schemas/prelude";
+import type { Boid } from "../../../boids/vocabulary/schemas/entities";
+import type { SpeciesConfig } from "../../../boids/vocabulary/schemas/species";
 import { toRgb } from "../../../lib/colors";
 
 /**
@@ -101,7 +99,7 @@ export const collectTrailBatches = (
   boids: Boid[],
   speciesConfigs: Record<string, SpeciesConfig>,
   worldWidth: number,
-  worldHeight: number
+  worldHeight: number,
 ): TrailBatch[] => {
   const batches = new Map<string, TrailBatch>();
 
@@ -117,11 +115,11 @@ export const collectTrailBatches = (
     const energyRatio = boid.energy / boid.phenotype.maxEnergy;
     // Increase base alpha for better visibility
     // Match Canvas 2D: 0.3-0.8 range
-    const baseAlpha = TRAIL_CONFIG.minAlpha + energyRatio * TRAIL_CONFIG.maxAlpha;
+    const baseAlpha =
+      TRAIL_CONFIG.minAlpha + energyRatio * TRAIL_CONFIG.maxAlpha;
 
     // Use custom trail color if specified, otherwise use individual genome color
-    const color =
-      speciesConfig.visualConfig.trailColor || boid.phenotype.color;
+    const color = speciesConfig.visualConfig.trailColor || boid.phenotype.color;
     const [r, g, b] = toRgb(color);
 
     // Collect segments for this boid
@@ -142,7 +140,10 @@ export const collectTrailBatches = (
       // Index 0 = oldest (most transparent), index length-1 = newest (most opaque)
       const segmentRatio = i / boid.positionHistory.length;
       // Boost alpha for visibility (multiply by 1.5, cap at 1.0)
-      const alpha = Math.min(1.0, baseAlpha * segmentRatio * TRAIL_CONFIG.alphaBoost);
+      const alpha = Math.min(
+        1.0,
+        baseAlpha * segmentRatio * TRAIL_CONFIG.alphaBoost,
+      );
 
       // Quantize alpha to reduce number of batches (10 levels)
       const quantizedAlpha =
@@ -175,4 +176,3 @@ export const collectTrailBatches = (
 
   return Array.from(batches.values());
 };
-

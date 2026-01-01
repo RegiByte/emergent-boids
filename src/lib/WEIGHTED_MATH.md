@@ -11,6 +11,7 @@ Pure functions for weighted calculations, scoring, and comparisons. Perfect for 
 **Simple rules compose.** Weight different factors to create emergent behavior without complex conditionals.
 
 Instead of:
+
 ```typescript
 // Complex conditional sorting
 if (a.priority === b.priority) {
@@ -23,13 +24,14 @@ return b.priority - a.priority;
 ```
 
 Use:
+
 ```typescript
 // Weighted composition
 createWeightedComparator([
   { getValue: (x) => x.priority, weight: 10.0 },
   { getValue: (x) => x.timestamp, weight: 1.0 },
   { getValue: (x) => x.count, weight: 0.1 },
-])
+]);
 ```
 
 ---
@@ -42,10 +44,10 @@ Calculate a weighted sum of values.
 
 ```typescript
 weightedSum([
-  { value: 100, weight: 1.0 },  // Primary factor
-  { value: 50, weight: 0.5 },   // Secondary factor
-  { value: 10, weight: 0.1 },   // Tertiary factor
-])
+  { value: 100, weight: 1.0 }, // Primary factor
+  { value: 50, weight: 0.5 }, // Secondary factor
+  { value: 10, weight: 0.1 }, // Tertiary factor
+]);
 // → 100*1.0 + 50*0.5 + 10*0.1 = 126
 ```
 
@@ -62,8 +64,8 @@ weightedDifference(
   [
     { value: 100, weight: 1.0 },
     { value: 10, weight: 0.1 },
-  ]
-)
+  ],
+);
 // → (150*1.0 + 20*0.1) - (100*1.0 + 10*0.1) = 51
 ```
 
@@ -98,6 +100,7 @@ aggregated.sort(comparator);
 ```
 
 **Benefits:**
+
 - Stable ordering within time windows
 - No layout thrashing
 - Smooth animations
@@ -115,7 +118,7 @@ Calculate weighted average.
 weightedAverage([
   { value: 100, weight: 2 },
   { value: 50, weight: 1 },
-])
+]);
 // → (100*2 + 50*1) / (2+1) = 83.33
 ```
 
@@ -127,7 +130,7 @@ Normalize weights to sum to 1.0.
 normalizeWeights([
   { value: 100, weight: 10 },
   { value: 50, weight: 5 },
-])
+]);
 // → [
 //   { value: 100, weight: 0.667 },
 //   { value: 50, weight: 0.333 },
@@ -141,8 +144,8 @@ Calculate weighted score with min/max normalization.
 ```typescript
 weightedScoreNormalized([
   { value: 150, weight: 1.0, min: 100, max: 200 }, // → 0.5 * 1.0
-  { value: 75, weight: 0.5, min: 0, max: 100 },    // → 0.75 * 0.5
-])
+  { value: 75, weight: 0.5, min: 0, max: 100 }, // → 0.75 * 0.5
+]);
 // → 0.5 + 0.375 = 0.875
 ```
 
@@ -155,7 +158,7 @@ weightedScoreNormalized([
 Apply exponential decay to a weight.
 
 ```typescript
-decayWeight(1.0, 100, 0.01)
+decayWeight(1.0, 100, 0.01);
 // → 1.0 * e^(-0.01 * 100) ≈ 0.368
 ```
 
@@ -177,7 +180,7 @@ const comparator = createPriorityComparator(
     { getValue: (task) => task.urgency, weight: 10.0 },
     { getValue: (task) => task.importance, weight: 5.0 },
   ],
-  0.01 // Decay rate
+  0.01, // Decay rate
 );
 
 tasks.sort(comparator);
@@ -192,11 +195,7 @@ tasks.sort(comparator);
 Calculate weighted Manhattan distance.
 
 ```typescript
-weightedManhattanDistance(
-  [100, 50, 10],
-  [90, 45, 12],
-  [1.0, 0.5, 0.1]
-)
+weightedManhattanDistance([100, 50, 10], [90, 45, 12], [1.0, 0.5, 0.1]);
 // → |100-90|*1.0 + |50-45|*0.5 + |10-12|*0.1 = 12.7
 ```
 
@@ -205,11 +204,7 @@ weightedManhattanDistance(
 Calculate weighted Euclidean distance.
 
 ```typescript
-weightedEuclideanDistance(
-  [100, 50],
-  [90, 45],
-  [1.0, 0.5]
-)
+weightedEuclideanDistance([100, 50], [90, 45], [1.0, 0.5]);
 // → sqrt((100-90)^2*1.0 + (50-45)^2*0.5) = 10.61
 ```
 
@@ -220,7 +215,7 @@ weightedEuclideanDistance(
 const distance = weightedEuclideanDistance(
   [boid.energy, boid.age, boid.speed],
   [target.energy, target.age, target.speed],
-  [1.0, 0.5, 0.3] // Energy matters most
+  [1.0, 0.5, 0.3], // Energy matters most
 );
 ```
 
@@ -233,9 +228,9 @@ const distance = weightedEuclideanDistance(
 Linear interpolation between two values.
 
 ```typescript
-lerp(0, 100, 0.5)  // → 50
-lerp(0, 100, 0.25) // → 25
-lerp(0, 100, 0.75) // → 75
+lerp(0, 100, 0.5); // → 50
+lerp(0, 100, 0.25); // → 25
+lerp(0, 100, 0.75); // → 75
 ```
 
 ### `inverseLerp(start, end, value, clamp?)`
@@ -243,9 +238,9 @@ lerp(0, 100, 0.75) // → 75
 Find weight for a value (inverse of lerp).
 
 ```typescript
-inverseLerp(0, 100, 50)  // → 0.5
-inverseLerp(0, 100, 25)  // → 0.25
-inverseLerp(0, 100, 150) // → 1.5 (or 1.0 if clamped)
+inverseLerp(0, 100, 50); // → 0.5
+inverseLerp(0, 100, 25); // → 0.25
+inverseLerp(0, 100, 150); // → 1.5 (or 1.0 if clamped)
 ```
 
 ### `remap(value, fromMin, fromMax, toMin, toMax, clamp?)`
@@ -253,9 +248,9 @@ inverseLerp(0, 100, 150) // → 1.5 (or 1.0 if clamped)
 Remap a value from one range to another.
 
 ```typescript
-remap(50, 0, 100, 0, 1)    // → 0.5
-remap(75, 0, 100, 0, 10)   // → 7.5
-remap(150, 0, 100, 0, 1)   // → 1.5 (or 1.0 if clamped)
+remap(50, 0, 100, 0, 1); // → 0.5
+remap(75, 0, 100, 0, 10); // → 7.5
+remap(150, 0, 100, 0, 1); // → 1.5 (or 1.0 if clamped)
 ```
 
 **Use Case: Energy to Color**
@@ -285,9 +280,9 @@ const comparator = createWeightedComparator<AggregatedEvent>([
 ```typescript
 // Select which boid to hunt based on multiple factors
 const targetScore = weightedSum([
-  { value: proximity, weight: 2.0 },      // Closer = better
-  { value: energyValue, weight: 1.0 },    // More energy = better
-  { value: vulnerability, weight: 0.5 },  // Weaker = better
+  { value: proximity, weight: 2.0 }, // Closer = better
+  { value: energyValue, weight: 1.0 }, // More energy = better
+  { value: vulnerability, weight: 0.5 }, // Weaker = better
 ]);
 ```
 
@@ -307,9 +302,9 @@ const foodScore = weightedScoreNormalized([
 ```typescript
 // Choose mate based on multiple traits
 const mateScore = weightedSum([
-  { value: geneticDistance, weight: 1.0 },  // Diversity
-  { value: health, weight: 0.8 },           // Fitness
-  { value: proximity, weight: 0.5 },        // Convenience
+  { value: geneticDistance, weight: 1.0 }, // Diversity
+  { value: health, weight: 0.8 }, // Fitness
+  { value: proximity, weight: 0.5 }, // Convenience
 ]);
 ```
 
@@ -323,7 +318,7 @@ const comparator = createPriorityComparator(
     { getValue: (task) => task.urgency, weight: 10.0 },
     { getValue: (task) => task.cost, weight: -1.0 }, // Negative = prefer lower
   ],
-  0.001 // Slight decay over time
+  0.001, // Slight decay over time
 );
 ```
 
@@ -334,7 +329,7 @@ const comparator = createPriorityComparator(
 const distance = weightedEuclideanDistance(
   [boid1.x, boid1.y, boid1.energy],
   [boid2.x, boid2.y, boid2.energy],
-  [1.0, 1.0, 0.3] // Position matters more than energy
+  [1.0, 1.0, 0.3], // Position matters more than energy
 );
 ```
 
@@ -379,8 +374,8 @@ Use negative weights to invert preference:
 
 ```typescript
 createWeightedComparator([
-  { getValue: (x) => x.benefit, weight: 1.0 },  // Higher = better
-  { getValue: (x) => x.cost, weight: -0.5 },    // Higher = worse
+  { getValue: (x) => x.benefit, weight: 1.0 }, // Higher = better
+  { getValue: (x) => x.cost, weight: -0.5 }, // Higher = worse
 ]);
 ```
 
@@ -389,6 +384,7 @@ createWeightedComparator([
 ## Performance
 
 All functions are O(n) or better:
+
 - `weightedSum`: O(n)
 - `weightedDifference`: O(n)
 - `createWeightedComparator`: O(1) creation, O(n log n) when used with sort
@@ -404,10 +400,12 @@ No allocations in hot paths. Pure functions = easy to optimize.
 import { weightedSum, createWeightedComparator } from "@/lib/weightedMath";
 
 // Test weighted sum
-expect(weightedSum([
-  { value: 100, weight: 1.0 },
-  { value: 50, weight: 0.5 },
-])).toBe(125);
+expect(
+  weightedSum([
+    { value: 100, weight: 1.0 },
+    { value: 50, weight: 0.5 },
+  ]),
+).toBe(125);
 
 // Test comparator
 const items = [
@@ -430,6 +428,7 @@ expect(items[0].priority).toBe(10);
 ## Future Extensions
 
 Potential additions:
+
 - `weightedMedian()` - Weighted median calculation
 - `weightedVariance()` - Weighted variance/stddev
 - `sigmoidWeight()` - Sigmoid-based soft weighting
@@ -439,4 +438,3 @@ Potential additions:
 ---
 
 **Philosophy:** Everything is information processing. Simple rules compose. Emergence is reliable.
-

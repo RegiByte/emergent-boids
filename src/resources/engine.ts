@@ -1,5 +1,15 @@
+import type { WorldPhysics } from "@/boids/vocabulary/schemas/world";
 import { defineResource } from "braided";
 import { getMaxCrowdTolerance } from "../boids/affinity";
+import {
+  applyBehaviorDecision,
+  buildBehaviorContext,
+  evaluateBehavior,
+} from "../boids/behavior/evaluator";
+import {
+  createBehaviorRuleset,
+  MINIMUM_STANCE_DURATION,
+} from "../boids/behavior/rules";
 import { createBoid, updateBoid } from "../boids/boid";
 import type {
   BoidUpdateContext,
@@ -7,31 +17,21 @@ import type {
   SimulationContext,
 } from "../boids/context";
 import { getPredators, getPrey } from "../boids/filters";
+import { FOOD_CONSTANTS } from "../boids/food";
 import { isDead } from "../boids/lifecycle/health";
+import { isReadyToMate, isWithinRadius } from "../boids/predicates";
 import {
   createSpatialHash,
   getNearbyBoids,
   insertBoids,
 } from "../boids/spatialHash";
 import * as vec from "../boids/vector";
-import { Boid } from "../boids/vocabulary/schemas/prelude";
+import { roleKeywords } from "../boids/vocabulary/keywords";
+import { Boid } from "../boids/vocabulary/schemas/entities";
+import { defaultWorldPhysics } from "./defaultPhysics";
 import type { Profiler } from "./profiler";
 import { RandomnessResource } from "./randomness";
 import type { RuntimeStoreResource } from "./runtimeStore";
-import { defaultWorldPhysics } from "./defaultPhysics";
-import { WorldPhysics } from "@/boids/vocabulary/schemas/genetics";
-import {
-  createBehaviorRuleset,
-  MINIMUM_STANCE_DURATION,
-} from "../boids/behavior/rules";
-import {
-  evaluateBehavior,
-  applyBehaviorDecision,
-  buildBehaviorContext,
-} from "../boids/behavior/evaluator";
-import { isWithinRadius, isReadyToMate } from "../boids/predicates";
-import { FOOD_CONSTANTS } from "../boids/food";
-import { roleKeywords } from "../boids/vocabulary/keywords";
 import type { TimeResource } from "./time";
 
 export type CatchEvent = {
@@ -70,10 +70,10 @@ export const engine = defineResource({
 
     // Get available type IDs (prey for initial spawn, predators from profile)
     let preyTypeIds = Object.keys(initialSpecies).filter(
-      (id) => initialSpecies[id].role === "prey"
+      (id) => initialSpecies[id].role === "prey",
     );
     let predatorTypeIds = Object.keys(initialSpecies).filter(
-      (id) => initialSpecies[id].role === "predator"
+      (id) => initialSpecies[id].role === "predator",
     );
 
     // Initialize boids with prey and predators from profile
@@ -109,7 +109,7 @@ export const engine = defineResource({
     const spatialHash = createSpatialHash(
       initialWorld.width,
       initialWorld.height,
-      initialConfig.parameters.perceptionRadius
+      initialConfig.parameters.perceptionRadius,
     );
 
     // Create behavior ruleset for stance evaluation (Session 76)
@@ -169,7 +169,7 @@ export const engine = defineResource({
           spatialHash,
           boid.position,
           maxNeighborsLookup,
-          config.parameters.perceptionRadius // Only consider boids within perception radius
+          config.parameters.perceptionRadius, // Only consider boids within perception radius
         );
         profiler.end("boid.spatial.query");
 
@@ -224,7 +224,7 @@ export const engine = defineResource({
             prey,
             context.config,
             context.simulation,
-            currentFrame
+            currentFrame,
           );
         }
       }
@@ -242,7 +242,7 @@ export const engine = defineResource({
       prey: Boid[],
       config: ConfigContext,
       simulation: SimulationContext,
-      currentFrame: number
+      currentFrame: number,
     ) => {
       const speciesConfig = config.species[boid.typeId];
       if (!speciesConfig) return;
@@ -263,7 +263,7 @@ export const engine = defineResource({
       const nearbyPrey =
         role === roleKeywords.predator
           ? prey.filter((p) =>
-              isWithinRadius(boid.position, p.position, parameters.chaseRadius)
+              isWithinRadius(boid.position, p.position, parameters.chaseRadius),
             )
           : [];
 
@@ -277,7 +277,11 @@ export const engine = defineResource({
         (b) =>
           b.typeId === boid.typeId &&
           b.id !== boid.id &&
-          isWithinRadius(boid.position, b.position, parameters.perceptionRadius)
+          isWithinRadius(
+            boid.position,
+            b.position,
+            parameters.perceptionRadius,
+          ),
       );
 
       const populationRatio = allBoids.length / parameters.maxBoids;
@@ -295,7 +299,7 @@ export const engine = defineResource({
         role,
         speciesConfig.reproduction.type,
         readyToMate,
-        populationRatio
+        populationRatio,
       );
 
       // Evaluate and apply
@@ -307,7 +311,7 @@ export const engine = defineResource({
           decision,
           simulation.tick,
           currentFrame, // Use frame for stance tracking!
-          MINIMUM_STANCE_DURATION
+          MINIMUM_STANCE_DURATION,
         );
       }
     };
@@ -337,7 +341,7 @@ export const engine = defineResource({
             predator.position,
             preyBoid.position,
             cfg.world.width,
-            cfg.world.height
+            cfg.world.height,
           );
 
           if (dist < parameters.catchRadius) {
@@ -405,10 +409,10 @@ export const engine = defineResource({
       // Recalculate type IDs from current species config
       // (Species change when profile switches, so we need fresh IDs)
       const currentPreyTypeIds = Object.keys(species).filter(
-        (id) => species[id].role === "prey"
+        (id) => species[id].role === "prey",
       );
       const currentPredatorTypeIds = Object.keys(species).filter(
-        (id) => species[id].role === "predator"
+        (id) => species[id].role === "predator",
       );
 
       // Update module-level type ID arrays for future spawns
@@ -442,7 +446,7 @@ export const engine = defineResource({
       }
 
       console.log(
-        `[engine.reset] Respawned ${boids.length} boids (${currentPreyTypeIds.length} prey species, ${currentPredatorTypeIds.length} predator species)`
+        `[engine.reset] Respawned ${boids.length} boids (${currentPreyTypeIds.length} prey species, ${currentPredatorTypeIds.length} predator species)`,
       );
     };
 

@@ -21,7 +21,7 @@ export function ProfileSelector() {
 
   // Get active profile ID from profile store
   const activeProfileId = profileStore.useStore(
-    (state) => state.profiles.data.activeProfileId
+    (state) => state.profiles.data.activeProfileId,
   );
 
   // Get all available profiles

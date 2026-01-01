@@ -37,7 +37,7 @@ export const STANCE_SYMBOL_CONFIG = {
 export const createStanceSymbolsDrawCommand = (
   regl: REGL.Regl,
   emojiTexture: REGL.Texture2D,
-  cellSize: number
+  cellSize: number,
 ): REGL.DrawCommand => {
   return regl({
     vert: stanceSymbolVertShader,
@@ -64,7 +64,7 @@ export const createStanceSymbolsDrawCommand = (
 
     uniforms: {
       transform: (regl.prop as unknown as (name: string) => number[])(
-        "transform"
+        "transform",
       ),
       emojiTexture: emojiTexture,
       cellSize: cellSize,

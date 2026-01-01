@@ -1,13 +1,13 @@
 /**
  * BoidComparison Component
- * 
+ *
  * Displays a boid rendered with both Canvas 2D and WebGL side-by-side
  * for visual comparison and debugging.
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Genome } from "@/boids/vocabulary/schemas/genetics";
-import type { SpeciesConfig } from "@/boids/vocabulary/schemas/prelude";
+import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
 import { useStaticBoid, type RenderMode } from "@/hooks/useStaticBoid";
 import { cn } from "@/lib/utils";
 
@@ -164,13 +164,16 @@ export function BoidCard({
         <CardHeader>
           <CardTitle className="text-sm">Side-by-Side Comparison</CardTitle>
           <p className="text-xs text-muted-foreground">
-            Size: {genome.traits.size.toFixed(1)} | Speed: {genome.traits.speed.toFixed(1)}
+            Size: {genome.traits.size.toFixed(1)} | Speed:{" "}
+            {genome.traits.speed.toFixed(1)}
           </p>
         </CardHeader>
         <CardContent className="flex gap-4">
           {/* Canvas 2D */}
           <div className="flex-1 space-y-2">
-            <div className="text-xs font-medium text-muted-foreground text-center">Canvas 2D</div>
+            <div className="text-xs font-medium text-muted-foreground text-center">
+              Canvas 2D
+            </div>
             <canvas
               ref={canvas2dRef}
               width={size}
@@ -184,7 +187,9 @@ export function BoidCard({
           </div>
           {/* WebGL */}
           <div className="flex-1 space-y-2">
-            <div className="text-xs font-medium text-muted-foreground text-center">WebGL</div>
+            <div className="text-xs font-medium text-muted-foreground text-center">
+              WebGL
+            </div>
             <canvas
               ref={webglRef}
               width={size}
@@ -207,7 +212,8 @@ export function BoidCard({
       <CardHeader>
         <CardTitle className="text-sm">Boid</CardTitle>
         <p className="text-xs text-muted-foreground">
-          Size: {genome.traits.size.toFixed(1)} | Speed: {genome.traits.speed.toFixed(1)}
+          Size: {genome.traits.size.toFixed(1)} | Speed:{" "}
+          {genome.traits.speed.toFixed(1)}
         </p>
       </CardHeader>
       <CardContent className="flex items-center justify-center">
@@ -238,4 +244,3 @@ export function BoidCard({
     </Card>
   );
 }
-

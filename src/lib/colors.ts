@@ -18,7 +18,7 @@ import chroma from "chroma-js";
 export const adjustColorBrightness = (
   hexColor: string,
   energyRatio: number,
-  minBrightness = 0.4
+  minBrightness = 0.4,
 ): string => {
   const brightness = minBrightness + (1 - minBrightness) * energyRatio;
   return chroma(hexColor)
@@ -73,7 +73,7 @@ export const mixColors = (
   color1: string,
   color2: string,
   ratio: number,
-  mode: "rgb" | "lab" | "lch" = "lab"
+  mode: "rgb" | "lab" | "lch" = "lab",
 ): string => {
   return chroma.mix(color1, color2, ratio, mode).hex();
 };
@@ -88,7 +88,7 @@ export const mixColors = (
 export const getContrastColor = (
   backgroundColor: string,
   darkColor = "#000000",
-  lightColor = "#ffffff"
+  lightColor = "#ffffff",
 ): string => {
   return chroma(backgroundColor).luminance() > 0.5 ? darkColor : lightColor;
 };
@@ -129,7 +129,7 @@ export const generateUITheme = (backgroundColor: string) => {
 export const createColorScale = (
   from: string,
   to: string,
-  steps: number
+  steps: number,
 ): string[] => {
   const scale = chroma.scale([from, to]).mode("lab");
   return Array.from({ length: steps }, (_, i) => scale(i / (steps - 1)).hex());

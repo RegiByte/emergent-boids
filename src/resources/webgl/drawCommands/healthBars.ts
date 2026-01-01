@@ -36,7 +36,7 @@ export const HEALTH_BAR_CONFIG = {
  * @returns REGL draw command for health bars
  */
 export const createHealthBarsDrawCommand = (
-  regl: REGL.Regl
+  regl: REGL.Regl,
 ): REGL.DrawCommand => {
   return regl({
     vert: healthBarVertShader,
@@ -63,13 +63,13 @@ export const createHealthBarsDrawCommand = (
 
     uniforms: {
       transform: (regl.prop as unknown as (name: string) => number[])(
-        "transform"
+        "transform",
       ),
       barWidth: HEALTH_BAR_CONFIG.width,
       barHeight: HEALTH_BAR_CONFIG.height,
       barOffsetY: HEALTH_BAR_CONFIG.offsetY,
       layerType: (regl.prop as unknown as (name: string) => number)(
-        "layerType"
+        "layerType",
       ),
     },
 
@@ -94,4 +94,3 @@ export const createHealthBarsDrawCommand = (
     instances: (regl.prop as unknown as (name: string) => number)("count"),
   });
 };
-

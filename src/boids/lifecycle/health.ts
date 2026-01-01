@@ -1,5 +1,5 @@
-import type { Boid } from "../vocabulary/schemas/prelude";
-import type { WorldPhysics } from "../vocabulary/schemas/genetics";
+import type { Boid } from "../vocabulary/schemas/entities";
+import type { WorldPhysics } from "../vocabulary/schemas/world";
 
 /**
  * Health System - Damage, healing, and death mechanics
@@ -32,7 +32,7 @@ export function regenerateHealth(boid: Boid): Boid {
     ...boid,
     health: Math.min(
       boid.phenotype.maxHealth,
-      boid.health + boid.phenotype.healthRegenRate
+      boid.health + boid.phenotype.healthRegenRate,
     ),
   };
 }
@@ -70,7 +70,7 @@ export function takeDamage(boid: Boid, damage: number): Boid {
 export function healFromFood(
   boid: Boid,
   energyGained: number,
-  physics: WorldPhysics
+  physics: WorldPhysics,
 ): Boid {
   const healing = energyGained * physics.health.foodHealingMultiplier;
 
@@ -105,7 +105,7 @@ export function isDead(boid: Boid): boolean {
  */
 export function getDeathCause(
   boid: Boid,
-  maxAge: number
+  maxAge: number,
 ): "old_age" | "starvation" | "predation" {
   if (boid.health <= 0) return "predation"; // Combat death
   if (boid.energy <= 0) return "starvation"; // Energy depletion

@@ -52,7 +52,7 @@ export const createTrailsDrawCommand = (regl: REGL.Regl): REGL.DrawCommand => {
 
     uniforms: {
       transform: (regl.prop as unknown as (name: string) => number[])(
-        "transform"
+        "transform",
       ),
     },
 
@@ -76,4 +76,3 @@ export const createTrailsDrawCommand = (regl: REGL.Regl): REGL.DrawCommand => {
     instances: (regl.prop as unknown as (name: string) => number)("count"),
   });
 };
-

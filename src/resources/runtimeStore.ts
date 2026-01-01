@@ -70,7 +70,7 @@ export const runtimeStore = defineResource({
           headerCollapsed: false, // Start with header expanded
           rendererMode: "canvas", // Start with Canvas renderer (WebGL is experimental)
         },
-      }))
+      })),
     );
 
     function useStore<T>(selector: (_state: RuntimeStore) => T): T {

@@ -6,12 +6,8 @@ import type {
   StanceDecision,
   MinimumStanceDuration,
 } from "../vocabulary/schemas/behavior";
-import type {
-  Boid,
-  FoodSource,
-  ReproductionType,
-  SpeciesRole,
-} from "../vocabulary/schemas/prelude";
+import type { Boid, FoodSource } from "../vocabulary/schemas/entities";
+import type { ReproductionType, Role } from "../vocabulary/schemas/primitives";
 
 /**
  * Behavior Evaluator - Core logic for behavior scoring system
@@ -37,7 +33,7 @@ import type {
 export function evaluateBehavior(
   context: BehaviorContext,
   ruleset: BehaviorRuleset,
-  role: SpeciesRole
+  role: Role,
 ): BehaviorScore | null {
   const rules =
     role === roleKeywords.prey ? ruleset.preyRules : ruleset.predatorRules;
@@ -73,7 +69,7 @@ export function applyBehaviorDecision(
   decision: BehaviorScore,
   tick: number,
   frame: number,
-  minDurations: MinimumStanceDuration
+  minDurations: MinimumStanceDuration,
 ): StanceDecision | null {
   const framesSinceTransition = frame - boid.stanceEnteredAt;
   const minDuration = minDurations[boid.stance] ?? 0;
@@ -146,10 +142,10 @@ export function buildBehaviorContext(
   nearbyFood: FoodSource[],
   nearbyFlock: Boid[],
   tick: number,
-  role: SpeciesRole,
+  role: Role,
   reproductionType: ReproductionType,
   readyToMate: boolean,
-  populationRatio: number
+  populationRatio: number,
 ): BehaviorContext {
   // Find closest distances (inline for performance)
   let closestPredatorDistance: number | null = null;
@@ -169,14 +165,14 @@ export function buildBehaviorContext(
       closestPredatorStance === "hunting"
         ? 1.0 // Full threat
         : closestPredatorStance === "idle" || closestPredatorStance === "eating"
-        ? 0.5 // Half threat
-        : 0.25; // Minimal threat (mating, seeking_mate)
+          ? 0.5 // Half threat
+          : 0.25; // Minimal threat (mating, seeking_mate)
 
     // Distance factor: closer = higher threat (inverse square for realism)
     const maxThreatDistance = 200; // Beyond this, no threat
     const distanceFactor = Math.max(
       0,
-      1.0 - closestPredatorDistance / maxThreatDistance
+      1.0 - closestPredatorDistance / maxThreatDistance,
     );
 
     threatLevel = stanceThreatMultiplier * distanceFactor;
@@ -199,7 +195,7 @@ export function buildBehaviorContext(
   // Count available mates (Session 75: Seeking mates that are ready)
   // Only count flock members that are seeking mates or ready to mate
   const nearbyAvailableMatesCount = nearbyFlock.filter(
-    (b) => b.seekingMate || b.stance === "seeking_mate"
+    (b) => b.seekingMate || b.stance === "seeking_mate",
   ).length;
 
   // Calculate environment pressure from population ratio

@@ -3,7 +3,7 @@ import type { BoidUpdateContext } from "../context";
 import type { MatingContext, OffspringData } from "../mating";
 import { applyMatingResult, unpairBoids } from "../mating";
 import { isReadyToMate } from "../predicates";
-import type { Boid } from "../vocabulary/schemas/prelude.ts";
+import type { Boid } from "../vocabulary/schemas/entities";
 import { updateBoidAge } from "./aging";
 import { updateBoidCooldowns } from "./cooldowns";
 import { updateBoidEnergy } from "./energy";
@@ -190,7 +190,7 @@ import { regenerateHealth, isDead, getDeathCause } from "./health";
  */
 export function processLifecycleUpdates(
   boids: Boid[],
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): {
   boidsToRemove: string[];
   boidsToAdd: OffspringData[];
@@ -262,7 +262,7 @@ export function processLifecycleUpdates(
       boids,
       parameters,
       speciesConfig,
-      matedBoids
+      matedBoids,
     );
 
     // Apply mating result

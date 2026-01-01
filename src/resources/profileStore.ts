@@ -15,7 +15,7 @@ import { defineResource, StartedResource } from "braided";
 import { createStore, StoreApi, useStore as useZustandStore } from "zustand";
 import { devtools } from "zustand/middleware";
 import { profiles as builtInProfiles } from "@/profiles";
-import { SimulationProfile } from "@/boids/vocabulary/schemas/prelude";
+import { SimulationProfile } from "@/boids/vocabulary/schemas/world";
 
 /**
  * Profile Store State
@@ -49,7 +49,8 @@ export const profileStore = defineResource({
   dependencies: [],
   start: () => {
     // Get default profile ID (stable-ecosystem)
-    const defaultProfileId = Object.keys(builtInProfiles)[0] || "stable-ecosystem";
+    const defaultProfileId =
+      Object.keys(builtInProfiles)[0] || "stable-ecosystem";
 
     // Create zustand store with built-in profiles
     const store = createStore<ProfileStore>()(
@@ -67,8 +68,8 @@ export const profileStore = defineResource({
             },
           },
         }),
-        { name: "ProfileStore" }
-      )
+        { name: "ProfileStore" },
+      ),
     );
 
     function useStore<T>(selector: (_state: ProfileStore) => T): T {
@@ -88,7 +89,7 @@ export const profileStore = defineResource({
 
       if (!profile) {
         throw new Error(
-          `Active profile not found: ${activeProfileId}. Available built-in: ${Object.keys(builtIn).join(", ")}`
+          `Active profile not found: ${activeProfileId}. Available built-in: ${Object.keys(builtIn).join(", ")}`,
         );
       }
 
@@ -145,7 +146,7 @@ export const profileStore = defineResource({
       const profile = getProfileById(profileId);
       if (!profile) {
         throw new Error(
-          `Cannot set active profile: Profile not found: ${profileId}`
+          `Cannot set active profile: Profile not found: ${profileId}`,
         );
       }
 
@@ -175,4 +176,3 @@ export const profileStore = defineResource({
 });
 
 export type ProfileStoreResource = StartedResource<typeof profileStore>;
-

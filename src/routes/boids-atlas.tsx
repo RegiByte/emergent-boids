@@ -12,28 +12,45 @@ import {
 } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import type { RenderMode } from "@/hooks/useStaticBoid";
-
-// Import profiles
 import { stableEcosystemProfile } from "@/profiles/stable-ecosystem";
+import { createSystemHooks, createSystemManager } from "braided-react";
+import { defineResource } from "braided";
+
+const atlasesResource = defineResource({
+  start: () => {
+    console.log("Starting atlases resource");
+  },
+  halt: () => {
+    console.log("Halting atlases resource");
+  },
+});
+
+const boidsAtlasSystem = {
+  atlases: atlasesResource,
+};
+
+const manager = createSystemManager(boidsAtlasSystem);
+const { useResource } = createSystemHooks(manager);
 
 export const Route = createFileRoute("/boids-atlas")({
   component: BoidsAtlasRoute,
 });
 
 function BoidsAtlasRoute() {
+  const atlases = useResource("atlases");
   const [renderMode, setRenderMode] = useState<RenderMode>("both");
   const [rotation, setRotation] = useState(0);
   const [scale, setScale] = useState(3);
-
-  // Get all base genomes from species in the profile with species info
-  const speciesData = Object.entries(stableEcosystemProfile.species).map(
-    ([speciesId, species]) => ({
-      genome: species.baseGenome,
-      typeId: speciesId, // Use the species key as typeId
-      name: species.name,
-      role: species.role,
-      speciesConfig: species, // Pass the full species config for shape rendering
-    })
+  const [speciesData] = useState(() =>
+    Object.entries(stableEcosystemProfile.species).map(
+      ([speciesId, species]) => ({
+        genome: species.baseGenome,
+        typeId: speciesId,
+        name: species.name,
+        role: species.role,
+        speciesConfig: species,
+      }),
+    ),
   );
 
   return (
@@ -150,30 +167,34 @@ function BoidsAtlasRoute() {
             Boids from Stable Ecosystem Profile
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
-            Showing {speciesData.length} species configurations
+            {speciesData.length > 0
+              ? `Showing ${speciesData.length} species configurations`
+              : "Loading species configurations..."}
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {speciesData.map((species, index) => (
-              <div key={index}>
-                <BoidCard
-                  genome={species.genome}
-                  typeId={species.typeId}
-                  mode={renderMode}
-                  rotation={rotation}
-                  scale={scale}
-                  size={200}
-                  speciesConfig={species.speciesConfig}
-                />
-                <div className="mt-2 text-center">
-                  <p className="text-sm font-medium">{species.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">
-                    {species.role}
-                  </p>
+          {speciesData.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {speciesData.map((species, index) => (
+                <div key={index}>
+                  <BoidCard
+                    genome={species.genome}
+                    typeId={species.typeId}
+                    mode={renderMode}
+                    rotation={rotation}
+                    scale={scale}
+                    size={200}
+                    speciesConfig={species.speciesConfig}
+                  />
+                  <div className="mt-2 text-center">
+                    <p className="text-sm font-medium">{species.name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {species.role}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Info Section */}

@@ -33,7 +33,7 @@ const createCircleOutlinePositions = (): number[][] => {
  * @returns REGL draw command for selection circles
  */
 export const createSelectionCirclesDrawCommand = (
-  regl: REGL.Regl
+  regl: REGL.Regl,
 ): REGL.DrawCommand => {
   const outlinePositions = createCircleOutlinePositions();
 
@@ -66,7 +66,7 @@ export const createSelectionCirclesDrawCommand = (
 
     uniforms: {
       transform: (regl.prop as unknown as (name: string) => number[])(
-        "transform"
+        "transform",
       ),
     },
 
@@ -90,4 +90,3 @@ export const createSelectionCirclesDrawCommand = (
     instances: (regl.prop as unknown as (name: string) => number)("count"),
   });
 };
-

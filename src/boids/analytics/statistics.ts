@@ -1,9 +1,5 @@
-import {
-  Boid,
-  FoodSource,
-  SpeciesConfig,
-  DeathMarker,
-} from "../vocabulary/schemas/prelude";
+import { Boid, FoodSource, DeathMarker } from "../vocabulary/schemas/entities";
+import { SpeciesConfig } from "../vocabulary/schemas/species";
 import * as vec from "../vector";
 
 // ============================================
@@ -11,10 +7,13 @@ import * as vec from "../vector";
 // ============================================
 
 export function getStanceDistribution(boids: Boid[]) {
-  return boids.reduce((acc, boid) => {
-    acc[boid.stance] = (acc[boid.stance] || 0) + 1;
-    return acc;
-  }, {} as Partial<Record<Boid["stance"], number>>);
+  return boids.reduce(
+    (acc, boid) => {
+      acc[boid.stance] = (acc[boid.stance] || 0) + 1;
+      return acc;
+    },
+    {} as Partial<Record<Boid["stance"], number>>,
+  );
 }
 
 export function getStanceDistributionBySpecies(boids: Boid[]) {
@@ -63,7 +62,7 @@ export function computeEnergyStats(boids: Boid[]): EnergyStats {
 }
 
 export function computeEnergyStatsBySpecies(
-  boids: Boid[]
+  boids: Boid[],
 ): Record<string, EnergyStats> {
   const bySpecies: Record<string, Boid[]> = {};
 
@@ -134,7 +133,7 @@ export function computeAgeDistribution(boids: Boid[]): AgeDistribution {
 
 export function computeAgeDistributionBySpecies(
   boids: Boid[],
-  speciesConfigs: Record<string, SpeciesConfig>
+  speciesConfigs: Record<string, SpeciesConfig>,
 ): Record<string, AgeDistribution> {
   const bySpecies: Record<string, Boid[]> = {};
 
@@ -172,7 +171,7 @@ export interface SpatialPattern {
 export function computeSpatialPattern(
   boids: Boid[],
   worldWidth: number,
-  worldHeight: number
+  worldHeight: number,
 ): SpatialPattern {
   if (boids.length === 0) {
     return {
@@ -209,7 +208,7 @@ export function computeSpatialPattern(
           boid.position,
           other.position,
           worldWidth,
-          worldHeight
+          worldHeight,
         );
         if (dist < minDist) {
           minDist = dist;
@@ -243,7 +242,7 @@ export function computeSpatialPattern(
             current.position,
             other.position,
             worldWidth,
-            worldHeight
+            worldHeight,
           );
           if (dist < clusterThreshold) {
             stack.push(other);
@@ -274,7 +273,7 @@ export function computeSpatialPattern(
 export function computeSpatialPatternsBySpecies(
   boids: Boid[],
   worldWidth: number,
-  worldHeight: number
+  worldHeight: number,
 ): Record<string, SpatialPattern> {
   const bySpecies: Record<string, Boid[]> = {};
 
@@ -290,7 +289,7 @@ export function computeSpatialPatternsBySpecies(
     result[typeId] = computeSpatialPattern(
       speciesBoids,
       worldWidth,
-      worldHeight
+      worldHeight,
     );
   }
 
@@ -310,7 +309,7 @@ export interface ReproductionMetrics {
 
 export function computeReproductionMetrics(
   boids: Boid[],
-  reproductionEnergyThreshold: number
+  reproductionEnergyThreshold: number,
 ): ReproductionMetrics {
   if (boids.length === 0) {
     return {
@@ -354,7 +353,7 @@ export function computeReproductionMetrics(
 export function computeReproductionMetricsBySpecies(
   boids: Boid[],
   speciesConfigs: Record<string, SpeciesConfig>,
-  reproductionEnergyThreshold: number
+  reproductionEnergyThreshold: number,
 ): Record<string, ReproductionMetrics> {
   const bySpecies: Record<string, Boid[]> = {};
 
@@ -371,7 +370,7 @@ export function computeReproductionMetricsBySpecies(
     if (config) {
       result[typeId] = computeReproductionMetrics(
         speciesBoids,
-        reproductionEnergyThreshold
+        reproductionEnergyThreshold,
       );
     }
   }
@@ -390,7 +389,7 @@ export interface FoodSourceStats {
 }
 
 export function computeFoodSourceStats(
-  foodSources: FoodSource[]
+  foodSources: FoodSource[],
 ): FoodSourceStats {
   if (foodSources.length === 0) {
     return { count: 0, totalEnergy: 0, meanEnergy: 0 };
@@ -428,7 +427,7 @@ export interface DeathMarkerStats {
 }
 
 export function computeDeathMarkerStats(
-  deathMarkers: DeathMarker[]
+  deathMarkers: DeathMarker[],
 ): DeathMarkerStats {
   if (deathMarkers.length === 0) {
     return { count: 0, totalStrength: 0, meanStrength: 0 };
@@ -450,19 +449,25 @@ type StanceDistribution = ReturnType<typeof getStanceDistribution>;
 
 export function getStancePercentageDistribution(
   stanceDistribution: StanceDistribution,
-  total: number
+  total: number,
 ) {
-  return Object.entries(stanceDistribution).reduce((acc, [stance, count]) => {
-    acc[stance as Boid["stance"]] = (count / total) * 100;
-    return acc;
-  }, {} as Partial<Record<Boid["stance"], number>>);
+  return Object.entries(stanceDistribution).reduce(
+    (acc, [stance, count]) => {
+      acc[stance as Boid["stance"]] = (count / total) * 100;
+      return acc;
+    },
+    {} as Partial<Record<Boid["stance"], number>>,
+  );
 }
 
 export function countFoodSourcesBySourceType(foodSources: FoodSource[]) {
-  return foodSources.reduce((acc, foodSource) => {
-    acc[foodSource.sourceType] = (acc[foodSource.sourceType] || 0) + 1;
-    return acc;
-  }, {} as Partial<Record<FoodSource["sourceType"], number>>);
+  return foodSources.reduce(
+    (acc, foodSource) => {
+      acc[foodSource.sourceType] = (acc[foodSource.sourceType] || 0) + 1;
+      return acc;
+    },
+    {} as Partial<Record<FoodSource["sourceType"], number>>,
+  );
 }
 
 export type FoodSourcesBySourceType = ReturnType<

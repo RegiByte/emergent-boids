@@ -10,8 +10,8 @@ import type {
   DeathMarker,
   FoodSource,
   Obstacle,
-  SpeciesConfig,
-} from "../../boids/vocabulary/schemas/prelude";
+} from "../../boids/vocabulary/schemas/entities";
+import type { SpeciesConfig } from "../../boids/vocabulary/schemas/species";
 import type { Profiler } from "../profiler";
 import type { TimeState } from "../time";
 import type { CameraAPI, CameraMode } from "../camera";
@@ -113,7 +113,7 @@ export const renderBackground = (rc: RenderContext): void => {
   // Use background color from profile with trail alpha for motion blur effect
   rc.ctx.fillStyle = hexToRgba(
     rc.backgroundColor,
-    rc.visualSettings.atmosphere.trailAlpha
+    rc.visualSettings.atmosphere.trailAlpha,
   );
   rc.ctx.fillRect(0, 0, rc.width, rc.height);
   rc.profiler?.end("render.clear");
@@ -146,7 +146,7 @@ export const renderObstacles = (rc: RenderContext): void => {
         x - radius * 2 + i * stripeWidth,
         y - radius * 2,
         stripeWidth,
-        radius * 4
+        radius * 4,
       );
     }
 
@@ -221,7 +221,7 @@ export const renderDeathMarkers = (rc: RenderContext): void => {
       marker.position.y,
       circleRadius,
       0,
-      Math.PI * 2
+      Math.PI * 2,
     );
     rc.ctx.fill();
 
@@ -451,13 +451,13 @@ export const renderBoidBodies = (rc: RenderContext): void => {
     const energyRatio = boid.energy / boid.phenotype.maxEnergy;
     const dynamicColor = adjustColorBrightness(
       boid.phenotype.color, // Use individual genome color, not species color
-      energyRatio
+      energyRatio,
     );
 
     // Check if glow effect is requested (from genome body parts)
     const bodyParts = speciesConfig.baseGenome?.visual?.bodyParts || [];
     const hasGlow = bodyParts.some(
-      (part: { type: string }) => part.type === "glow"
+      (part: { type: string }) => part.type === "glow",
     );
 
     if (hasGlow) {
@@ -489,26 +489,21 @@ export const renderBoidBodies = (rc: RenderContext): void => {
       const tailColor =
         speciesConfig.visualConfig?.tailColor || boid.phenotype.color;
 
-      // Group body parts by type for genome-driven rendering
-      const partsByType = new Map<string, typeof bodyParts>();
+      // Session 102B: Render body parts IN GENOME ORDER for proper layering
+      // Parts declared first in genome render first (bottom layer)
+      // Parts declared later render on top (top layer)
       for (const part of bodyParts) {
         const partType = typeof part === "string" ? part : part.type;
         if (partType === "glow") continue; // Already handled above
 
-        const existing = partsByType.get(partType) || [];
-        existing.push(part);
-        partsByType.set(partType, existing);
-      }
-
-      // Render each part type with its genome data
-      for (const [partType, parts] of partsByType.entries()) {
         const partRenderer = getBodyPartRenderer(partType as BodyPartType);
         if (partRenderer) {
           const partColor =
             partType === "tail" ? tailColor : boid.phenotype.color;
           // Body parts scale/offset should be relative to collision radius (baseSize),
           // not the shape renderer's internal size parameter.
-          partRenderer(rc.ctx, baseSize, partColor, parts);
+          // Pass array with single part to maintain renderer interface
+          partRenderer(rc.ctx, baseSize, partColor, [part]);
         }
       }
     }
@@ -815,7 +810,7 @@ export const renderMatingHearts = (rc: RenderContext): void => {
 export const renderStats = (
   rc: RenderContext,
   fps: number,
-  obstacleCount: number
+  obstacleCount: number,
 ): void => {
   rc.profiler?.start("render.stats");
 
@@ -844,7 +839,7 @@ export const renderStats = (
   rc.ctx.fillText(
     `Total: ${rc.allBoids.length}`,
     startingX,
-    startingY + lineHeight
+    startingY + lineHeight,
   );
   rc.ctx.fillStyle = "#00ff88";
   rc.ctx.fillText(`Prey: ${preyCount}`, startingX, startingY + lineHeight * 2);
@@ -852,13 +847,13 @@ export const renderStats = (
   rc.ctx.fillText(
     `Predators: ${predatorCount}`,
     startingX,
-    startingY + lineHeight * 3
+    startingY + lineHeight * 3,
   );
   rc.ctx.fillStyle = "#00ff88";
   rc.ctx.fillText(
     `Obstacles: ${obstacleCount}`,
     startingX,
-    startingY + lineHeight * 4
+    startingY + lineHeight * 4,
   );
 
   // Paused overlay (if paused)
@@ -882,7 +877,7 @@ export const renderStats = (
     rc.ctx.fillText(
       "Press SPACE to resume or → to step forward",
       rc.width / 2,
-      rc.height / 2 + 60
+      rc.height / 2 + 60,
     );
 
     // Frame counter
@@ -891,7 +886,7 @@ export const renderStats = (
     rc.ctx.fillText(
       `Frame: ${rc.timeState.simulationFrame}`,
       rc.width / 2,
-      rc.height / 2 + 90
+      rc.height / 2 + 90,
     );
 
     rc.ctx.restore();
@@ -945,7 +940,7 @@ export const renderPickerMode = (rc: RenderContext): void => {
     if (targetBoid) {
       const boidScreenPos = rc.camera.worldToScreen(
         targetBoid.position.x,
-        targetBoid.position.y
+        targetBoid.position.y,
       );
 
       ctx.save();
@@ -968,14 +963,14 @@ export const renderFollowedBoid = (rc: RenderContext): void => {
   const followedBoid = rc.allBoids.find(
     (b) =>
       b.id ===
-      (rc.camera.mode as Extract<CameraMode, { type: "following" }>).boidId
+      (rc.camera.mode as Extract<CameraMode, { type: "following" }>).boidId,
   );
   if (!followedBoid) return;
 
   const ctx = rc.ctx;
   const screenPos = rc.camera.worldToScreen(
     followedBoid.position.x,
-    followedBoid.position.y
+    followedBoid.position.y,
   );
 
   // Pulsing effect based on time
@@ -1001,7 +996,7 @@ export const renderFollowedBoid = (rc: RenderContext): void => {
 export const renderFrame = (
   rc: RenderContext,
   fps: number,
-  obstacleCount: number
+  obstacleCount: number,
 ): void => {
   // Layer 1: Background (with trails)
   renderBackground(rc);

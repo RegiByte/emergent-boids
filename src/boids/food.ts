@@ -1,6 +1,6 @@
 /**
  * Food Source Constants
- * 
+ *
  * Configuration for the food source system that drives the ecosystem's energy flow.
  * Prey food spawns periodically, predator food spawns from catches.
  */
@@ -27,4 +27,3 @@ export const FOOD_CONSTANTS = {
   PREDATOR_FOOD_FEAR_RADIUS: 80, // Prey avoid predator food sources
   PREDATOR_FOOD_FEAR_WEIGHT: 2.5, // Strong repulsion (similar to fear)
 } as const;
-

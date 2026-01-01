@@ -30,5 +30,5 @@ if (!window.__APP_ROOT__) {
 window.__APP_ROOT__.render(
   <StrictMode>
     <RouterProvider router={router} basepath="/emergent-boids" />
-  </StrictMode>
+  </StrictMode>,
 );

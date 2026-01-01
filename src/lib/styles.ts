@@ -1,7 +1,7 @@
 export function getCssVariable(
   variable: string,
   defaultValue: string,
-  parent?: Element
+  parent?: Element,
 ): string {
   if (typeof window === "undefined") return defaultValue;
   const style = getComputedStyle(parent ?? document.documentElement);

@@ -12,7 +12,7 @@ import type REGL from "regl";
  * Renders red dashed circles showing physics collision boundaries
  */
 export function createDebugCollisionCirclesDrawCommand(
-  regl: REGL.Regl
+  regl: REGL.Regl,
 ): REGL.DrawCommand {
   return regl({
     vert: `
@@ -48,7 +48,7 @@ export function createDebugCollisionCirclesDrawCommand(
 
     attributes: {
       position: regl.prop<{ positions: Float32Array }, "positions">(
-        "positions"
+        "positions",
       ),
       radius: regl.prop<{ radii: Float32Array }, "radii">("radii"),
       angle: regl.prop<{ angles: Float32Array }, "angles">("angles"),
@@ -72,7 +72,7 @@ export function prepareDebugCollisionCirclesData(
   boids: Array<{
     position: { x: number; y: number };
     phenotype: { collisionRadius: number };
-  }>
+  }>,
 ): {
   positions: Float32Array;
   radii: Float32Array;

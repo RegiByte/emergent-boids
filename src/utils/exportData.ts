@@ -33,12 +33,15 @@ import JSZip from "jszip";
 export function exportCurrentStats(
   engine: BoidEngine,
   runtimeStore: RuntimeStore,
-  mutationCounters?: Record<string, {
-    traitMutations: number;
-    colorMutations: number;
-    bodyPartMutations: number;
-    totalOffspring: number;
-  }>
+  mutationCounters?: Record<
+    string,
+    {
+      traitMutations: number;
+      colorMutations: number;
+      bodyPartMutations: number;
+      totalOffspring: number;
+    }
+  >,
 ): string {
   const { config, simulation } = runtimeStore;
 
@@ -111,7 +114,7 @@ export function exportCurrentStats(
   const genetics = computeGeneticsStatsBySpecies(
     engine.boids,
     config.species,
-    mutationCounters || {}
+    mutationCounters || {},
   );
 
   // Build export object
@@ -150,13 +153,13 @@ export function exportCurrentStats(
  * Optimized for ML training and data analysis
  *
  * Each line is a complete JSON snapshot - easy to stream and process
- * 
+ *
  * Format:
  * - Header: Comments + config JSON (first snapshot's activeParameters)
  * - Line 1: {"tick":3,"timestamp":1767024880065,"populations":{...},"genetics":{...}}
  * - Line 2: {"tick":6,"timestamp":1767024881581,"populations":{...},"genetics":{...}}
  * - ...
- * 
+ *
  * Benefits:
  * - Preserves full multi-dimensional data (100+ dimensions per snapshot)
  * - Token-efficient (no repeated column headers like CSV)
@@ -164,7 +167,7 @@ export function exportCurrentStats(
  * - Streamable (process line-by-line without loading entire file)
  * - Easy to parse for both humans and LLMs
  * - Includes all genetics data: traits, generations, mutations, spatial patterns
- * 
+ *
  * @param snapshots - Array of evolution snapshots to export
  * @returns JSONL string (one JSON object per line)
  */
@@ -180,7 +183,11 @@ export function exportEvolutionJSONL(snapshots: EvolutionSnapshot[]): string {
   // Calculate size savings
   const avgSnapshotSize = JSON.stringify(snapshots[0]).length;
   const configSize = configJson.length;
-  const savingsPercent = ((configSize * (snapshots.length - 1)) / (avgSnapshotSize * snapshots.length) * 100).toFixed(1);
+  const savingsPercent = (
+    ((configSize * (snapshots.length - 1)) /
+      (avgSnapshotSize * snapshots.length)) *
+    100
+  ).toFixed(1);
 
   // Add header comment with metadata and config
   const header = [
@@ -193,16 +200,15 @@ export function exportEvolutionJSONL(snapshots: EvolutionSnapshot[]): string {
     `#`,
     `# Configuration (applies to all snapshots):`,
     `# CONFIG_START`,
-    ...configJson.split('\n').map(line => `# ${line}`),
+    ...configJson.split("\n").map((line) => `# ${line}`),
     `# CONFIG_END`,
     "#",
   ].join("\n");
 
   const data = snapshots.map((snap) => JSON.stringify(snap)).join("\n");
-  
+
   return `${header}\n${data}`;
 }
-
 
 /**
  * Multi-Rate Evolution Export Configuration
@@ -220,7 +226,7 @@ export interface MultiRateExportConfig {
 
 /**
  * Export evolution data as multi-rate ZIP archive
- * 
+ *
  * Creates a ZIP file containing multiple JSONL files at different sampling rates.
  * This enables training models at different temporal resolutions:
  * - 1x: Every snapshot (highest resolution, fine-grained patterns)
@@ -228,7 +234,7 @@ export interface MultiRateExportConfig {
  * - 10x: Every 10th snapshot (coarse resolution, long-term trends)
  * - 50x: Every 50th snapshot (very coarse, major events only)
  * - 100x: Every 100th snapshot (ultra coarse, epoch-level patterns)
- * 
+ *
  * File structure:
  * ```
  * evolution_export_[timestamp].zip
@@ -240,7 +246,7 @@ export interface MultiRateExportConfig {
  * ├── snapshots_50x.jsonl    # Every 50th snapshot
  * └── snapshots_100x.jsonl   # Every 100th snapshot
  * ```
- * 
+ *
  * @param snapshots - Array of evolution snapshots to export
  * @param engine - Boid engine (for current stats)
  * @param runtimeStore - Runtime store (for config)
@@ -251,7 +257,7 @@ export async function exportEvolutionMultiRate(
   snapshots: EvolutionSnapshot[],
   engine?: BoidEngine,
   runtimeStore?: RuntimeStore,
-  config: MultiRateExportConfig = {}
+  config: MultiRateExportConfig = {},
 ): Promise<Blob> {
   const {
     samplingRates = [1, 3, 10, 50, 100],
@@ -280,16 +286,23 @@ export async function exportEvolutionMultiRate(
         end: {
           tick: snapshots[snapshots.length - 1].tick,
           timestamp: snapshots[snapshots.length - 1].timestamp,
-          date: new Date(snapshots[snapshots.length - 1].timestamp).toISOString(),
+          date: new Date(
+            snapshots[snapshots.length - 1].timestamp,
+          ).toISOString(),
         },
       },
       duration: {
         ticks: snapshots[snapshots.length - 1].tick - snapshots[0].tick,
-        milliseconds: snapshots[snapshots.length - 1].timestamp - snapshots[0].timestamp,
-        seconds: (snapshots[snapshots.length - 1].timestamp - snapshots[0].timestamp) / 1000,
-        minutes: (snapshots[snapshots.length - 1].timestamp - snapshots[0].timestamp) / 60000,
+        milliseconds:
+          snapshots[snapshots.length - 1].timestamp - snapshots[0].timestamp,
+        seconds:
+          (snapshots[snapshots.length - 1].timestamp - snapshots[0].timestamp) /
+          1000,
+        minutes:
+          (snapshots[snapshots.length - 1].timestamp - snapshots[0].timestamp) /
+          60000,
       },
-      samplingRates: samplingRates.map(rate => ({
+      samplingRates: samplingRates.map((rate) => ({
         rate,
         filename: `snapshots_${rate}x.jsonl`,
         snapshotCount: Math.ceil(snapshots.length / rate),
@@ -310,7 +323,7 @@ export async function exportEvolutionMultiRate(
   // Generate JSONL files for each sampling rate
   for (const rate of samplingRates) {
     const sampledSnapshots = snapshots.filter((_, index) => index % rate === 0);
-    
+
     if (sampledSnapshots.length > 0) {
       const jsonl = exportEvolutionJSONL(sampledSnapshots);
       zip.file(`snapshots_${rate}x.jsonl`, jsonl);
@@ -323,7 +336,7 @@ export async function exportEvolutionMultiRate(
 
 /**
  * Download a blob as a file
- * 
+ *
  * @param blob - Blob to download
  * @param filename - Filename for download
  */
@@ -340,9 +353,9 @@ export function downloadBlob(blob: Blob, filename: string): void {
 
 /**
  * Export and download multi-rate evolution data as ZIP
- * 
+ *
  * Convenience function that combines exportEvolutionMultiRate and downloadBlob.
- * 
+ *
  * @param snapshots - Array of evolution snapshots to export
  * @param engine - Boid engine (for current stats)
  * @param runtimeStore - Runtime store (for config)
@@ -352,10 +365,15 @@ export async function exportAndDownloadMultiRate(
   snapshots: EvolutionSnapshot[],
   engine?: BoidEngine,
   runtimeStore?: RuntimeStore,
-  config: MultiRateExportConfig = {}
+  config: MultiRateExportConfig = {},
 ): Promise<void> {
   try {
-    const blob = await exportEvolutionMultiRate(snapshots, engine, runtimeStore, config);
+    const blob = await exportEvolutionMultiRate(
+      snapshots,
+      engine,
+      runtimeStore,
+      config,
+    );
     const filename = `${config.baseFilename || `evolution_export_${Date.now()}`}.zip`;
     downloadBlob(blob, filename);
     console.log(`✅ Evolution data exported: ${filename}`);
@@ -374,7 +392,7 @@ export function copyToClipboard(text: string, label: string = "Data"): void {
     .then(() => {
       console.log(`✅ ${label} copied to clipboard!`);
       console.log(
-        `📊 Preview (first 500 chars):\n${text.substring(0, 500)}...`
+        `📊 Preview (first 500 chars):\n${text.substring(0, 500)}...`,
       );
     })
     .catch((err) => {

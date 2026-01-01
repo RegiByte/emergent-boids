@@ -1,6 +1,6 @@
 /**
  * Shape Boids Draw Command
- * 
+ *
  * REGL draw command for rendering shape-based boids using texture atlas
  */
 
@@ -8,8 +8,9 @@ import type REGL from "regl";
 import type { ShapeAtlasResult } from "../atlases/shapeAtlas";
 
 // Import shaders
-import shapeBoidVertShader from "@/shaders/shapeBoid.vert?raw";
-import shapeBoidFragShader from "@/shaders/shapeBoid.frag?raw";
+// Session 101: Multi-color shaders with marker detection
+import multiColorBoidVertShader from "@/shaders/multiColorBoid.vert?raw";
+import multiColorBoidFragShader from "@/shaders/multiColorBoid.frag?raw";
 
 // Quad vertices for texture-based shape rendering (unit square)
 const QUAD_POSITIONS = [
@@ -25,11 +26,11 @@ const QUAD_POSITIONS = [
 export const createShapeBoidsDrawCommand = (
   regl: REGL.Regl,
   shapeTexture: REGL.Texture2D,
-  shapeAtlas: ShapeAtlasResult
+  shapeAtlas: ShapeAtlasResult,
 ): REGL.DrawCommand => {
   return regl({
-    vert: shapeBoidVertShader,
-    frag: shapeBoidFragShader,
+    vert: multiColorBoidVertShader,
+    frag: multiColorBoidFragShader,
 
     attributes: {
       // Shared quad geometry
@@ -48,6 +49,14 @@ export const createShapeBoidsDrawCommand = (
         buffer: (regl.prop as (name: string) => unknown)("colors"),
         divisor: 1,
       },
+      borderColor: {
+        buffer: (regl.prop as (name: string) => unknown)("borderColors"),
+        divisor: 1,
+      },
+      shadowColor: {
+        buffer: (regl.prop as (name: string) => unknown)("shadowColors"),
+        divisor: 1,
+      },
       scale: {
         buffer: (regl.prop as (name: string) => unknown)("scales"),
         divisor: 1,
@@ -60,7 +69,7 @@ export const createShapeBoidsDrawCommand = (
 
     uniforms: {
       transform: (regl.prop as unknown as (name: string) => number[])(
-        "transform"
+        "transform",
       ),
       shapeTexture: shapeTexture,
       cellSize: shapeAtlas.cellSize,
@@ -82,5 +91,3 @@ export const createShapeBoidsDrawCommand = (
     instances: (regl.prop as unknown as (name: string) => number)("count"),
   });
 };
-
-

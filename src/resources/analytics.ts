@@ -144,17 +144,17 @@ export const analytics = defineResource({
       const energyStats = computeEnergyStatsBySpecies(engine.boids);
       const ageStats = computeAgeDistributionBySpecies(
         engine.boids,
-        config.species
+        config.species,
       );
       const spatialPatterns = computeSpatialPatternsBySpecies(
         engine.boids,
         config.world.width,
-        config.world.height
+        config.world.height,
       );
       const reproductionMetrics = computeReproductionMetricsBySpecies(
         engine.boids,
         config.species,
-        config.parameters.reproductionEnergyThreshold
+        config.parameters.reproductionEnergyThreshold,
       );
 
       // Stance distribution by species
@@ -162,7 +162,7 @@ export const analytics = defineResource({
 
       // Food source statistics
       const foodSourceStats = computeFoodSourceStatsByType(
-        simulation.foodSources
+        simulation.foodSources,
       );
 
       // Death marker statistics
@@ -173,43 +173,46 @@ export const analytics = defineResource({
 
       // Build configuration snapshot (only for first snapshot to reduce file size)
       // OPTIMIZATION: activeParameters is ~1KB and never changes, so we only include it once
-      const activeParameters = isFirstSnapshot ? {
-        perceptionRadius: config.parameters.perceptionRadius,
-        fearRadius: config.parameters.fearRadius,
-        chaseRadius: config.parameters.chaseRadius,
-        reproductionEnergyThreshold:
-          config.parameters.reproductionEnergyThreshold,
-        speciesConfigs: Object.entries(config.species).reduce(
-          (acc, [id, species]) => {
-            // Use genome traits converted to absolute values (multiply by physics limits)
-            // These are approximations since we don't have access to physics here
-            acc[id] = {
-              role: species.role,
-              maxSpeed: species.baseGenome.traits.speed * 10, // Assuming physics.maxSpeed = 10
-              maxForce: species.baseGenome.traits.force * 0.5, // Assuming physics.maxForce = 0.5
-              maxEnergy: 100 * species.baseGenome.traits.size * 1.5, // From phenotype formula
-              energyLossRate: 0.01 * (1 - species.baseGenome.traits.efficiency * 0.5), // From phenotype formula
-              fearFactor: species.baseGenome.traits.fearResponse,
-              reproductionType: species.reproduction.type,
-              offspringCount: species.reproduction.offspringCount,
-            };
-            return acc;
-          },
-          {} as Record<
-            string,
-            {
-              role: "prey" | "predator";
-              maxSpeed: number;
-              maxForce: number;
-              maxEnergy: number;
-              energyLossRate: number;
-              fearFactor: number;
-              reproductionType: "sexual" | "asexual";
-              offspringCount: number;
-            }
-          >
-        ),
-      } : undefined;
+      const activeParameters = isFirstSnapshot
+        ? {
+            perceptionRadius: config.parameters.perceptionRadius,
+            fearRadius: config.parameters.fearRadius,
+            chaseRadius: config.parameters.chaseRadius,
+            reproductionEnergyThreshold:
+              config.parameters.reproductionEnergyThreshold,
+            speciesConfigs: Object.entries(config.species).reduce(
+              (acc, [id, species]) => {
+                // Use genome traits converted to absolute values (multiply by physics limits)
+                // These are approximations since we don't have access to physics here
+                acc[id] = {
+                  role: species.role,
+                  maxSpeed: species.baseGenome.traits.speed * 10, // Assuming physics.maxSpeed = 10
+                  maxForce: species.baseGenome.traits.force * 0.5, // Assuming physics.maxForce = 0.5
+                  maxEnergy: 100 * species.baseGenome.traits.size * 1.5, // From phenotype formula
+                  energyLossRate:
+                    0.01 * (1 - species.baseGenome.traits.efficiency * 0.5), // From phenotype formula
+                  fearFactor: species.baseGenome.traits.fearResponse,
+                  reproductionType: species.reproduction.type,
+                  offspringCount: species.reproduction.offspringCount,
+                };
+                return acc;
+              },
+              {} as Record<
+                string,
+                {
+                  role: "prey" | "predator";
+                  maxSpeed: number;
+                  maxForce: number;
+                  maxEnergy: number;
+                  energyLossRate: number;
+                  fearFactor: number;
+                  reproductionType: "sexual" | "asexual";
+                  offspringCount: number;
+                }
+              >,
+            ),
+          }
+        : undefined;
 
       // Ensure all species have death cause entries (even if zero)
       const deathsByCause: Record<
@@ -280,13 +283,17 @@ export const analytics = defineResource({
 
         // Genetics & Evolution (sampled based on geneticsSamplingInterval)
         // OPTIMIZATION: Genetics is ~6KB per snapshot, sampling reduces file size significantly
-        genetics: (snapshotCount % analyticsStore.store.getState().evolution.config.geneticsSamplingInterval === 0)
-          ? computeGeneticsStatsBySpecies(
-              engine.boids,
-              config.species,
-              lifecycleManager.getMutationCounters()
-            )
-          : {}, // Empty object when not sampling (saves ~55% of snapshot size)
+        genetics:
+          snapshotCount %
+            analyticsStore.store.getState().evolution.config
+              .geneticsSamplingInterval ===
+          0
+            ? computeGeneticsStatsBySpecies(
+                engine.boids,
+                config.species,
+                lifecycleManager.getMutationCounters(),
+              )
+            : {}, // Empty object when not sampling (saves ~55% of snapshot size)
 
         // Atmosphere state
         atmosphere: {
@@ -306,7 +313,11 @@ export const analytics = defineResource({
       snapshotCount++;
 
       // Periodic genetics stats logging (every 300 frames = ~5 seconds at 60fps)
-      if (tickCounter % 300 === 0 && tickCounter > 0 && Object.keys(snapshot.genetics).length > 0) {
+      if (
+        tickCounter % 300 === 0 &&
+        tickCounter > 0 &&
+        Object.keys(snapshot.genetics).length > 0
+      ) {
         console.log("🧬 GENETICS STATS", {
           frame: tickCounter,
           genetics: snapshot.genetics,
@@ -326,7 +337,7 @@ export const analytics = defineResource({
       eventCounters.totalFleeDistance = 0;
       eventCounters.chaseCount = 0;
       eventCounters.fleeCount = 0;
-      
+
       // Mark that we've captured the first snapshot (for activeParameters optimization)
       isFirstSnapshot = false;
     };

@@ -1,11 +1,10 @@
 import type {
   SimulationParameters,
-  SpeciesConfig,
   WorldConfig,
-  FoodSource,
-  DeathMarker,
-} from "./vocabulary/schemas/prelude.ts";
-import type { Obstacle } from "./vocabulary/schemas/prelude.ts";
+} from "./vocabulary/schemas/world";
+import type { SpeciesConfig } from "./vocabulary/schemas/species";
+import type { FoodSource, DeathMarker } from "./vocabulary/schemas/entities";
+import type { Obstacle } from "./vocabulary/schemas/entities";
 import type { Profiler } from "../resources/profiler";
 
 /**

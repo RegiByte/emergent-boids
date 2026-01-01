@@ -1,5 +1,5 @@
-import type { Boid } from "./vocabulary/schemas/prelude.ts";
-import type { Vector2 } from "./vocabulary/schemas/prelude.ts";
+import type { Boid } from "./vocabulary/schemas/entities";
+import type { Vector2 } from "./vocabulary/schemas/primitives";
 
 export type SpatialHash = {
   cellSize: number;
@@ -15,7 +15,7 @@ export type SpatialHash = {
 export function createSpatialHash(
   width: number,
   height: number,
-  cellSize: number
+  cellSize: number,
 ): SpatialHash {
   return {
     cellSize,
@@ -37,7 +37,7 @@ function getCellKey(x: number, y: number, cellSize: number): string {
 /**
  * Insert all boids into the spatial hash
  * Call this once per frame before querying neighbors
- * 
+ *
  * PERFORMANCE OPTIMIZATION (Session 71):
  * Reuses cell arrays instead of clearing the map, reducing GC pressure.
  * This avoids allocating ~100-200 arrays per frame at high boid counts.
@@ -82,7 +82,7 @@ export function getNearbyBoids(
   hash: SpatialHash,
   position: Vector2,
   maxNeighbors: number = 60,
-  maxDistance?: number
+  maxDistance?: number,
 ): Boid[] {
   // PERFORMANCE OPTIMIZATION:
   // Instead of collecting ALL neighbors then sorting, we use a more efficient approach:
@@ -91,7 +91,7 @@ export function getNearbyBoids(
   // 3. Only sort if we exceed maxNeighbors
   // 4. Use pre-calculated distances to avoid redundant calculations
   // 5. Reuse array from previous query (Session 71 optimization)
-  
+
   const col = Math.floor(position.x / hash.cellSize);
   const row = Math.floor(position.y / hash.cellSize);
 
@@ -99,7 +99,7 @@ export function getNearbyBoids(
   const boidsWithDist = neighborQueryCache;
   boidsWithDist.length = 0; // Clear without deallocating
   const maxDistSq = maxDistance ? maxDistance * maxDistance : Infinity;
-  
+
   // Check 3x3 grid of cells (including current cell)
   for (let i = -1; i <= 1; i++) {
     for (let j = -1; j <= 1; j++) {
@@ -113,7 +113,7 @@ export function getNearbyBoids(
 
       const key = `${checkCol},${checkRow}`;
       const cell = hash.grid.get(key);
-      
+
       if (cell) {
         // Calculate distances as we collect boids
         for (let k = 0; k < cell.length; k++) {
@@ -121,7 +121,7 @@ export function getNearbyBoids(
           const dx = boid.position.x - position.x;
           const dy = boid.position.y - position.y;
           const distSq = dx * dx + dy * dy;
-          
+
           // Skip boids beyond max distance (if specified)
           if (distSq <= maxDistSq) {
             boidsWithDist.push({ boid, distSq });

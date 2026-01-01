@@ -5,10 +5,13 @@
  * Each body part becomes a separate instance with its own position/rotation/scale
  */
 
-import type { Boid, SpeciesConfig } from "@/boids/vocabulary/schemas/prelude";
+import type { Boid } from "@/boids/vocabulary/schemas/entities";
+import type { RenderBodyPartType } from "@/boids/vocabulary/schemas/visual";
+import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
+import { darken, toRgb } from "@/lib/colors"; // Session 103: For shell colors
+import { transformBodyPartWebGL } from "@/lib/coordinates";
 import type { BodyPartsAtlasResult } from "../atlases/bodyPartsAtlas";
-import { colorToRgb, calculateBoidRotation } from "./utils";
-import { transformBodyPartWebGL, type BodyPartType } from "@/lib/coordinates";
+import { calculateBoidRotation, colorToRgb } from "./utils";
 
 export type BodyPartsInstanceData = {
   boidPositions: Float32Array;
@@ -19,6 +22,10 @@ export type BodyPartsInstanceData = {
   partOffsets: Float32Array;
   partRotations: Float32Array;
   partScales: Float32Array;
+  // Session 102: Multi-color attributes (generic naming!)
+  primaryColors: Float32Array;
+  secondaryColors: Float32Array;
+  tertiaryColors: Float32Array;
   count: number;
 };
 
@@ -31,6 +38,7 @@ type BodyPartData = {
   partOffset: [number, number];
   partRotation: number;
   partScale: number;
+  partType: RenderBodyPartType; // Session 103: Track part type for color mapping
 };
 
 /**
@@ -40,7 +48,7 @@ type BodyPartData = {
 export const prepareBodyPartsData = (
   boids: Boid[],
   speciesConfigs: Record<string, SpeciesConfig>,
-  bodyPartsAtlas: BodyPartsAtlasResult | null
+  bodyPartsAtlas: BodyPartsAtlasResult | null,
 ): BodyPartsInstanceData | null => {
   if (!bodyPartsAtlas) return null;
 
@@ -56,7 +64,7 @@ export const prepareBodyPartsData = (
     // Boid properties
     const boidRotation = calculateBoidRotation(
       boid.velocity.x,
-      boid.velocity.y
+      boid.velocity.y,
     );
     const boidColor = colorToRgb(boid.phenotype.color);
     // Session 96: Use phenotype baseSize (== collisionRadius) for body parts.
@@ -65,13 +73,13 @@ export const prepareBodyPartsData = (
 
     // Add each body part
     for (const part of bodyParts) {
-      const partType = typeof part === "string" ? part : part.type;
+      const partType = part.type;
 
       // Skip glow (handled differently)
       if (partType === "glow") continue;
 
       // Get UV coordinates for this part type
-      const partUV = bodyPartsAtlas.partUVMap.get(partType);
+      const partUV = bodyPartsAtlas.uvMap.get(partType);
       if (!partUV) continue;
 
       // Part properties (from genome or defaults)
@@ -89,8 +97,8 @@ export const prepareBodyPartsData = (
       const { offset, rotation } = transformBodyPartWebGL(
         { x: partPosX, y: partPosY },
         partRotation,
-        partType as BodyPartType,
-        boidScale
+        partType,
+        boidScale,
       );
 
       parts.push({
@@ -109,6 +117,7 @@ export const prepareBodyPartsData = (
         // Formula: partSize (genome, percentage of body) * boidScale (collision radius)
         // Example: partSize=0.7 (70% of body) * boidScale=5 = partScale=3.5 (radius in world units)
         partScale: partSize * boidScale,
+        partType, // Session 103: Store part type for color mapping
       });
     }
   }
@@ -125,6 +134,10 @@ export const prepareBodyPartsData = (
   const partOffsets = new Float32Array(count * 2);
   const partRotations = new Float32Array(count);
   const partScales = new Float32Array(count);
+  // Session 102: Multi-color attributes (generic!)
+  const primaryColors = new Float32Array(count * 3);
+  const secondaryColors = new Float32Array(count * 3);
+  const tertiaryColors = new Float32Array(count * 3);
 
   for (let i = 0; i < count; i++) {
     const part = parts[i];
@@ -142,6 +155,58 @@ export const prepareBodyPartsData = (
     partOffsets[i * 2 + 1] = part.partOffset[1];
     partRotations[i] = part.partRotation;
     partScales[i] = part.partScale;
+
+    // Session 102: Multi-color attributes (computed based on part type!)
+    // For eyes: Primary=white, Secondary=boid color, Tertiary=black
+    // Session 103: For shells: Primary=dark border, Secondary=cell fill, Tertiary=scute lines
+    // For other parts: All use boid color
+
+    // Get the part type from stored data
+    const partType = part.partType;
+
+    // Convert boid color from normalized RGB to hex format for color manipulation
+    const boidColorHex = `rgb(${Math.round(part.boidColor[0] * 255)}, ${Math.round(part.boidColor[1] * 255)}, ${Math.round(part.boidColor[2] * 255)})`;
+
+    let primary: [number, number, number];
+    let secondary: [number, number, number];
+    let tertiary: [number, number, number];
+
+    if (partType === "eye") {
+      // Eyes: white sclera, colored iris, black pupil
+      primary = [1.0, 1.0, 1.0]; // White
+      secondary = part.boidColor; // Boid color
+      tertiary = [0.0, 0.0, 0.0]; // Black
+    } else if (partType === "shell") {
+      // Session 103: Shell colors
+      const borderColor = darken(boidColorHex, 2.5); // Very dark for border
+      const cellColor = boidColorHex; // Primary boid color for fills
+      const lineColor = darken(boidColorHex, 1.5); // Dark but contrasts with border
+
+      const borderRgb = toRgb(borderColor);
+      const cellRgb = toRgb(cellColor);
+      const lineRgb = toRgb(lineColor);
+
+      primary = [borderRgb[0] / 255, borderRgb[1] / 255, borderRgb[2] / 255]; // Border
+      secondary = [cellRgb[0] / 255, cellRgb[1] / 255, cellRgb[2] / 255]; // Cells
+      tertiary = [lineRgb[0] / 255, lineRgb[1] / 255, lineRgb[2] / 255]; // Lines
+    } else {
+      // Other parts: use boid color for all
+      primary = part.boidColor;
+      secondary = part.boidColor;
+      tertiary = part.boidColor;
+    }
+
+    primaryColors[i * 3] = primary[0];
+    primaryColors[i * 3 + 1] = primary[1];
+    primaryColors[i * 3 + 2] = primary[2];
+
+    secondaryColors[i * 3] = secondary[0];
+    secondaryColors[i * 3 + 1] = secondary[1];
+    secondaryColors[i * 3 + 2] = secondary[2];
+
+    tertiaryColors[i * 3] = tertiary[0];
+    tertiaryColors[i * 3 + 1] = tertiary[1];
+    tertiaryColors[i * 3 + 2] = tertiary[2];
   }
 
   return {
@@ -153,6 +218,9 @@ export const prepareBodyPartsData = (
     partOffsets,
     partRotations,
     partScales,
+    primaryColors,
+    secondaryColors,
+    tertiaryColors,
     count,
   };
 };

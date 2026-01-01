@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { IconBrandGithub, IconDna, IconFish, IconBrain } from "@tabler/icons-react";
+import {
+  IconBrandGithub,
+  IconDna,
+  IconFish,
+  IconBrain,
+} from "@tabler/icons-react";
 
 export const Route = createFileRoute("/about")({
   component: About,
@@ -22,11 +27,11 @@ function About() {
           <h2 className="text-2xl font-semibold">Overview</h2>
           <div className="space-y-3 text-muted-foreground">
             <p>
-              Emergent Boids is a real-time ecosystem simulation that demonstrates
-              how complex behaviors emerge from simple rules. Watch as populations
-              of predators and prey evolve through genetic inheritance, navigate
-              their world using flocking algorithms, and adapt their behavior
-              based on survival pressures.
+              Emergent Boids is a real-time ecosystem simulation that
+              demonstrates how complex behaviors emerge from simple rules. Watch
+              as populations of predators and prey evolve through genetic
+              inheritance, navigate their world using flocking algorithms, and
+              adapt their behavior based on survival pressures.
             </p>
             <p>
               Built with modern web technologies (React, TypeScript, WebGL), the
@@ -82,8 +87,8 @@ function About() {
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold">Philosophy</h2>
           <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground">
-            "Everything is information processing. Simple rules compose. Emergence
-            is reliable. No central governor needed."
+            "Everything is information processing. Simple rules compose.
+            Emergence is reliable. No central governor needed."
           </blockquote>
           <p className="text-sm text-muted-foreground">
             This project embodies a philosophy of compositional systems - where

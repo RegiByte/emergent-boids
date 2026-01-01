@@ -79,7 +79,7 @@ export function ControlsSidebar({
     "controls" | "species" | "events" | "stats" | "graphs"
   >("controls");
   const [activeSpecies, setActiveSpecies] = useState(
-    speciesIds[0] || "explorer"
+    speciesIds[0] || "explorer",
   );
   const [seedInput, setSeedInput] = useState(config.randomSeed || "");
 
@@ -376,7 +376,7 @@ export function ControlsSidebar({
                     const json = exportCurrentStats(
                       engine,
                       runtimeStore,
-                      lifecycleManager.getMutationCounters()
+                      lifecycleManager.getMutationCounters(),
                     );
                     copyToClipboard(json, "Current Stats (JSON)");
                     toast.success("Stats copied to clipboard!");
@@ -390,7 +390,9 @@ export function ControlsSidebar({
                   size="sm"
                   className="w-full justify-start"
                   onClick={() => {
-                    const jsonl = exportEvolutionJSONL(analytics.evolutionHistory);
+                    const jsonl = exportEvolutionJSONL(
+                      analytics.evolutionHistory,
+                    );
                     copyToClipboard(jsonl, "Evolution Data (JSONL)");
                     toast.success("Evolution data copied! (JSONL format)");
                   }}
@@ -414,7 +416,7 @@ export function ControlsSidebar({
                           samplingRates: [1, 3, 10, 50, 100],
                           includeMetadata: true,
                           includeCurrentStats: true,
-                        }
+                        },
                       );
                       toast.success("Evolution data exported as ZIP!");
                     } catch (error) {
@@ -427,7 +429,8 @@ export function ControlsSidebar({
                 </Button>
 
                 <p className="text-xs text-muted-foreground">
-                  {analytics.evolutionHistory.length} snapshots • Multi-rate JSONL
+                  {analytics.evolutionHistory.length} snapshots • Multi-rate
+                  JSONL
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Rates: 1x, 3x, 10x, 50x, 100x
@@ -561,7 +564,9 @@ export function ControlsSidebar({
             {/* Species Settings - Now displays genome traits */}
             {species && (
               <SidebarGroup className="px-0">
-                <SidebarGroupLabel style={{ color: species.baseGenome.visual.color }}>
+                <SidebarGroupLabel
+                  style={{ color: species.baseGenome.visual.color }}
+                >
                   {species.name} Traits
                 </SidebarGroupLabel>
                 <SidebarGroupContent className="px-4">
@@ -574,7 +579,10 @@ export function ControlsSidebar({
                           <div className="flex justify-between items-center">
                             <Label className="text-xs">Speed</Label>
                             <span className="text-xs font-mono text-primary">
-                              {(species.baseGenome.traits.speed * 100).toFixed(0)}%
+                              {(species.baseGenome.traits.speed * 100).toFixed(
+                                0,
+                              )}
+                              %
                             </span>
                           </div>
                         </div>
@@ -583,7 +591,10 @@ export function ControlsSidebar({
                           <div className="flex justify-between items-center">
                             <Label className="text-xs">Force</Label>
                             <span className="text-xs font-mono text-primary">
-                              {(species.baseGenome.traits.force * 100).toFixed(0)}%
+                              {(species.baseGenome.traits.force * 100).toFixed(
+                                0,
+                              )}
+                              %
                             </span>
                           </div>
                         </div>
@@ -592,7 +603,10 @@ export function ControlsSidebar({
                           <div className="flex justify-between items-center">
                             <Label className="text-xs">Sociability</Label>
                             <span className="text-xs font-mono text-primary">
-                              {(species.baseGenome.traits.sociability * 100).toFixed(0)}%
+                              {(
+                                species.baseGenome.traits.sociability * 100
+                              ).toFixed(0)}
+                              %
                             </span>
                           </div>
                         </div>
@@ -601,7 +615,10 @@ export function ControlsSidebar({
                           <div className="flex justify-between items-center">
                             <Label className="text-xs">Fear Response</Label>
                             <span className="text-xs font-mono text-primary">
-                              {(species.baseGenome.traits.fearResponse * 100).toFixed(0)}%
+                              {(
+                                species.baseGenome.traits.fearResponse * 100
+                              ).toFixed(0)}
+                              %
                             </span>
                           </div>
                         </div>

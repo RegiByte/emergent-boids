@@ -5,7 +5,7 @@
  * Shows circles for picker mode and followed boid.
  */
 
-import type { Boid } from "../../../boids/vocabulary/schemas/prelude";
+import type { Boid } from "../../../boids/vocabulary/schemas/entities";
 import type { CameraAPI } from "../../camera";
 
 /**
@@ -53,7 +53,7 @@ const SELECTION_CONFIG = {
  */
 export const prepareSelectionData = (
   camera: CameraAPI,
-  boids: Boid[]
+  boids: Boid[],
 ): SelectionInstanceData => {
   const circles: Array<{
     centerX: number;
@@ -71,7 +71,8 @@ export const prepareSelectionData = (
 
     // Picker circle (dashed circle around mouse - we'll use solid for now)
     // Convert screen-space radius (80px) to world-space radius
-    const pickerRadiusWorld = SELECTION_CONFIG.picker.radiusScreenSpace / camera.zoom;
+    const pickerRadiusWorld =
+      SELECTION_CONFIG.picker.radiusScreenSpace / camera.zoom;
     circles.push({
       centerX: mouseWorldPos.x,
       centerY: mouseWorldPos.y,
@@ -103,13 +104,14 @@ export const prepareSelectionData = (
   if (camera.mode.type === "following") {
     const followedBoid = boids.find(
       (b) =>
-        b.id === (camera.mode as { type: "following"; boidId: string }).boidId
+        b.id === (camera.mode as { type: "following"; boidId: string }).boidId,
     );
     if (followedBoid) {
       // Pulsing effect based on time
       // Use performance.now() for animation (not simulation time, so it doesn't pause)
       const time = performance.now() / 1000;
-      const pulsePhase = time * SELECTION_CONFIG.following.pulseSpeed * Math.PI * 2;
+      const pulsePhase =
+        time * SELECTION_CONFIG.following.pulseSpeed * Math.PI * 2;
       const pulseScale =
         SELECTION_CONFIG.following.pulseScaleMin +
         (Math.sin(pulsePhase) + 1) *
@@ -156,4 +158,3 @@ export const prepareSelectionData = (
 
   return { centers, radii, colors, alphas, count };
 };
-

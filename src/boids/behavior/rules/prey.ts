@@ -57,12 +57,12 @@ export const desperateEatingRule: BehaviorRule = {
  *
  * Maps: Priority 1 from updatePreyStance
  * Flee from predators with panic/tactical substates.
- * 
+ *
  * NEW: Threat assessment based on predator stance:
  * - hunting = full threat (flee immediately)
  * - idle/eating = reduced threat (cautious but less urgent)
  * - mating/seeking_mate = minimal threat (barely react)
- * 
+ *
  * This makes prey behave intelligently - they recognize when predators
  * are distracted and don't waste energy fleeing unnecessarily.
  */
@@ -113,7 +113,7 @@ export const fleeingRule: BehaviorRule = {
  *
  * Maps: Priority 2 from updatePreyStance
  * Eat when energy is low (< 70%) and reasonably safe.
- * 
+ *
  * NEW: Uses threat level instead of binary predator check.
  * Prey will eat near idle/eating predators if threat is low enough.
  */
@@ -128,8 +128,9 @@ export const normalEatingRule: BehaviorRule = {
     if (ctx.energyRatio > 0.7) return null; // Not hungry
     if (ctx.nearbyFoodCount === 0) return null;
     if (ctx.closestFoodDistance === null) return null;
-    if (ctx.closestFoodDistance > FOOD_CONSTANTS.FOOD_EATING_RADIUS) return null;
-    
+    if (ctx.closestFoodDistance > FOOD_CONSTANTS.FOOD_EATING_RADIUS)
+      return null;
+
     // NEW: Check threat level instead of binary predator count
     // Allow eating if threat is low (< 0.3) even with predators nearby
     // This means: idle/mating predators won't stop eating, only hunting ones
@@ -151,7 +152,7 @@ export const normalEatingRule: BehaviorRule = {
  *
  * Maps: Priority 3 from updatePreyStance
  * Currently mating with paired mate.
- * 
+ *
  * NEW: Commitment bonus prevents switching mates midway through mating.
  * Score increases with time spent together (commitment time).
  */
@@ -174,7 +175,10 @@ export const matingRule: BehaviorRule = {
       stance: prey.mating,
       substate: null,
       score: 500 + commitmentBonus, // Higher score with more commitment
-      reason: ctx.mateCommitmentTime > 0 ? reasons.mate_committed : reasons.mate_found,
+      reason:
+        ctx.mateCommitmentTime > 0
+          ? reasons.mate_committed
+          : reasons.mate_found,
       urgent: false,
       ruleName: matingRule.metadata.name,
     };
@@ -186,7 +190,7 @@ export const matingRule: BehaviorRule = {
  *
  * Maps: Priority 4 from updatePreyStance
  * Looking for a mate (ready to reproduce).
- * 
+ *
  * NEW: Checks readyToMate flag (age, cooldown, energy requirements).
  * NEW: Environment pressure reduces mating desire when overpopulated.
  * NEW: Only seek mate if available mates nearby (prevents pointless stance switch).
@@ -206,14 +210,17 @@ export const seekingMateRule: BehaviorRule = {
 
     // Environment pressure penalty: reduce score when overpopulated
     // 0% pressure = full score (400), 100% pressure = 50% score (200)
-    const pressurePenalty = 1.0 - (ctx.environmentPressure * 0.5);
+    const pressurePenalty = 1.0 - ctx.environmentPressure * 0.5;
     const adjustedScore = 400 * pressurePenalty;
 
     return {
       stance: prey.seeking_mate,
       substate: null,
       score: adjustedScore,
-      reason: ctx.environmentPressure > 0.5 ? reasons.environment_pressure : reasons.mate_ready,
+      reason:
+        ctx.environmentPressure > 0.5
+          ? reasons.environment_pressure
+          : reasons.mate_ready,
       urgent: false,
       ruleName: seekingMateRule.metadata.name,
     };
@@ -225,7 +232,7 @@ export const seekingMateRule: BehaviorRule = {
  *
  * Search for food when hungry but no food nearby.
  * This gives prey active food-seeking behavior instead of just waiting.
- * 
+ *
  * Score increases with hunger level (more hungry = higher priority).
  */
 export const foragingRule: BehaviorRule = {

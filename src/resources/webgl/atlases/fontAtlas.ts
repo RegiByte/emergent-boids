@@ -1,27 +1,25 @@
 /**
  * Font Atlas Generation
- * 
+ *
  * Creates a bitmap font texture atlas for text rendering.
  * Each character is rendered to a grid cell with UV coordinates and width metrics.
  */
 
 import type REGL from "regl";
+import type { AtlasResult } from "./types";
+import type { PrettifyType } from "@/utils/types";
+import { createPreviewURL } from "./utils";
 
-export type FontAtlasResult = {
-  canvas: HTMLCanvasElement;
-  charUVMap: Map<
-    string,
-    {
-      u: number;
-      v: number;
-      width: number; // Actual character width for proper spacing
-    }
-  >;
-  gridSize: number;
-  cellSize: number; // UV size of each cell (1.0 / gridSize)
-  charSize: number; // Size of each cell in pixels
-  fontSize: number;
-};
+export type FontAtlasResult = PrettifyType<
+  AtlasResult<{
+    u: number;
+    v: number;
+    width: number;
+  }> & {
+    charSize: number;
+    fontSize: number;
+  }
+>;
 
 /**
  * Create bitmap font atlas for text rendering
@@ -29,7 +27,7 @@ export type FontAtlasResult = {
 export const createFontAtlas = (
   fontFamily: string,
   fontSize: number,
-  chars: string
+  chars: string,
 ): FontAtlasResult | null => {
   const charSize = fontSize * 1.5; // Extra padding for descenders/ascenders
   const uniqueChars = Array.from(new Set(chars));
@@ -90,11 +88,12 @@ export const createFontAtlas = (
 
   return {
     canvas: atlasCanvas,
-    charUVMap,
+    uvMap: charUVMap,
     gridSize,
     cellSize: 1.0 / gridSize,
     charSize, // Size of each cell in pixels
     fontSize,
+    previewURL: createPreviewURL(atlasCanvas),
   };
 };
 
@@ -103,7 +102,7 @@ export const createFontAtlas = (
  */
 export const createFontTexture = (
   regl: REGL.Regl,
-  atlas: FontAtlasResult
+  atlas: FontAtlasResult,
 ): REGL.Texture2D => {
   return regl.texture({
     data: atlas.canvas,
@@ -120,5 +119,3 @@ export const createFontTexture = (
  */
 export const DEFAULT_FONT_CHARS =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 :.,-+()[]{}!?@#$%&*=/";
-
-

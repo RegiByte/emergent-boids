@@ -22,7 +22,7 @@ export const canvas = defineResource({
       "top-[50%]",
       "left-[50%]",
       "translate-x-[-50%]",
-      "translate-y-[-50%]"
+      "translate-y-[-50%]",
     );
 
     const ctx = canvas.getContext("2d", {

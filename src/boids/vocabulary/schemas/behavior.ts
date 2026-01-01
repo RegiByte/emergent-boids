@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { reproductionTypeKeywords, roleKeywords } from "../keywords";
-import { stanceSchema } from "./prelude";
+import { stanceSchema } from "./primitives";
 
 /**
  * Behavior Schemas - Type-safe behavior scoring system
@@ -152,7 +152,7 @@ export const stanceDecisionSchema = z.object({
  */
 export const minimumStanceDurationSchema = z.record(
   z.string(),
-  z.number().int().min(0)
+  z.number().int().min(0),
 );
 
 // Type exports

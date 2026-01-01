@@ -163,7 +163,7 @@ export const renderer = defineResource({
               rendererMode: newMode,
             },
           });
-          
+
           // Show/hide appropriate canvas
           if (newMode === "webgl") {
             canvas.canvas.style.display = "none";
@@ -172,9 +172,9 @@ export const renderer = defineResource({
             canvas.canvas.style.display = "block";
             webglRenderer.canvas.style.display = "none";
           }
-          
+
           console.log(
-            `🎮 Renderer: ${newMode.toUpperCase()} ${newMode === "webgl" ? "⚡" : "🖌️"}`
+            `🎮 Renderer: ${newMode.toUpperCase()} ${newMode === "webgl" ? "⚡" : "🖌️"}`,
           );
           break;
         }
@@ -300,7 +300,7 @@ export const renderer = defineResource({
       // Viewport culling: Only render boids visible in camera viewport
       profiler?.start("render.culling");
       const visibleBoids = engine.boids.filter((boid) =>
-        camera.isInViewport(boid.position.x, boid.position.y, 100)
+        camera.isInViewport(boid.position.x, boid.position.y, 100),
       );
       profiler?.end("render.culling");
 
@@ -453,12 +453,12 @@ export const renderer = defineResource({
         const followedBoid = engine.boids.find(
           (b) =>
             b.id ===
-            (camera.mode as Extract<CameraMode, { type: "following" }>).boidId
+            (camera.mode as Extract<CameraMode, { type: "following" }>).boidId,
         );
         if (followedBoid) {
           camera.updateFollowPosition(
             followedBoid.position.x,
-            followedBoid.position.y
+            followedBoid.position.y,
           );
         } else {
           // Boid died or disappeared - exit follow mode
@@ -473,7 +473,7 @@ export const renderer = defineResource({
 
       if (renderAccumulator >= RENDER_INTERVAL) {
         profiler?.start("frame.render");
-        
+
         // Choose renderer based on UI setting
         const { ui } = runtimeStore.store.getState();
         if (ui.rendererMode === "webgl") {
@@ -481,7 +481,7 @@ export const renderer = defineResource({
         } else {
           draw();
         }
-        
+
         profiler?.end("frame.render");
 
         // Subtract interval (not reset) to maintain consistent timing

@@ -1,10 +1,7 @@
-import type {
-  Genome,
-  BodyPart,
-  MutationConfig,
-} from "../vocabulary/schemas/genetics";
+import type { Genome, MutationConfig } from "../vocabulary/schemas/genetics";
 import type { DomainRNG } from "@/lib/seededRandom";
 import { mixColors, lighten, darken, saturate, desaturate } from "@/lib/colors";
+import { BodyPart } from "@/boids/vocabulary/schemas/visual";
 
 /**
  * Genome Inheritance - Mix parent genomes and apply mutations
@@ -56,7 +53,7 @@ export function mutateValue(
   magnitude: number,
   min: number,
   max: number,
-  rng: DomainRNG
+  rng: DomainRNG,
 ): { value: number; mutated: boolean } {
   // Check if mutation occurs
   if (rng.next() > rate) {
@@ -92,7 +89,7 @@ export function inheritColor(
   color1: string,
   color2: string | undefined,
   mutationRate: number,
-  rng: DomainRNG
+  rng: DomainRNG,
 ): string {
   // Blend parent colors if both exist (for future cross-species breeding)
   // For now, same species = same color, so this just uses parent1
@@ -216,7 +213,7 @@ export function inheritBodyParts(
   parts1: BodyPart[],
   parts2: BodyPart[] | undefined,
   mutationRate: number,
-  rng: DomainRNG
+  rng: DomainRNG,
 ): BodyPart[] {
   let inheritedParts: BodyPart[];
 
@@ -265,7 +262,7 @@ export function inheritGenome(
   parent2: Genome | undefined,
   mutationConfig: MutationConfig = DEFAULT_MUTATION_CONFIG,
   rng: DomainRNG,
-  enableLogging: boolean = false
+  enableLogging: boolean = false,
 ): {
   genome: Genome;
   hadTraitMutation: boolean;
@@ -273,7 +270,7 @@ export function inheritGenome(
   hadBodyPartMutation: boolean;
 } {
   const isAsexual = !parent2;
-  
+
   if (enableLogging) {
     console.log("🧬 GENOME INHERITANCE", {
       type: isAsexual ? "ASEXUAL" : "SEXUAL",
@@ -326,7 +323,7 @@ export function inheritGenome(
       mutationConfig.traitMagnitude,
       min,
       max,
-      rng
+      rng,
     );
 
     traits[key] = value;
@@ -348,20 +345,21 @@ export function inheritGenome(
     parent1.visual.color,
     parent2?.visual.color,
     mutationConfig.colorRate,
-    rng
+    rng,
   );
 
   const bodyParts = inheritBodyParts(
     parent1.visual.bodyParts,
     parent2?.visual.bodyParts,
     mutationConfig.visualRate,
-    rng
+    rng,
   );
 
   // Track if mutations occurred
   const hadTraitMutation = mutations.length > 0;
   const hadColorMutation = color !== parent1.visual.color;
-  const hadBodyPartMutation = bodyParts.length !== parent1.visual.bodyParts.length;
+  const hadBodyPartMutation =
+    bodyParts.length !== parent1.visual.bodyParts.length;
 
   // 3. Set genealogy
   const parentIds: [string, string] | null = isAsexual
@@ -384,7 +382,10 @@ export function inheritGenome(
   };
 
   // 5. Log inheritance results
-  if (enableLogging && (hadTraitMutation || hadColorMutation || hadBodyPartMutation)) {
+  if (
+    enableLogging &&
+    (hadTraitMutation || hadColorMutation || hadBodyPartMutation)
+  ) {
     console.log("✨ MUTATION DETECTED!", {
       generation: offspring.generation,
       traitMutations: mutations.length,
@@ -399,7 +400,7 @@ export function inheritGenome(
         offspringColor: color,
         parent1BodyParts: parent1.visual.bodyParts.length,
         offspringBodyParts: bodyParts.length,
-      }
+      },
     });
   }
 

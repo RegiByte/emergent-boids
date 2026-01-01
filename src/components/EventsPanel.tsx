@@ -23,7 +23,7 @@ import {
   IconAdjustments,
 } from "@tabler/icons-react";
 import type { AllEvents } from "@/boids/vocabulary/schemas/events";
-import type { SpeciesRecord } from "@/boids/vocabulary/schemas/prelude";
+import type { SpeciesRecord } from "@/boids/vocabulary/schemas/species";
 import { eventKeywords } from "@/boids/vocabulary/keywords";
 import { useMemo } from "react";
 import { getTickWindowKey, getCurrentTickWindow } from "@/lib/tickWindowing";
@@ -83,7 +83,7 @@ const formatEventType = (eventType: string) => {
 // Get aggregated event summary
 const getAggregatedSummary = (
   aggregated: AggregatedEvent,
-  species: SpeciesRecord
+  species: SpeciesRecord,
 ) => {
   const { eventType, count, events } = aggregated;
 
@@ -147,7 +147,7 @@ const getAggregatedSummary = (
     });
 
     const causeParts = Object.entries(causeCount).map(
-      ([cause, count]) => `${cause}: ${count}`
+      ([cause, count]) => `${cause}: ${count}`,
     );
 
     return `${speciesParts.join(", ")} • ${causeParts.join(", ")}`;
@@ -232,7 +232,7 @@ type AggregatedEvent = {
 // One card per (eventType, window) combination
 function aggregateEvents(
   events: Array<AggregatedEventItem>,
-  windowTicks: number
+  windowTicks: number,
 ): AggregatedEvent[] {
   if (events.length === 0) return [];
 
@@ -248,7 +248,7 @@ function aggregateEvents(
     const windowKey = `agg-${getTickWindowKey(
       eventType,
       event.tick,
-      windowTicks
+      windowTicks,
     )}`;
 
     // Get or create window
@@ -311,7 +311,7 @@ export function EventsPanel() {
   const aggregatedEvents = useMemo(() => {
     // UI-level filter: Hide noisy events from display (but they're still stored)
     const filtered = recentEvents.filter(
-      (event) => !config.ignoreEventTypes.includes(event.event.type)
+      (event) => !config.ignoreEventTypes.includes(event.event.type),
     );
     const aggregated = aggregateEvents(filtered, config.aggregationWindowTicks);
 
@@ -330,23 +330,26 @@ export function EventsPanel() {
   const maxEventsCaptured = useAnalyticsStore(
     (state) =>
       state.events.config.customFilter?.maxEvents ??
-      state.events.config.defaultFilter.maxEvents
+      state.events.config.defaultFilter.maxEvents,
   );
   const allowedEventTypes = useAnalyticsStore(
     (state) =>
       state.events.config.customFilter?.allowedEventTypes ??
-      state.events.config.defaultFilter.allowedEventTypes
+      state.events.config.defaultFilter.allowedEventTypes,
   );
   const isCustomFilterActive = useAnalyticsStore(
-    (state) => state.events.config.customFilter !== null
+    (state) => state.events.config.customFilter !== null,
   );
 
   // Event statistics
-  const eventCounts = recentEvents.reduce((acc, { event }) => {
-    const category = event.type.split("/")[0] || "other";
-    acc[category] = (acc[category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const eventCounts = recentEvents.reduce(
+    (acc, { event }) => {
+      const category = event.type.split("/")[0] || "other";
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
   const copyEventsToClipboard = () => {
     const eventsText = recentEvents
@@ -531,10 +534,10 @@ export function EventsPanel() {
 
                   // Show time range (compact, no tick info - that's in the header)
                   const timeStart = new Date(
-                    aggregated.firstTimestamp
+                    aggregated.firstTimestamp,
                   ).toLocaleTimeString();
                   const timeEnd = new Date(
-                    aggregated.lastTimestamp
+                    aggregated.lastTimestamp,
                   ).toLocaleTimeString();
                   const timeDisplay =
                     aggregated.count === 1

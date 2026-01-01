@@ -55,7 +55,7 @@ export function createProfilerState(): ProfilerState {
 export function updateMetric(
   existing: ProfileMetric | undefined,
   name: string,
-  duration: number
+  duration: number,
 ): ProfileMetric {
   if (existing) {
     const totalTime = existing.totalTime + duration;
@@ -86,7 +86,7 @@ export function updateMetric(
  * Sort metrics by average time (descending)
  */
 export function sortMetricsByAvgTime(
-  metrics: ProfileMetric[]
+  metrics: ProfileMetric[],
 ): ProfileMetric[] {
   return [...metrics].sort((a, b) => b.avgTime - a.avgTime);
 }
@@ -96,12 +96,12 @@ export function sortMetricsByAvgTime(
  */
 export function formatSummary(
   metrics: ProfileMetric[],
-  frameMetrics: FrameMetrics
+  frameMetrics: FrameMetrics,
 ): string {
   const lines: string[] = [];
 
   lines.push(
-    "\n╔════════════════════════════════════════════════════════════╗"
+    "\n╔════════════════════════════════════════════════════════════╗",
   );
   lines.push("║              PERFORMANCE PROFILER SUMMARY                  ║");
   lines.push("╠════════════════════════════════════════════════════════════╣");
@@ -109,12 +109,12 @@ export function formatSummary(
     `║ FPS: ${frameMetrics.fps
       .toFixed(1)
       .padEnd(10)} Frame: ${frameMetrics.frameTime.toFixed(2)}ms`.padEnd(61) +
-      "║"
+      "║",
   );
   lines.push(
     `║ Update: ${frameMetrics.updateTime.toFixed(
-      2
-    )}ms   Render: ${frameMetrics.renderTime.toFixed(2)}ms`.padEnd(61) + "║"
+      2,
+    )}ms   Render: ${frameMetrics.renderTime.toFixed(2)}ms`.padEnd(61) + "║",
   );
   lines.push("╠════════════════════════════════════════════════════════════╣");
   lines.push("║ Operation                    Avg(ms)  Min(ms)  Max(ms) Calls║");
@@ -131,7 +131,7 @@ export function formatSummary(
   }
 
   lines.push(
-    "╚════════════════════════════════════════════════════════════╝\n"
+    "╚════════════════════════════════════════════════════════════╝\n",
   );
 
   return lines.join("\n");
@@ -152,7 +152,7 @@ export type Profiler = {
     frameTime: number,
     fps: number,
     updateTime: number,
-    renderTime: number
+    renderTime: number,
   ) => void;
   getMetrics: () => ProfileMetric[];
   getFrameMetrics: () => FrameMetrics;
@@ -217,7 +217,7 @@ export const profiler = defineResource({
       frameTime: number,
       fps: number,
       updateTime: number,
-      renderTime: number
+      renderTime: number,
     ) => {
       if (!state.enabled) return;
 
@@ -253,7 +253,7 @@ export const profiler = defineResource({
       if (ruleMetrics.length > 0) {
         lines.push("\n🎯 RULE-LEVEL BREAKDOWN:");
         lines.push(
-          "═══════════════════════════════════════════════════════════"
+          "═══════════════════════════════════════════════════════════",
         );
         const sorted = ruleMetrics.sort((a, b) => b.totalTime - a.totalTime);
         for (const metric of sorted) {
@@ -266,15 +266,15 @@ export const profiler = defineResource({
             100
           ).toFixed(1)}%`.padStart(6);
           lines.push(
-            `${name} Total: ${total}  Avg: ${avg}  Calls: ${calls}  ${pct}`
+            `${name} Total: ${total}  Avg: ${avg}  Calls: ${calls}  ${pct}`,
           );
         }
         lines.push(
-          "═══════════════════════════════════════════════════════════\n"
+          "═══════════════════════════════════════════════════════════\n",
         );
       } else {
         lines.push(
-          "\n⚠️  No rule metrics found. Profiler may not be enabled during rule execution.\n"
+          "\n⚠️  No rule metrics found. Profiler may not be enabled during rule execution.\n",
         );
       }
       console.log(lines.join("\n"));

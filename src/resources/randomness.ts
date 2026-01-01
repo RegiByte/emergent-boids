@@ -65,7 +65,7 @@ export const randomness = defineResource({
     let rng = createSeededRNG(seed);
 
     console.log(
-      `[randomness] Initialized with seed: "${seed}" (${rng.getMasterSeedNumber()})`
+      `[randomness] Initialized with seed: "${seed}" (${rng.getMasterSeedNumber()})`,
     );
 
     return {
@@ -87,7 +87,7 @@ export const randomness = defineResource({
         // Re-initialize RNG with new seed
         rng = createSeededRNG(newSeed);
         console.log(
-          `[randomness] Reset-initialized with seed: "${newSeed}" (${rng.getMasterSeedNumber()})`
+          `[randomness] Reset-initialized with seed: "${newSeed}" (${rng.getMasterSeedNumber()})`,
         );
       },
     };

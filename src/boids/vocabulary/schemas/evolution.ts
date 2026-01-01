@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  roleSchema,
-  reproductionTypeSchema,
-} from "@/boids/vocabulary/schemas/prelude.ts";
+import { roleSchema, reproductionTypeSchema } from "./primitives";
 
 // ============================================
 // Evolution Snapshot Schema
@@ -49,7 +46,7 @@ export const evolutionSnapshotSchema = z.object({
       old_age: z.number(),
       starvation: z.number(),
       predation: z.number(),
-    })
+    }),
   ),
 
   // ============================================
@@ -63,7 +60,7 @@ export const evolutionSnapshotSchema = z.object({
       min: z.number(), // Lowest energy boid
       max: z.number(), // Highest energy boid
       stdDev: z.number(), // Energy distribution spread
-    })
+    }),
   ),
 
   // ============================================
@@ -79,7 +76,7 @@ export const evolutionSnapshotSchema = z.object({
       mating: z.number().optional(),
       idle: z.number().optional(),
       eating: z.number().optional(),
-    })
+    }),
   ),
 
   // ============================================
@@ -94,7 +91,7 @@ export const evolutionSnapshotSchema = z.object({
       youngCount: z.number(), // Age < minReproductionAge
       matureCount: z.number(), // Age >= minReproductionAge
       elderCount: z.number(), // Age > 75% of maxAge
-    })
+    }),
   ),
 
   // ============================================
@@ -140,7 +137,7 @@ export const evolutionSnapshotSchema = z.object({
 
       // Territory metrics (predators)
       territoryOverlap: z.number().optional(), // % of space shared with other predators
-    })
+    }),
   ),
 
   // ============================================
@@ -163,7 +160,7 @@ export const evolutionSnapshotSchema = z.object({
       matingCount: z.number(), // How many currently paired
       reproductionReadyCount: z.number(), // Mature + enough energy + no cooldown
       avgReproductionCooldown: z.number(), // Mean cooldown remaining
-    })
+    }),
   ),
 
   // ============================================
@@ -192,7 +189,7 @@ export const evolutionSnapshotSchema = z.object({
           fearFactor: z.number(),
           reproductionType: reproductionTypeSchema,
           offspringCount: z.number(),
-        })
+        }),
       ),
     })
     .optional(), // Made optional for size optimization
@@ -293,7 +290,7 @@ export const evolutionSnapshotSchema = z.object({
         bodyPartMutations: z.number(), // Count of body part changes
         totalOffspring: z.number(), // Total offspring created
       }),
-    })
+    }),
   ),
 
   // ============================================

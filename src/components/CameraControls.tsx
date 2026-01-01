@@ -8,11 +8,9 @@ export function CameraControls() {
   // Use reactive mode store for immediate UI updates
   const cameraMode = camera.useModeStore((state) => state.mode);
 
-  const worldWidth = runtimeStore.useStore(
-    (state) => state.config.world.width
-  );
+  const worldWidth = runtimeStore.useStore((state) => state.config.world.width);
   const worldHeight = runtimeStore.useStore(
-    (state) => state.config.world.height
+    (state) => state.config.world.height,
   );
 
   return (
@@ -87,15 +85,15 @@ export function CameraControls() {
               cameraMode.type === "picker"
                 ? "bg-blue-500/40 hover:bg-blue-500/50 text-blue-200"
                 : cameraMode.type === "following"
-                ? "bg-yellow-500/40 hover:bg-yellow-500/50 text-yellow-200"
-                : "bg-primary/20 hover:bg-primary/30 text-primary"
+                  ? "bg-yellow-500/40 hover:bg-yellow-500/50 text-yellow-200"
+                  : "bg-primary/20 hover:bg-primary/30 text-primary"
             }`}
           >
             {cameraMode.type === "picker"
               ? "Cancel Picker"
               : cameraMode.type === "following"
-              ? "Follow Another"
-              : "Follow Boid"}
+                ? "Follow Another"
+                : "Follow Boid"}
           </button>
 
           {/* Show followed boid info with stop button */}

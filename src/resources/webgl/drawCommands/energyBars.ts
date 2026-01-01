@@ -35,7 +35,7 @@ export const ENERGY_BAR_CONFIG = {
  * @returns REGL draw command for energy bars
  */
 export const createEnergyBarsDrawCommand = (
-  regl: REGL.Regl
+  regl: REGL.Regl,
 ): REGL.DrawCommand => {
   return regl({
     vert: energyBarVertShader,
@@ -62,13 +62,13 @@ export const createEnergyBarsDrawCommand = (
 
     uniforms: {
       transform: (regl.prop as unknown as (name: string) => number[])(
-        "transform"
+        "transform",
       ),
       barWidth: ENERGY_BAR_CONFIG.width,
       barHeight: ENERGY_BAR_CONFIG.height,
       barOffsetY: ENERGY_BAR_CONFIG.offsetY,
       layerType: (regl.prop as unknown as (name: string) => number)(
-        "layerType"
+        "layerType",
       ),
     },
 

@@ -13,7 +13,7 @@
 
 import { stableEcosystemProfile } from "./stable-ecosystem";
 
-import type { SimulationProfile } from "../boids/vocabulary/schemas/prelude.ts";
+import type { SimulationProfile } from "../boids/vocabulary/schemas/world";
 
 /**
  * All available simulation profiles
@@ -36,8 +36,8 @@ export function getProfile(profileId: string): SimulationProfile {
   if (!profile) {
     throw new Error(
       `Profile not found: ${profileId}. Available profiles: ${Object.keys(
-        profiles
-      ).join(", ")}`
+        profiles,
+      ).join(", ")}`,
     );
   }
   return profile;

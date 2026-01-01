@@ -4,7 +4,7 @@
  * Prepares instance data for food source rendering.
  */
 
-import type { FoodSource } from "../../../boids/vocabulary/schemas/prelude";
+import type { FoodSource } from "../../../boids/vocabulary/schemas/entities";
 import { toRgb } from "../../../lib/colors";
 
 /**
@@ -36,7 +36,9 @@ const FOOD_CONFIG = {
  * @param foodSources - Array of food sources to render
  * @returns Instance data ready for GPU upload
  */
-export const prepareFoodData = (foodSources: FoodSource[]): FoodInstanceData => {
+export const prepareFoodData = (
+  foodSources: FoodSource[],
+): FoodInstanceData => {
   const count = foodSources.length;
   const positions = new Float32Array(count * 2);
   const colors = new Float32Array(count * 3);
@@ -72,4 +74,3 @@ export const prepareFoodData = (foodSources: FoodSource[]): FoodInstanceData => 
 
   return { positions, colors, radii, alphas, count };
 };
-

@@ -21,9 +21,9 @@ When simulation speed changes, wall-clock time becomes unreliable. Ticks represe
 Calculate which tick window a given tick belongs to.
 
 ```typescript
-getTickWindow(123, 10) // → { start: 120, end: 130 }
-getTickWindow(127, 10) // → { start: 120, end: 130 } // Same window!
-getTickWindow(130, 10) // → { start: 130, end: 140 } // New window
+getTickWindow(123, 10); // → { start: 120, end: 130 }
+getTickWindow(127, 10); // → { start: 120, end: 130 } // Same window!
+getTickWindow(130, 10); // → { start: 130, end: 140 } // New window
 ```
 
 ### `getTickWindowKey(category, tick, windowSize)`
@@ -31,8 +31,8 @@ getTickWindow(130, 10) // → { start: 130, end: 140 } // New window
 Generate a stable key for a tick window.
 
 ```typescript
-getTickWindowKey("reproduced", 123, 10) // → "reproduced-120-130"
-getTickWindowKey("caught", 127, 10)     // → "caught-120-130"
+getTickWindowKey("reproduced", 123, 10); // → "reproduced-120-130"
+getTickWindowKey("caught", 127, 10); // → "caught-120-130"
 ```
 
 ### `areInSameWindow(tick1, tick2, windowSize)`
@@ -40,8 +40,8 @@ getTickWindowKey("caught", 127, 10)     // → "caught-120-130"
 Check if two ticks are in the same window.
 
 ```typescript
-areInSameWindow(123, 127, 10) // → true
-areInSameWindow(123, 130, 10) // → false
+areInSameWindow(123, 127, 10); // → true
+areInSameWindow(123, 130, 10); // → false
 ```
 
 ---
@@ -92,7 +92,7 @@ const aggregated = aggregateByTickWindow(
     count: acc.count + 1,
     totalOffspring: acc.totalOffspring + event.offspring,
   }),
-  () => ({ count: 0, totalOffspring: 0 })
+  () => ({ count: 0, totalOffspring: 0 }),
 );
 
 // Result:
@@ -110,7 +110,7 @@ const aggregated = aggregateByTickWindow(
 Get the current tick window for "now".
 
 ```typescript
-getCurrentTickWindow(127, 10) // → { start: 120, end: 130 }
+getCurrentTickWindow(127, 10); // → { start: 120, end: 130 }
 ```
 
 ### `ticksUntilNextWindow(currentTick, windowSize)`
@@ -118,9 +118,9 @@ getCurrentTickWindow(127, 10) // → { start: 120, end: 130 }
 Calculate how many ticks until the next window.
 
 ```typescript
-ticksUntilNextWindow(123, 10) // → 7  (130 - 123)
-ticksUntilNextWindow(129, 10) // → 1  (130 - 129)
-ticksUntilNextWindow(130, 10) // → 10 (140 - 130)
+ticksUntilNextWindow(123, 10); // → 7  (130 - 123)
+ticksUntilNextWindow(129, 10); // → 1  (130 - 129)
+ticksUntilNextWindow(130, 10); // → 10 (140 - 130)
 ```
 
 ### `getOverlappingWindows(startTick, endTick, windowSize)`
@@ -128,7 +128,7 @@ ticksUntilNextWindow(130, 10) // → 10 (140 - 130)
 Get all tick windows that overlap with a tick range.
 
 ```typescript
-getOverlappingWindows(123, 145, 10)
+getOverlappingWindows(123, 145, 10);
 // → [
 //     { start: 120, end: 130 },
 //     { start: 130, end: 140 },
@@ -141,8 +141,8 @@ getOverlappingWindows(123, 145, 10)
 Format a tick window for display.
 
 ```typescript
-formatTickWindow({ start: 120, end: 130 })           // → "T120-T130"
-formatTickWindow({ start: 120, end: 130 }, "compact") // → "120-130"
+formatTickWindow({ start: 120, end: 130 }); // → "T120-T130"
+formatTickWindow({ start: 120, end: 130 }, "compact"); // → "120-130"
 ```
 
 ---
@@ -173,7 +173,7 @@ const perfMetrics = aggregateByTickWindow(
     totalFrames: acc.totalFrames + 1,
     totalTime: acc.totalTime + frame.duration,
   }),
-  () => ({ totalFrames: 0, totalTime: 0 })
+  () => ({ totalFrames: 0, totalTime: 0 }),
 );
 ```
 
@@ -186,7 +186,7 @@ const populationWindows = groupByTickWindow(
   snapshots,
   (s) => s.species,
   (s) => s.tick,
-  100 // 100-tick windows
+  100, // 100-tick windows
 );
 ```
 
@@ -201,7 +201,7 @@ const birthRates = aggregateByTickWindow(
   (e) => e.tick,
   10,
   (acc) => acc + 1,
-  () => 0
+  () => 0,
 );
 ```
 
@@ -231,6 +231,7 @@ const key = getTickWindowKey(item.category, item.tick, windowSize);
 ## Performance
 
 All functions are O(n) or better:
+
 - `getTickWindow`: O(1)
 - `getTickWindowKey`: O(1)
 - `areInSameWindow`: O(1)
@@ -260,11 +261,10 @@ expect(areInSameWindow(123, 130, 10)).toBe(false);
 ## Future Extensions
 
 Potential additions:
+
 - `getWindowProgress(tick, windowSize)` - % through current window
 - `getWindowsInRange(start, end, windowSize)` - Count windows in range
 - `alignToWindowBoundary(tick, windowSize)` - Round to nearest window start
 - `getAdjacentWindows(tick, windowSize)` - Get prev/next windows
 
 ---
-
-

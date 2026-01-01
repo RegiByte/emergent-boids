@@ -1,4 +1,4 @@
-import type { RenderShapeType } from "@/boids/vocabulary/schemas/prelude";
+import type { RenderShapeType } from "@/boids/vocabulary/schemas/visual";
 
 /**
  * Shape sizing helpers
@@ -40,7 +40,7 @@ export function shapeMaxExtentFactor(shape: RenderShapeType): number {
  */
 export function shapeSizeParamFromBaseSize(
   shape: RenderShapeType,
-  baseSize: number
+  baseSize: number,
 ): number {
   return baseSize / shapeMaxExtentFactor(shape);
 }

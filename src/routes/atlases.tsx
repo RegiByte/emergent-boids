@@ -1,9 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { IconHome, IconZoomIn, IconZoomOut, IconGridDots } from "@tabler/icons-react";
+import {
+  IconHome,
+  IconZoomIn,
+  IconZoomOut,
+  IconGridDots,
+} from "@tabler/icons-react";
 import { createEmojiAtlas } from "@/resources/webgl/atlases/emojiAtlas";
-import { createFontAtlas } from "@/resources/webgl/atlases/fontAtlas";
+import {
+  createFontAtlas,
+  DEFAULT_FONT_CHARS,
+} from "@/resources/webgl/atlases/fontAtlas";
 import { createShapeAtlas } from "@/resources/webgl/atlases/shapeAtlas";
 import { createBodyPartsAtlas } from "@/resources/webgl/atlases/bodyPartsAtlas";
 import {
@@ -14,6 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import type { AtlasResult } from "@/resources/webgl/atlases/types";
 
 export const Route = createFileRoute("/atlases")({
   component: AtlasesRoute,
@@ -22,39 +31,37 @@ export const Route = createFileRoute("/atlases")({
 type AtlasConfig = {
   name: string;
   description: string;
-  generate: () => any;
+  generate: () => AtlasResult | null;
   info?: string;
 };
+const atlases: AtlasConfig[] = [
+  {
+    name: "Emoji Atlas",
+    description: "Stance symbol emojis for boid behavior indicators",
+    generate: createEmojiAtlas,
+    info: "64px cells - Hunting 😈, Fleeing 😱, Mating 💑, etc.",
+  },
+  {
+    name: "Font Atlas",
+    description: "Bitmap font texture for text rendering",
+    generate: () => createFontAtlas("Arial", 16, DEFAULT_FONT_CHARS),
+    info: "16px font with metrics for proper character spacing",
+  },
+  {
+    name: "Shape Atlas",
+    description: "Geometric body shapes for boid rendering",
+    generate: createShapeAtlas,
+    info: "256px cells (Session 102) - Multi-color: Diamond, Circle, Hexagon, Triangle, etc.",
+  },
+  {
+    name: "Body Parts Atlas",
+    description: "Composable body parts layered on base shapes",
+    generate: createBodyPartsAtlas,
+    info: "128px cells - Multi-color Eyes (Session 102), Fins, Spikes, Tails, Antennae",
+  },
+];
 
 function AtlasesRoute() {
-  const atlases: AtlasConfig[] = [
-    {
-      name: "Emoji Atlas",
-      description: "Stance symbol emojis for boid behavior indicators",
-      generate: createEmojiAtlas,
-      info: "64px cells - Hunting 😈, Fleeing 😱, Mating 💑, etc.",
-    },
-    {
-      name: "Font Atlas",
-      description: "Bitmap font texture for text rendering",
-      generate: () =>
-        createFontAtlas("Arial", 16, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "),
-      info: "16px font with metrics for proper character spacing",
-    },
-    {
-      name: "Shape Atlas",
-      description: "Geometric body shapes for boid rendering",
-      generate: createShapeAtlas,
-      info: "128px cells - Diamond, Circle, Hexagon, Triangle, etc.",
-    },
-    {
-      name: "Body Parts Atlas",
-      description: "Composable body parts layered on base shapes",
-      generate: createBodyPartsAtlas,
-      info: "128px cells - Eyes, Fins, Spikes, Tails, Antennae",
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -62,7 +69,9 @@ function AtlasesRoute() {
         <header className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold tracking-tight">Texture Atlas Inspector</h1>
+              <h1 className="text-4xl font-bold tracking-tight">
+                Texture Atlas Inspector
+              </h1>
               <p className="text-lg text-muted-foreground mt-2">
                 WebGL texture atlases used for high-performance rendering
               </p>
@@ -93,20 +102,22 @@ function AtlasesRoute() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
-              <strong>Texture atlases</strong> combine multiple images into a single texture,
-              enabling extremely efficient WebGL rendering. Instead of switching textures
-              between draw calls (expensive!), we pack everything into one texture and
-              use UV coordinates to sample different regions.
+              <strong>Texture atlases</strong> combine multiple images into a
+              single texture, enabling extremely efficient WebGL rendering.
+              Instead of switching textures between draw calls (expensive!), we
+              pack everything into one texture and use UV coordinates to sample
+              different regions.
             </p>
             <p>
-              <strong>Benefits:</strong> One draw call for hundreds of boids regardless of
-              their shape or stance. Smooth anti-aliasing from Canvas 2D rendering.
-              Easy to add new shapes without impacting performance.
+              <strong>Benefits:</strong> One draw call for hundreds of boids
+              regardless of their shape or stance. Smooth anti-aliasing from
+              Canvas 2D rendering. Easy to add new shapes without impacting
+              performance.
             </p>
             <p>
-              <strong>Session 85 Victory:</strong> These atlases are part of the modular
-              WebGL architecture that reduced the renderer from 1,997 lines to 490 lines
-              (75% reduction!)
+              <strong>Session 85 Victory:</strong> These atlases are part of the
+              modular WebGL architecture that reduced the renderer from 1,997
+              lines to 490 lines (75% reduction!)
             </p>
           </CardContent>
         </Card>
@@ -135,20 +146,23 @@ function AtlasCard({ config }: { config: AtlasConfig }) {
   useEffect(() => {
     if (!atlasResult || !canvasRef.current) return;
 
-    const canvas = atlasResult.canvas;
-    
+    const canvas = atlasResult.canvas as unknown as HTMLElement;
+    const canvasRefCurrent = canvasRef.current;
+
     // Style the canvas for proper display
+    // eslint-disable-next-line react-hooks/immutability
     canvas.style.display = "block";
     canvas.style.imageRendering = "pixelated"; // Sharp pixel rendering
     canvas.style.borderRadius = "8px";
     canvas.style.backgroundColor = "#1a1a1a"; // Dark background for contrast
-    
-    canvasRef.current.appendChild(canvas);
+    canvas.style.maxWidth = "100%";
+
+    canvasRefCurrent.appendChild(canvas);
     setIsLoading(false);
 
     return () => {
-      if (canvasRef.current?.contains(canvas)) {
-        canvasRef.current.removeChild(canvas);
+      if (canvasRefCurrent?.contains(canvas)) {
+        canvasRefCurrent.removeChild(canvas);
       }
     };
   }, [atlasResult]);
@@ -211,7 +225,7 @@ function AtlasCard({ config }: { config: AtlasConfig }) {
         </div>
 
         {/* Canvas Container */}
-        <div className="relative overflow-auto border-2 border-border rounded-lg bg-[#1a1a1a]">
+        <div className="relative overflow-auto border-2 border-border rounded-lg bg-[#1a1a1a] p-2">
           <div
             className="relative inline-block"
             style={{
@@ -224,13 +238,10 @@ function AtlasCard({ config }: { config: AtlasConfig }) {
             {/* Grid Overlay */}
             {showGrid && !isLoading && (
               <svg
-                className="absolute top-0 left-0 pointer-events-none"
+                className="absolute top-0 left-0 pointer-events-none w-full h-full"
                 width={atlasSize}
                 height={atlasSize}
                 viewBox={`0 0 ${atlasSize} ${atlasSize}`}
-                style={{
-                  borderRadius: "8px",
-                }}
               >
                 {/* Vertical lines */}
                 {Array.from({ length: gridSize + 1 }).map((_, i) => (
@@ -277,9 +288,7 @@ function AtlasCard({ config }: { config: AtlasConfig }) {
           </div>
           <div className="flex justify-between">
             <span>Cell Size:</span>
-            <span className="font-mono">
-              {atlasSize / gridSize} px
-            </span>
+            <span className="font-mono">{atlasSize / gridSize} px</span>
           </div>
           {config.info && (
             <div className="pt-2 border-t">
@@ -291,4 +300,3 @@ function AtlasCard({ config }: { config: AtlasConfig }) {
     </Card>
   );
 }
-

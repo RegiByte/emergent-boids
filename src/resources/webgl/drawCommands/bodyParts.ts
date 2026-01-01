@@ -9,8 +9,9 @@ import type REGL from "regl";
 import type { BodyPartsAtlasResult } from "../atlases/bodyPartsAtlas";
 
 // Import shaders
-import bodyPartVertShader from "@/shaders/bodyPart.vert?raw";
-import bodyPartFragShader from "@/shaders/bodyPart.frag?raw";
+// Session 102: Multi-color body parts shaders
+import bodyPartVertShader from "@/shaders/multiColorBodyPart.vert?raw";
+import bodyPartFragShader from "@/shaders/multiColorBodyPart.frag?raw";
 
 // Quad vertices for body parts (unit square)
 const QUAD_POSITIONS = [
@@ -26,7 +27,7 @@ const QUAD_POSITIONS = [
 export const createBodyPartsDrawCommand = (
   regl: REGL.Regl,
   bodyPartsTexture: REGL.Texture2D,
-  bodyPartsAtlas: BodyPartsAtlasResult
+  bodyPartsAtlas: BodyPartsAtlasResult,
 ): REGL.DrawCommand => {
   return regl({
     vert: bodyPartVertShader,
@@ -69,11 +70,24 @@ export const createBodyPartsDrawCommand = (
         buffer: (regl.prop as (name: string) => unknown)("partScales"),
         divisor: 1,
       },
+      // Session 102: Multi-color attributes (generic!)
+      primaryColor: {
+        buffer: (regl.prop as (name: string) => unknown)("primaryColors"),
+        divisor: 1,
+      },
+      secondaryColor: {
+        buffer: (regl.prop as (name: string) => unknown)("secondaryColors"),
+        divisor: 1,
+      },
+      tertiaryColor: {
+        buffer: (regl.prop as (name: string) => unknown)("tertiaryColors"),
+        divisor: 1,
+      },
     },
 
     uniforms: {
       transform: (regl.prop as unknown as (name: string) => number[])(
-        "transform"
+        "transform",
       ),
       bodyPartsTexture: bodyPartsTexture,
       cellSize: bodyPartsAtlas.cellSize,

@@ -6,7 +6,7 @@
  * Only displayed for damaged boids (health < 100%).
  */
 
-import type { Boid } from "../../../boids/vocabulary/schemas/prelude";
+import type { Boid } from "../../../boids/vocabulary/schemas/entities";
 import { shouldShowHealthBar } from "../../../boids/lifecycle/health";
 
 /**
@@ -39,7 +39,7 @@ const HEALTH_BAR_CONFIG = {
  * Determines health bar color based on health percentage
  */
 const getHealthBarColor = (
-  healthPercent: number
+  healthPercent: number,
 ): { r: number; g: number; b: number } => {
   if (healthPercent > HEALTH_BAR_CONFIG.thresholds.high) {
     return HEALTH_BAR_CONFIG.colors.high;
@@ -59,7 +59,7 @@ const getHealthBarColor = (
  */
 export const prepareHealthBarData = (
   boids: Boid[],
-  healthBarsEnabled: boolean
+  healthBarsEnabled: boolean,
 ): HealthBarInstanceData => {
   // Early return if health bars are disabled
   if (!healthBarsEnabled) {
@@ -96,4 +96,3 @@ export const prepareHealthBarData = (
 
   return { boidPositions, healthPercents, barColors, count };
 };
-

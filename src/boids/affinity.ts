@@ -1,7 +1,7 @@
 import type {
   SpeciesConfig,
   SpeciesRecord,
-} from "./vocabulary/schemas/prelude.ts";
+} from "./vocabulary/schemas/species";
 
 /**
  * Affinity System - Inter-species relationship management
@@ -59,7 +59,7 @@ export const SAME_SPECIES_AFFINITY = 1.0;
 export function getAffinity(
   speciesA: string,
   speciesB: string,
-  speciesConfigA: SpeciesConfig
+  speciesConfigA: SpeciesConfig,
 ): number {
   // Same species always have high affinity (unless explicitly overridden)
   if (speciesA === speciesB) {
@@ -135,12 +135,12 @@ export function getCohesionWeight(affinity: number): number {
  * Get the maximum crowd tolerance from all species
  * @param speciesConfig - The species configuration
  * @returns The maximum crowd tolerance
- * 
+ *
  * NOTE: With phenotype-based crowd tolerance:
  * - Formula: crowdTolerance = 10 + sociability * 40
  * - Range: 10 (sociability=0) to 50 (sociability=1)
  * - Theoretical max is 50
- * 
+ *
  * PERFORMANCE: This is called once per engine update, not per boid.
  * Returning a fixed value is fast and correct for the phenotype system.
  */

@@ -48,7 +48,7 @@ export type CameraAPI = {
   enterPickerMode: () => void;
   updatePickerTarget: (
     boidId: string | null,
-    mouseWorldPos: { x: number; y: number }
+    mouseWorldPos: { x: number; y: number },
   ) => void;
   setMouseInCanvas: (inCanvas: boolean) => void;
   exitPickerMode: () => void;
@@ -268,7 +268,7 @@ export const camera = defineResource({
 
     const updatePickerTarget = (
       boidId: string | null,
-      mouseWorldPos: { x: number; y: number }
+      mouseWorldPos: { x: number; y: number },
     ) => {
       if (mode.type === "picker") {
         mode = {

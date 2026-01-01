@@ -29,7 +29,7 @@ const TRIANGLE_POSITIONS = [
  * @returns REGL draw command for triangle-based boids
  */
 export const createTriangleBoidsDrawCommand = (
-  regl: REGL.Regl
+  regl: REGL.Regl,
 ): REGL.DrawCommand => {
   return regl({
     vert: boidVertShader,
@@ -60,7 +60,7 @@ export const createTriangleBoidsDrawCommand = (
 
     uniforms: {
       transform: (regl.prop as unknown as (name: string) => number[])(
-        "transform"
+        "transform",
       ),
     },
 
@@ -68,4 +68,3 @@ export const createTriangleBoidsDrawCommand = (
     instances: (regl.prop as unknown as (name: string) => number)("count"),
   });
 };
-

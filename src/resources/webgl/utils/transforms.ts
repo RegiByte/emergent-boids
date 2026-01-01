@@ -25,7 +25,7 @@ import type { CameraAPI } from "../../camera";
 export const createProjectionMatrix = (
   width: number,
   height: number,
-  camera: CameraAPI
+  camera: CameraAPI,
 ): number[] => {
   // Calculate visible world bounds with camera transform
   const halfWidth = width / (2 * camera.zoom);
@@ -92,7 +92,7 @@ export const createViewMatrix = (camera: CameraAPI): number[] => {
  */
 export const getResolution = (
   width: number,
-  height: number
+  height: number,
 ): [number, number] => {
   return [width, height];
 };

@@ -1,19 +1,17 @@
 /**
  * Emoji Atlas Generation
- * 
+ *
  * Creates a texture atlas for stance symbol emojis.
  * Each emoji is rendered to a grid cell and UV coordinates are stored.
  */
 
 import type REGL from "regl";
 import type { StanceSymbols } from "../types";
+import type { AtlasResult } from "./types";
+import { createPreviewURL } from "./utils";
 
-export type EmojiAtlasResult = {
-  canvas: HTMLCanvasElement;
-  emojiUVMap: Map<string, { u: number; v: number }>;
-  gridSize: number;
-  cellSize: number; // UV size of each cell (1.0 / gridSize)
-};
+// Type alias for backwards compatibility
+export type EmojiAtlasResult = AtlasResult;
 
 /**
  * Stance symbol configuration
@@ -35,10 +33,10 @@ export const stanceSymbols: StanceSymbols = {
 /**
  * Create emoji texture atlas
  */
-export const createEmojiAtlas = (): EmojiAtlasResult | null => {
+export const createEmojiAtlas = (): AtlasResult | null => {
   const emojiSize = 64; // Size of each emoji in pixels
   const uniqueEmojis = Array.from(
-    new Set(Object.values(stanceSymbols).map((s) => s.emoji))
+    new Set(Object.values(stanceSymbols).map((s) => s.emoji)),
   );
 
   // Calculate atlas dimensions (square grid)
@@ -83,9 +81,10 @@ export const createEmojiAtlas = (): EmojiAtlasResult | null => {
 
   return {
     canvas: atlasCanvas,
-    emojiUVMap,
+    uvMap: emojiUVMap,
     gridSize,
-    cellSize: 1.0 / gridSize, // UV size of each cell
+    cellSize: 1.0 / gridSize, // UV size of each cell,
+    previewURL: createPreviewURL(atlasCanvas),
   };
 };
 
@@ -94,7 +93,7 @@ export const createEmojiAtlas = (): EmojiAtlasResult | null => {
  */
 export const createEmojiTexture = (
   regl: REGL.Regl,
-  atlas: EmojiAtlasResult
+  atlas: AtlasResult,
 ): REGL.Texture2D => {
   return regl.texture({
     data: atlas.canvas,
@@ -104,5 +103,3 @@ export const createEmojiTexture = (
     flipY: false, // Canvas is already right-side up
   });
 };
-
-

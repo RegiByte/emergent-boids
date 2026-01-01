@@ -1,6 +1,6 @@
-import type { Boid } from "../vocabulary/schemas/prelude.ts";
+import type { Boid } from "../vocabulary/schemas/entities";
 
-import { SpeciesConfig } from "../vocabulary/schemas/prelude.ts";
+import { SpeciesConfig } from "../vocabulary/schemas/species";
 
 /**
  * Update energy for a single boid based on its role and stance
@@ -9,11 +9,11 @@ import { SpeciesConfig } from "../vocabulary/schemas/prelude.ts";
 export function updateBoidEnergy(
   boid: Boid,
   speciesConfig: SpeciesConfig,
-  deltaSeconds: number
+  deltaSeconds: number,
 ): number {
   // Use phenotype energy loss rate (computed from genome + physics)
   const energyLossRate = boid.phenotype.energyLossRate;
-  
+
   if (speciesConfig.role === "predator") {
     if (boid.stance === "idle" || boid.stance === "eating") {
       // No energy change when idle or eating (eating gains from food sources)

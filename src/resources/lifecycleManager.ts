@@ -22,7 +22,7 @@ import {
 } from "../boids/foodManager";
 import { processDeathMarkers, fadeDeathMarkers } from "../boids/deathMarkers";
 import { RandomnessResource } from "./randomness";
-import type { WorldPhysics } from "../boids/vocabulary/schemas/genetics";
+import type { WorldPhysics } from "../boids/vocabulary/schemas/world";
 
 /**
  * Lifecycle Manager
@@ -93,7 +93,7 @@ export const lifecycleManager = defineResource({
           event.preyId,
           event.preyTypeId,
           event.preyEnergy,
-          event.preyPosition
+          event.preyPosition,
         );
       }
     });
@@ -189,7 +189,7 @@ export const lifecycleManager = defineResource({
 
       // Fade markers (pure function)
       const { markers: updatedMarkers, shouldUpdate } = fadeDeathMarkers(
-        simulation.deathMarkers
+        simulation.deathMarkers,
       );
 
       if (shouldUpdate) {
@@ -227,7 +227,7 @@ export const lifecycleManager = defineResource({
       const { markers: updatedMarkers, shouldUpdate } = processDeathMarkers(
         simulation.deathMarkers,
         changes.deathEvents,
-        (id) => engine.getBoidById(id)
+        (id) => engine.getBoidById(id),
       );
 
       // Update store if markers changed
@@ -279,7 +279,7 @@ export const lifecycleManager = defineResource({
         for (let i = 0; i < offspringCount; i++) {
           // Count current population of this specific type
           const currentTypeCount = engine.boids.filter(
-            (b) => b.typeId === offspring.typeId
+            (b) => b.typeId === offspring.typeId,
           ).length;
 
           const canSpawn = canSpawnOffspring(
@@ -295,7 +295,7 @@ export const lifecycleManager = defineResource({
               totalPrey: currentPreyCount,
               totalPredators: currentPredatorCount,
             },
-            currentTypeCount // Pass current type count
+            currentTypeCount, // Pass current type count
           );
 
           if (canSpawn) {
@@ -329,7 +329,7 @@ export const lifecycleManager = defineResource({
               offspring.typeId,
               creationContext,
               energyBonus, // Apply energy bonus
-              parentGenomes // Pass parent genomes for inheritance
+              parentGenomes, // Pass parent genomes for inheritance
             );
             const newBoid = result.boid;
             engine.addBoid(newBoid);
@@ -362,7 +362,7 @@ export const lifecycleManager = defineResource({
             // Dispatch reproduction event (only for first offspring to avoid spam)
             if (i === 0) {
               const reproductionEvent = changes.reproductionEvents.find(
-                (e) => e.parent1Id === offspring.parent1Id
+                (e) => e.parent1Id === offspring.parent1Id,
               );
               if (reproductionEvent) {
                 runtimeController.dispatch({
@@ -400,7 +400,7 @@ export const lifecycleManager = defineResource({
 
       // Find the predator type
       const predatorTypeId = Object.keys(runtimeTypes).find(
-        (id) => runtimeTypes[id].role === "predator"
+        (id) => runtimeTypes[id].role === "predator",
       );
 
       if (!predatorTypeId) {
@@ -425,7 +425,7 @@ export const lifecycleManager = defineResource({
       const result = createBoidOfType(
         { x, y },
         predatorTypeId,
-        creationContext
+        creationContext,
       );
       const newPredator = result.boid;
 
@@ -437,7 +437,7 @@ export const lifecycleManager = defineResource({
       _preyId: string,
       _preyTypeId: string,
       preyEnergy: number,
-      preyPosition: { x: number; y: number }
+      preyPosition: { x: number; y: number },
     ) => {
       const { simulation } = runtimeStore.store.getState();
 
@@ -452,7 +452,7 @@ export const lifecycleManager = defineResource({
         preyPosition,
         tickCounter,
         randomness.domain("food"),
-        time.now() // Pass simulation time for ID generation
+        time.now(), // Pass simulation time for ID generation
       );
 
       // Apply side effects
@@ -478,7 +478,7 @@ export const lifecycleManager = defineResource({
         config.world,
         tickCounter,
         randomness.domain("food"),
-        time.now() // Pass simulation time for ID generation
+        time.now(), // Pass simulation time for ID generation
       );
 
       if (!shouldUpdate) {
@@ -512,7 +512,7 @@ export const lifecycleManager = defineResource({
         processFoodConsumption(
           simulation.foodSources,
           engine.boids,
-          config.species
+          config.species,
         );
 
       // Apply energy gains to boids (impure but isolated)

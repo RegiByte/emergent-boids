@@ -1,6 +1,6 @@
-import type { DeathMarker } from "./vocabulary/schemas/prelude.ts";
+import type { DeathMarker } from "./vocabulary/schemas/entities";
 import { calculateDistance } from "./calculations";
-import type { Boid } from "./vocabulary/schemas/prelude.ts";
+import type { Boid } from "./vocabulary/schemas/entities";
 
 /**
  * Death Marker Management System
@@ -47,7 +47,7 @@ export type DeathEvent = {
 function findNearbyMarkers(
   markers: DeathMarker[],
   position: { x: number; y: number },
-  radius: number
+  radius: number,
 ): number[] {
   const nearbyIndexes: number[] = [];
 
@@ -68,7 +68,7 @@ function findNearbyMarkers(
  */
 function createDeathMarker(
   position: { x: number; y: number },
-  typeId: string
+  typeId: string,
 ): DeathMarker {
   return {
     position: { x: position.x, y: position.y },
@@ -87,11 +87,11 @@ function strengthenMarker(marker: DeathMarker): DeathMarker {
     ...marker,
     strength: Math.min(
       marker.strength + DEATH_MARKER_CONSTANTS.STRENGTH_INCREMENT,
-      DEATH_MARKER_CONSTANTS.MAX_STRENGTH
+      DEATH_MARKER_CONSTANTS.MAX_STRENGTH,
     ),
     remainingTicks: Math.min(
       marker.remainingTicks + DEATH_MARKER_CONSTANTS.INITIAL_TICKS,
-      marker.maxLifetimeTicks
+      marker.maxLifetimeTicks,
     ),
   };
 }
@@ -103,7 +103,7 @@ function strengthenMarker(marker: DeathMarker): DeathMarker {
 export function processDeathMarkers(
   currentMarkers: DeathMarker[],
   deathEvents: DeathEvent[],
-  getBoidById: (id: string) => Boid | undefined
+  getBoidById: (id: string) => Boid | undefined,
 ): DeathMarkerUpdate {
   const updatedMarkers = [...currentMarkers];
   let hasChanges = false;
@@ -122,7 +122,7 @@ export function processDeathMarkers(
     const nearbyIndexes = findNearbyMarkers(
       updatedMarkers,
       boid.position,
-      DEATH_MARKER_CONSTANTS.CONSOLIDATION_RADIUS
+      DEATH_MARKER_CONSTANTS.CONSOLIDATION_RADIUS,
     );
 
     if (nearbyIndexes.length > 0) {
@@ -149,7 +149,7 @@ export function processDeathMarkers(
  * Pure function - decrements ticks and filters expired markers
  */
 export function fadeDeathMarkers(
-  currentMarkers: DeathMarker[]
+  currentMarkers: DeathMarker[],
 ): DeathMarkerUpdate {
   // Skip if no markers
   if (currentMarkers.length === 0) {
@@ -176,13 +176,13 @@ export function fadeDeathMarkers(
  */
 export function haveMarkersChanged(
   oldMarkers: DeathMarker[],
-  newMarkers: DeathMarker[]
+  newMarkers: DeathMarker[],
 ): boolean {
   if (oldMarkers.length !== newMarkers.length) return true;
 
   return newMarkers.some(
     (marker, idx) =>
       marker.remainingTicks !== oldMarkers[idx]?.remainingTicks ||
-      marker.strength !== oldMarkers[idx]?.strength
+      marker.strength !== oldMarkers[idx]?.strength,
   );
 }

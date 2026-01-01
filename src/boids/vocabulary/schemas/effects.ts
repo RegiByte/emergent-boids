@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { effectKeywords } from "../keywords.ts";
 import { allEventSchema } from "./events.ts";
-import { boidSchema } from "./prelude.ts";
+import { boidSchema } from "./entities";
 import { runtimeStoreSchema } from "./state.ts";
 
 /**

@@ -5,7 +5,7 @@
  * This is a fallback when shape-based rendering is not available.
  */
 
-import type { Boid } from "../../../boids/vocabulary/schemas/prelude";
+import type { Boid } from "../../../boids/vocabulary/schemas/entities";
 import { toRgb } from "../../../lib/colors";
 
 /**
@@ -26,7 +26,7 @@ export type TriangleBoidInstanceData = {
  * @returns Instance data ready for GPU upload
  */
 export const prepareTriangleBoidData = (
-  boids: Boid[]
+  boids: Boid[],
 ): TriangleBoidInstanceData => {
   const count = boids.length;
   const positions = new Float32Array(count * 2);

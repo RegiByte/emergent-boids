@@ -166,7 +166,7 @@ export const analyticsStore = defineResource({
      */
     function updateEventsFilter(
       maxEvents?: number,
-      allowedEventTypes?: string[] | null
+      allowedEventTypes?: string[] | null,
     ): void {
       store.setState((current) => ({
         ...current,
@@ -209,7 +209,7 @@ export const analyticsStore = defineResource({
     function updateEvolutionConfig(
       snapshotInterval?: number,
       maxSnapshots?: number,
-      geneticsSamplingInterval?: number
+      geneticsSamplingInterval?: number,
     ): void {
       store.setState((current) => ({
         ...current,

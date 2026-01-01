@@ -1,6 +1,6 @@
 /**
  * Event Handlers for WebGL Canvas
- * 
+ *
  * Mouse wheel zoom, mouse move for picker mode, click for follow mode
  */
 
@@ -12,7 +12,7 @@ import type { BoidEngine } from "../../engine";
  */
 export const createWheelHandler = (
   canvas: HTMLCanvasElement,
-  camera: CameraAPI
+  camera: CameraAPI,
 ) => {
   return (e: WheelEvent) => {
     e.preventDefault();
@@ -57,7 +57,7 @@ export const findClosestBoidToScreen = (
   camera: CameraAPI,
   screenX: number,
   screenY: number,
-  maxScreenDistance: number
+  maxScreenDistance: number,
 ): string | null => {
   let closestBoid: string | null = null;
   let closestDistance = maxScreenDistance;
@@ -78,10 +78,7 @@ export const findClosestBoidToScreen = (
     if (worldDistSq > searchRadiusWorld * searchRadiusWorld * 4) continue;
 
     // Now do accurate screen-space distance check
-    const boidScreen = camera.worldToScreen(
-      boid.position.x,
-      boid.position.y
-    );
+    const boidScreen = camera.worldToScreen(boid.position.x, boid.position.y);
     const dx = boidScreen.x - screenX;
     const dy = boidScreen.y - screenY;
     const distance = Math.sqrt(dx * dx + dy * dy);
@@ -102,7 +99,7 @@ export const findClosestBoidToScreen = (
 export const createMouseMoveHandler = (
   canvas: HTMLCanvasElement,
   camera: CameraAPI,
-  engine: BoidEngine
+  engine: BoidEngine,
 ) => {
   let lastPickerUpdate = 0;
   const PICKER_UPDATE_INTERVAL = 16; // ~60 FPS (16ms)
@@ -126,7 +123,7 @@ export const createMouseMoveHandler = (
       camera,
       screenX,
       screenY,
-      80
+      80,
     );
 
     camera.updatePickerTarget(closestBoidId, worldPos);
@@ -177,7 +174,7 @@ export const createClickHandler = (camera: CameraAPI) => {
 export const attachEventHandlers = (
   canvas: HTMLCanvasElement,
   camera: CameraAPI,
-  engine: BoidEngine
+  engine: BoidEngine,
 ): (() => void) => {
   const wheelHandler = createWheelHandler(canvas, camera);
   const mouseMoveHandler = createMouseMoveHandler(canvas, camera, engine);
@@ -201,5 +198,3 @@ export const attachEventHandlers = (
     canvas.removeEventListener("click", clickHandler);
   };
 };
-
-

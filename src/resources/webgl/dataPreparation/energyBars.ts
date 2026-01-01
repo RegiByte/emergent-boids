@@ -5,10 +5,8 @@
  * Energy bars are shown above boids to indicate their current energy level.
  */
 
-import type {
-  Boid,
-  SpeciesConfig,
-} from "../../../boids/vocabulary/schemas/prelude";
+import type { Boid } from "../../../boids/vocabulary/schemas/entities";
+import type { SpeciesConfig } from "../../../boids/vocabulary/schemas/species";
 
 /**
  * Instance data for energy bar rendering
@@ -39,7 +37,7 @@ const ENERGY_BAR_COLORS = {
 export const prepareEnergyBarData = (
   boids: Boid[],
   speciesConfigs: Record<string, SpeciesConfig>,
-  energyBarsEnabled: boolean
+  energyBarsEnabled: boolean,
 ): EnergyBarInstanceData => {
   // Filter boids that should show energy bars
   const boidsWithBars = boids.filter((boid) => {
@@ -76,4 +74,3 @@ export const prepareEnergyBarData = (
 
   return { boidPositions, energyPercents, barColors, count };
 };
-

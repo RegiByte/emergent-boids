@@ -14,7 +14,7 @@
 
 import { defineResource } from "braided";
 import REGL from "regl";
-import type { Boid, FoodSource } from "../boids/vocabulary/schemas/prelude";
+import type { Boid, FoodSource } from "../boids/vocabulary/schemas/entities";
 import type { BoidEngine } from "./engine";
 import type { CameraAPI } from "./camera";
 import type { CanvasAPI } from "./canvas";
@@ -99,7 +99,7 @@ export const webglRenderer = defineResource({
       "top-[50%]",
       "left-[50%]",
       "translate-x-[-50%]",
-      "translate-y-[-50%]"
+      "translate-y-[-50%]",
     );
     webglCanvas.style.display = "none"; // Hidden by default (Canvas renderer is default)
 
@@ -107,13 +107,19 @@ export const webglRenderer = defineResource({
     const eventHandlerCleanup = attachEventHandlers(
       webglCanvas,
       camera,
-      engine
+      engine,
     );
 
     // Initialize regl
+    // Session 101: Disable premultipliedAlpha for proper color rendering
+    // Our blend function expects non-premultiplied alpha (standard blending)
     const regl = REGL({
       canvas: webglCanvas,
       extensions: ["ANGLE_instanced_arrays"],
+      attributes: {
+        alpha: true,
+        premultipliedAlpha: false, // Match blend function expectations
+      },
     });
 
     // ============================================
@@ -217,7 +223,7 @@ export const webglRenderer = defineResource({
         ? createStanceSymbolsDrawCommand(
             regl,
             emojiTexture,
-            emojiAtlas.cellSize
+            emojiAtlas.cellSize,
           )
         : null;
 
@@ -228,7 +234,8 @@ export const webglRenderer = defineResource({
         : null;
 
     // Create draw command for debug collision circles (Session 96)
-    const drawDebugCollisionCircles = createDebugCollisionCirclesDrawCommand(regl);
+    const drawDebugCollisionCircles =
+      createDebugCollisionCirclesDrawCommand(regl);
 
     const render = () => {
       // CRITICAL: Tell regl to update its internal state (canvas size, viewport, etc.)
@@ -264,7 +271,7 @@ export const webglRenderer = defineResource({
         simulation.foodSources.length > 0
       ) {
         const visibleFood = simulation.foodSources.filter((food: FoodSource) =>
-          camera.isInViewport(food.position.x, food.position.y, 50)
+          camera.isInViewport(food.position.x, food.position.y, 50),
         );
 
         if (visibleFood.length > 0) {
@@ -278,7 +285,7 @@ export const webglRenderer = defineResource({
 
       // Get visible boids (used by both trails and boid rendering)
       const visibleBoids = engine.boids.filter((boid) =>
-        camera.isInViewport(boid.position.x, boid.position.y, 100)
+        camera.isInViewport(boid.position.x, boid.position.y, 100),
       );
 
       // Layer 2: Trails (render FIRST so they appear behind boids)
@@ -290,7 +297,7 @@ export const webglRenderer = defineResource({
           visibleBoids,
           config.species,
           config.world.width,
-          config.world.height
+          config.world.height,
         );
 
         // Draw each batch (one draw call per unique color/alpha combination)
@@ -350,7 +357,7 @@ export const webglRenderer = defineResource({
         const energyBarData = prepareEnergyBarData(
           visibleBoids,
           config.species,
-          ui.visualSettings.energyBarsEnabled
+          ui.visualSettings.energyBarsEnabled,
         );
 
         if (energyBarData.count > 0) {
@@ -366,7 +373,7 @@ export const webglRenderer = defineResource({
         const { ui } = runtimeStore.store.getState();
         const healthBarData = prepareHealthBarData(
           visibleBoids,
-          ui.visualSettings.healthBarsEnabled
+          ui.visualSettings.healthBarsEnabled,
         );
 
         if (healthBarData.count > 0) {
@@ -386,7 +393,7 @@ export const webglRenderer = defineResource({
           engine.boids,
           emojiAtlas,
           timeState.simulationFrame,
-          ui.visualSettings.stanceSymbolsEnabled
+          ui.visualSettings.stanceSymbolsEnabled,
         );
         if (stanceSymbolData && stanceSymbolData.count > 0) {
           drawStanceSymbols({
@@ -449,7 +456,7 @@ export const webglRenderer = defineResource({
             line.color[1],
             line.color[2],
             1.0,
-            fontAtlas
+            fontAtlas,
           );
 
           if (textData && textData.count > 0) {
@@ -490,7 +497,7 @@ export const webglRenderer = defineResource({
     resource: WebGLRenderer & {
       canvas?: HTMLCanvasElement;
       cleanup?: () => void;
-    }
+    },
   ) => {
     // Clean up event listeners
     if (resource.cleanup) {

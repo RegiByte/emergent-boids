@@ -64,13 +64,13 @@ export function GraphBar() {
         <CarouselPrevious
           className={cn(
             "-left-8 cursor-pointer",
-            autoScroll ? "dark:bg-background" : "dark:bg-background/30"
+            autoScroll ? "dark:bg-background" : "dark:bg-background/30",
           )}
         />
         <CarouselNext
           className={cn(
             "-right-8 cursor-pointer",
-            autoScroll ? "dark:bg-background/30" : "dark:bg-background"
+            autoScroll ? "dark:bg-background/30" : "dark:bg-background",
           )}
         />
 

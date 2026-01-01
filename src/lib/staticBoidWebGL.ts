@@ -12,7 +12,8 @@
  */
 
 import REGL from "regl";
-import type { Boid, SpeciesConfig } from "@/boids/vocabulary/schemas/prelude";
+import type { Boid } from "@/boids/vocabulary/schemas/entities";
+import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
 import {
   createShapeAtlas,
   createShapeTexture,
@@ -28,6 +29,7 @@ import { createBodyPartsDrawCommand } from "@/resources/webgl/drawCommands/bodyP
 import { colorToRgb } from "@/resources/webgl/dataPreparation/utils";
 import { transformBodyPartWebGL, type BodyPartType } from "@/lib/coordinates";
 import { shapeSizeParamFromBaseSize } from "@/lib/shapeSizing";
+import { darken } from "@/lib/colors"; // Session 101 Phase 2: Perceptual shadow colors
 
 /**
  * Minimal WebGL context for static boid rendering
@@ -54,24 +56,25 @@ export interface StaticWebGLContext {
  * @returns WebGL context or null if initialization fails
  */
 export function createMinimalWebGLContext(
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
 ): StaticWebGLContext | null {
   try {
     // Create a raw WebGL context first
     // This approach works better than letting REGL create it, especially when
     // dealing with multiple canvases in a React environment
+    // Session 101: Disable premultipliedAlpha for proper color rendering
     const gl = canvas.getContext("webgl", {
       alpha: true,
       antialias: false,
       depth: true,
       stencil: false,
       preserveDrawingBuffer: false,
-      premultipliedAlpha: true,
+      premultipliedAlpha: false, // Match blend function expectations
     });
 
     if (!gl) {
       console.error(
-        "Failed to create WebGL context - WebGL may not be available"
+        "Failed to create WebGL context - WebGL may not be available",
       );
       return null;
     }
@@ -115,12 +118,12 @@ export function createMinimalWebGLContext(
     const drawShapeBoids = createShapeBoidsDrawCommand(
       regl,
       shapeTexture,
-      shapeAtlas
+      shapeAtlas,
     );
     const drawBodyParts = createBodyPartsDrawCommand(
       regl,
       bodyPartsTexture,
-      bodyPartsAtlas
+      bodyPartsAtlas,
     );
 
     return {
@@ -150,7 +153,7 @@ export function createMinimalWebGLContext(
 function createStaticTransformMatrix(
   _scale: number,
   width: number,
-  height: number
+  height: number,
 ): number[] {
   // Simple orthographic projection that centers content
   // Note: We apply visual scaling in boidScale, so keep projection unscaled
@@ -191,7 +194,7 @@ export function renderBoidWebGL(
     scale?: number;
     width: number;
     height: number;
-  }
+  },
 ): void {
   const { regl, shapeAtlas, bodyPartsAtlas, drawShapeBoids, drawBodyParts } =
     context;
@@ -211,7 +214,7 @@ export function renderBoidWebGL(
     boid,
     speciesConfig,
     shapeAtlas,
-    scale
+    scale,
   );
 
   // Draw boid shape
@@ -225,7 +228,7 @@ export function renderBoidWebGL(
     boid,
     speciesConfig,
     bodyPartsAtlas,
-    scale
+    scale,
   );
 
   if (bodyPartsData && bodyPartsData.count > 0) {
@@ -250,7 +253,7 @@ function prepareShapeBoidInstanceData(
   boid: Boid,
   speciesConfig: SpeciesConfig | undefined,
   shapeAtlas: ShapeAtlasResult,
-  scale: number
+  scale: number,
 ) {
   const { position, velocity, phenotype } = boid;
 
@@ -260,6 +263,15 @@ function prepareShapeBoidInstanceData(
   // Get color (normalized to 0-1)
   const [r, g, b] = colorToRgb(phenotype.color);
 
+  // Session 101: Border color (darker version of primary, 50% brightness)
+  const borderR = r * 0.5;
+  const borderG = g * 0.5;
+  const borderB = b * 0.5;
+
+  // Session 101 Phase 2: Shadow color using perceptually accurate darkening
+  const shadowHex = darken(phenotype.color, 2.5);
+  const [shadowR, shadowG, shadowB] = colorToRgb(shadowHex);
+
   // Session 96-97: use phenotype baseSize (== collisionRadius) and per-shape extent factor
   // shapeSizeParamFromBaseSize compensates for each shape's internal max extent
   // Shader multiplies by 2.0 to treat scale attribute as radius (produces diameter)
@@ -268,15 +280,17 @@ function prepareShapeBoidInstanceData(
   // Get shape UV coordinates from atlas
   const shapeName = speciesConfig?.visualConfig?.shape || "triangle";
   const boidScale = shapeSizeParamFromBaseSize(shapeName, baseSize) * scale;
-  const shapeUV = shapeAtlas.shapeUVMap.get(shapeName);
+  const shapeUV = shapeAtlas.uvMap.get(shapeName);
   const uvCoords = shapeUV ||
-    shapeAtlas.shapeUVMap.get("triangle") || { u: 0, v: 0 };
+    shapeAtlas.uvMap.get("triangle") || { u: 0, v: 0 };
 
   // Create typed arrays (single instance)
   return {
     positions: new Float32Array([position.x, position.y]),
     rotations: new Float32Array([rotation]),
     colors: new Float32Array([r, g, b]),
+    borderColors: new Float32Array([borderR, borderG, borderB]),
+    shadowColors: new Float32Array([shadowR, shadowG, shadowB]),
     scales: new Float32Array([boidScale]),
     shapeUVs: new Float32Array([uvCoords.u, uvCoords.v]),
     count: 1,
@@ -291,7 +305,7 @@ function prepareBodyPartsInstanceData(
   boid: Boid,
   speciesConfig: SpeciesConfig | undefined,
   bodyPartsAtlas: BodyPartsAtlasResult,
-  scale: number
+  scale: number,
 ) {
   const { position, velocity, phenotype } = boid;
   // Use species config body parts (matches main simulation pattern)
@@ -328,6 +342,10 @@ function prepareBodyPartsInstanceData(
     partOffset: number[];
     partRotation: number[];
     partScale: number[];
+    // Session 102: Multi-color attributes (generic!)
+    primaryColor: number[];
+    secondaryColor: number[];
+    tertiaryColor: number[];
   } = {
     boidPos: [],
     boidRotation: [],
@@ -337,6 +355,9 @@ function prepareBodyPartsInstanceData(
     partOffset: [],
     partRotation: [],
     partScale: [],
+    primaryColor: [],
+    secondaryColor: [],
+    tertiaryColor: [],
   };
 
   for (const part of renderableParts) {
@@ -349,7 +370,7 @@ function prepareBodyPartsInstanceData(
     const partRotation = partData?.rotation || 0; // Rotation in degrees (from genome)
 
     // Get UV coordinates for this part type
-    const partUV = bodyPartsAtlas.partUVMap.get(partType);
+    const partUV = bodyPartsAtlas.uvMap.get(partType);
     if (!partUV) continue;
 
     // Use tail color for tails, body color for everything else
@@ -372,7 +393,7 @@ function prepareBodyPartsInstanceData(
       { x: partPosX, y: partPosY },
       partRotation,
       partType as BodyPartType,
-      boidScale
+      boidScale,
     );
 
     partDataArrays.partOffset.push(offset.x, offset.y);
@@ -381,9 +402,18 @@ function prepareBodyPartsInstanceData(
     // Session 98: partSize is now percentage of body (0.1-3.0)
     // No multiplier needed - partSize directly represents percentage of boid collision radius
     // Shader multiplies by 2.0 to convert radius → diameter for quad rendering
-    partDataArrays.partScale.push(
-      partSize * boidScale
-    );
+    partDataArrays.partScale.push(partSize * boidScale);
+
+    // Session 102: Multi-color attributes (generic naming!)
+    // For eyes: Primary=white, Secondary=part color, Tertiary=black
+    // For other parts: All use part color (future: customize per type!)
+    partDataArrays.primaryColor.push(1.0, 1.0, 1.0); // White
+    partDataArrays.secondaryColor.push(
+      partColor[0],
+      partColor[1],
+      partColor[2],
+    ); // Part color
+    partDataArrays.tertiaryColor.push(0.0, 0.0, 0.0); // Black
   }
 
   const count = renderableParts.length;
@@ -397,6 +427,10 @@ function prepareBodyPartsInstanceData(
     partOffsets: new Float32Array(partDataArrays.partOffset),
     partRotations: new Float32Array(partDataArrays.partRotation),
     partScales: new Float32Array(partDataArrays.partScale),
+    // Session 102: Multi-color attributes (generic!)
+    primaryColors: new Float32Array(partDataArrays.primaryColor),
+    secondaryColors: new Float32Array(partDataArrays.secondaryColor),
+    tertiaryColors: new Float32Array(partDataArrays.tertiaryColor),
     count,
   };
 }
@@ -409,17 +443,17 @@ function drawDebugCollisionCircle(
   regl: REGL.Regl,
   transform: number[],
   position: { x: number; y: number },
-  radius: number
+  radius: number,
 ): void {
   // Create circle vertices
   const segments = 32;
   const positions: number[] = [];
-  
+
   for (let i = 0; i <= segments; i++) {
     const angle = (i / segments) * Math.PI * 2;
     positions.push(
       position.x + Math.cos(angle) * radius,
-      position.y + Math.sin(angle) * radius
+      position.y + Math.sin(angle) * radius,
     );
   }
 

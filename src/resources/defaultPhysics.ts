@@ -1,4 +1,4 @@
-import type { WorldPhysics } from "../boids/vocabulary/schemas/genetics";
+import type { WorldPhysics } from "../boids/vocabulary/schemas/world";
 
 /**
  * Default World Physics

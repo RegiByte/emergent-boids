@@ -26,7 +26,7 @@ import {
 type HandlerContext = {
   nextState: (
     _current: RuntimeStore,
-    _mutation: (_draft: RuntimeStore) => void
+    _mutation: (_draft: RuntimeStore) => void,
   ) => RuntimeStore;
 };
 
@@ -34,7 +34,7 @@ const handlers = {
   [eventKeywords.controls.typeConfigChanged]: (
     state: RuntimeStore,
     event,
-    ctx
+    ctx,
   ) => {
     // Note: This handler now updates genome traits instead of movement params
     // Fields should be trait names like 'speed', 'force', 'sociability', etc.
@@ -43,7 +43,8 @@ const handlers = {
         type: effectKeywords.state.update,
         state: ctx.nextState(state, (draft) => {
           if (draft.config.species[event.typeId]?.baseGenome?.traits) {
-            const traits = draft.config.species[event.typeId].baseGenome.traits as Record<string, number>;
+            const traits = draft.config.species[event.typeId].baseGenome
+              .traits as Record<string, number>;
             if (event.field in traits) {
               traits[event.field] = event.value;
             }
@@ -56,7 +57,7 @@ const handlers = {
   [eventKeywords.controls.perceptionRadiusChanged]: (
     state: RuntimeStore,
     event,
-    ctx
+    ctx,
   ) => {
     return [
       {
@@ -71,7 +72,7 @@ const handlers = {
   [eventKeywords.controls.obstacleAvoidanceChanged]: (
     state: RuntimeStore,
     event,
-    ctx
+    ctx,
   ): ControlEffect[] => {
     return [
       {
@@ -86,7 +87,7 @@ const handlers = {
   [eventKeywords.obstacles.added]: (
     state: RuntimeStore,
     event,
-    ctx
+    ctx,
   ): ControlEffect[] => {
     return [
       {
@@ -104,7 +105,7 @@ const handlers = {
   [eventKeywords.obstacles.removed]: (
     state: RuntimeStore,
     event,
-    ctx
+    ctx,
   ): ControlEffect[] => {
     return [
       {
@@ -119,7 +120,7 @@ const handlers = {
   [eventKeywords.obstacles.cleared]: (
     state: RuntimeStore,
     _event,
-    ctx
+    ctx,
   ): ControlEffect[] => {
     return [
       {
@@ -212,7 +213,7 @@ const handlers = {
   [eventKeywords.atmosphere.eventStarted]: (
     state: RuntimeStore,
     event,
-    ctx
+    ctx,
   ): ControlEffect[] => {
     return [
       {
@@ -240,7 +241,7 @@ const handlers = {
   [eventKeywords.atmosphere.eventEnded]: (
     state: RuntimeStore,
     event,
-    ctx
+    ctx,
   ): ControlEffect[] => {
     return [
       {
@@ -260,7 +261,7 @@ const handlers = {
 
   [eventKeywords.analytics.filterChanged]: (
     _state: RuntimeStore,
-    event
+    event,
   ): ControlEffect[] => {
     // Analytics filter changes are now handled by analyticsStore
     // We dispatch a special effect to update it
@@ -327,7 +328,7 @@ const executors = {
   [effectKeywords.analytics.updateFilter]: (effect, ctx) => {
     ctx.analyticsStore.updateEventsFilter(
       effect.maxEvents,
-      effect.allowedEventTypes
+      effect.allowedEventTypes,
     );
   },
 
@@ -344,7 +345,7 @@ const executors = {
     }
 
     console.log(
-      `[profile:load] Loading profile: ${profile.name} (${profile.id})`
+      `[profile:load] Loading profile: ${profile.name} (${profile.id})`,
     );
 
     // Update profileStore active profile
@@ -396,7 +397,7 @@ function createRuntimeController(
   profileStore: ProfileStoreResource,
   randomness: RandomnessResource,
   timer: TimerManager,
-  engine: BoidEngine
+  engine: BoidEngine,
 ) {
   const createControlLoop = emergentSystem<
     AllEvents,
@@ -458,7 +459,7 @@ export const runtimeController = defineResource({
       profileStore,
       randomness,
       timer,
-      engine
+      engine,
     );
 
     // Note: time.passed events are now dispatched by the renderer

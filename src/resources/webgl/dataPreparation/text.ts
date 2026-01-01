@@ -40,7 +40,7 @@ export const layoutText = (
   g: number,
   b: number,
   alpha: number,
-  fontAtlas: FontAtlasResult
+  fontAtlas: FontAtlasResult,
 ): TextInstanceData | null => {
   const charPositions: number[] = [];
   const uvOffsets: number[] = [];
@@ -53,7 +53,7 @@ export const layoutText = (
 
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
-    const charInfo = fontAtlas.charUVMap.get(char);
+    const charInfo = fontAtlas.uvMap.get(char);
 
     if (!charInfo) {
       // Unknown character, skip or use space
@@ -83,4 +83,3 @@ export const layoutText = (
     count: charPositions.length / 2,
   };
 };
-

@@ -5,7 +5,7 @@
  * Shows emoji symbols above boids when their stance changes.
  */
 
-import type { Boid } from "../../../boids/vocabulary/schemas/prelude";
+import type { Boid } from "../../../boids/vocabulary/schemas/entities";
 import type { EmojiAtlasResult } from "../atlases/emojiAtlas";
 import { stanceSymbols } from "../atlases/emojiAtlas";
 
@@ -40,7 +40,7 @@ export const prepareStanceSymbolData = (
   boids: Boid[],
   emojiAtlas: EmojiAtlasResult,
   currentFrame: number,
-  stanceSymbolsEnabled: boolean
+  stanceSymbolsEnabled: boolean,
 ): StanceSymbolInstanceData | null => {
   // Check if stance symbols are enabled
   if (!stanceSymbolsEnabled) {
@@ -63,7 +63,7 @@ export const prepareStanceSymbolData = (
     const stanceInfo = stanceSymbols[boid.stance];
     if (!stanceInfo) continue;
 
-    const uvCoords = emojiAtlas.emojiUVMap.get(stanceInfo.emoji);
+    const uvCoords = emojiAtlas.uvMap.get(stanceInfo.emoji);
     if (!uvCoords) continue;
 
     // Calculate fade-out alpha
@@ -92,4 +92,3 @@ export const prepareStanceSymbolData = (
     count: boidPositions.length / 2,
   };
 };
-

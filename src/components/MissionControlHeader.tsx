@@ -1,7 +1,12 @@
 import { cn } from "@/lib/utils";
 import { GraphBar } from "./GraphBar";
 import { ProfileSelector } from "./ProfileSelector";
-import { IconChevronDown, IconChevronUp, IconPalette, IconFish } from "@tabler/icons-react";
+import {
+  IconChevronDown,
+  IconChevronUp,
+  IconPalette,
+  IconFish,
+} from "@tabler/icons-react";
 import { motion } from "motion/react";
 import { Link } from "@tanstack/react-router";
 
@@ -91,7 +96,7 @@ export function MissionControlHeader({
         transition={{ duration: 0.2 }}
         className={cn(
           "absolute bottom-0 right-4 transform translate-y-1/2",
-          "bg-card border border-primary/30 rounded-full p-2 shadow-lg hover:bg-primary/10 transition-colors z-60"
+          "bg-card border border-primary/30 rounded-full p-2 shadow-lg hover:bg-primary/10 transition-colors z-60",
         )}
         title="Collapse Mission Control"
       >

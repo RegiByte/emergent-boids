@@ -13,8 +13,8 @@
  *
  * Philosophy: Atlas for all → perfect Canvas/WebGL parity
  * Pattern: Shape renderers perform COMPLETE drawing (not just path creation)
- * 
- * Technical Note: 
+ *
+ * Technical Note:
  * - WebGL uses shaders to tint white atlas shapes
  * - Canvas 2D uses pixel-level color replacement (ImageData API)
  * - Colored shapes are cached to avoid recomputing pixel data every frame
@@ -22,10 +22,10 @@
  */
 
 import type {
+  BodyPart,
   RenderBodyPartType,
   RenderShapeType,
-} from "../../boids/vocabulary/schemas/prelude";
-import type { BodyPart } from "../../boids/vocabulary/schemas/genetics";
+} from "../../boids/vocabulary/schemas/visual";
 import {
   transformBodyPartCanvas2D,
   type BodyPartType,
@@ -38,11 +38,11 @@ import {
   createShapeAtlas,
   type ShapeAtlasResult,
 } from "@/resources/webgl/atlases/shapeAtlas";
-import { toRgb } from "@/lib/colors";
+import { toRgb, darken } from "@/lib/colors"; // Session 101 Phase 2: Perceptual colors
 
 export type ShapeRenderer = (
   _ctx: CanvasRenderingContext2D,
-  _size: number
+  _size: number,
 ) => void;
 
 // ============================================================================
@@ -51,6 +51,7 @@ export type ShapeRenderer = (
 
 let bodyPartsAtlas: BodyPartsAtlasResult | null = null;
 let shapeAtlas: ShapeAtlasResult | null = null;
+let bodyPartsAtlasGenerating = false; // Lock to prevent concurrent generation
 
 // Session 99: Shape color cache for pixel-level tinting
 // Cache colored shapes to avoid recomputing pixel data every frame
@@ -60,16 +61,33 @@ const coloredShapeCache = new Map<string, HTMLCanvasElement>();
 /**
  * Get or create the body parts atlas
  * Lazy initialization ensures atlas is only created when needed
+ * Uses a lock to prevent concurrent generation
  */
 function getBodyPartsAtlas(): BodyPartsAtlasResult | null {
-  if (!bodyPartsAtlas) {
-    bodyPartsAtlas = createBodyPartsAtlas();
-    if (!bodyPartsAtlas) {
-      console.error("Failed to create body parts atlas for Canvas 2D");
-      return null;
-    }
-    console.log("✅ Body parts atlas loaded for Canvas 2D rendering");
+  if (bodyPartsAtlas) {
+    return bodyPartsAtlas;
   }
+
+  // If already generating, return null (will be available on next call)
+  if (bodyPartsAtlasGenerating) {
+    return null;
+  }
+
+  // Set lock and generate
+  bodyPartsAtlasGenerating = true;
+  const startTime = performance.now();
+  console.log("⏳ Starting body parts atlas generation...");
+  bodyPartsAtlas = createBodyPartsAtlas();
+  const endTime = performance.now();
+  bodyPartsAtlasGenerating = false;
+
+  if (!bodyPartsAtlas) {
+    console.error("Failed to create body parts atlas for Canvas 2D");
+    return null;
+  }
+  console.log(
+    `✅ Body parts atlas loaded for Canvas 2D rendering (${(endTime - startTime).toFixed(2)}ms)`,
+  );
   return bodyPartsAtlas;
 }
 
@@ -80,12 +98,17 @@ function getBodyPartsAtlas(): BodyPartsAtlasResult | null {
  */
 function getShapeAtlas(): ShapeAtlasResult | null {
   if (!shapeAtlas) {
+    const startTime = performance.now();
+    console.log("⏳ Starting shape atlas generation...");
     shapeAtlas = createShapeAtlas();
+    const endTime = performance.now();
     if (!shapeAtlas) {
       console.error("Failed to create shape atlas for Canvas 2D");
       return null;
     }
-    console.log("✅ Shape atlas loaded for Canvas 2D rendering");
+    console.log(
+      `✅ Shape atlas loaded for Canvas 2D rendering (${(endTime - startTime).toFixed(2)}ms)`,
+    );
   }
   return shapeAtlas;
 }
@@ -95,15 +118,23 @@ function getShapeAtlas(): ShapeAtlasResult | null {
  * Session 98: ALL shapes now use atlas (not just body parts!)
  * Session 99: Renderers now handle complete drawing (fill + stroke)
  * Session 99B: Pixel-level color replacement for proper tinting (OPTIMIZED with caching)
+ * Session 101: Multi-color support with marker detection (RED → body, GREEN → border)
+ * Session 101 Phase 2: BLUE shadow support for depth and visual polish
  *
  * @param ctx - Canvas rendering context
  * @param size - Size of the shape
  * @param shapeName - Name of the shape in atlas
+ * @param colors - Optional color overrides for multi-color rendering
  */
 function renderAtlasShape(
   ctx: CanvasRenderingContext2D,
   size: number,
-  shapeName: string
+  shapeName: string,
+  colors?: {
+    primary?: string;
+    border?: string;
+    shadow?: string;
+  },
 ): void {
   const atlas = getShapeAtlas();
   if (!atlas) {
@@ -118,7 +149,7 @@ function renderAtlasShape(
   }
 
   // Get UV coordinates for this shape
-  const shapeUV = atlas.shapeUVMap.get(shapeName);
+  const shapeUV = atlas.uvMap.get(shapeName);
   if (!shapeUV) {
     console.warn(`Shape "${shapeName}" not found in atlas`);
     // Fallback to circle with complete drawing
@@ -141,24 +172,37 @@ function renderAtlasShape(
   // Calculate destination size (diameter)
   const destSize = size * 2.0;
 
-  // Extract fillStyle color and parse to RGB using color utility
-  const fillColor = ctx.fillStyle as string;
-  const [targetR, targetG, targetB] = toRgb(fillColor);
-  
-  // Create cache key: shapeName_R_G_B
-  const cacheKey = `${shapeName}_${targetR}_${targetG}_${targetB}`;
-  
+  // Parse colors - Session 101: Multi-color support (Phase 2: perceptual shadows)
+  const primaryColor = colors?.primary || (ctx.fillStyle as string);
+  const [primaryR, primaryG, primaryB] = toRgb(primaryColor);
+
+  // Border defaults to darker version of primary (50% brightness)
+  const [borderR, borderG, borderB] = colors?.border
+    ? toRgb(colors.border)
+    : [
+        Math.floor(primaryR * 0.5),
+        Math.floor(primaryG * 0.5),
+        Math.floor(primaryB * 0.5),
+      ];
+
+  // Session 101 Phase 2: Shadow using perceptually accurate darkening (chroma-js)
+  const shadowHex = colors?.shadow ? colors.shadow : darken(primaryColor, 2.5);
+  const [shadowR, shadowG, shadowB] = toRgb(shadowHex);
+
+  // Create cache key: shapeName_primaryRGB_borderRGB_shadowRGB
+  const cacheKey = `${shapeName}_${primaryR}_${primaryG}_${primaryB}_${borderR}_${borderG}_${borderB}_${shadowR}_${shadowG}_${shadowB}`;
+
   // Check if we already have this colored shape cached
   let coloredCanvas = coloredShapeCache.get(cacheKey);
-  
+
   if (!coloredCanvas) {
     // Cache miss - create colored shape
     // Create an offscreen canvas for pixel manipulation
-    coloredCanvas = document.createElement('canvas');
+    coloredCanvas = document.createElement("canvas");
     coloredCanvas.width = cellPixelSize;
     coloredCanvas.height = cellPixelSize;
-    const offCtx = coloredCanvas.getContext('2d')!;
-    
+    const offCtx = coloredCanvas.getContext("2d")!;
+
     // Draw the white shape from atlas to offscreen canvas
     offCtx.drawImage(
       atlas.canvas,
@@ -169,47 +213,77 @@ function renderAtlasShape(
       0,
       0,
       cellPixelSize,
-      cellPixelSize
+      cellPixelSize,
     );
-    
+
     // Get pixel data
     const imageData = offCtx.getImageData(0, 0, cellPixelSize, cellPixelSize);
     const data = imageData.data;
-    
-    // Replace white pixels with target color, preserving alpha
-    // White in atlas (255, 255, 255) → target color (R, G, B)
+
+    // Session 101: Multi-color marker detection and replacement
+    // Phase 2: Added BLUE shadow support
+    // Session 102: Color dominance detection for anti-aliasing tolerance
+    // RED marker (255, 0, 0) → Primary body color
+    // GREEN marker (0, 255, 0) → Border color
+    // BLUE marker (0, 0, 255) → Shadow color
+    // WHITE/other → Multiply by primary (anti-aliasing)
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
       const a = data[i + 3];
-      
-      // Only recolor non-transparent pixels
-      // Multiply white (1.0) by target color
-      if (a > 0) {
-        data[i] = (r / 255) * targetR;
-        data[i + 1] = (g / 255) * targetG;
-        data[i + 2] = (b / 255) * targetB;
-        // Keep alpha unchanged
+
+      if (a === 0) continue; // Skip transparent pixels
+
+      // Session 102: Color dominance detection (tolerates anti-aliasing)
+      // A channel is "dominant" if it's 2x larger than the other two channels
+      const rDominant = r > g * 2 && r > b * 2;
+      const gDominant = g > r * 2 && g > b * 2;
+      const bDominant = b > r * 2 && b > g * 2;
+
+      // Detect RED marker → Primary body color
+      if (rDominant && r > 128) {
+        data[i] = primaryR;
+        data[i + 1] = primaryG;
+        data[i + 2] = primaryB;
       }
+      // Detect GREEN marker → Border color
+      else if (gDominant && g > 128) {
+        data[i] = borderR;
+        data[i + 1] = borderG;
+        data[i + 2] = borderB;
+      }
+      // Detect BLUE marker → Shadow color
+      else if (bDominant && b > 128) {
+        data[i] = shadowR;
+        data[i + 1] = shadowG;
+        data[i + 2] = shadowB;
+      }
+      // WHITE or gradient → Multiply by primary (handles anti-aliasing gracefully)
+      else {
+        data[i] = Math.floor((r / 255) * primaryR);
+        data[i + 1] = Math.floor((g / 255) * primaryG);
+        data[i + 2] = Math.floor((b / 255) * primaryB);
+      }
+      // Keep alpha unchanged
     }
-    
+
     // Put modified pixel data back
     offCtx.putImageData(imageData, 0, 0);
-    
+
     // Store in cache for reuse
     coloredShapeCache.set(cacheKey, coloredCanvas);
   }
-  
+
   // Draw the colored shape to main canvas (from cache or freshly created)
   ctx.drawImage(
     coloredCanvas,
     -destSize / 2,
     -destSize / 2,
     destSize,
-    destSize
+    destSize,
   );
-  
+
   // Atlas rendering complete - shape is now colored at pixel level!
 }
 
@@ -250,7 +324,7 @@ export type BodyPartRenderer = (
   _ctx: CanvasRenderingContext2D,
   _boidSize: number,
   _color: string,
-  _bodyParts: BodyPart[] // Array of body parts of this type from genome
+  _bodyParts: BodyPart[], // Array of body parts of this type from genome
 ) => void;
 
 /**
@@ -258,19 +332,22 @@ export type BodyPartRenderer = (
  *
  * Renders a body part by sampling from the atlas texture.
  * Applies position, rotation, and scale transformations using unified coordinate system.
+ * Session 102: Multi-color support for body parts (eyes use marker colors)
  *
  * @param ctx - Canvas rendering context
  * @param boidSize - Size of the boid (for scaling)
  * @param color - Color to tint the part (hex string)
  * @param bodyParts - Array of body parts from genome
  * @param partTypeName - Name of the part type (for UV lookup)
+ * @param useMultiColor - Whether to use multi-color marker detection (for eyes)
  */
 function renderAtlasPart(
   ctx: CanvasRenderingContext2D,
   boidSize: number,
-  _color: string,
+  color: string,
   bodyParts: BodyPart[],
-  partTypeName: string
+  partTypeName: string,
+  useMultiColor = false,
 ): void {
   const atlas = getBodyPartsAtlas();
   if (!atlas) {
@@ -279,7 +356,7 @@ function renderAtlasPart(
   }
 
   // Get UV coordinates for this part type
-  const partUV = atlas.partUVMap.get(partTypeName);
+  const partUV = atlas.uvMap.get(partTypeName);
   if (!partUV) {
     console.warn(`Part type "${partTypeName}" not found in atlas`);
     return;
@@ -305,7 +382,7 @@ function renderAtlasPart(
       { x: partPosX, y: partPosY },
       partRotation,
       partTypeName as BodyPartType,
-      boidSize
+      boidSize,
     );
 
     // Calculate destination size
@@ -317,18 +394,158 @@ function renderAtlasPart(
     ctx.translate(offset.x, offset.y);
     ctx.rotate(rotation);
 
-    // Draw part from atlas (centered)
-    ctx.drawImage(
-      atlas.canvas,
-      srcX,
-      srcY,
-      srcWidth,
-      srcHeight, // Source rect in atlas
-      -destSize / 2,
-      -destSize / 2,
-      destSize,
-      destSize // Dest rect (centered)
-    );
+    // Session 102: Multi-color body parts support (for eyes)
+    // Session 103: Extended for shell with darken() colors
+    if (useMultiColor) {
+      // Parse colors for multi-color rendering
+      const [primaryR, primaryG, primaryB] = toRgb(color);
+
+      // Determine colors based on part type
+      let scleraR, scleraG, scleraB;
+      let irisR, irisG, irisB;
+      let pupilR, pupilG, pupilB;
+
+      if (partTypeName === "eye") {
+        // For eyes:
+        // RED → White sclera (keep white)
+        // GREEN → Iris outline (use boid color)
+        // BLUE → Pupil (black)
+        scleraR = 255;
+        scleraG = 255;
+        scleraB = 255; // White
+        irisR = primaryR;
+        irisG = primaryG;
+        irisB = primaryB; // Boid color
+        pupilR = 0;
+        pupilG = 0;
+        pupilB = 0; // Black
+      } else if (partTypeName === "shell") {
+        // Session 103: For shells:
+        // RED → Border (very dark shade of boid color)
+        // GREEN → Cell fills (boid primary color)
+        // BLUE → Scute lines (dark shade, but lighter than border for contrast)
+        const borderColor = darken(color, 2.5); // Very dark for border
+        const cellColor = color; // Primary boid color for fills
+        const lineColor = darken(color, 1.5); // Dark but contrasts with border
+
+        [scleraR, scleraG, scleraB] = toRgb(borderColor); // RED → Border
+        [irisR, irisG, irisB] = toRgb(cellColor); // GREEN → Cells
+        [pupilR, pupilG, pupilB] = toRgb(lineColor); // BLUE → Lines
+      } else {
+        // Other parts: use boid color for all channels
+        scleraR = primaryR;
+        scleraG = primaryG;
+        scleraB = primaryB;
+        irisR = primaryR;
+        irisG = primaryG;
+        irisB = primaryB;
+        pupilR = primaryR;
+        pupilG = primaryG;
+        pupilB = primaryB;
+      }
+
+      // Create cache key for multi-color part
+      const cacheKey = `${partTypeName}_mc_${primaryR}_${primaryG}_${primaryB}`;
+
+      // Check if we already have this colored part cached
+      let coloredCanvas = coloredShapeCache.get(cacheKey);
+
+      if (!coloredCanvas) {
+        // Cache miss - create colored part
+        coloredCanvas = document.createElement("canvas");
+        coloredCanvas.width = cellPixelSize;
+        coloredCanvas.height = cellPixelSize;
+        const offCtx = coloredCanvas.getContext("2d")!;
+
+        // Draw the part from atlas to offscreen canvas
+        offCtx.drawImage(
+          atlas.canvas,
+          srcX,
+          srcY,
+          srcWidth,
+          srcHeight,
+          0,
+          0,
+          cellPixelSize,
+          cellPixelSize,
+        );
+
+        // Get pixel data
+        const imageData = offCtx.getImageData(
+          0,
+          0,
+          cellPixelSize,
+          cellPixelSize,
+        );
+        const data = imageData.data;
+
+        // Session 102: Multi-color marker detection for body parts
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const a = data[i + 3];
+
+          if (a === 0) continue; // Skip transparent pixels
+
+          // Color dominance detection
+          const rDominant = r > g * 2 && r > b * 2;
+          const gDominant = g > r * 2 && g > b * 2;
+          const bDominant = b > r * 2 && b > g * 2;
+
+          // Detect RED marker → Primary color (for eyes: white sclera)
+          if (rDominant && r > 128) {
+            data[i] = scleraR;
+            data[i + 1] = scleraG;
+            data[i + 2] = scleraB;
+          }
+          // Detect GREEN marker → Secondary color (for eyes: colored iris)
+          else if (gDominant && g > 128) {
+            data[i] = irisR;
+            data[i + 1] = irisG;
+            data[i + 2] = irisB;
+          }
+          // Detect BLUE marker → Tertiary color (for eyes: black pupil)
+          else if (bDominant && b > 128) {
+            data[i] = pupilR;
+            data[i + 1] = pupilG;
+            data[i + 2] = pupilB;
+          }
+          // WHITE or gradient → Keep as-is (for eyes, stays white)
+          else {
+            // Keep white/gradient pixels unchanged
+          }
+        }
+
+        // Put modified pixel data back
+        offCtx.putImageData(imageData, 0, 0);
+
+        // Store in cache for reuse
+        coloredShapeCache.set(cacheKey, coloredCanvas);
+      }
+
+      // Draw the colored part (from cache or freshly created)
+      ctx.drawImage(
+        coloredCanvas,
+        -destSize / 2,
+        -destSize / 2,
+        destSize,
+        destSize,
+      );
+    } else {
+      // Standard rendering: just draw the white atlas part (tinting happens elsewhere if needed)
+      ctx.drawImage(
+        atlas.canvas,
+        srcX,
+        srcY,
+        srcWidth,
+        srcHeight, // Source rect in atlas
+        -destSize / 2,
+        -destSize / 2,
+        destSize,
+        destSize, // Dest rect (centered)
+      );
+    }
 
     ctx.restore();
   }
@@ -337,11 +554,11 @@ function renderAtlasPart(
 /**
  * Eyes - Rendered from atlas (Session 95)
  * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
+ * Session 102: Multi-color eyes with marker detection (white sclera, colored iris, black pupil)
  */
-const renderEyes: BodyPartRenderer = (ctx, boidSize, _color, bodyParts) => {
-  // Eyes should remain white/black (not tinted), so we pass white color
-  // The atlas already has white eyes with black pupils
-  renderAtlasPart(ctx, boidSize, "#FFFFFF", bodyParts, "eye");
+const renderEyes: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
+  // Session 102: Use multi-color mode for eyes
+  renderAtlasPart(ctx, boidSize, color, bodyParts, "eye", true);
 };
 
 /**
@@ -394,9 +611,11 @@ const renderAntenna: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
 /**
  * Shell - Rendered from atlas (Session 98)
  * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
+ * Session 103: Multi-color shell with Voronoi tessellation
  */
 const renderShell: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
-  renderAtlasPart(ctx, boidSize, color, bodyParts, "shell");
+  // Session 103: Use multi-color mode for shells
+  renderAtlasPart(ctx, boidSize, color, bodyParts, "shell", true);
 };
 
 /**
@@ -442,7 +661,7 @@ export const getShapeRenderer = (shape: RenderShapeType): ShapeRenderer => {
  * Get body part renderer for a given part type
  */
 export const getBodyPartRenderer = (
-  part: RenderBodyPartType
+  part: RenderBodyPartType,
 ): BodyPartRenderer | undefined => {
   return bodyPartRenderers[part];
 };

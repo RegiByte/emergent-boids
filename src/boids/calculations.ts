@@ -1,4 +1,4 @@
-import type { Vector2 } from "./vocabulary/schemas/prelude.ts";
+import type { Vector2 } from "./vocabulary/schemas/primitives";
 
 /**
  * Pure calculation functions for boid physics and energy
@@ -16,7 +16,7 @@ import type { Vector2 } from "./vocabulary/schemas/prelude.ts";
  */
 export function calculateEnergySpeedFactor(
   energy: number,
-  maxEnergy: number
+  maxEnergy: number,
 ): number {
   const energyRatio = energy / maxEnergy;
   return 0.5 + energyRatio * 0.8; // Range: 0.5 to 1.3
@@ -38,7 +38,7 @@ export function calculateFearSpeedBoost(fearFactor: number): number {
  */
 export function calculateIdleEnergyGain(
   gainRate: number,
-  deltaSeconds: number
+  deltaSeconds: number,
 ): number {
   return gainRate * deltaSeconds * 0.3; // 30% of normal gain rate
 }
@@ -68,7 +68,7 @@ export function calculateEatingSpeedFactor(): number {
  */
 export function calculateOffspringPosition(
   parent1: Vector2,
-  parent2: Vector2
+  parent2: Vector2,
 ): Vector2 {
   return {
     x: (parent1.x + parent2.x) / 2,
@@ -85,7 +85,7 @@ export function calculateNearbySpawnPosition(
   offset: number,
   width: number,
   height: number,
-  rng: { range: (min: number, max: number) => number }
+  rng: { range: (min: number, max: number) => number },
 ): Vector2 {
   return {
     x: (parentPosition.x + rng.range(-offset / 2, offset / 2) + width) % width,
@@ -103,7 +103,7 @@ export function calculateNearbySpawnPosition(
  */
 export function calculatePreyCohesionWeight(
   baseWeight: number,
-  stance: "flocking" | "seeking_mate" | "mating" | "fleeing" | "eating"
+  stance: "flocking" | "seeking_mate" | "mating" | "fleeing" | "eating",
 ): number {
   switch (stance) {
     case "seeking_mate":
@@ -125,7 +125,7 @@ export function calculatePreyCohesionWeight(
  */
 export function calculatePredatorSeparationWeight(
   baseWeight: number,
-  stance: "hunting" | "seeking_mate" | "mating" | "idle" | "eating"
+  stance: "hunting" | "seeking_mate" | "mating" | "idle" | "eating",
 ): number {
   if (stance === "mating") {
     return baseWeight * 0.3; // Allow closeness when mating
@@ -137,7 +137,7 @@ export function calculatePredatorSeparationWeight(
  * Calculate chase weight based on predator stance
  */
 export function calculatePredatorChaseWeight(
-  stance: "hunting" | "seeking_mate" | "mating" | "idle" | "eating"
+  stance: "hunting" | "seeking_mate" | "mating" | "idle" | "eating",
 ): number {
   switch (stance) {
     case "hunting":

@@ -142,7 +142,7 @@ console.log("🌌 Atmospheric Effects:");
 const atmosphere = "#0a0a0f";
 console.log(`   Base:        ${atmosphere}`);
 console.log(
-  `   Danger:      ${saturate(lighten(atmosphere, 2), 3)} (shift to red)`
+  `   Danger:      ${saturate(lighten(atmosphere, 2), 3)} (shift to red)`,
 );
 console.log(`   Calm:        ${desaturate(atmosphere, 1)}`);
 console.log(`   Alert:       ${lighten(saturate(atmosphere, 2), 1)}`);

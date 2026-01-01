@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { eventKeywords } from "../keywords.ts";
-import { deathCauseSchema, foodSourceSchemas } from "./prelude.ts";
+import { deathCauseSchema } from "./primitives";
+import { foodSourceSchema } from "./entities";
 
 /**
  * Event Schemas - Messages that trigger state changes
@@ -116,7 +117,7 @@ export const boidEventSchemas = {
   // Food source created (from catch or periodic spawn)
   foodSourceCreated: z.object({
     type: z.literal(eventKeywords.boids.foodSourceCreated),
-    foodSource: foodSourceSchemas, // Complete food source data
+    foodSource: foodSourceSchema, // Complete food source data
   }),
 };
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { bodyPartSchema } from "./visual";
 
 /**
  * Genetics System - Type definitions for heritable traits and evolution
@@ -17,116 +18,6 @@ import { z } from "zod";
  * 3. Inheritance (offspring copy parents with variation)
  * 4. Time (generations reveal patterns)
  */
-
-// ============================================
-// World Physics Schema
-// ============================================
-
-/**
- * World Physics - Universal constants that define physical limits
- *
- * These values define the "possible" - all traits operate within these bounds.
- * Trait values become percentages of physics limits, making them meaningful
- * and comparable across species.
- *
- * Benefits:
- * - Trait values are meaningful (percentage of possible)
- * - Easy to balance (adjust physics, not every species)
- * - Trade-offs emerge naturally (high speed = high energy cost)
- * - Comparable across species (0.8 speed always means same thing)
- *
- * Note: This is profile configuration, not a resource.
- * Different profiles can have different physics!
- */
-export const worldPhysicsSchema = z.object({
-  // Motion physics
-  motion: z.object({
-    maxSpeed: z.number().default(10.0), // Absolute speed limit
-    maxForce: z.number().default(0.5), // Absolute turning force
-    friction: z.number().default(0.98), // Velocity damping
-  }),
-
-  // Energy costs
-  energy: z.object({
-    baseMetabolicRate: z.number().default(0.01), // Minimum cost per tick (breathing)
-    movementCostPerSpeed: z.number().default(0.001), // Cost per unit of speed
-    visionCostPerUnit: z.number().default(0.0001), // Cost per unit of vision range
-    combatCost: z.number().default(0.05), // Cost per attack
-  }),
-
-  // Perception limits
-  perception: z.object({
-    maxVisionRange: z.number().default(300), // Absolute vision limit
-  }),
-
-  // Size effects
-  size: z.object({
-    min: z.number().default(0.5), // Minimum boid size
-    max: z.number().default(3.0), // Maximum boid size
-    energyMultiplier: z.number().default(1.5), // Larger = more energy capacity
-    healthMultiplier: z.number().default(2.0), // Larger = more health
-    collisionMultiplier: z.number().default(1.0), // Size affects collision radius
-  }),
-
-  // Combat mechanics
-  combat: z.object({
-    baseDamage: z.number().default(10), // Base attack damage
-    sizeMultiplier: z.number().default(1.5), // Larger = more damage
-  }),
-
-  // Health mechanics
-  health: z.object({
-    baseRegenRate: z.number().default(0.05), // Health regen per tick
-    foodHealingMultiplier: z.number().default(0.5), // % of energy gained also heals
-  }),
-});
-
-// ============================================
-// Body Part Schema
-// ============================================
-
-/**
- * Body Part - Visual traits with mechanical effects
- *
- * Key Decision: Use **list** instead of map for unlimited variety.
- *
- * Benefits:
- * - Allows multiple instances (1 eye, 2 eyes, 8 eyes like spiders!)
- * - Each part has position, size, rotation
- * - Effects are **additive** (more parts = more bonus)
- * - Energy cost scales with part count (trade-off)
- * - Inheritance mixes parts from both parents
- * - Mutations can add/remove/modify parts
- *
- * **Size Semantics (Session 98):**
- * - Size is percentage of body collision radius
- * - 0.5 = 50% of body (small part)
- * - 1.0 = 100% of body (fills collision circle)
- * - 2.0 = 200% of body (extends dramatically beyond)
- *
- * **Position:** Relative to body center (-1 to 1)
- * **Rotation:** Degrees relative to boid heading
- * **Effects:** Additive bonuses (more parts = more effect + more cost)
- */
-export const bodyPartSchema = z.object({
-  type: z.enum(["eye", "fin", "tail", "spike", "antenna", "glow", "shell"]),
-  size: z.number().min(0.1).max(3.0), // Percentage of body radius (0.1-3.0 = 10%-300%)
-  position: z.object({
-    x: z.number().min(-3).max(3), // Relative to body center
-    y: z.number().min(-3).max(3),
-  }),
-  rotation: z.number().min(-360).max(360), // Degrees
-
-  // Mechanical effects (additive across all parts)
-  effects: z.object({
-    visionBonus: z.number().optional(), // +% vision range (eyes)
-    turnRateBonus: z.number().optional(), // +% turn rate (fins)
-    speedBonus: z.number().optional(), // +% speed (tail)
-    damageBonus: z.number().optional(), // +% attack damage (spikes)
-    defenseBonus: z.number().optional(), // +% damage reduction (shell)
-    energyCost: z.number().optional(), // +% energy consumption (cost of having part)
-  }),
-});
 
 // ============================================
 // Genome Schema
@@ -153,7 +44,7 @@ export const genomeSchema = z.object({
     aggression: z.number().min(0).max(1), // Behavioral trait
     sociability: z.number().min(0).max(1), // Behavioral trait
     efficiency: z.number().min(0).max(1), // Energy efficiency (reduces metabolic cost)
-    
+
     // Survival-critical traits (evolvable)
     fearResponse: z.number().min(0).max(1), // Fear intensity (0=fearless, 1=very afraid)
     maturityRate: z.number().min(0).max(1), // Reproduction age (0=early, 1=late)
@@ -177,7 +68,7 @@ export const genomeSchema = z.object({
         oldValue: z.number(),
         newValue: z.number(),
         magnitude: z.number(),
-      })
+      }),
     )
     .optional(), // History of mutations (for analytics)
 });
@@ -219,11 +110,11 @@ export const phenotypeSchema = z.object({
   fearFactor: z.number(), // genome.traits.fearResponse
   minReproductionAge: z.number(), // 5 + genome.traits.maturityRate * 15
   maxAge: z.number(), // 100 + genome.traits.longevity * 200
-  
+
   // Crowd behavior (from sociability)
   crowdTolerance: z.number(), // 10 + genome.traits.sociability * 40
   crowdAversionStrength: z.number(), // 2.0 - genome.traits.sociability * 1.2
-  
+
   // Flocking weights (from sociability)
   separationWeight: z.number(), // 1.5 - genome.traits.sociability * 0.5
   alignmentWeight: z.number(), // 1.0 + genome.traits.sociability * 1.5
@@ -254,9 +145,6 @@ export const mutationConfigSchema = z.object({
 // Type Exports
 // ============================================
 
-export type WorldPhysics = z.infer<typeof worldPhysicsSchema>;
-export type BodyPart = z.infer<typeof bodyPartSchema>;
 export type Genome = z.infer<typeof genomeSchema>;
 export type Phenotype = z.infer<typeof phenotypeSchema>;
 export type MutationConfig = z.infer<typeof mutationConfigSchema>;
-

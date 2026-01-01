@@ -1,4 +1,4 @@
-import type { Boid } from "../vocabulary/schemas/prelude.ts";
+import type { Boid } from "../vocabulary/schemas/entities";
 
 /**
  * Decrement cooldowns for a single boid

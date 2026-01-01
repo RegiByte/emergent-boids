@@ -1,10 +1,10 @@
 import {
   type Genome,
   type Phenotype,
-  type WorldPhysics,
-  type BodyPart,
   genomeSchema,
 } from "../vocabulary/schemas/genetics";
+import { BodyPart } from "@/boids/vocabulary/schemas/visual";
+import type { WorldPhysics } from "../vocabulary/schemas/world";
 
 /**
  * Phenotype Computation - Transform genome into effective gameplay values
@@ -44,7 +44,7 @@ function computeBodyPartBonuses(bodyParts: BodyPart[]) {
       damageBonus: 0,
       defenseBonus: 0,
       energyCost: 0,
-    }
+    },
   );
 }
 
@@ -66,7 +66,7 @@ function computeBodyPartBonuses(bodyParts: BodyPart[]) {
  */
 export function computePhenotype(
   genomeBase: Genome,
-  physics: WorldPhysics
+  physics: WorldPhysics,
 ): Phenotype {
   const genome = genomeSchema.parse(genomeBase);
   // 1. Compute body part bonuses (additive)
@@ -202,7 +202,7 @@ export function createGenesisGenome(
   baseVisual: {
     color: string;
     bodyParts: BodyPart[];
-  }
+  },
 ): Genome {
   return {
     traits: {

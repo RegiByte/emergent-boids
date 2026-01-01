@@ -30,7 +30,7 @@ const TEXT_QUAD_POSITIONS = [
 export const createTextDrawCommand = (
   regl: REGL.Regl,
   fontTexture: REGL.Texture2D,
-  cellSize: number
+  cellSize: number,
 ): REGL.DrawCommand => {
   return regl({
     vert: textVertShader,
@@ -66,7 +66,7 @@ export const createTextDrawCommand = (
     uniforms: {
       fontTexture: fontTexture,
       resolution: (regl.prop as unknown as (name: string) => number[])(
-        "resolution"
+        "resolution",
       ),
       cellSize: cellSize,
     },
@@ -92,4 +92,3 @@ export const createTextDrawCommand = (
     instances: (regl.prop as unknown as (name: string) => number)("count"),
   });
 };
-

@@ -8,97 +8,97 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as BoidsAtlasRouteImport } from './routes/boids-atlas'
-import { Route as AtlasesRouteImport } from './routes/atlases'
-import { Route as AboutRouteImport } from './routes/about'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as BoidsAtlasRouteImport } from "./routes/boids-atlas";
+import { Route as AtlasesRouteImport } from "./routes/atlases";
+import { Route as AboutRouteImport } from "./routes/about";
+import { Route as IndexRouteImport } from "./routes/index";
 
 const BoidsAtlasRoute = BoidsAtlasRouteImport.update({
-  id: '/boids-atlas',
-  path: '/boids-atlas',
+  id: "/boids-atlas",
+  path: "/boids-atlas",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AtlasesRoute = AtlasesRouteImport.update({
-  id: '/atlases',
-  path: '/atlases',
+  id: "/atlases",
+  path: "/atlases",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
+  id: "/about",
+  path: "/about",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/atlases': typeof AtlasesRoute
-  '/boids-atlas': typeof BoidsAtlasRoute
+  "/": typeof IndexRoute;
+  "/about": typeof AboutRoute;
+  "/atlases": typeof AtlasesRoute;
+  "/boids-atlas": typeof BoidsAtlasRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/atlases': typeof AtlasesRoute
-  '/boids-atlas': typeof BoidsAtlasRoute
+  "/": typeof IndexRoute;
+  "/about": typeof AboutRoute;
+  "/atlases": typeof AtlasesRoute;
+  "/boids-atlas": typeof BoidsAtlasRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/atlases': typeof AtlasesRoute
-  '/boids-atlas': typeof BoidsAtlasRoute
+  __root__: typeof rootRouteImport;
+  "/": typeof IndexRoute;
+  "/about": typeof AboutRoute;
+  "/atlases": typeof AtlasesRoute;
+  "/boids-atlas": typeof BoidsAtlasRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/atlases' | '/boids-atlas'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/atlases' | '/boids-atlas'
-  id: '__root__' | '/' | '/about' | '/atlases' | '/boids-atlas'
-  fileRoutesById: FileRoutesById
+  fileRoutesByFullPath: FileRoutesByFullPath;
+  fullPaths: "/" | "/about" | "/atlases" | "/boids-atlas";
+  fileRoutesByTo: FileRoutesByTo;
+  to: "/" | "/about" | "/atlases" | "/boids-atlas";
+  id: "__root__" | "/" | "/about" | "/atlases" | "/boids-atlas";
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AboutRoute: typeof AboutRoute
-  AtlasesRoute: typeof AtlasesRoute
-  BoidsAtlasRoute: typeof BoidsAtlasRoute
+  IndexRoute: typeof IndexRoute;
+  AboutRoute: typeof AboutRoute;
+  AtlasesRoute: typeof AtlasesRoute;
+  BoidsAtlasRoute: typeof BoidsAtlasRoute;
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/boids-atlas': {
-      id: '/boids-atlas'
-      path: '/boids-atlas'
-      fullPath: '/boids-atlas'
-      preLoaderRoute: typeof BoidsAtlasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/atlases': {
-      id: '/atlases'
-      path: '/atlases'
-      fullPath: '/atlases'
-      preLoaderRoute: typeof AtlasesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+    "/boids-atlas": {
+      id: "/boids-atlas";
+      path: "/boids-atlas";
+      fullPath: "/boids-atlas";
+      preLoaderRoute: typeof BoidsAtlasRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/atlases": {
+      id: "/atlases";
+      path: "/atlases";
+      fullPath: "/atlases";
+      preLoaderRoute: typeof AtlasesRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/about": {
+      id: "/about";
+      path: "/about";
+      fullPath: "/about";
+      preLoaderRoute: typeof AboutRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/": {
+      id: "/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
@@ -107,7 +107,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AtlasesRoute: AtlasesRoute,
   BoidsAtlasRoute: BoidsAtlasRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
