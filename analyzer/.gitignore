@@ -1,2 +1,9 @@
 datasets/
 .venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python

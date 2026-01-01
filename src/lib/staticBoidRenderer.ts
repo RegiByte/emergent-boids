@@ -1,9 +1,9 @@
 /**
  * Static Boid Renderer
- * 
+ *
  * Utilities for rendering individual boids in controlled environments
  * without the full simulation system. Supports both Canvas 2D and WebGL.
- * 
+ *
  * Use cases:
  * - Visual testing and comparison
  * - Atlas/texture debugging
@@ -17,11 +17,14 @@ import type { BodyPartType } from "@/lib/coordinates";
 import { shapeSizeParamFromBaseSize } from "@/lib/shapeSizing";
 import { computePhenotype } from "@/boids/genetics/phenotype";
 import { defaultWorldPhysics } from "@/resources/defaultPhysics";
-import { getShapeRenderer, getBodyPartRenderer } from "@/resources/rendering/shapes";
+import {
+  getShapeRenderer,
+  getBodyPartRenderer,
+} from "@/resources/rendering/shapes";
 
 /**
  * Create a minimal boid object for static rendering
- * 
+ *
  * @param genome - The boid's genetic information
  * @param typeId - Species/type identifier (e.g., "explorer", "predator")
  * @param position - World position (default: origin)
@@ -34,13 +37,13 @@ export function createStaticBoid(
   rotation: number = 0
 ): Boid {
   const phenotype = computePhenotype(genome, defaultWorldPhysics);
-  
+
   // Create velocity vector pointing in rotation direction
   const velocity = {
     x: Math.cos(rotation),
     y: Math.sin(rotation),
   };
-  
+
   return {
     id: `static-${Math.random().toString(36).substr(2, 9)}`,
     position,
@@ -72,10 +75,10 @@ export function createStaticBoid(
 
 /**
  * Render a boid using Canvas 2D
- * 
+ *
  * This uses the same rendering logic as the main simulation's Canvas 2D fallback.
  * The context should already be translated/scaled to the desired position.
- * 
+ *
  * @param ctx - Canvas 2D rendering context
  * @param boid - The boid to render
  * @param scale - Additional scale multiplier (default: 1)
@@ -88,33 +91,32 @@ export function renderBoidCanvas2D(
   speciesConfig?: SpeciesConfig
 ): void {
   const { velocity, genome } = boid;
-  
+
   // Session 96: Single source of truth for sizing comes from phenotype
   const baseSize = boid.phenotype.baseSize; // == collisionRadius
   const shapeName = speciesConfig?.visualConfig?.shape || "triangle";
   const shapeSize = shapeSizeParamFromBaseSize(shapeName, baseSize) * scale;
   const bodySize = baseSize * scale;
-  
+
   // Calculate rotation from velocity
   const angle = Math.atan2(velocity.y, velocity.x);
-  
+
   ctx.save();
-  
+
   // Rotate to face direction of travel
   ctx.rotate(angle);
-  
+
   // Use color from genome if available, otherwise default
   const color = genome.visual?.color || "#4ecdc4";
   ctx.fillStyle = color;
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
-  
+
   // Draw body shape using shape renderer
+  // Session 99: Renderer now handles complete drawing (fill + stroke)
   const shapeRenderer = getShapeRenderer(shapeName);
-  shapeRenderer(ctx, shapeSize);
-  ctx.fill();
-  ctx.stroke();
-  
+  shapeRenderer(ctx, shapeSize); // Renderer handles fill/stroke internally
+
   // DEBUG: Draw collision radius circle (Session 96-97)
   // Shows the actual physics collision boundary for comparison
   ctx.save();
@@ -140,14 +142,14 @@ export function renderBoidCanvas2D(
       existing.push(part);
       partsByType.set(part.type, existing);
     }
-    
+
     // Get tail color from species config (can be different from body color)
     const tailColor = speciesConfig?.visualConfig?.tailColor || color;
-    
+
     for (const [partType, parts] of partsByType.entries()) {
       // Skip glow (it's handled via shadow effects)
       if (partType === "glow") continue;
-      
+
       const partRenderer = getBodyPartRenderer(partType as BodyPartType);
       if (partRenderer) {
         // Use tailColor for tails, body color for everything else
@@ -158,7 +160,7 @@ export function renderBoidCanvas2D(
       }
     }
   }
-  
+
   ctx.restore();
 }
 
@@ -182,10 +184,10 @@ export function applyCameraTransform(
 ): void {
   // Center the canvas
   ctx.translate(canvasWidth / 2, canvasHeight / 2);
-  
+
   // Apply zoom
   ctx.scale(camera.zoom, camera.zoom);
-  
+
   // Apply camera position (inverted for world-to-screen)
   ctx.translate(-camera.position.x, -camera.position.y);
 }
@@ -210,16 +212,16 @@ export function renderBoidsCanvas2D(
     clearCanvas = true,
     speciesConfig,
   } = options ?? {};
-  
+
   if (clearCanvas) {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   }
-  
+
   ctx.save();
-  
+
   // Apply camera transform
   applyCameraTransform(ctx, camera, ctx.canvas.width, ctx.canvas.height);
-  
+
   // Render each boid
   for (const boid of boids) {
     ctx.save();
@@ -227,7 +229,7 @@ export function renderBoidsCanvas2D(
     renderBoidCanvas2D(ctx, boid, scale, speciesConfig);
     ctx.restore();
   }
-  
+
   ctx.restore();
 }
 
@@ -245,22 +247,22 @@ export interface BoidInstanceData {
 
 /**
  * Prepare boid data for WebGL rendering
- * 
+ *
  * This extracts the necessary data from a boid and formats it
  * for the WebGL renderer's instance data format.
- * 
+ *
  * @param boid - The boid to prepare
  * @returns Instance data for WebGL rendering
  */
 export function prepareBoidWebGL(boid: Boid): BoidInstanceData {
   const { position, velocity, phenotype } = boid;
-  
+
   // Calculate rotation from velocity
   const rotation = Math.atan2(velocity.y, velocity.x);
-  
+
   // Get color from phenotype (RGB normalized to 0-1)
-  const color: [number, number, number, number] = [0.31, 0.80, 0.77, 1.0]; // Default cyan
-  
+  const color: [number, number, number, number] = [0.31, 0.8, 0.77, 1.0]; // Default cyan
+
   return {
     position: [position.x, position.y],
     rotation,
@@ -276,4 +278,3 @@ export function prepareBoidWebGL(boid: Boid): BoidInstanceData {
 export function prepareBoidsWebGL(boids: Boid[]): BoidInstanceData[] {
   return boids.map(prepareBoidWebGL);
 }
-

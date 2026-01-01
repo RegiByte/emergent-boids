@@ -97,13 +97,23 @@ export const worldPhysicsSchema = z.object({
  * - Energy cost scales with part count (trade-off)
  * - Inheritance mixes parts from both parents
  * - Mutations can add/remove/modify parts
+ *
+ * **Size Semantics (Session 98):**
+ * - Size is percentage of body collision radius
+ * - 0.5 = 50% of body (small part)
+ * - 1.0 = 100% of body (fills collision circle)
+ * - 2.0 = 200% of body (extends dramatically beyond)
+ *
+ * **Position:** Relative to body center (-1 to 1)
+ * **Rotation:** Degrees relative to boid heading
+ * **Effects:** Additive bonuses (more parts = more effect + more cost)
  */
 export const bodyPartSchema = z.object({
   type: z.enum(["eye", "fin", "tail", "spike", "antenna", "glow", "shell"]),
-  size: z.number().min(0.5).max(2.0), // Relative to boid size
+  size: z.number().min(0.1).max(3.0), // Percentage of body radius (0.1-3.0 = 10%-300%)
   position: z.object({
-    x: z.number().min(-1).max(1), // Relative to body center
-    y: z.number().min(-1).max(1),
+    x: z.number().min(-3).max(3), // Relative to body center
+    y: z.number().min(-3).max(3),
   }),
   rotation: z.number().min(-360).max(360), // Degrees
 

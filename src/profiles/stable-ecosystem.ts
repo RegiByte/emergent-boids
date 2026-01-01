@@ -29,6 +29,7 @@ const createBodyParts = (
     type: string;
     position?: { x: number; y: number };
     rotation?: number;
+    size?: number;
   }>
 ): BodyPart[] => {
   return parts.map((part, index) => {
@@ -36,21 +37,21 @@ const createBodyParts = (
       case bodyPartKeywords.eye:
         return {
           type: bodyPartKeywords.eye,
-          size: 1.0,
-          position: part.position || { x: index === 0 ? -0.2 : 0.2, y: -0.1 },
+          size: part.size ?? 0.3,
+          position: part.position || { x: index === 0 ? -0.25 : 0.25, y: -0.1 },
           rotation: part.rotation || 0,
           effects: { visionBonus: 0.1 },
         };
       case bodyPartKeywords.fin:
         return {
           type: bodyPartKeywords.fin,
-          size: 1.0,
+          size: part.size ?? 0.7,
           // Position fins toward the sides of the body
           // Left fin: x = -0.4 (left side), rotation = -90 (pointing down-left)
           // Right fin: x = 0.4 (right side), rotation = 90 (pointing down-right)
           position: part.position || {
-            x: index % 2 === 0 ? -0.5 : 0.5,
-            y: 0.3,
+            x: index % 2 === 0 ? -1.2 : 1.2,
+            y: 0.6,
           },
           rotation: part.rotation || (index % 2 === 0 ? -130 : 130),
           effects: { turnRateBonus: 0.05 },
@@ -58,31 +59,53 @@ const createBodyParts = (
       case bodyPartKeywords.tail:
         return {
           type: bodyPartKeywords.tail,
-          size: 1.0,
-          position: part.position || { x: 0, y: 0.75 },
+          size: part.size ?? 0.7,
+          position: part.position || { x: 0, y: 1.8 },
           rotation: part.rotation || -180,
           effects: { speedBonus: 0.05 },
         };
       case bodyPartKeywords.spike:
         return {
           type: bodyPartKeywords.spike,
-          size: 1.0,
-          position: part.position || { x: 0, y: -0.3 },
-          rotation: part.rotation || 0,
-          effects: { damageBonus: 0.15, energyCost: 0.05 },
+          size: part.size ?? 0.7,
+          // position: part.position || { x: 0, y: -0.3 },
+          // rotation: part.rotation || 0,
+          // effects: { damageBonus: 0.15, energyCost: 0.05 },
+          position: part.position || {
+            x: index % 2 === 0 ? -0.5 : 0.5,
+            y: index % 2 === 0 ? 0.6 : -0.6,
+          },
+          rotation: part.rotation || (index % 2 === 0 ? -130 : 130),
+          effects: { turnRateBonus: 0.05 },
         };
       case bodyPartKeywords.glow:
         return {
           type: bodyPartKeywords.glow,
-          size: 1.0,
+          size: part.size ?? 0.7,
           position: part.position || { x: 0, y: 0 },
           rotation: part.rotation || 0,
           effects: { energyCost: 0.02 },
         };
+      case bodyPartKeywords.antenna:
+        return {
+          type: bodyPartKeywords.antenna,
+          size: part.size ?? 0.6,
+          position: part.position || { x: 0, y: -0.7 },
+          rotation: part.rotation || 0,
+          effects: { visionBonus: 0.15 }, // Enhanced sensory awareness
+        };
+      case bodyPartKeywords.shell:
+        return {
+          type: bodyPartKeywords.shell,
+          size: part.size ?? 1.2,
+          position: part.position || { x: 0, y: 0 },
+          rotation: part.rotation || 0,
+          effects: { defenseBonus: 0.3, energyCost: 0.05 }, // Heavy armor, high cost
+        };
       default:
         return {
           type: bodyPartKeywords.eye,
-          size: 1.0,
+          size: part.size ?? 0.7,
           position: { x: 0, y: -0.4 },
           rotation: 0,
           effects: { visionBonus: 0.05 },
@@ -161,7 +184,20 @@ export const stableEcosystemProfile: SimulationProfile = {
           bodyParts: createBodyParts([
             { type: bodyPartKeywords.eye },
             { type: bodyPartKeywords.eye },
-            { type: bodyPartKeywords.tail },
+            { type: bodyPartKeywords.tail, size: 0.8 },
+            {
+              type: bodyPartKeywords.antenna,
+              size: 0.7,
+              rotation: -135,
+              position: { x: -0.5, y: -0 },
+            }, // Sensory explorer
+            {
+              type: bodyPartKeywords.antenna,
+              size: 0.7,
+              rotation: 135,
+              position: { x: 0.5, y: -0 },
+            }, // Sensory explorer
+            
           ]),
         },
       },
@@ -218,7 +254,7 @@ export const stableEcosystemProfile: SimulationProfile = {
           speed: 0.4, // 40% of maxSpeed (4.0)
           force: 0.4, // 40% of maxForce (0.2)
           vision: 0.5,
-          size: 1.0, // Average
+          size: 0.5, // Average
           aggression: 0.3,
           sociability: 0.75, // Very social (from cohesion 2.5)
           efficiency: 0.5,
@@ -231,8 +267,18 @@ export const stableEcosystemProfile: SimulationProfile = {
           bodyParts: createBodyParts([
             { type: bodyPartKeywords.eye },
             { type: bodyPartKeywords.eye },
-            { type: bodyPartKeywords.fin },
-            { type: bodyPartKeywords.fin },
+            {
+              type: bodyPartKeywords.fin,
+              position: { x: -1.7, y: 0.8 },
+              size: 1,
+            },
+            {
+              type: bodyPartKeywords.fin,
+              position: { x: 1.7, y: 0.8 },
+              size: 1,
+            },
+            { type: bodyPartKeywords.tail, size: 0.7 },
+            { type: bodyPartKeywords.glow, size: 1.0 }, // Group harmony indicator
           ]),
         },
       },
@@ -298,6 +344,8 @@ export const stableEcosystemProfile: SimulationProfile = {
           bodyParts: createBodyParts([
             { type: bodyPartKeywords.eye },
             { type: bodyPartKeywords.eye },
+            { type: bodyPartKeywords.shell, size: 1.3 }, // Heavy protective armor
+            { type: bodyPartKeywords.tail, size: 0.6 },
           ]),
         },
       },
@@ -364,13 +412,38 @@ export const stableEcosystemProfile: SimulationProfile = {
           bodyParts: createBodyParts([
             { type: bodyPartKeywords.eye },
             { type: bodyPartKeywords.eye },
+            { type: bodyPartKeywords.shell, size: 1.1 }, // Defensive shell base
             // Six spikes matching Canvas 2D pattern (3 top, 3 bottom)
-            { type: bodyPartKeywords.spike, position: { x: -0.4, y: -0.5 } }, // Top left
-            { type: bodyPartKeywords.spike, position: { x: -0.2, y: -0.5 } }, // Top center
-            { type: bodyPartKeywords.spike, position: { x: 0, y: -0.5 } }, // Top right
-            { type: bodyPartKeywords.spike, position: { x: -0.4, y: 0.5 } }, // Bottom left
-            { type: bodyPartKeywords.spike, position: { x: -0.2, y: 0.5 } }, // Bottom center
-            { type: bodyPartKeywords.spike, position: { x: 0, y: 0.5 } }, // Bottom right
+            {
+              type: bodyPartKeywords.spike,
+              position: { x: -0.4, y: -0.5 },
+              size: 0.6,
+            }, // Top left
+            {
+              type: bodyPartKeywords.spike,
+              position: { x: -0.2, y: -0.5 },
+              size: 0.6,
+            }, // Top center
+            {
+              type: bodyPartKeywords.spike,
+              position: { x: 0, y: -0.5 },
+              size: 0.6,
+            }, // Top right
+            {
+              type: bodyPartKeywords.spike,
+              position: { x: -0.4, y: 0.5 },
+              size: 0.6,
+            }, // Bottom left
+            {
+              type: bodyPartKeywords.spike,
+              position: { x: -0.2, y: 0.5 },
+              size: 0.6,
+            }, // Bottom center
+            {
+              type: bodyPartKeywords.spike,
+              position: { x: 0, y: 0.5 },
+              size: 0.6,
+            }, // Bottom right
           ]),
         },
       },
@@ -436,12 +509,27 @@ export const stableEcosystemProfile: SimulationProfile = {
         visual: {
           color: "#ff0000", // Bright red
           bodyParts: createBodyParts([
-            { type: bodyPartKeywords.eye },
-            { type: bodyPartKeywords.eye },
-            { type: bodyPartKeywords.fin },
-            { type: bodyPartKeywords.fin },
-            { type: bodyPartKeywords.tail },
-            { type: bodyPartKeywords.glow },
+            { type: bodyPartKeywords.eye, size: 0.4 },
+            { type: bodyPartKeywords.eye, size: 0.4 },
+            { type: bodyPartKeywords.fin, size: 0.8 },
+            { type: bodyPartKeywords.fin, size: 0.8 },
+            { type: bodyPartKeywords.tail, size: 0.9 },
+            { type: bodyPartKeywords.glow, size: 1.5 }, // Intimidating aura
+            {
+              type: bodyPartKeywords.spike,
+              position: { x: 0, y: -0.6 },
+              size: 0.7,
+            }, // Front spike
+            {
+              type: bodyPartKeywords.spike,
+              position: { x: -0.4, y: -0.3 },
+              size: 0.6,
+            }, // Left spike
+            {
+              type: bodyPartKeywords.spike,
+              position: { x: 0.4, y: -0.3 },
+              size: 0.6,
+            }, // Right spike
           ]),
         },
       },

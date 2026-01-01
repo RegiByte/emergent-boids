@@ -21,6 +21,13 @@
  * - Eye/Glow/Shell: Circular (no orientation)
  * - Antenna: Vertical (no directional preference)
  *
+ * NORMALIZED ATLAS SIZING (Session 98):
+ * - ALL parts drawn at the SAME normalized size (80% of cell)
+ * - This ensures genome size parameter directly controls visual appearance
+ * - size: 1.0 means "100% of body radius" regardless of part type
+ * - Allows maximum texture detail (every part uses full cell space)
+ * - Future-proof for detailed textures with borders, gradients, multiple layers
+ *
  * The genome specifies multiple instances if needed (e.g., [eye, eye] = two eyes)
  */
 
@@ -79,8 +86,11 @@ export const createBodyPartsAtlas = (): BodyPartsAtlasResult | null => {
     const centerX = cellX + cellSize / 2;
     const centerY = cellY + cellSize / 2;
 
-    // Size of part (use most of cell with minimal padding)
-    const size = cellSize * 0.4; // Increased from 0.35 to 0.45 (90% total width)
+    // Session 98: NORMALIZED ATLAS SIZE
+    // All parts draw at the same size in their cells (80% of cell)
+    // This allows genome size parameter to directly control visual size
+    // without parts having different "intrinsic" scales
+    const normalizedSize = cellSize * 0.8; // All parts fill 80% of cell
 
     // Save context and translate to cell center
     ctx.save();
@@ -89,27 +99,27 @@ export const createBodyPartsAtlas = (): BodyPartsAtlasResult | null => {
     // Render parts in white (colorized in shader)
     ctx.fillStyle = "white";
     ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.lineCap = "round";
 
     // Render the body part
+    // All parts drawn at normalizedSize for consistent scaling
     switch (partName) {
       case "eye": {
-        // Single eye (will be rendered multiple times at different positions)
-        // Match Canvas 2D size: 0.15 (not 0.4)
-        const eyeSize = size * 0.2;
+        // Eye drawn at full normalized size (genome size will control actual scale)
+        const eyeRadius = normalizedSize * 0.35; // Full eye size
 
         // Outer eye (white)
         ctx.fillStyle = "white";
         ctx.beginPath();
-        ctx.arc(0, 0, eyeSize, 0, Math.PI * 2);
+        ctx.arc(0, 0, eyeRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Pupil (black for contrast, matching Canvas 2D)
+        // Pupil (black for contrast)
         ctx.fillStyle = "#000000";
-        const pupilSize = eyeSize * 0.5;
+        const pupilRadius = eyeRadius * 0.4;
         ctx.beginPath();
-        ctx.arc(0, 0, pupilSize, 0, Math.PI * 2);
+        ctx.arc(0, 0, pupilRadius, 0, Math.PI * 2);
         ctx.fill();
         break;
       }
@@ -117,85 +127,110 @@ export const createBodyPartsAtlas = (): BodyPartsAtlasResult | null => {
       case "fin": {
         // Angular fin - POINTS RIGHT (0°) in base state
         // Genome rotation will orient the fin as needed
+        // Normalized to fill cell consistently with other parts
         ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
 
         // Create angular fin pointing RIGHT (base at left, tip at right)
+        // Scaled to normalizedSize for consistency
+        const finLength = normalizedSize * 0.45; // Fin length
+        const finWidth = normalizedSize * 0.25; // Fin width
+
         ctx.beginPath();
-        ctx.moveTo(-size * 0.2, -size * 0.15); // Top base (at body)
-        ctx.lineTo(size * 0.6, 0); // Pointy tip (pointing right)
-        ctx.lineTo(-size * 0.2, size * 0.15); // Bottom base (at body)
-        ctx.lineTo(-size * 0.1, 0); // Inner point (creates angular shape)
+        ctx.moveTo(-finLength * 0.3, -finWidth); // Top base (at body)
+        ctx.lineTo(finLength, 0); // Pointy tip (pointing right)
+        ctx.lineTo(-finLength * 0.3, finWidth); // Bottom base (at body)
+        ctx.lineTo(-finLength * 0.15, 0); // Inner point (creates angular shape)
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
         break;
       }
 
-      case "spike":
+      case "spike": {
         // Single defensive spike - POINTS RIGHT (0°) in base state
         // Genome rotation will orient the spike as needed
+        // Normalized to fill cell consistently
         ctx.strokeStyle = "white";
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 4;
         ctx.lineCap = "round";
 
         // Spike pointing RIGHT (along +X axis)
+        const spikeLength = normalizedSize * 0.45;
         ctx.beginPath();
-        ctx.moveTo(0, 0); // Base (at boid body)
-        ctx.lineTo(size * 0.8, size * 0.1); // Tip (pointing right with slight tilt)
+        ctx.moveTo(-spikeLength * 0.1, 0); // Base (at boid body)
+        ctx.lineTo(spikeLength, 0); // Tip (pointing right)
+        ctx.stroke();
+
+        // Add a thicker base for visual weight
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(-spikeLength * 0.1, 0);
+        ctx.lineTo(spikeLength * 0.2, 0);
         ctx.stroke();
         break;
+      }
 
-      case "tail":
+      case "tail": {
         // Prominent tail fin - POINTS RIGHT (0°) in base state
         // Two merged triangles creating angular perspective
         // Genome rotation will orient the tail (typically 180° to point backward)
+        // Normalized to fill cell consistently
         ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
 
         // V-shape pointing RIGHT (base at left, tips extending right)
+        const tailLength = normalizedSize * 0.45;
+        const tailHeight = normalizedSize * 0.3;
+
         ctx.beginPath();
-        ctx.moveTo(-size * 0.5, 0); // Base (at boid body)
-        ctx.lineTo(size * 1.0, -size * 0.4); // Top tip (pointing right)
-        ctx.lineTo(size * 0.8, 0); // Middle point (creates angular V)
-        ctx.lineTo(size * 1.0, size * 0.4); // Bottom tip (pointing right)
+        ctx.moveTo(-tailLength * 0.3, 0); // Base (at boid body)
+        ctx.lineTo(tailLength, -tailHeight); // Top tip (pointing right)
+        ctx.lineTo(tailLength * 0.8, 0); // Middle point (creates angular V)
+        ctx.lineTo(tailLength, tailHeight); // Bottom tip (pointing right)
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
         break;
+      }
 
       case "antenna": {
         // Single antenna - CENTERED in cell (extends vertically)
-        const antennaLength = size * 0.7;
+        // Normalized to fill cell consistently
+        const antennaLength = normalizedSize * 0.45;
 
         // Antenna stalk (centered vertically around origin)
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(0, -antennaLength / 2);
-        ctx.lineTo(0, antennaLength / 2);
+        ctx.moveTo(0, -antennaLength);
+        ctx.lineTo(0, antennaLength);
         ctx.stroke();
 
         // Antenna bulb at top
+        ctx.fillStyle = "white";
         ctx.beginPath();
-        ctx.arc(0, -antennaLength / 2, size * 0.15, 0, Math.PI * 2);
+        ctx.arc(0, -antennaLength, normalizedSize * 0.1, 0, Math.PI * 2);
         ctx.fill();
 
         // Small bulb at bottom for symmetry
         ctx.beginPath();
-        ctx.arc(0, antennaLength / 2, size * 0.1, 0, Math.PI * 2);
+        ctx.arc(0, antennaLength, normalizedSize * 0.08, 0, Math.PI * 2);
         ctx.fill();
         break;
       }
 
-      case "glow":
+      case "glow": {
         // Glow is a special marker - render a visible radial gradient
         // The actual glow effect is handled in the shader
         // Make it more visible in the atlas by using concentric circles
+        // Normalized to fill cell consistently
         ctx.strokeStyle = "white";
         ctx.lineWidth = 2;
 
         // Draw concentric circles to represent glow
+        const glowRadius = normalizedSize * 0.15;
         for (let i = 1; i <= 3; i++) {
           ctx.globalAlpha = 1.0 - i * 0.25; // Fade out
           ctx.beginPath();
-          ctx.arc(0, 0, size * 0.3 * i, 0, Math.PI * 2);
+          ctx.arc(0, 0, glowRadius * i, 0, Math.PI * 2);
           ctx.stroke();
         }
         ctx.globalAlpha = 1.0; // Reset alpha
@@ -203,19 +238,22 @@ export const createBodyPartsAtlas = (): BodyPartsAtlasResult | null => {
         // Add a bright center
         ctx.fillStyle = "white";
         ctx.beginPath();
-        ctx.arc(0, 0, size * 0.2, 0, Math.PI * 2);
+        ctx.arc(0, 0, glowRadius * 0.6, 0, Math.PI * 2);
         ctx.fill();
         break;
+      }
 
-      case "shell":
+      case "shell": {
         // Protective shell - CENTERED in cell (circular armor pattern)
+        // Normalized to fill cell consistently
         ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
 
         // Draw concentric shell segments (centered)
+        const shellRadius = normalizedSize * 0.4;
         for (let i = 0; i < 3; i++) {
           ctx.globalAlpha = 0.3 + i * 0.2;
           ctx.beginPath();
-          ctx.arc(0, 0, size * 0.3 * (3 - i), 0, Math.PI * 2);
+          ctx.arc(0, 0, shellRadius * (0.4 + i * 0.2), 0, Math.PI * 2);
           ctx.stroke();
         }
         ctx.globalAlpha = 1.0;
@@ -224,14 +262,15 @@ export const createBodyPartsAtlas = (): BodyPartsAtlasResult | null => {
         ctx.strokeStyle = "white";
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, size * 0.7, 0, Math.PI * 2);
+        ctx.arc(0, 0, shellRadius, 0, Math.PI * 2);
         ctx.stroke();
         break;
+      }
 
       default:
-        // Fallback: small circle
+        // Fallback: small circle at normalized size
         ctx.beginPath();
-        ctx.arc(0, 0, size * 0.3, 0, Math.PI * 2);
+        ctx.arc(0, 0, normalizedSize * 0.3, 0, Math.PI * 2);
         ctx.fill();
     }
 

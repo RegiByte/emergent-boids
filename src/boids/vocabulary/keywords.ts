@@ -127,6 +127,13 @@ export const shapeKeywords = {
   hexagon: "hexagon",
   square: "square",
   triangle: "triangle",
+  // Session 98: New shapes from expanded atlas
+  oval: "oval",
+  rectangle: "rectangle",
+  pentagon_inverted: "pentagon_inverted",
+  heptagon: "heptagon",
+  nonagon: "nonagon",
+  trapezoid: "trapezoid",
 } as const;
 
 export const bodyPartKeywords = {

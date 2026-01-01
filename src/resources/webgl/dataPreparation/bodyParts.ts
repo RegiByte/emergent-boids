@@ -103,12 +103,12 @@ export const prepareBodyPartsData = (
         partOffset: [offset.x, offset.y],
         // Use transformed rotation (degrees → radians)
         partRotation: rotation,
-        // Session 97: Scale parts relative to boid body (radius semantics)
+        // Session 98: partSize is percentage of body (0.1-3.0)
         // partScale represents the RADIUS of the body part in world units
         // Shader multiplies by 2.0 to get diameter for quad rendering
-        // Formula: partSize (genome) * boidScale (collision radius) * 0.7
-        // Effective visual size: 0.7 * 2.0 = 1.4x collision radius
-        partScale: partSize * boidScale * 0.7,
+        // Formula: partSize (genome, percentage of body) * boidScale (collision radius)
+        // Example: partSize=0.7 (70% of body) * boidScale=5 = partScale=3.5 (radius in world units)
+        partScale: partSize * boidScale,
       });
     }
   }

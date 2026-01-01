@@ -466,15 +466,14 @@ export const renderBoidBodies = (rc: RenderContext): void => {
     }
 
     // Render main body shape
+    // Session 99: Renderers now handle complete drawing (fill + stroke)
+    // We set up the context, renderer does everything else
     rc.ctx.fillStyle = dynamicColor;
-    const shapeRenderer = getShapeRenderer(shape);
-    shapeRenderer(rc.ctx, shapeSize);
-    rc.ctx.fill();
-
-    // Add subtle outline for better visibility
     rc.ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
     rc.ctx.lineWidth = 1;
-    rc.ctx.stroke();
+
+    const shapeRenderer = getShapeRenderer(shape);
+    shapeRenderer(rc.ctx, shapeSize); // Renderer handles fill/stroke internally
 
     // Reset shadow after main body
     if (hasGlow) {
@@ -515,11 +514,13 @@ export const renderBoidBodies = (rc: RenderContext): void => {
     }
 
     // Apply wounded tint overlay if damaged
+    // Session 99: Renderer handles complete drawing
     const woundedTint = getWoundedTint(boid);
     if (woundedTint) {
       rc.ctx.fillStyle = woundedTint;
-      shapeRenderer(rc.ctx, shapeSize);
-      rc.ctx.fill();
+      rc.ctx.strokeStyle = "rgba(255, 255, 255, 0.2)"; // Subtle outline for wounded
+      rc.ctx.lineWidth = 1;
+      shapeRenderer(rc.ctx, shapeSize); // Renderer handles fill/stroke internally
     }
 
     // DEBUG: Draw collision radius circle (Session 96)

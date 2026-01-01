@@ -378,13 +378,11 @@ function prepareBodyPartsInstanceData(
     partDataArrays.partOffset.push(offset.x, offset.y);
     partDataArrays.partRotation.push(rotation);
 
-    // Scale parts relative to boid body
-    // Canvas 2D renders eyes at size * 0.15, we need to match that visual size
-    // After testing: 1.5 was too large, reducing to better match Canvas 2D
-    const bodyPartScaleMultiplier = 0.7; // Reduced from 1.5 (was too large)
-
+    // Session 98: partSize is now percentage of body (0.1-3.0)
+    // No multiplier needed - partSize directly represents percentage of boid collision radius
+    // Shader multiplies by 2.0 to convert radius → diameter for quad rendering
     partDataArrays.partScale.push(
-      partSize * boidScale * bodyPartScaleMultiplier
+      partSize * boidScale
     );
   }
 

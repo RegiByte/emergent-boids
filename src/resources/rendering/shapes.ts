@@ -1,15 +1,24 @@
 /**
- * Shape Rendering Functions - Atlas Edition (Session 95)
+ * Shape Rendering Functions - Atlas Edition (Session 98 - Full Atlas)
  *
- * UNIFIED RENDERING: Canvas 2D now uses the same texture atlases as WebGL
- * for pixel-perfect visual parity across renderers.
+ * UNIFIED RENDERING: Canvas 2D now uses texture atlases for EVERYTHING
+ * for pixel-perfect visual parity with WebGL.
  *
- * Architecture:
- * - Base shapes: Manual drawing (kept for performance)
- * - Body parts: Atlas-based rendering (single source of truth)
+ * Architecture (Session 99 - Renderer Refactor):
+ * - Base shapes: Atlas-based rendering (single source of truth!)
+ * - Body parts: Atlas-based rendering (single source of truth!)
  * - Coordinate system: Unified transformations via coordinates.ts
+ * - Drawing responsibility: Renderers handle their own fill/stroke
+ * - Color tinting: Pixel-level color replacement with caching
  *
- * Philosophy: Simple shapes + atlas parts + unified coordinates = visual consistency
+ * Philosophy: Atlas for all → perfect Canvas/WebGL parity
+ * Pattern: Shape renderers perform COMPLETE drawing (not just path creation)
+ * 
+ * Technical Note: 
+ * - WebGL uses shaders to tint white atlas shapes
+ * - Canvas 2D uses pixel-level color replacement (ImageData API)
+ * - Colored shapes are cached to avoid recomputing pixel data every frame
+ * - Cache key: "shapeName_R_G_B" (e.g., "circle_255_100_50")
  */
 
 import type {
@@ -25,6 +34,11 @@ import {
   createBodyPartsAtlas,
   type BodyPartsAtlasResult,
 } from "@/resources/webgl/atlases/bodyPartsAtlas";
+import {
+  createShapeAtlas,
+  type ShapeAtlasResult,
+} from "@/resources/webgl/atlases/shapeAtlas";
+import { toRgb } from "@/lib/colors";
 
 export type ShapeRenderer = (
   _ctx: CanvasRenderingContext2D,
@@ -36,6 +50,12 @@ export type ShapeRenderer = (
 // ============================================================================
 
 let bodyPartsAtlas: BodyPartsAtlasResult | null = null;
+let shapeAtlas: ShapeAtlasResult | null = null;
+
+// Session 99: Shape color cache for pixel-level tinting
+// Cache colored shapes to avoid recomputing pixel data every frame
+// Key format: "shapeName_R_G_B" (e.g., "circle_255_100_50")
+const coloredShapeCache = new Map<string, HTMLCanvasElement>();
 
 /**
  * Get or create the body parts atlas
@@ -54,68 +74,168 @@ function getBodyPartsAtlas(): BodyPartsAtlasResult | null {
 }
 
 /**
- * Diamond - Rotated square, pointed and agile
- * Good for: Fast species (explorers, predators)
+ * Get or create the shape atlas
+ * Lazy initialization ensures atlas is only created when needed
+ * Session 98: Shapes now use atlas too!
  */
-const renderDiamond: ShapeRenderer = (ctx, size) => {
-  ctx.beginPath();
-  // Match WebGL atlas shape definition (`src/resources/webgl/atlases/shapeAtlas.ts`)
-  ctx.moveTo(size * 0.9, 0); // Right point (forward)
-  ctx.lineTo(-size * 0.3, size * 0.55); // Bottom point
-  ctx.lineTo(-size * 0.8, 0); // Left point (back)
-  ctx.lineTo(-size * 0.3, -size * 0.55); // Top point
-  ctx.closePath();
-};
-
-/**
- * Circle - Smooth and social
- * Good for: Schooling species, social prey
- */
-const renderCircle: ShapeRenderer = (ctx, size) => {
-  ctx.beginPath();
-  ctx.arc(0, 0, size * 0.7, 0, Math.PI * 2);
-  ctx.closePath();
-};
-
-/**
- * Hexagon - Sturdy and grounded
- * Good for: Ground prey, herbivores, defensive species
- */
-const renderHexagon: ShapeRenderer = (ctx, size) => {
-  ctx.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 3) * i - Math.PI / 6; // Rotate to point forward
-    const x = size * 0.7 * Math.cos(angle);
-    const y = size * 0.7 * Math.sin(angle);
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+function getShapeAtlas(): ShapeAtlasResult | null {
+  if (!shapeAtlas) {
+    shapeAtlas = createShapeAtlas();
+    if (!shapeAtlas) {
+      console.error("Failed to create shape atlas for Canvas 2D");
+      return null;
+    }
+    console.log("✅ Shape atlas loaded for Canvas 2D rendering");
   }
-  ctx.closePath();
-};
+  return shapeAtlas;
+}
 
 /**
- * Square - Solid and stable
- * Good for: Tank-like species, slow but sturdy
+ * Generic atlas-based shape renderer with pixel-level color replacement
+ * Session 98: ALL shapes now use atlas (not just body parts!)
+ * Session 99: Renderers now handle complete drawing (fill + stroke)
+ * Session 99B: Pixel-level color replacement for proper tinting (OPTIMIZED with caching)
+ *
+ * @param ctx - Canvas rendering context
+ * @param size - Size of the shape
+ * @param shapeName - Name of the shape in atlas
  */
-const renderSquare: ShapeRenderer = (ctx, size) => {
-  const halfSize = size * 0.6;
-  ctx.beginPath();
-  ctx.rect(-halfSize, -halfSize, halfSize * 2, halfSize * 2);
-  ctx.closePath();
-};
+function renderAtlasShape(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  shapeName: string
+): void {
+  const atlas = getShapeAtlas();
+  if (!atlas) {
+    // Fallback: render circle manually with complete drawing
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.7, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+    // Add subtle outline (using pre-set stroke style from pipeline)
+    ctx.stroke();
+    return;
+  }
 
-/**
- * Triangle - Classic boid (backward compatible)
- * Good for: Generic species, fallback
- */
-const renderTriangle: ShapeRenderer = (ctx, size) => {
-  ctx.beginPath();
-  // Match WebGL atlas shape definition (`src/resources/webgl/atlases/shapeAtlas.ts`)
-  ctx.moveTo(size * 0.8, 0); // Tip (right)
-  ctx.lineTo(-size * 0.5, size * 0.5);
-  ctx.lineTo(-size * 0.5, -size * 0.5);
-  ctx.closePath();
-};
+  // Get UV coordinates for this shape
+  const shapeUV = atlas.shapeUVMap.get(shapeName);
+  if (!shapeUV) {
+    console.warn(`Shape "${shapeName}" not found in atlas`);
+    // Fallback to circle with complete drawing
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.7, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    return;
+  }
+
+  // Calculate source rectangle in atlas canvas
+  const atlasSize = atlas.canvas.width;
+  const cellPixelSize = atlasSize / atlas.gridSize;
+  const srcX = shapeUV.u * atlasSize;
+  const srcY = shapeUV.v * atlasSize;
+  const srcWidth = cellPixelSize;
+  const srcHeight = cellPixelSize;
+
+  // Calculate destination size (diameter)
+  const destSize = size * 2.0;
+
+  // Extract fillStyle color and parse to RGB using color utility
+  const fillColor = ctx.fillStyle as string;
+  const [targetR, targetG, targetB] = toRgb(fillColor);
+  
+  // Create cache key: shapeName_R_G_B
+  const cacheKey = `${shapeName}_${targetR}_${targetG}_${targetB}`;
+  
+  // Check if we already have this colored shape cached
+  let coloredCanvas = coloredShapeCache.get(cacheKey);
+  
+  if (!coloredCanvas) {
+    // Cache miss - create colored shape
+    // Create an offscreen canvas for pixel manipulation
+    coloredCanvas = document.createElement('canvas');
+    coloredCanvas.width = cellPixelSize;
+    coloredCanvas.height = cellPixelSize;
+    const offCtx = coloredCanvas.getContext('2d')!;
+    
+    // Draw the white shape from atlas to offscreen canvas
+    offCtx.drawImage(
+      atlas.canvas,
+      srcX,
+      srcY,
+      srcWidth,
+      srcHeight,
+      0,
+      0,
+      cellPixelSize,
+      cellPixelSize
+    );
+    
+    // Get pixel data
+    const imageData = offCtx.getImageData(0, 0, cellPixelSize, cellPixelSize);
+    const data = imageData.data;
+    
+    // Replace white pixels with target color, preserving alpha
+    // White in atlas (255, 255, 255) → target color (R, G, B)
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
+      
+      // Only recolor non-transparent pixels
+      // Multiply white (1.0) by target color
+      if (a > 0) {
+        data[i] = (r / 255) * targetR;
+        data[i + 1] = (g / 255) * targetG;
+        data[i + 2] = (b / 255) * targetB;
+        // Keep alpha unchanged
+      }
+    }
+    
+    // Put modified pixel data back
+    offCtx.putImageData(imageData, 0, 0);
+    
+    // Store in cache for reuse
+    coloredShapeCache.set(cacheKey, coloredCanvas);
+  }
+  
+  // Draw the colored shape to main canvas (from cache or freshly created)
+  ctx.drawImage(
+    coloredCanvas,
+    -destSize / 2,
+    -destSize / 2,
+    destSize,
+    destSize
+  );
+  
+  // Atlas rendering complete - shape is now colored at pixel level!
+}
+
+// Shape renderers - All use atlas now!
+const renderDiamond: ShapeRenderer = (ctx, size) =>
+  renderAtlasShape(ctx, size, "diamond");
+const renderCircle: ShapeRenderer = (ctx, size) =>
+  renderAtlasShape(ctx, size, "circle");
+const renderHexagon: ShapeRenderer = (ctx, size) =>
+  renderAtlasShape(ctx, size, "hexagon");
+const renderSquare: ShapeRenderer = (ctx, size) =>
+  renderAtlasShape(ctx, size, "square");
+const renderTriangle: ShapeRenderer = (ctx, size) =>
+  renderAtlasShape(ctx, size, "triangle");
+const renderOval: ShapeRenderer = (ctx, size) =>
+  renderAtlasShape(ctx, size, "oval");
+const renderRectangle: ShapeRenderer = (ctx, size) =>
+  renderAtlasShape(ctx, size, "rectangle");
+const renderPentagonInverted: ShapeRenderer = (ctx, size) =>
+  renderAtlasShape(ctx, size, "pentagon_inverted");
+const renderHeptagon: ShapeRenderer = (ctx, size) =>
+  renderAtlasShape(ctx, size, "heptagon");
+const renderNonagon: ShapeRenderer = (ctx, size) =>
+  renderAtlasShape(ctx, size, "nonagon");
+const renderTrapezoid: ShapeRenderer = (ctx, size) =>
+  renderAtlasShape(ctx, size, "trapezoid");
 
 /**
  * Body Parts System - Composable visual elements
@@ -144,15 +264,13 @@ export type BodyPartRenderer = (
  * @param color - Color to tint the part (hex string)
  * @param bodyParts - Array of body parts from genome
  * @param partTypeName - Name of the part type (for UV lookup)
- * @param sizeMultiplier - Visual size adjustment (matches WebGL)
  */
 function renderAtlasPart(
   ctx: CanvasRenderingContext2D,
   boidSize: number,
   _color: string,
   bodyParts: BodyPart[],
-  partTypeName: string,
-  sizeMultiplier: number = 0.7
+  partTypeName: string
 ): void {
   const atlas = getBodyPartsAtlas();
   if (!atlas) {
@@ -190,10 +308,10 @@ function renderAtlasPart(
       boidSize
     );
 
-    // Calculate destination size (matches WebGL scaling)
-    // WebGL uses: partSize * boidScale * 0.7
-    // We need to match that without over-compensating
-    const destSize = boidSize * sizeMultiplier * partSize;
+    // Calculate destination size
+    // Session 98: partSize is percentage of body radius (0.1-3.0)
+    // Canvas 2D needs diameter, so we multiply by 2.0 to match WebGL shader behavior
+    const destSize = boidSize * 2.0 * partSize;
 
     ctx.save();
     ctx.translate(offset.x, offset.y);
@@ -216,11 +334,6 @@ function renderAtlasPart(
   }
 }
 
-// Size multiplier to match WebGL's bodyPartScaleMultiplier
-// Session 97: WebGL shader applies * 2.0, so we use 0.7 * 2.0 = 1.4 effective size
-// Canvas doesn't have the shader doubling, so we need higher value for parity
-// Testing shows 1.4 works well for Canvas to match WebGL's (0.7 * 2.0)
-const sizeMultiplier = 1.4;
 /**
  * Eyes - Rendered from atlas (Session 95)
  * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
@@ -228,8 +341,7 @@ const sizeMultiplier = 1.4;
 const renderEyes: BodyPartRenderer = (ctx, boidSize, _color, bodyParts) => {
   // Eyes should remain white/black (not tinted), so we pass white color
   // The atlas already has white eyes with black pupils
-  // Size multiplier empirically tuned to match WebGL visual scale
-  renderAtlasPart(ctx, boidSize, "#FFFFFF", bodyParts, "eye", sizeMultiplier);
+  renderAtlasPart(ctx, boidSize, "#FFFFFF", bodyParts, "eye");
 };
 
 /**
@@ -237,7 +349,7 @@ const renderEyes: BodyPartRenderer = (ctx, boidSize, _color, bodyParts) => {
  * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
  */
 const renderFins: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
-  renderAtlasPart(ctx, boidSize, color, bodyParts, "fin", sizeMultiplier);
+  renderAtlasPart(ctx, boidSize, color, bodyParts, "fin");
 };
 
 /**
@@ -245,7 +357,7 @@ const renderFins: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
  * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
  */
 const renderSpikes: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
-  renderAtlasPart(ctx, boidSize, color, bodyParts, "spike", sizeMultiplier);
+  renderAtlasPart(ctx, boidSize, color, bodyParts, "spike");
 };
 
 /**
@@ -253,7 +365,7 @@ const renderSpikes: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
  * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
  */
 const renderTail: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
-  renderAtlasPart(ctx, boidSize, color, bodyParts, "tail", sizeMultiplier);
+  renderAtlasPart(ctx, boidSize, color, bodyParts, "tail");
 };
 
 /**
@@ -272,6 +384,22 @@ const renderGlow: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
 };
 
 /**
+ * Antenna - Rendered from atlas (Session 98)
+ * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
+ */
+const renderAntenna: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
+  renderAtlasPart(ctx, boidSize, color, bodyParts, "antenna");
+};
+
+/**
+ * Shell - Rendered from atlas (Session 98)
+ * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
+ */
+const renderShell: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
+  renderAtlasPart(ctx, boidSize, color, bodyParts, "shell");
+};
+
+/**
  * Shape registry - Maps shape names to rendering functions
  */
 export const shapeRenderers: Record<RenderShapeType, ShapeRenderer> = {
@@ -280,6 +408,13 @@ export const shapeRenderers: Record<RenderShapeType, ShapeRenderer> = {
   hexagon: renderHexagon,
   square: renderSquare,
   triangle: renderTriangle,
+  // Session 98: New shapes from expanded atlas
+  oval: renderOval,
+  rectangle: renderRectangle,
+  pentagon_inverted: renderPentagonInverted,
+  heptagon: renderHeptagon,
+  nonagon: renderNonagon,
+  trapezoid: renderTrapezoid,
 };
 
 /**
@@ -290,9 +425,9 @@ export const bodyPartRenderers: Record<RenderBodyPartType, BodyPartRenderer> = {
   fin: renderFins,
   spike: renderSpikes,
   tail: renderTail,
-  antenna: renderEyes, // Reuse eyes renderer for now
+  antenna: renderAntenna, // Session 98: Proper antenna renderer
   glow: renderGlow,
-  shell: renderSpikes, // Reuse spikes renderer for now
+  shell: renderShell, // Session 98: Proper shell renderer
 };
 
 /**

@@ -109,6 +109,13 @@ export const shapeSchema = z.enum([
   shapeKeywords.hexagon,
   shapeKeywords.square,
   shapeKeywords.triangle,
+  // Session 98: New shapes from expanded atlas
+  shapeKeywords.oval,
+  shapeKeywords.rectangle,
+  shapeKeywords.pentagon_inverted,
+  shapeKeywords.heptagon,
+  shapeKeywords.nonagon,
+  shapeKeywords.trapezoid,
 ]);
 export const bodyPartSchema = z.enum([
   bodyPartKeywords.eye,
