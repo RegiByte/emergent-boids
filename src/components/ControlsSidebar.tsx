@@ -73,13 +73,13 @@ export function ControlsSidebar({
   const lifecycleManager = useResource("lifecycleManager");
   const randomness = useResource("randomness");
   const time = useResource("time");
-  const timeState = time.useStore((state) => state);
+  const timeState = time.useTime();
   const speciesIds = Object.keys(config.species);
   const [activeTab, setActiveTab] = useState<
     "controls" | "species" | "events" | "stats" | "graphs"
   >("controls");
   const [activeSpecies, setActiveSpecies] = useState(
-    speciesIds[0] || "explorer",
+    speciesIds[0] || "explorer"
   );
   const [seedInput, setSeedInput] = useState(config.randomSeed || "");
 
@@ -376,7 +376,7 @@ export function ControlsSidebar({
                     const json = exportCurrentStats(
                       engine,
                       runtimeStore,
-                      lifecycleManager.getMutationCounters(),
+                      lifecycleManager.getMutationCounters()
                     );
                     copyToClipboard(json, "Current Stats (JSON)");
                     toast.success("Stats copied to clipboard!");
@@ -391,7 +391,7 @@ export function ControlsSidebar({
                   className="w-full justify-start"
                   onClick={() => {
                     const jsonl = exportEvolutionJSONL(
-                      analytics.evolutionHistory,
+                      analytics.evolutionHistory
                     );
                     copyToClipboard(jsonl, "Evolution Data (JSONL)");
                     toast.success("Evolution data copied! (JSONL format)");
@@ -416,7 +416,7 @@ export function ControlsSidebar({
                           samplingRates: [1, 3, 10, 50, 100],
                           includeMetadata: true,
                           includeCurrentStats: true,
-                        },
+                        }
                       );
                       toast.success("Evolution data exported as ZIP!");
                     } catch (error) {
@@ -580,7 +580,7 @@ export function ControlsSidebar({
                             <Label className="text-xs">Speed</Label>
                             <span className="text-xs font-mono text-primary">
                               {(species.baseGenome.traits.speed * 100).toFixed(
-                                0,
+                                0
                               )}
                               %
                             </span>
@@ -592,7 +592,7 @@ export function ControlsSidebar({
                             <Label className="text-xs">Force</Label>
                             <span className="text-xs font-mono text-primary">
                               {(species.baseGenome.traits.force * 100).toFixed(
-                                0,
+                                0
                               )}
                               %
                             </span>

@@ -22,4 +22,18 @@ export default defineConfig({
   },
   base: "/emergent-boids/",
   assetsInclude: ["**/*.vert", "**/*.frag"],
+  server: {
+    headers: {
+      // Required for SharedArrayBuffer support (Session 111)
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+  },
+  preview: {
+    headers: {
+      // Required for SharedArrayBuffer support (Session 111)
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+  },
 });

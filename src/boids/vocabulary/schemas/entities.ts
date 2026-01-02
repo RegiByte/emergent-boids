@@ -68,6 +68,8 @@ export const boidSchema = z.object({
 });
 
 export type Boid = z.infer<typeof boidSchema>;
+export type LogicalBoid = Omit<Boid, "position" | "velocity" | "acceleration">;
+export type PhisicalBoid = Pick<Boid, "position" | "velocity" | "acceleration">;
 
 // ============================================
 // Food Source Schema

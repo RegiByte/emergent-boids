@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkerTasksDemoRouteImport } from './routes/worker-tasks-demo'
+import { Route as SharedMemoryTestRouteImport } from './routes/shared-memory-test'
+import { Route as ParallelTestRouteImport } from './routes/parallel-test'
 import { Route as BoidsAtlasRouteImport } from './routes/boids-atlas'
 import { Route as AtlasesRouteImport } from './routes/atlases'
 import { Route as AtlasWorkerTestRouteImport } from './routes/atlas-worker-test'
@@ -19,6 +21,16 @@ import { Route as IndexRouteImport } from './routes/index'
 const WorkerTasksDemoRoute = WorkerTasksDemoRouteImport.update({
   id: '/worker-tasks-demo',
   path: '/worker-tasks-demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SharedMemoryTestRoute = SharedMemoryTestRouteImport.update({
+  id: '/shared-memory-test',
+  path: '/shared-memory-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParallelTestRoute = ParallelTestRouteImport.update({
+  id: '/parallel-test',
+  path: '/parallel-test',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BoidsAtlasRoute = BoidsAtlasRouteImport.update({
@@ -53,6 +65,8 @@ export interface FileRoutesByFullPath {
   '/atlas-worker-test': typeof AtlasWorkerTestRoute
   '/atlases': typeof AtlasesRoute
   '/boids-atlas': typeof BoidsAtlasRoute
+  '/parallel-test': typeof ParallelTestRoute
+  '/shared-memory-test': typeof SharedMemoryTestRoute
   '/worker-tasks-demo': typeof WorkerTasksDemoRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +75,8 @@ export interface FileRoutesByTo {
   '/atlas-worker-test': typeof AtlasWorkerTestRoute
   '/atlases': typeof AtlasesRoute
   '/boids-atlas': typeof BoidsAtlasRoute
+  '/parallel-test': typeof ParallelTestRoute
+  '/shared-memory-test': typeof SharedMemoryTestRoute
   '/worker-tasks-demo': typeof WorkerTasksDemoRoute
 }
 export interface FileRoutesById {
@@ -70,6 +86,8 @@ export interface FileRoutesById {
   '/atlas-worker-test': typeof AtlasWorkerTestRoute
   '/atlases': typeof AtlasesRoute
   '/boids-atlas': typeof BoidsAtlasRoute
+  '/parallel-test': typeof ParallelTestRoute
+  '/shared-memory-test': typeof SharedMemoryTestRoute
   '/worker-tasks-demo': typeof WorkerTasksDemoRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +98,8 @@ export interface FileRouteTypes {
     | '/atlas-worker-test'
     | '/atlases'
     | '/boids-atlas'
+    | '/parallel-test'
+    | '/shared-memory-test'
     | '/worker-tasks-demo'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +108,8 @@ export interface FileRouteTypes {
     | '/atlas-worker-test'
     | '/atlases'
     | '/boids-atlas'
+    | '/parallel-test'
+    | '/shared-memory-test'
     | '/worker-tasks-demo'
   id:
     | '__root__'
@@ -96,6 +118,8 @@ export interface FileRouteTypes {
     | '/atlas-worker-test'
     | '/atlases'
     | '/boids-atlas'
+    | '/parallel-test'
+    | '/shared-memory-test'
     | '/worker-tasks-demo'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +129,8 @@ export interface RootRouteChildren {
   AtlasWorkerTestRoute: typeof AtlasWorkerTestRoute
   AtlasesRoute: typeof AtlasesRoute
   BoidsAtlasRoute: typeof BoidsAtlasRoute
+  ParallelTestRoute: typeof ParallelTestRoute
+  SharedMemoryTestRoute: typeof SharedMemoryTestRoute
   WorkerTasksDemoRoute: typeof WorkerTasksDemoRoute
 }
 
@@ -115,6 +141,20 @@ declare module '@tanstack/react-router' {
       path: '/worker-tasks-demo'
       fullPath: '/worker-tasks-demo'
       preLoaderRoute: typeof WorkerTasksDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shared-memory-test': {
+      id: '/shared-memory-test'
+      path: '/shared-memory-test'
+      fullPath: '/shared-memory-test'
+      preLoaderRoute: typeof SharedMemoryTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parallel-test': {
+      id: '/parallel-test'
+      path: '/parallel-test'
+      fullPath: '/parallel-test'
+      preLoaderRoute: typeof ParallelTestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/boids-atlas': {
@@ -161,6 +201,8 @@ const rootRouteChildren: RootRouteChildren = {
   AtlasWorkerTestRoute: AtlasWorkerTestRoute,
   AtlasesRoute: AtlasesRoute,
   BoidsAtlasRoute: BoidsAtlasRoute,
+  ParallelTestRoute: ParallelTestRoute,
+  SharedMemoryTestRoute: SharedMemoryTestRoute,
   WorkerTasksDemoRoute: WorkerTasksDemoRoute,
 }
 export const routeTree = rootRouteImport

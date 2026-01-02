@@ -29,6 +29,10 @@ export type Subscription<TPayload> = ReturnType<
   typeof createSubscription<TPayload>
 >;
 
+export type SubscriptionCallback<T extends Subscription<any>> = Parameters<
+  T["subscribe"]
+>[0];
+
 /**
  * Create a lightweight state atom with subscriptions
  *

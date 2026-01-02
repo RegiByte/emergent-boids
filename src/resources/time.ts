@@ -1,3 +1,4 @@
+import { createAtom, useAtomState } from "@/lib/state";
 import { defineResource } from "braided";
 import { create } from "zustand";
 
@@ -87,7 +88,7 @@ export type TimeAPI = {
   reset: () => void;
 
   // React integration
-  useStore: <T>(selector: (state: TimeStore) => T) => T;
+  useTime: () => TimeState;
 };
 
 // ============================================
@@ -100,7 +101,7 @@ export const time = defineResource({
   start: () => {
     const realWorldStartMs = performance.now(); // Use performance.now() for precision
 
-    let state: TimeState = {
+    const initialState: TimeState = {
       simulationFrame: 0,
       simulationElapsedMs: 0,
       simulationElapsedSeconds: 0,
@@ -112,34 +113,33 @@ export const time = defineResource({
       lastUpdateMs: realWorldStartMs,
     };
 
-    // Create Zustand store for React integration
-    const store = createTimeStore(state);
-
-    // Helper to update both internal state and Zustand store
-    const updateStore = (updater: (draft: TimeState) => void) => {
-      updater(state);
-      store.setState({ ...state });
-    };
+    const stateAtom = createAtom(initialState);
 
     const api = {
-      getState: () => ({ ...state }),
-      getFrame: () => state.simulationFrame,
-      getSimulationTime: () => state.simulationElapsedSeconds,
-      getRealWorldTime: () => state.realWorldElapsedMs / 1000,
+      getState: () => stateAtom.get(),
+      getFrame: () => stateAtom.get().simulationFrame,
+      getSimulationTime: () => stateAtom.get().simulationElapsedSeconds,
+      getRealWorldTime: () => stateAtom.get().realWorldElapsedMs / 1000,
 
       // Pure simulation time (replaces Date.now())
-      now: () => state.simulationElapsedMs,
-      nowSeconds: () => state.simulationElapsedSeconds,
+      now: () => stateAtom.get().simulationElapsedMs,
+      nowSeconds: () => stateAtom.get().simulationElapsedSeconds,
 
       pause: () => {
-        updateStore((draft) => {
-          draft.isPaused = true;
+        stateAtom.update((state) => {
+          return {
+            ...state,
+            isPaused: true,
+          };
         });
       },
 
       resume: () => {
-        updateStore((draft) => {
-          draft.isPaused = false;
+        stateAtom.update((state) => {
+          return {
+            ...state,
+            isPaused: false,
+          };
         });
       },
 
@@ -147,53 +147,69 @@ export const time = defineResource({
         if (scale < 0.1 || scale > 4.0) {
           throw new Error("Time scale must be between 0.1 and 4.0");
         }
-        updateStore((draft) => {
-          draft.timeScale = scale;
+        stateAtom.update((state) => {
+          return {
+            ...state,
+            timeScale: scale,
+          };
         });
       },
 
       step: () => {
-        if (!state.isPaused) return;
+        if (!stateAtom.get().isPaused) return;
         // Request simulation update (tick will be incremented by renderer via time.tick())
-        updateStore((draft) => {
-          draft.stepRequested = true;
+        stateAtom.update((state) => {
+          return {
+            ...state,
+            stepRequested: true,
+          };
         });
       },
 
       clearStepRequest: () => {
-        updateStore((draft) => {
-          draft.stepRequested = false;
+        stateAtom.update((state) => {
+          return {
+            ...state,
+            stepRequested: false,
+          };
         });
       },
 
       update: (realDeltaMs: number) => {
-        updateStore((draft) => {
+        stateAtom.update((draft) => {
           // Update real-world time (always advances)
-          draft.realWorldElapsedMs += realDeltaMs;
+          const updatedState = { ...draft };
+          updatedState.realWorldElapsedMs += realDeltaMs;
 
           // Update simulation time (only if not paused)
-          if (!draft.isPaused) {
+          if (!updatedState.isPaused) {
             const scaledDelta = realDeltaMs * draft.timeScale;
-            draft.simulationElapsedMs += scaledDelta;
-            draft.simulationElapsedSeconds = draft.simulationElapsedMs / 1000;
+            updatedState.simulationElapsedMs += scaledDelta;
+            updatedState.simulationElapsedSeconds =
+              updatedState.simulationElapsedMs / 1000;
           }
+
+          return updatedState;
         });
       },
 
       tick: () => {
         // Called when a fixed timestep update occurs (one frame)
-        updateStore((draft) => {
-          draft.simulationFrame++;
+        stateAtom.update((draft) => {
           // Also advance simulation time by one fixed timestep (16.67ms)
           // This ensures lifecycle ticks work correctly in step mode
-          draft.simulationElapsedMs += 16.67;
-          draft.simulationElapsedSeconds = draft.simulationElapsedMs / 1000;
+          return {
+            ...draft,
+            simulationFrame: draft.simulationFrame + 1,
+            simulationElapsedMs: draft.simulationElapsedMs + 16.67,
+            simulationElapsedSeconds: draft.simulationElapsedMs / 1000,
+          };
         });
       },
 
       reset: () => {
         const now = performance.now();
-        state = {
+        const restoredState = {
           simulationFrame: 0,
           simulationElapsedMs: 0,
           simulationElapsedSeconds: 0,
@@ -204,11 +220,11 @@ export const time = defineResource({
           stepRequested: false,
           lastUpdateMs: now,
         };
-        store.setState({ ...state });
+        stateAtom.set(restoredState);
       },
 
       // React integration
-      useStore: store,
+      useTime: () => useAtomState(stateAtom),
     } as TimeAPI;
 
     return api;

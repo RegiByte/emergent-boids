@@ -228,6 +228,14 @@ const workerTransport = defineResource({
       cleanupWorkerListener: () => {
         self.removeEventListener("message", handleMessage);
       },
+      notifyError: (message: string, taskId: string, taskName: string) => {
+        sendMessage({
+          type: eventKeywords.taskError,
+          taskId,
+          taskName,
+          error: message,
+        });
+      },
     };
 
     return api;

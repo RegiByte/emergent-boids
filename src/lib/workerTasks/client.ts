@@ -71,12 +71,12 @@ const clientHandlers: EventHandlerMap<
     ];
   },
 
-  [eventKeywords.taskProgress]: (_state, event) => {
+  [eventKeywords.taskProgress]: (_state, _event) => {
     return [
-      {
-        type: effectKeywords.client.log,
-        message: `Progress: ${event.taskName} [${event.taskId}]`,
-      },
+      //   {
+      //     type: effectKeywords.client.log,
+      //     message: `Progress: ${event.taskName} [${event.taskId}]`,
+      //   },
     ];
   },
 
@@ -224,7 +224,7 @@ export function createClientResource<TTasks extends TaskRegistry>(
 
       const handleWorkerMessage = (event: MessageEvent<WorkerEvent>): void => {
         const workerEvent = event.data;
-        console.log("[Client] Received from worker:", workerEvent.type);
+        // console.log("[Client] Received from worker:", workerEvent.type);
 
         // Dispatch to emergent loop
         clientLoop.dispatch(workerEvent);
