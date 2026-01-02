@@ -14,19 +14,12 @@ import { Slider } from "@/components/ui/slider";
 import type { RenderMode } from "@/hooks/useStaticBoid";
 import { stableEcosystemProfile } from "@/profiles/stable-ecosystem";
 import { createSystemHooks, createSystemManager } from "braided-react";
-import { defineResource } from "braided";
+import { atlases } from "@/resources/atlases";
 
-const atlasesResource = defineResource({
-  start: () => {
-    console.log("Starting atlases resource");
-  },
-  halt: () => {
-    console.log("Halting atlases resource");
-  },
-});
-
+// Session 105: Minimal system config with just the atlases resource
+// This generates all texture atlases once and shares them across all boid cards
 const boidsAtlasSystem = {
-  atlases: atlasesResource,
+  atlases,
 };
 
 const manager = createSystemManager(boidsAtlasSystem);
@@ -37,7 +30,7 @@ export const Route = createFileRoute("/boids-atlas")({
 });
 
 function BoidsAtlasRoute() {
-  const atlases = useResource("atlases");
+  const atlasesResource = useResource("atlases");
   const [renderMode, setRenderMode] = useState<RenderMode>("both");
   const [rotation, setRotation] = useState(0);
   const [scale, setScale] = useState(3);
@@ -49,8 +42,8 @@ function BoidsAtlasRoute() {
         name: species.name,
         role: species.role,
         speciesConfig: species,
-      }),
-    ),
+      })
+    )
   );
 
   return (
@@ -184,6 +177,7 @@ function BoidsAtlasRoute() {
                     scale={scale}
                     size={200}
                     speciesConfig={species.speciesConfig}
+                    atlases={atlasesResource}
                   />
                   <div className="mt-2 text-center">
                     <p className="text-sm font-medium">{species.name}</p>

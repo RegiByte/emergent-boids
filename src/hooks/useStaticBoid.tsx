@@ -13,6 +13,7 @@
 import { useEffect, useRef } from "react";
 import type { Genome } from "@/boids/vocabulary/schemas/genetics";
 import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
+import type { AtlasesResult } from "@/resources/atlases";
 import {
   createStaticBoid,
   renderBoidCanvas2D,
@@ -38,6 +39,7 @@ export interface UseStaticBoidOptions {
   camera?: StaticCamera;
   backgroundColor?: string;
   speciesConfig?: SpeciesConfig; // Species configuration for shape rendering
+  atlases?: AtlasesResult; // Session 105: Pre-generated atlases from resource
 }
 
 export interface UseStaticBoidResult {
@@ -82,19 +84,25 @@ export function useStaticBoid(
     camera = { position: { x: 0, y: 0 }, zoom: 1 },
     backgroundColor = "transparent",
     speciesConfig,
+    atlases,
   } = options ?? {};
 
   const canvas2dRef = useRef<HTMLCanvasElement>(null);
   const webglRef = useRef<HTMLCanvasElement>(null);
   const webglContextRef = useRef<StaticWebGLContext | null>(null);
 
-  // Initialize WebGL context (once per mode change)
+  // Initialize WebGL context (once per mode change or atlases change)
+  // Session 105: Now requires atlases to be provided
   useEffect(() => {
     if (mode === "canvas2d") return; // Skip if Canvas 2D-only mode
     if (!webglRef.current) return;
+    if (!atlases) {
+      console.warn("Atlases not provided - cannot initialize WebGL context");
+      return;
+    }
 
-    // Create WebGL context with atlases and shaders
-    const context = createMinimalWebGLContext(webglRef.current);
+    // Create WebGL context with pre-generated atlases
+    const context = createMinimalWebGLContext(webglRef.current, atlases);
     if (!context) {
       console.warn("Failed to initialize WebGL context for static boid");
       return;
@@ -109,7 +117,7 @@ export function useStaticBoid(
         webglContextRef.current = null;
       }
     };
-  }, [mode]); // Only reinitialize when mode changes
+  }, [mode, atlases]); // Reinitialize when mode or atlases change
 
   // Render Canvas 2D
   useEffect(() => {
@@ -149,7 +157,7 @@ export function useStaticBoid(
     applyCameraTransform(ctx, camera, width, height);
 
     // Render boid
-    renderBoidCanvas2D(ctx, boid, scale, speciesConfig);
+    renderBoidCanvas2D(ctx, boid, scale, speciesConfig, atlases);
 
     ctx.restore();
   }, [

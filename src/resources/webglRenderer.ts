@@ -19,20 +19,16 @@ import type { BoidEngine } from "./engine";
 import type { CameraAPI } from "./camera";
 import type { CanvasAPI } from "./canvas";
 import type { RuntimeStoreResource } from "./runtimeStore";
+import type { AtlasesResult } from "./atlases";
 import { toRgb } from "../lib/colors";
 
 // Import modular WebGL components
 import {
-  // Atlases
-  createEmojiAtlas,
+  // Atlas texture creation (atlases themselves come from resource)
   createEmojiTexture,
-  createFontAtlas,
   createFontTexture,
-  DEFAULT_FONT_CHARS,
-  createShapeAtlas,
   createShapeTexture,
   logShapeAtlasDebugInfo,
-  createBodyPartsAtlas,
   createBodyPartsTexture,
   logBodyPartsAtlasDebugInfo,
   // Data Preparation
@@ -73,7 +69,7 @@ export type WebGLRenderer = {
 
 export const webglRenderer = defineResource({
   dependencies: {
-    required: ["canvas", "engine", "camera", "runtimeStore", "time"],
+    required: ["canvas", "engine", "camera", "runtimeStore", "time", "atlases"],
     optional: [],
   },
   start: ({
@@ -82,12 +78,14 @@ export const webglRenderer = defineResource({
     camera,
     runtimeStore,
     time,
+    atlases,
   }: {
     canvas: CanvasAPI;
     engine: BoidEngine;
     camera: CameraAPI;
     runtimeStore: RuntimeStoreResource;
     time: { getState: () => { simulationFrame: number } };
+    atlases: AtlasesResult;
   }) => {
     // Create a separate canvas element for WebGL
     // (Can't use the same canvas as 2D context - they're mutually exclusive)
@@ -123,31 +121,28 @@ export const webglRenderer = defineResource({
     });
 
     // ============================================
-    // EMOJI ATLAS (using modular component)
+    // ATLASES - Use pre-generated atlases from resource
     // ============================================
-    const emojiAtlas = createEmojiAtlas();
+    // Session 105: Atlases are now generated once by the atlases resource
+    // and reused across the entire app (no more redundant generation!)
+    
+    const emojiAtlas = atlases.emoji;
     if (!emojiAtlas) {
-      console.error("Failed to create emoji atlas");
+      console.error("Failed to get emoji atlas from resource");
     }
     const emojiTexture = emojiAtlas
       ? createEmojiTexture(regl, emojiAtlas)
       : null;
 
-    // ============================================
-    // FONT ATLAS (using modular component)
-    // ============================================
-    const fontAtlas = createFontAtlas("monospace", 16, DEFAULT_FONT_CHARS);
+    const fontAtlas = atlases.font;
     if (!fontAtlas) {
-      console.error("Failed to create font atlas");
+      console.error("Failed to get font atlas from resource");
     }
     const fontTexture = fontAtlas ? createFontTexture(regl, fontAtlas) : null;
 
-    // ============================================
-    // SHAPE ATLAS (using modular component)
-    // ============================================
-    const shapeAtlas = createShapeAtlas();
+    const shapeAtlas = atlases.shapes;
     if (!shapeAtlas) {
-      console.error("Failed to create shape atlas");
+      console.error("Failed to get shape atlas from resource");
     } else {
       logShapeAtlasDebugInfo(shapeAtlas);
     }
@@ -155,12 +150,9 @@ export const webglRenderer = defineResource({
       ? createShapeTexture(regl, shapeAtlas)
       : null;
 
-    // ============================================
-    // BODY PARTS ATLAS (using modular component)
-    // ============================================
-    const bodyPartsAtlas = createBodyPartsAtlas();
+    const bodyPartsAtlas = atlases.bodyParts;
     if (!bodyPartsAtlas) {
-      console.error("Failed to create body parts atlas");
+      console.error("Failed to get body parts atlas from resource");
     } else {
       logBodyPartsAtlasDebugInfo(bodyPartsAtlas);
     }

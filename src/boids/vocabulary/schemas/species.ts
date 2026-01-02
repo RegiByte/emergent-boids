@@ -35,7 +35,7 @@ export const speciesConfigSchema = z.object({
   name: z.string(), // Display name
   role: roleSchema, // "prey" or "predator"
 
-  // ✅ REQUIRED: Base genome (evolvable traits)
+  // Base genome (evolvable traits) required
   baseGenome: z.object({
     traits: z.object({
       speed: z.number().min(0).max(1), // % of physics.maxSpeed
@@ -55,7 +55,7 @@ export const speciesConfigSchema = z.object({
     }),
   }),
 
-  // ✅ REQUIRED: Visual configuration (non-evolvable, species-level)
+  // Visual configuration (non-evolvable, species-level) required
   visualConfig: z.object({
     shape: shapeTypeSchema, // Render shape (diamond, circle, hexagon, etc.)
     trail: z.boolean().default(true), // Enable motion trails
@@ -64,10 +64,10 @@ export const speciesConfigSchema = z.object({
     tailColor: z.string().optional(), // Custom tail color override (hex)
   }),
 
-  // ✅ Optional: Mutation configuration
+  // Mutation configuration optional
   mutation: mutationConfigSchema.optional(), // Mutation rates (optional, uses defaults if not specified)
 
-  // ✅ Reproduction - Mating and offspring
+  // Reproduction - Mating and offspring required
   reproduction: z.object({
     type: reproductionTypeSchema, // "sexual" (needs mate) or "asexual" (solo)
     offspringCount: z.number(), // Number of offspring per reproduction (1-2 for twins)
@@ -75,20 +75,20 @@ export const speciesConfigSchema = z.object({
     cooldownTicks: z.number().optional(), // Ticks to wait before reproducing again (overrides global)
   }),
 
-  // ✅ Limits - Population caps and parameter overrides
+  // Limits - Population caps and parameter overrides required
   limits: z.object({
     maxPopulation: z.number().optional(), // Maximum population for this species
     fearRadius: z.number().optional(), // How far this species can sense predators (overrides global)
   }),
 
-  // ✅ Optional: Parameter overrides (species-specific tweaks)
+  // Parameter overrides (species-specific tweaks) optional
   overrides: z
     .object({
       minDistance: z.number().optional(), // Personal space override
     })
     .optional(),
 
-  // ✅ Affinities - Inter-species relationships (optional)
+  // Affinities - Inter-species relationships (optional)
   // Maps species ID to affinity value (-1.0 to 1.0)
   // - 1.0: Strong attraction (flock together)
   // - 0.5: Neutral (default if not specified)

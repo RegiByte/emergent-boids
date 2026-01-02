@@ -6,7 +6,7 @@ export function CameraControls() {
   const runtimeStore = useResource("runtimeStore");
 
   // Use reactive mode store for immediate UI updates
-  const cameraMode = camera.useModeStore((state) => state.mode);
+  const cameraMode = camera.useMode();
 
   const worldWidth = runtimeStore.useStore((state) => state.config.world.width);
   const worldHeight = runtimeStore.useStore(

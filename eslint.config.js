@@ -21,7 +21,7 @@ export default defineConfig([
     },
     rules: {
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "off",
         { argsIgnorePattern: "^_", args: "none" },
       ],
     },
@@ -30,6 +30,8 @@ export default defineConfig([
     rules: {
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_", args: "none" }],
       "react-refresh/only-export-components": "off",
+      "no-explicit-any": "off",
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 ]);

@@ -68,10 +68,12 @@ export const genomeSchema = z.object({
         oldValue: z.number(),
         newValue: z.number(),
         magnitude: z.number(),
-      }),
+      })
     )
     .optional(), // History of mutations (for analytics)
 });
+
+export type Genome = z.infer<typeof genomeSchema>;
 
 // ============================================
 // Phenotype Schema
@@ -125,6 +127,8 @@ export const phenotypeSchema = z.object({
   bodyParts: z.array(bodyPartSchema), // genome.visual.bodyParts
 });
 
+export type Phenotype = z.infer<typeof phenotypeSchema>;
+
 // ============================================
 // Mutation Configuration Schema
 // ============================================
@@ -140,11 +144,4 @@ export const mutationConfigSchema = z.object({
   visualRate: z.number().min(0).max(1).default(0.02), // 2% chance of body part mutation
   colorRate: z.number().min(0).max(1).default(0.1), // 10% chance of color shift
 });
-
-// ============================================
-// Type Exports
-// ============================================
-
-export type Genome = z.infer<typeof genomeSchema>;
-export type Phenotype = z.infer<typeof phenotypeSchema>;
 export type MutationConfig = z.infer<typeof mutationConfigSchema>;

@@ -26,92 +26,30 @@ import type {
   RenderBodyPartType,
   RenderShapeType,
 } from "../../boids/vocabulary/schemas/visual";
+import type { AtlasesResult } from "../atlases";
 import {
   transformBodyPartCanvas2D,
   type BodyPartType,
 } from "@/lib/coordinates";
-import {
-  createBodyPartsAtlas,
-  type BodyPartsAtlasResult,
-} from "@/resources/webgl/atlases/bodyPartsAtlas";
-import {
-  createShapeAtlas,
-  type ShapeAtlasResult,
-} from "@/resources/webgl/atlases/shapeAtlas";
+import type { BodyPartsAtlasResult } from "@/resources/webgl/atlases/bodyPartsAtlas";
+import type { ShapeAtlasResult } from "@/resources/webgl/atlases/shapeAtlas";
 import { toRgb, darken } from "@/lib/colors"; // Session 101 Phase 2: Perceptual colors
 
 export type ShapeRenderer = (
   _ctx: CanvasRenderingContext2D,
-  _size: number,
+  _size: number
 ) => void;
 
 // ============================================================================
-// ATLAS INITIALIZATION (Lazy Loading)
+// ATLAS MANAGEMENT (Session 105: Using resource atlases)
 // ============================================================================
-
-let bodyPartsAtlas: BodyPartsAtlasResult | null = null;
-let shapeAtlas: ShapeAtlasResult | null = null;
-let bodyPartsAtlasGenerating = false; // Lock to prevent concurrent generation
+// Canvas 2D now gets atlases from the rendering pipeline via RenderContext
+// No more module-level singletons!
 
 // Session 99: Shape color cache for pixel-level tinting
 // Cache colored shapes to avoid recomputing pixel data every frame
 // Key format: "shapeName_R_G_B" (e.g., "circle_255_100_50")
 const coloredShapeCache = new Map<string, HTMLCanvasElement>();
-
-/**
- * Get or create the body parts atlas
- * Lazy initialization ensures atlas is only created when needed
- * Uses a lock to prevent concurrent generation
- */
-function getBodyPartsAtlas(): BodyPartsAtlasResult | null {
-  if (bodyPartsAtlas) {
-    return bodyPartsAtlas;
-  }
-
-  // If already generating, return null (will be available on next call)
-  if (bodyPartsAtlasGenerating) {
-    return null;
-  }
-
-  // Set lock and generate
-  bodyPartsAtlasGenerating = true;
-  const startTime = performance.now();
-  console.log("⏳ Starting body parts atlas generation...");
-  bodyPartsAtlas = createBodyPartsAtlas();
-  const endTime = performance.now();
-  bodyPartsAtlasGenerating = false;
-
-  if (!bodyPartsAtlas) {
-    console.error("Failed to create body parts atlas for Canvas 2D");
-    return null;
-  }
-  console.log(
-    `✅ Body parts atlas loaded for Canvas 2D rendering (${(endTime - startTime).toFixed(2)}ms)`,
-  );
-  return bodyPartsAtlas;
-}
-
-/**
- * Get or create the shape atlas
- * Lazy initialization ensures atlas is only created when needed
- * Session 98: Shapes now use atlas too!
- */
-function getShapeAtlas(): ShapeAtlasResult | null {
-  if (!shapeAtlas) {
-    const startTime = performance.now();
-    console.log("⏳ Starting shape atlas generation...");
-    shapeAtlas = createShapeAtlas();
-    const endTime = performance.now();
-    if (!shapeAtlas) {
-      console.error("Failed to create shape atlas for Canvas 2D");
-      return null;
-    }
-    console.log(
-      `✅ Shape atlas loaded for Canvas 2D rendering (${(endTime - startTime).toFixed(2)}ms)`,
-    );
-  }
-  return shapeAtlas;
-}
 
 /**
  * Generic atlas-based shape renderer with pixel-level color replacement
@@ -120,23 +58,25 @@ function getShapeAtlas(): ShapeAtlasResult | null {
  * Session 99B: Pixel-level color replacement for proper tinting (OPTIMIZED with caching)
  * Session 101: Multi-color support with marker detection (RED → body, GREEN → border)
  * Session 101 Phase 2: BLUE shadow support for depth and visual polish
+ * Session 105: Accepts atlas from parameter (no more module-level singleton!)
  *
  * @param ctx - Canvas rendering context
  * @param size - Size of the shape
  * @param shapeName - Name of the shape in atlas
+ * @param atlas - Shape atlas (from resource)
  * @param colors - Optional color overrides for multi-color rendering
  */
 function renderAtlasShape(
   ctx: CanvasRenderingContext2D,
   size: number,
   shapeName: string,
+  atlas: ShapeAtlasResult | null,
   colors?: {
     primary?: string;
     border?: string;
     shadow?: string;
-  },
+  }
 ): void {
-  const atlas = getShapeAtlas();
   if (!atlas) {
     // Fallback: render circle manually with complete drawing
     ctx.beginPath();
@@ -213,7 +153,7 @@ function renderAtlasShape(
       0,
       0,
       cellPixelSize,
-      cellPixelSize,
+      cellPixelSize
     );
 
     // Get pixel data
@@ -281,35 +221,31 @@ function renderAtlasShape(
     -destSize / 2,
     -destSize / 2,
     destSize,
-    destSize,
+    destSize
   );
 
   // Atlas rendering complete - shape is now colored at pixel level!
 }
 
-// Shape renderers - All use atlas now!
-const renderDiamond: ShapeRenderer = (ctx, size) =>
-  renderAtlasShape(ctx, size, "diamond");
-const renderCircle: ShapeRenderer = (ctx, size) =>
-  renderAtlasShape(ctx, size, "circle");
-const renderHexagon: ShapeRenderer = (ctx, size) =>
-  renderAtlasShape(ctx, size, "hexagon");
-const renderSquare: ShapeRenderer = (ctx, size) =>
-  renderAtlasShape(ctx, size, "square");
-const renderTriangle: ShapeRenderer = (ctx, size) =>
-  renderAtlasShape(ctx, size, "triangle");
-const renderOval: ShapeRenderer = (ctx, size) =>
-  renderAtlasShape(ctx, size, "oval");
-const renderRectangle: ShapeRenderer = (ctx, size) =>
-  renderAtlasShape(ctx, size, "rectangle");
-const renderPentagonInverted: ShapeRenderer = (ctx, size) =>
-  renderAtlasShape(ctx, size, "pentagon_inverted");
-const renderHeptagon: ShapeRenderer = (ctx, size) =>
-  renderAtlasShape(ctx, size, "heptagon");
-const renderNonagon: ShapeRenderer = (ctx, size) =>
-  renderAtlasShape(ctx, size, "nonagon");
-const renderTrapezoid: ShapeRenderer = (ctx, size) =>
-  renderAtlasShape(ctx, size, "trapezoid");
+/**
+ * Get shape renderer for a given shape type
+ * Session 105: Now accepts atlases to avoid module-level singletons
+ *
+ * @param shape - Shape type to render
+ * @param atlases - Pre-generated atlases from resource
+ * @returns Shape renderer function
+ */
+export const getShapeRenderer = (
+  shape: RenderShapeType,
+  atlases: AtlasesResult
+): ShapeRenderer => {
+  const shapeAtlas = atlases.shapes;
+
+  // Return a renderer that uses the provided atlas
+  return (ctx: CanvasRenderingContext2D, size: number) => {
+    renderAtlasShape(ctx, size, shape, shapeAtlas);
+  };
+};
 
 /**
  * Body Parts System - Composable visual elements
@@ -320,12 +256,25 @@ const renderTrapezoid: ShapeRenderer = (ctx, size) =>
  * Uses unified coordinate transformations and samples from the same atlas canvas.
  */
 
-export type BodyPartRenderer = (
-  _ctx: CanvasRenderingContext2D,
-  _boidSize: number,
-  _color: string,
-  _bodyParts: BodyPart[], // Array of body parts of this type from genome
-) => void;
+export type BodyPartRenderer = (context: BodyPartRendererContext) => void;
+
+type BodyPartRendererContext = {
+  ctx: CanvasRenderingContext2D;
+  atlas: BodyPartsAtlasResult | null;
+  boidSize: number;
+  color: string;
+  bodyParts: BodyPart[]; // Array of body parts of this type from genome
+};
+
+type AtlasRenderingContext = {
+  ctx: CanvasRenderingContext2D;
+  boidSize: number;
+  color: string;
+  bodyParts: BodyPart[];
+  partTypeName: string;
+  atlas: BodyPartsAtlasResult | null;
+  useMultiColor: boolean;
+};
 
 /**
  * Generic atlas-based body part renderer
@@ -333,23 +282,25 @@ export type BodyPartRenderer = (
  * Renders a body part by sampling from the atlas texture.
  * Applies position, rotation, and scale transformations using unified coordinate system.
  * Session 102: Multi-color support for body parts (eyes use marker colors)
+ * Session 105: Accepts atlas from parameter (no more module-level singleton!)
  *
  * @param ctx - Canvas rendering context
  * @param boidSize - Size of the boid (for scaling)
  * @param color - Color to tint the part (hex string)
  * @param bodyParts - Array of body parts from genome
  * @param partTypeName - Name of the part type (for UV lookup)
+ * @param atlas - Body parts atlas (from resource)
  * @param useMultiColor - Whether to use multi-color marker detection (for eyes)
  */
-function renderAtlasPart(
-  ctx: CanvasRenderingContext2D,
-  boidSize: number,
-  color: string,
-  bodyParts: BodyPart[],
-  partTypeName: string,
-  useMultiColor = false,
-): void {
-  const atlas = getBodyPartsAtlas();
+function renderAtlasPart({
+  ctx,
+  boidSize,
+  color,
+  bodyParts,
+  partTypeName,
+  atlas,
+  useMultiColor,
+}: AtlasRenderingContext): void {
   if (!atlas) {
     // Fallback: render nothing (atlas failed to load)
     return;
@@ -382,7 +333,7 @@ function renderAtlasPart(
       { x: partPosX, y: partPosY },
       partRotation,
       partTypeName as BodyPartType,
-      boidSize,
+      boidSize
     );
 
     // Calculate destination size
@@ -467,7 +418,7 @@ function renderAtlasPart(
           0,
           0,
           cellPixelSize,
-          cellPixelSize,
+          cellPixelSize
         );
 
         // Get pixel data
@@ -475,7 +426,7 @@ function renderAtlasPart(
           0,
           0,
           cellPixelSize,
-          cellPixelSize,
+          cellPixelSize
         );
         const data = imageData.data;
 
@@ -530,7 +481,7 @@ function renderAtlasPart(
         -destSize / 2,
         -destSize / 2,
         destSize,
-        destSize,
+        destSize
       );
     } else {
       // Standard rendering: just draw the white atlas part (tinting happens elsewhere if needed)
@@ -543,7 +494,7 @@ function renderAtlasPart(
         -destSize / 2,
         -destSize / 2,
         destSize,
-        destSize, // Dest rect (centered)
+        destSize // Dest rect (centered)
       );
     }
 
@@ -552,116 +503,98 @@ function renderAtlasPart(
 }
 
 /**
- * Eyes - Rendered from atlas (Session 95)
- * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
- * Session 102: Multi-color eyes with marker detection (white sclera, colored iris, black pupil)
+ * Get body part renderer for a given part type
+ * Session 105: Now accepts atlases to avoid module-level singletons
+ *
+ * @param part - Body part type to render
+ * @param atlases - Pre-generated atlases from resource
+ * @returns Body part renderer function, or undefined if not found
  */
-const renderEyes: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
-  // Session 102: Use multi-color mode for eyes
-  renderAtlasPart(ctx, boidSize, color, bodyParts, "eye", true);
-};
-
 /**
- * Fins - Rendered from atlas (Session 95)
- * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
+ * Body part renderer factory functions
+ * Session 105: Dispatcher pattern for cleaner organization
+ * Each function is a standalone renderer that can be easily extracted or tested
  */
-const renderFins: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
-  renderAtlasPart(ctx, boidSize, color, bodyParts, "fin");
-};
-
-/**
- * Spikes - Rendered from atlas (Session 95)
- * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
- */
-const renderSpikes: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
-  renderAtlasPart(ctx, boidSize, color, bodyParts, "spike");
-};
-
-/**
- * Tail - Rendered from atlas (Session 95)
- * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
- */
-const renderTail: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
-  renderAtlasPart(ctx, boidSize, color, bodyParts, "tail");
-};
-
-/**
- * Glow - Subtle glow effect for special species
- * GENOME-DRIVEN: Reads size from body part data
- */
-const renderGlow: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
-  // Use the first glow part's size (usually only one)
-  const glowPart = bodyParts[0];
-  const glowSize = glowPart?.size || 1.0;
-
-  ctx.shadowBlur = boidSize * 0.8 * glowSize;
-  ctx.shadowColor = color;
-  // The glow is applied to the main body, so we don't draw anything here
-  // This is just a marker that tells the renderer to enable shadow
-};
-
-/**
- * Antenna - Rendered from atlas (Session 98)
- * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
- */
-const renderAntenna: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
-  renderAtlasPart(ctx, boidSize, color, bodyParts, "antenna");
-};
-
-/**
- * Shell - Rendered from atlas (Session 98)
- * ATLAS-BASED: Uses texture atlas for pixel-perfect visual parity with WebGL
- * Session 103: Multi-color shell with Voronoi tessellation
- */
-const renderShell: BodyPartRenderer = (ctx, boidSize, color, bodyParts) => {
-  // Session 103: Use multi-color mode for shells
-  renderAtlasPart(ctx, boidSize, color, bodyParts, "shell", true);
-};
-
-/**
- * Shape registry - Maps shape names to rendering functions
- */
-export const shapeRenderers: Record<RenderShapeType, ShapeRenderer> = {
-  diamond: renderDiamond,
-  circle: renderCircle,
-  hexagon: renderHexagon,
-  square: renderSquare,
-  triangle: renderTriangle,
-  // Session 98: New shapes from expanded atlas
-  oval: renderOval,
-  rectangle: renderRectangle,
-  pentagon_inverted: renderPentagonInverted,
-  heptagon: renderHeptagon,
-  nonagon: renderNonagon,
-  trapezoid: renderTrapezoid,
-};
-
-/**
- * Body parts registry - Maps part names to rendering functions
- */
-export const bodyPartRenderers: Record<RenderBodyPartType, BodyPartRenderer> = {
-  eye: renderEyes,
-  fin: renderFins,
-  spike: renderSpikes,
-  tail: renderTail,
-  antenna: renderAntenna, // Session 98: Proper antenna renderer
-  glow: renderGlow,
-  shell: renderShell, // Session 98: Proper shell renderer
-};
-
-/**
- * Get shape renderer for a given shape type
- * Falls back to circle if shape not found
- */
-export const getShapeRenderer = (shape: RenderShapeType): ShapeRenderer => {
-  return shapeRenderers[shape] || renderCircle;
-};
+const bodyPartRendererFactories = {
+  eye: (context: BodyPartRendererContext) =>
+    renderAtlasPart({
+      ctx: context.ctx,
+      boidSize: context.boidSize,
+      color: context.color,
+      bodyParts: context.bodyParts,
+      partTypeName: "eye",
+      atlas: context.atlas,
+      useMultiColor: true,
+    }),
+  fin: (context: BodyPartRendererContext) =>
+    renderAtlasPart({
+      ctx: context.ctx,
+      boidSize: context.boidSize,
+      color: context.color,
+      bodyParts: context.bodyParts,
+      partTypeName: "fin",
+      atlas: context.atlas,
+      useMultiColor: false,
+    }),
+  spike: (context: BodyPartRendererContext) =>
+    renderAtlasPart({
+      ctx: context.ctx,
+      boidSize: context.boidSize,
+      color: context.color,
+      bodyParts: context.bodyParts,
+      partTypeName: "spike",
+      atlas: context.atlas,
+      useMultiColor: false,
+    }),
+  tail: (context: BodyPartRendererContext) =>
+    renderAtlasPart({
+      ctx: context.ctx,
+      boidSize: context.boidSize,
+      color: context.color,
+      bodyParts: context.bodyParts,
+      partTypeName: "tail",
+      atlas: context.atlas,
+      useMultiColor: false,
+    }),
+  antenna: (context: BodyPartRendererContext) =>
+    renderAtlasPart({
+      ctx: context.ctx,
+      boidSize: context.boidSize,
+      color: context.color,
+      bodyParts: context.bodyParts,
+      partTypeName: "antenna",
+      atlas: context.atlas,
+      useMultiColor: false,
+    }),
+  shell: (context: BodyPartRendererContext) =>
+    renderAtlasPart({
+      ctx: context.ctx,
+      boidSize: context.boidSize,
+      color: context.color,
+      bodyParts: context.bodyParts,
+      partTypeName: "shell",
+      atlas: context.atlas,
+      useMultiColor: true,
+    }),
+  glow: (context: BodyPartRendererContext) => {
+    // Glow doesn't need atlas - it's a shader effect
+    const glowPart = context.bodyParts[0];
+    const glowSize = glowPart?.size || 1.0;
+    context.ctx.shadowBlur = context.boidSize * 0.8 * glowSize;
+    context.ctx.shadowColor = context.color;
+  },
+} as const satisfies Record<RenderBodyPartType, BodyPartRenderer>;
 
 /**
  * Get body part renderer for a given part type
+ * Session 105: Dispatcher pattern - cleaner and easier to understand
+ *
+ * @param part - Body part type to render
+ * @param atlases - Pre-generated atlases from resource
+ * @returns Body part renderer function, or undefined if not found
  */
 export const getBodyPartRenderer = (
-  part: RenderBodyPartType,
+  part: RenderBodyPartType
 ): BodyPartRenderer | undefined => {
-  return bodyPartRenderers[part];
+  return bodyPartRendererFactories[part] || undefined;
 };

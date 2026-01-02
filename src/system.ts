@@ -2,6 +2,7 @@ import { createSystemHooks, createSystemManager } from "braided-react";
 import { analytics } from "./resources/analytics";
 import { analyticsStore } from "./resources/analyticsStore";
 import { atmosphere } from "./resources/atmosphere";
+import { atlases } from "./resources/atlases";
 import { camera } from "./resources/camera";
 import { canvas } from "./resources/canvas";
 import { engine } from "./resources/engine";
@@ -19,6 +20,7 @@ import { webglRenderer } from "./resources/webglRenderer";
 export const systemConfig = {
   time,
   timer,
+  atlases,
   runtimeStore,
   analyticsStore,
   profileStore,

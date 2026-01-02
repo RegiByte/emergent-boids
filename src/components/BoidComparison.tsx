@@ -8,6 +8,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Genome } from "@/boids/vocabulary/schemas/genetics";
 import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
+import type { AtlasesResult } from "@/resources/atlases";
 import { useStaticBoid, type RenderMode } from "@/hooks/useStaticBoid";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ export interface BoidComparisonProps {
   showLabels?: boolean;
   className?: string;
   speciesConfig?: SpeciesConfig;
+  atlases?: AtlasesResult; // Session 105: Pre-generated atlases
 }
 
 /**
@@ -36,6 +38,7 @@ export function BoidComparison({
   showLabels = true,
   className,
   speciesConfig,
+  atlases,
 }: BoidComparisonProps) {
   const { canvas2dRef, webglRef } = useStaticBoid(genome, {
     mode,
@@ -46,6 +49,7 @@ export function BoidComparison({
     height: size,
     backgroundColor: "#1a1a1a",
     speciesConfig,
+    atlases,
   });
 
   // Single renderer mode
@@ -134,6 +138,7 @@ export interface BoidCardProps {
   size?: number;
   className?: string;
   speciesConfig?: SpeciesConfig;
+  atlases?: AtlasesResult; // Session 105: Pre-generated atlases
 }
 
 export function BoidCard({
@@ -145,6 +150,7 @@ export function BoidCard({
   size = 200,
   className,
   speciesConfig,
+  atlases,
 }: BoidCardProps) {
   const { canvas2dRef, webglRef } = useStaticBoid(genome, {
     mode,
@@ -155,6 +161,7 @@ export function BoidCard({
     height: size,
     backgroundColor: "#1a1a1a",
     speciesConfig,
+    atlases,
   });
 
   // Side-by-side comparison mode

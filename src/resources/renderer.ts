@@ -6,6 +6,7 @@ import type { RuntimeController } from "./runtimeController";
 import type { RuntimeStoreResource } from "./runtimeStore";
 import type { Profiler } from "./profiler";
 import type { TimeResource } from "./time";
+import type { AtlasesResult } from "./atlases";
 import { renderFrame, type RenderContext } from "./rendering/pipeline";
 import { CameraAPI, CameraMode } from "./camera";
 
@@ -25,6 +26,7 @@ export const renderer = defineResource({
       "runtimeController",
       "time",
       "webglRenderer",
+      "atlases",
     ],
     optional: ["profiler"],
   },
@@ -37,6 +39,7 @@ export const renderer = defineResource({
     time,
     webglRenderer,
     profiler,
+    atlases,
   }: {
     canvas: CanvasAPI;
     camera: CameraAPI; // Will be typed properly
@@ -46,6 +49,7 @@ export const renderer = defineResource({
     time: TimeResource;
     webglRenderer: { render: () => void; canvas: HTMLCanvasElement };
     profiler: Profiler | undefined;
+    atlases: AtlasesResult; // Session 105: Pre-generated atlases
   }) => {
     let animationId: number | null = null;
     let isRunning = false;
@@ -334,6 +338,7 @@ export const renderer = defineResource({
         simulationFrame: timeState.simulationFrame, // NEW - Session 75: Current simulation frame
         profiler,
         camera, // NEW: Pass camera to renderer for coordinate transforms
+        atlases, // Session 105: Pass atlases from resource
       };
 
       // Execute rendering pipeline

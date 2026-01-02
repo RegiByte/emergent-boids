@@ -224,3 +224,8 @@ export const behaviorKeywords = {
     not_ready: "not_ready", // Conditions not met (age, health, etc.)
   },
 } as const;
+
+export const renderModeKeywords = {
+  canvas: "canvas",
+  webgl: "webgl",
+} as const;

@@ -1,7 +1,8 @@
 import { defineResource } from "braided";
 import type { CanvasAPI } from "./canvas";
 import type { RuntimeStoreResource } from "./runtimeStore";
-import { create } from "zustand";
+import { Atom, AtomState, createAtom, useAtomState } from "@/lib/state";
+import { rateLimit } from "@tanstack/pacer";
 
 export type CameraMode =
   | { type: "free" }
@@ -13,17 +14,6 @@ export type CameraMode =
     }
   | { type: "following"; boidId: string; lerpFactor: number };
 
-// Zustand store for reactive camera mode state
-type CameraModeStore = {
-  mode: CameraMode;
-  setMode: (mode: CameraMode) => void;
-};
-
-const useCameraModeStore = create<CameraModeStore>((set) => ({
-  mode: { type: "free" },
-  setMode: (mode) => set({ mode }),
-}));
-
 export type CameraAPI = {
   x: number;
   y: number;
@@ -32,7 +22,7 @@ export type CameraAPI = {
   viewportHeight: number;
   mode: CameraMode;
   isDragging: boolean;
-  useModeStore: typeof useCameraModeStore;
+  useMode: () => AtomState<Atom<CameraMode>>;
   panTo: (x: number, y: number, isManualNavigation?: boolean) => void;
   setZoom: (zoom: number) => void;
   screenToWorld: (screenX: number, screenY: number) => { x: number; y: number };
@@ -48,7 +38,7 @@ export type CameraAPI = {
   enterPickerMode: () => void;
   updatePickerTarget: (
     boidId: string | null,
-    mouseWorldPos: { x: number; y: number },
+    mouseWorldPos: { x: number; y: number }
   ) => void;
   setMouseInCanvas: (inCanvas: boolean) => void;
   exitPickerMode: () => void;
@@ -72,10 +62,13 @@ export const camera = defineResource({
     let x = config.world.width / 2;
     let y = config.world.height / 2;
     let zoom = 1.0; // 1.0 = see full viewport width in world units
-    let mode: CameraMode = { type: "free" };
+
+    const cameraAtom = createAtom({
+      type: "free",
+    } as CameraMode);
 
     // Sync initial mode to store
-    useCameraModeStore.setState({ mode });
+    // useCameraModeStore.setState({ mode });
 
     // Pure functions for coordinate transforms
     // Note: Use canvas.width/height dynamically to handle viewport resizing
@@ -114,10 +107,11 @@ export const camera = defineResource({
     };
 
     const panTo = (newX: number, newY: number, isManualNavigation = false) => {
+      const state = cameraAtom.get();
       // If user manually navigates while following, exit follow mode
-      if (isManualNavigation && mode.type === "following") {
-        mode = { type: "free" };
-        useCameraModeStore.setState({ mode });
+      if (isManualNavigation && state.type === "following") {
+        // mode = { type: "free" };
+        cameraAtom.set({ type: "free" });
       }
 
       // Calculate viewport half-dimensions at current zoom
@@ -131,6 +125,17 @@ export const camera = defineResource({
       x = Math.max(halfWidth, Math.min(worldWidth - halfWidth, newX));
       y = Math.max(halfHeight, Math.min(worldHeight - halfHeight, newY));
     };
+
+    const rateLimitedPanTo = rateLimit(
+      (newX: number, newY: number, isManualNavigation = false) => {
+        panTo(newX, newY, isManualNavigation);
+      },
+      {
+        limit: 4,
+        window: 100,
+        windowType: "sliding",
+      }
+    );
 
     const setZoom = (newZoom: number) => {
       // Calculate minimum zoom to prevent seeing beyond world borders
@@ -150,11 +155,11 @@ export const camera = defineResource({
 
     // Keyboard controls (WASD for pan, Escape to exit modes)
     const handleKeyboard = (e: KeyboardEvent) => {
+      const state = cameraAtom.get();
       // Exit picker/follow mode on Escape
       if (e.key === "Escape") {
-        if (mode.type === "picker" || mode.type === "following") {
-          mode = { type: "free" };
-          useCameraModeStore.setState({ mode });
+        if (state.type === "picker" || state.type === "following") {
+          cameraAtom.set({ type: "free" });
           return;
         }
       }
@@ -240,6 +245,17 @@ export const camera = defineResource({
       }
     };
 
+    // const rateLimitedHandleMouseMove = rateLimit(handleMouseMove, {
+    //   limit: 3,
+    //   window: 100,
+    //   windowType: "sliding",
+    //   onReject(rateLimiter) {
+    //     console.log(
+    //       `Rate limit exceeded. Try again in ${rateLimiter.getMsUntilNextWindow()}ms`
+    //     );
+    //   },
+    // });
+
     const handleMouseUp = (e: MouseEvent) => {
       if (isDragging) {
         isDragging = false;
@@ -257,61 +273,58 @@ export const camera = defineResource({
 
     // Camera mode methods
     const enterPickerMode = () => {
-      mode = {
+      cameraAtom.set({
         type: "picker",
         targetBoidId: null,
         mouseWorldPos: { x, y },
         mouseInCanvas: false,
-      };
-      useCameraModeStore.setState({ mode });
+      });
     };
 
     const updatePickerTarget = (
       boidId: string | null,
-      mouseWorldPos: { x: number; y: number },
+      mouseWorldPos: { x: number; y: number }
     ) => {
-      if (mode.type === "picker") {
-        mode = {
+      const state = cameraAtom.get();
+      if (state.type === "picker") {
+        cameraAtom.set({
           type: "picker",
           targetBoidId: boidId,
           mouseWorldPos,
-          mouseInCanvas: mode.mouseInCanvas,
-        };
-        useCameraModeStore.setState({ mode });
+          mouseInCanvas: state.mouseInCanvas,
+        });
       }
     };
 
     const setMouseInCanvas = (inCanvas: boolean) => {
-      if (mode.type === "picker") {
-        mode = {
+      const state = cameraAtom.get();
+      if (state.type === "picker") {
+        cameraAtom.set({
           type: "picker",
-          targetBoidId: mode.targetBoidId,
-          mouseWorldPos: mode.mouseWorldPos,
+          targetBoidId: state.targetBoidId,
+          mouseWorldPos: state.mouseWorldPos,
           mouseInCanvas: inCanvas,
-        };
-        useCameraModeStore.setState({ mode });
+        });
       }
     };
 
     const exitPickerMode = () => {
-      mode = { type: "free" };
-      useCameraModeStore.setState({ mode });
+      cameraAtom.set({ type: "free" });
     };
 
     const startFollowing = (boidId: string) => {
-      mode = { type: "following", boidId, lerpFactor: 0.5 };
-      useCameraModeStore.setState({ mode });
+      cameraAtom.set({ type: "following", boidId, lerpFactor: 0.5 });
     };
 
     const stopFollowing = () => {
-      mode = { type: "free" };
-      useCameraModeStore.setState({ mode });
+      cameraAtom.set({ type: "free" });
     };
 
     const updateFollowPosition = (targetX: number, targetY: number) => {
-      if (mode.type === "following") {
+      const state = cameraAtom.get();
+      if (state.type === "following") {
         // Smooth lerp to target position
-        const lerpFactor = mode.lerpFactor;
+        const lerpFactor = state.lerpFactor;
         const newX = x + (targetX - x) * lerpFactor;
         const newY = y + (targetY - y) * lerpFactor;
         panTo(newX, newY);
@@ -392,19 +405,19 @@ export const camera = defineResource({
         return zoom;
       },
       get mode() {
-        return mode;
+        return cameraAtom.get();
       },
       get isDragging() {
         return isDragging;
       },
-      useModeStore: useCameraModeStore,
       get viewportWidth() {
         return canvas.width; // Dynamic - reads current canvas size
       },
       get viewportHeight() {
         return canvas.height; // Dynamic - reads current canvas size
       },
-      panTo,
+      useMode: () => useAtomState(cameraAtom),
+      panTo: rateLimitedPanTo,
       setZoom,
       worldToScreen,
       screenToWorld,

@@ -1,13 +1,15 @@
 import { z } from "zod";
+import { renderModeKeywords } from "../keywords";
 import {
   deathMarkerSchema,
   foodSourceSchema,
   obstacleSchema,
 } from "./entities";
-import { simulationParametersSchema, worldConfigSchema } from "./world";
-import { speciesRecordSchema } from "./species";
-import { evolutionSnapshotSchema } from "./evolution";
 import { allEventSchema } from "./events";
+import { evolutionSnapshotSchema } from "./evolution";
+import { renderModeSchema } from "./primitives";
+import { speciesRecordSchema } from "./species";
+import { simulationParametersSchema, worldConfigSchema } from "./world";
 
 /**
  * State Schemas - Runtime state management
@@ -61,6 +63,7 @@ export const visualSettingsSchema = z.object({
       .default(null),
   }),
 });
+export type VisualSettings = z.infer<typeof visualSettingsSchema>;
 
 // ============================================
 // Runtime Store Schema
@@ -110,9 +113,10 @@ export const runtimeStoreSchema = z.object({
     visualSettings: visualSettingsSchema, // Rendering preferences
     sidebarOpen: z.boolean(), // Whether the sidebar is open
     headerCollapsed: z.boolean(), // Whether the header navbar is collapsed
-    rendererMode: z.enum(["canvas", "webgl"]).default("canvas"), // Which renderer to use
+    rendererMode: renderModeSchema.default(renderModeKeywords.canvas), // Which renderer to use
   }),
 });
+export type RuntimeStore = z.infer<typeof runtimeStoreSchema>;
 
 /**
  * Analytics Store Schema
@@ -136,7 +140,7 @@ export const analyticsStoreSchema = z.object({
           timestamp: z.number(), // Real-world timestamp (for display)
           tick: z.number(), // Simulation tick (for aggregation)
           event: allEventSchema, // The event data
-        }),
+        })
       ),
     }),
     config: z.object({
@@ -170,5 +174,3 @@ export const analyticsStoreSchema = z.object({
 });
 
 export type AnalyticsStore = z.infer<typeof analyticsStoreSchema>;
-export type RuntimeStore = z.infer<typeof runtimeStoreSchema>;
-export type VisualSettings = z.infer<typeof visualSettingsSchema>;

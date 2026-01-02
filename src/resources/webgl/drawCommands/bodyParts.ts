@@ -27,7 +27,7 @@ const QUAD_POSITIONS = [
 export const createBodyPartsDrawCommand = (
   regl: REGL.Regl,
   bodyPartsTexture: REGL.Texture2D,
-  bodyPartsAtlas: BodyPartsAtlasResult,
+  bodyPartsAtlas: BodyPartsAtlasResult
 ): REGL.DrawCommand => {
   return regl({
     vert: bodyPartVertShader,
@@ -87,7 +87,7 @@ export const createBodyPartsDrawCommand = (
 
     uniforms: {
       transform: (regl.prop as unknown as (name: string) => number[])(
-        "transform",
+        "transform"
       ),
       bodyPartsTexture: bodyPartsTexture,
       cellSize: bodyPartsAtlas.cellSize,

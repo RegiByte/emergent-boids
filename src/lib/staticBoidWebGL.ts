@@ -14,13 +14,12 @@
 import REGL from "regl";
 import type { Boid } from "@/boids/vocabulary/schemas/entities";
 import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
+import type { AtlasesResult } from "@/resources/atlases";
 import {
-  createShapeAtlas,
   createShapeTexture,
   type ShapeAtlasResult,
 } from "@/resources/webgl/atlases/shapeAtlas";
 import {
-  createBodyPartsAtlas,
   createBodyPartsTexture,
   type BodyPartsAtlasResult,
 } from "@/resources/webgl/atlases/bodyPartsAtlas";
@@ -48,15 +47,20 @@ export interface StaticWebGLContext {
 /**
  * Initialize a minimal WebGL context for static boid rendering
  *
- * Creates REGL context, generates texture atlases, compiles shaders,
+ * Creates REGL context, uses pre-generated texture atlases, compiles shaders,
  * and prepares draw commands. This is a standalone setup that doesn't
  * depend on the full resource system.
  *
+ * Session 105: Now accepts pre-generated atlases instead of generating them.
+ * This eliminates redundant atlas generation and improves performance.
+ *
  * @param canvas - Canvas element to render to
+ * @param atlases - Pre-generated atlases from the atlases resource
  * @returns WebGL context or null if initialization fails
  */
 export function createMinimalWebGLContext(
   canvas: HTMLCanvasElement,
+  atlases: AtlasesResult
 ): StaticWebGLContext | null {
   try {
     // Create a raw WebGL context first
@@ -74,7 +78,7 @@ export function createMinimalWebGLContext(
 
     if (!gl) {
       console.error(
-        "Failed to create WebGL context - WebGL may not be available",
+        "Failed to create WebGL context - WebGL may not be available"
       );
       return null;
     }
@@ -86,10 +90,10 @@ export function createMinimalWebGLContext(
       extensions: ["ANGLE_instanced_arrays"],
     });
 
-    // Generate shape atlas
-    const shapeAtlas = createShapeAtlas();
+    // Session 105: Use pre-generated atlases (no more redundant generation!)
+    const shapeAtlas = atlases.shapes;
     if (!shapeAtlas) {
-      console.error("Failed to create shape atlas");
+      console.error("Shape atlas not available from resource");
       return null;
     }
 
@@ -100,10 +104,10 @@ export function createMinimalWebGLContext(
       return null;
     }
 
-    // Generate body parts atlas
-    const bodyPartsAtlas = createBodyPartsAtlas();
+    // Use pre-generated body parts atlas
+    const bodyPartsAtlas = atlases.bodyParts;
     if (!bodyPartsAtlas) {
-      console.error("Failed to create body parts atlas");
+      console.error("Body parts atlas not available from resource");
       return null;
     }
 
@@ -118,12 +122,12 @@ export function createMinimalWebGLContext(
     const drawShapeBoids = createShapeBoidsDrawCommand(
       regl,
       shapeTexture,
-      shapeAtlas,
+      shapeAtlas
     );
     const drawBodyParts = createBodyPartsDrawCommand(
       regl,
       bodyPartsTexture,
-      bodyPartsAtlas,
+      bodyPartsAtlas
     );
 
     return {
@@ -153,7 +157,7 @@ export function createMinimalWebGLContext(
 function createStaticTransformMatrix(
   _scale: number,
   width: number,
-  height: number,
+  height: number
 ): number[] {
   // Simple orthographic projection that centers content
   // Note: We apply visual scaling in boidScale, so keep projection unscaled
@@ -194,7 +198,7 @@ export function renderBoidWebGL(
     scale?: number;
     width: number;
     height: number;
-  },
+  }
 ): void {
   const { regl, shapeAtlas, bodyPartsAtlas, drawShapeBoids, drawBodyParts } =
     context;
@@ -214,7 +218,7 @@ export function renderBoidWebGL(
     boid,
     speciesConfig,
     shapeAtlas,
-    scale,
+    scale
   );
 
   // Draw boid shape
@@ -228,7 +232,7 @@ export function renderBoidWebGL(
     boid,
     speciesConfig,
     bodyPartsAtlas,
-    scale,
+    scale
   );
 
   if (bodyPartsData && bodyPartsData.count > 0) {
@@ -253,7 +257,7 @@ function prepareShapeBoidInstanceData(
   boid: Boid,
   speciesConfig: SpeciesConfig | undefined,
   shapeAtlas: ShapeAtlasResult,
-  scale: number,
+  scale: number
 ) {
   const { position, velocity, phenotype } = boid;
 
@@ -305,7 +309,7 @@ function prepareBodyPartsInstanceData(
   boid: Boid,
   speciesConfig: SpeciesConfig | undefined,
   bodyPartsAtlas: BodyPartsAtlasResult,
-  scale: number,
+  scale: number
 ) {
   const { position, velocity, phenotype } = boid;
   // Use species config body parts (matches main simulation pattern)
@@ -393,7 +397,7 @@ function prepareBodyPartsInstanceData(
       { x: partPosX, y: partPosY },
       partRotation,
       partType as BodyPartType,
-      boidScale,
+      boidScale
     );
 
     partDataArrays.partOffset.push(offset.x, offset.y);
@@ -411,7 +415,7 @@ function prepareBodyPartsInstanceData(
     partDataArrays.secondaryColor.push(
       partColor[0],
       partColor[1],
-      partColor[2],
+      partColor[2]
     ); // Part color
     partDataArrays.tertiaryColor.push(0.0, 0.0, 0.0); // Black
   }
@@ -443,7 +447,7 @@ function drawDebugCollisionCircle(
   regl: REGL.Regl,
   transform: number[],
   position: { x: number; y: number },
-  radius: number,
+  radius: number
 ): void {
   // Create circle vertices
   const segments = 32;
@@ -453,7 +457,7 @@ function drawDebugCollisionCircle(
     const angle = (i / segments) * Math.PI * 2;
     positions.push(
       position.x + Math.cos(angle) * radius,
-      position.y + Math.sin(angle) * radius,
+      position.y + Math.sin(angle) * radius
     );
   }
 

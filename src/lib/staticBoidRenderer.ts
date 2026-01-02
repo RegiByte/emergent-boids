@@ -14,6 +14,7 @@
 import type { Boid } from "@/boids/vocabulary/schemas/entities";
 import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
 import type { Genome } from "@/boids/vocabulary/schemas/genetics";
+import type { AtlasesResult } from "@/resources/atlases";
 import type { BodyPartType } from "@/lib/coordinates";
 import { shapeSizeParamFromBaseSize } from "@/lib/shapeSizing";
 import { computePhenotype } from "@/boids/genetics/phenotype";
@@ -35,7 +36,7 @@ export function createStaticBoid(
   genome: Genome,
   typeId: string,
   position: { x: number; y: number } = { x: 0, y: 0 },
-  rotation: number = 0,
+  rotation: number = 0
 ): Boid {
   const phenotype = computePhenotype(genome, defaultWorldPhysics);
 
@@ -79,17 +80,20 @@ export function createStaticBoid(
  *
  * This uses the same rendering logic as the main simulation's Canvas 2D fallback.
  * The context should already be translated/scaled to the desired position.
+ * Session 105: Now requires atlases parameter
  *
  * @param ctx - Canvas 2D rendering context
  * @param boid - The boid to render
  * @param scale - Additional scale multiplier (default: 1)
  * @param speciesConfig - Optional species configuration (for shape rendering)
+ * @param atlases - Pre-generated atlases from resource
  */
 export function renderBoidCanvas2D(
   ctx: CanvasRenderingContext2D,
   boid: Boid,
   scale: number = 1,
   speciesConfig?: SpeciesConfig,
+  atlases?: AtlasesResult
 ): void {
   const { velocity, genome } = boid;
 
@@ -115,8 +119,17 @@ export function renderBoidCanvas2D(
 
   // Draw body shape using shape renderer
   // Session 99: Renderer now handles complete drawing (fill + stroke)
-  const shapeRenderer = getShapeRenderer(shapeName);
-  shapeRenderer(ctx, shapeSize); // Renderer handles fill/stroke internally
+  // Session 105: Requires atlases parameter (optional for backward compat)
+  if (atlases) {
+    const shapeRenderer = getShapeRenderer(shapeName, atlases);
+    shapeRenderer(ctx, shapeSize); // Renderer handles fill/stroke internally
+  } else {
+    // Fallback: draw a simple circle if no atlases provided
+    ctx.beginPath();
+    ctx.arc(0, 0, shapeSize * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
 
   // DEBUG: Draw collision radius circle (Session 96-97)
   // Shows the actual physics collision boundary for comparison
@@ -151,13 +164,26 @@ export function renderBoidCanvas2D(
       // Skip glow (it's handled via shadow effects)
       if (partType === "glow") continue;
 
-      const partRenderer = getBodyPartRenderer(partType as BodyPartType);
+      // Session 105: Requires atlases parameter (skip if not provided)
+      if (!atlases) {
+        continue; // Skip body parts if no atlases
+      }
+
+      const partRenderer = getBodyPartRenderer(
+        partType as BodyPartType
+      );
       if (partRenderer) {
         // Use tailColor for tails, body color for everything else
         const partColor = partType === "tail" ? tailColor : color;
         // Body parts scale/offset should be relative to collision radius (baseSize),
         // not the shape renderer's internal size parameter.
-        partRenderer(ctx, bodySize, partColor, parts);
+        partRenderer({
+          ctx,
+          atlas: atlases.bodyParts,
+          boidSize: bodySize,
+          color: partColor,
+          bodyParts: parts,
+        });
       }
     }
   }
@@ -181,7 +207,7 @@ export function applyCameraTransform(
   ctx: CanvasRenderingContext2D,
   camera: StaticCamera,
   canvasWidth: number,
-  canvasHeight: number,
+  canvasHeight: number
 ): void {
   // Center the canvas
   ctx.translate(canvasWidth / 2, canvasHeight / 2);
@@ -205,7 +231,7 @@ export function renderBoidsCanvas2D(
     scale?: number;
     clearCanvas?: boolean;
     speciesConfig?: SpeciesConfig;
-  },
+  }
 ): void {
   const {
     camera = { position: { x: 0, y: 0 }, zoom: 1 },

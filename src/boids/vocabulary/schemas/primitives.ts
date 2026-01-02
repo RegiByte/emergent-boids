@@ -1,6 +1,7 @@
 import z from "zod";
 import {
   deathCauseKeywords,
+  renderModeKeywords,
   reproductionTypeKeywords,
   roleKeywords,
   stanceKeywords,
@@ -15,10 +16,6 @@ import {
  * Philosophy: Start with the simplest possible types, compose upward.
  */
 
-// ============================================
-// Vector Schema
-// ============================================
-
 /**
  * Vector2 - 2D position or velocity
  *
@@ -31,10 +28,6 @@ export const vectorSchema = z.object({
 });
 
 export type Vector2 = z.infer<typeof vectorSchema>;
-
-// ============================================
-// Role Schema
-// ============================================
 
 /**
  * Role Schema - Indicates the role of a boid
@@ -76,10 +69,6 @@ export type PreyStance = z.infer<typeof preyStanceSchema>;
 export type PredatorStance = z.infer<typeof predatorStanceSchema>;
 export type BoidStance = z.infer<typeof stanceSchema>;
 
-// ============================================
-// Death Cause Schema
-// ============================================
-
 /**
  * Death Cause Schema - Indicates the cause of a boid's death
  *
@@ -93,13 +82,15 @@ export const deathCauseSchema = z.enum([
 
 export type DeathCause = z.infer<typeof deathCauseSchema>;
 
-// ============================================
-// Reproduction Type Schema
-// ============================================
-
 export const reproductionTypeSchema = z.enum([
   reproductionTypeKeywords.sexual, // Sexual reproduction needs a mate
   reproductionTypeKeywords.asexual, // Asexual reproduction does not need a mate
 ]);
 
 export type ReproductionType = z.infer<typeof reproductionTypeSchema>;
+
+export const renderModeSchema = z.enum([
+  renderModeKeywords.canvas,
+  renderModeKeywords.webgl,
+]);
+export type RenderMode = z.infer<typeof renderModeSchema>;
