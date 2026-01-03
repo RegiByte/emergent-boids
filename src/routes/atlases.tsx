@@ -15,10 +15,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { AtlasResult } from "@/resources/webgl/atlases/types";
-import type { AtlasesResult } from "@/resources/atlases";
+import type { AtlasResult } from "@/resources/browser/webgl/atlases/types";
+import type { AtlasesResult } from "@/resources/browser/atlases.ts";
 import { createSystemHooks, createSystemManager } from "braided-react";
-import { atlases } from "@/resources/atlases";
+import { atlases } from "@/resources/browser/atlases.ts";
 
 // Create a minimal system with just the atlases resource
 // This demonstrates braided's flexibility - routes can compose their own systems!
@@ -95,7 +95,7 @@ function AtlasesRoute() {
               </Button>
             </Link>
           </div>
-          
+
           {/* Braided Resource Info Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-md">
             <span className="text-xs font-mono text-primary">

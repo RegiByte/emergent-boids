@@ -28,6 +28,7 @@ import { genomeSchema, phenotypeSchema } from "./genetics";
  */
 export const boidSchema = z.object({
   id: z.string(),
+  index: z.number(), // index when the boid was added, may change over time, used for tracking shared buffer state
   position: vectorSchema,
   velocity: vectorSchema,
   acceleration: vectorSchema,
@@ -69,7 +70,10 @@ export const boidSchema = z.object({
 
 export type Boid = z.infer<typeof boidSchema>;
 export type LogicalBoid = Omit<Boid, "position" | "velocity" | "acceleration">;
-export type PhisicalBoid = Pick<Boid, "position" | "velocity" | "acceleration">;
+export type PhysicalBoid = Pick<Boid, "position" | "velocity" | "acceleration">;
+
+export const boidsById = z.record(z.string(), boidSchema);
+export type BoidsById = z.infer<typeof boidsById>;
 
 // ============================================
 // Food Source Schema

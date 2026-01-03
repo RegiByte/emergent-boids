@@ -1,11 +1,19 @@
+import type { Profiler } from "../resources/shared/profiler.ts";
+import { ForceCollector } from "./collectors.ts";
+import { ItemWithDistance } from "./spatialHash.ts";
+import type {
+  Boid,
+  BoidsById,
+  DeathMarker,
+  FoodSource,
+  Obstacle,
+} from "./vocabulary/schemas/entities";
+import { Role } from "./vocabulary/schemas/primitives.ts";
+import type { SpeciesRecord } from "./vocabulary/schemas/species";
 import type {
   SimulationParameters,
   WorldConfig,
 } from "./vocabulary/schemas/world";
-import type { SpeciesConfig } from "./vocabulary/schemas/species";
-import type { FoodSource, DeathMarker } from "./vocabulary/schemas/entities";
-import type { Obstacle } from "./vocabulary/schemas/entities";
-import type { Profiler } from "../resources/profiler";
 
 /**
  * Simulation state context - dynamic world state that changes every frame
@@ -24,17 +32,38 @@ export type SimulationContext = {
 export type ConfigContext = {
   parameters: SimulationParameters;
   world: WorldConfig;
-  species: Record<string, SpeciesConfig>;
+  species: SpeciesRecord;
+};
+
+export type FrameUpdateContext = {
+  simulation: SimulationContext;
+  config: ConfigContext;
+  deltaSeconds: number;
+  currentFrame: number;
+  profiler?: Profiler;
+  maxNeighborsLookup: number;
+  boids: BoidsById;
+  scaledTime: number;
+  boidsByRole: Record<Role, Boid[]>;
+  boidsCount: number;
+  forcesCollector: ForceCollector;
 };
 
 /**
  * Complete boid update context - everything needed to update boid behavior
  * Combines simulation state, configuration, and time delta
  */
-export type BoidUpdateContext = {
-  simulation: SimulationContext;
-  config: ConfigContext;
-  deltaSeconds: number;
-  profiler?: Profiler;
-  frame: number;
+export type BoidUpdateContext = FrameUpdateContext & {
+  nearbyBoids: ItemWithDistance<Boid>[];
+  nearbyPrey: ItemWithDistance<Boid>[];
+  nearbyPredators: ItemWithDistance<Boid>[];
+  nearbyFoodSources: ItemWithDistance<FoodSource>[];
+  nearbyObstacles: ItemWithDistance<Obstacle>[];
+  nearbyDeathMarkers: ItemWithDistance<DeathMarker>[];
 };
+
+export type EngineUpdateContext = {
+  // Time tracking
+  frameCounter: number
+  
+}

@@ -5,7 +5,7 @@
  * Uses profileStore for profile data and runtimeController for event dispatch.
  */
 
-import { useResource } from "@/system";
+import { useResource } from "@/systems/standard.ts";
 import {
   Select,
   SelectContent,

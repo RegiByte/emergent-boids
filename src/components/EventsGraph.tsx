@@ -10,7 +10,7 @@ import {
   ChartOptions,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
-import { useResource } from "../system";
+import { useResource } from "../systems/standard.ts";
 
 // Register Chart.js components
 ChartJS.register(

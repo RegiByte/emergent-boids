@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useResource } from "@/system";
+import { useResource } from "@/systems/standard.ts";
 import { eventKeywords } from "@/boids/vocabulary/keywords";
 import {
   exportCurrentStats,
@@ -65,11 +65,11 @@ export function ControlsSidebar({
 }: ControlsSidebarProps) {
   const { useStore: useRuntimeStore } = useResource("runtimeStore");
   const { useStore: useAnalyticsStore } = useResource("analyticsStore");
+  const { store: boidStore } = useResource("localBoidStore");
   const runtimeStore = useRuntimeStore((state) => state);
   const { config, simulation } = runtimeStore;
   const analytics = useAnalyticsStore((state) => state.evolution.data);
   const runtimeController = useResource("runtimeController");
-  const engine = useResource("engine");
   const lifecycleManager = useResource("lifecycleManager");
   const randomness = useResource("randomness");
   const time = useResource("time");
@@ -374,7 +374,7 @@ export function ControlsSidebar({
                   className="w-full justify-start"
                   onClick={() => {
                     const json = exportCurrentStats(
-                      engine,
+                      boidStore.boids,
                       runtimeStore,
                       lifecycleManager.getMutationCounters()
                     );
@@ -409,7 +409,7 @@ export function ControlsSidebar({
                       toast.loading("Generating multi-rate export...");
                       await exportAndDownloadMultiRate(
                         analytics.evolutionHistory,
-                        engine,
+                        boidStore.boids,
                         runtimeStore,
                         {
                           baseFilename: `evolution_${Date.now()}`,

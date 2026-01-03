@@ -14,15 +14,16 @@
 import type { Boid } from "@/boids/vocabulary/schemas/entities";
 import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
 import type { Genome } from "@/boids/vocabulary/schemas/genetics";
-import type { AtlasesResult } from "@/resources/atlases";
+import type { AtlasesResult } from "@/resources/browser/atlases.ts";
 import type { BodyPartType } from "@/lib/coordinates";
 import { shapeSizeParamFromBaseSize } from "@/lib/shapeSizing";
 import { computePhenotype } from "@/boids/genetics/phenotype";
-import { defaultWorldPhysics } from "@/resources/defaultPhysics";
+import { defaultWorldPhysics } from "@/boids/defaultPhysics.ts";
 import {
   getShapeRenderer,
   getBodyPartRenderer,
-} from "@/resources/rendering/shapes";
+} from "@/resources/browser/rendering/shapes";
+import { Vector2 } from "@/boids/vocabulary/schemas/primitives";
 
 /**
  * Create a minimal boid object for static rendering
@@ -35,7 +36,8 @@ import {
 export function createStaticBoid(
   genome: Genome,
   typeId: string,
-  position: { x: number; y: number } = { x: 0, y: 0 },
+  index: number,
+  position: Vector2 = { x: 0, y: 0 },
   rotation: number = 0
 ): Boid {
   const phenotype = computePhenotype(genome, defaultWorldPhysics);
@@ -48,6 +50,7 @@ export function createStaticBoid(
 
   return {
     id: `static-${Math.random().toString(36).substr(2, 9)}`,
+    index,
     position,
     velocity,
     acceleration: { x: 0, y: 0 },
@@ -169,9 +172,7 @@ export function renderBoidCanvas2D(
         continue; // Skip body parts if no atlases
       }
 
-      const partRenderer = getBodyPartRenderer(
-        partType as BodyPartType
-      );
+      const partRenderer = getBodyPartRenderer(partType as BodyPartType);
       if (partRenderer) {
         // Use tailColor for tails, body color for everything else
         const partColor = partType === "tail" ? tailColor : color;

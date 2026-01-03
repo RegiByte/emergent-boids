@@ -9,7 +9,11 @@ import { allEventSchema } from "./events";
 import { evolutionSnapshotSchema } from "./evolution";
 import { renderModeSchema } from "./primitives";
 import { speciesRecordSchema } from "./species";
-import { simulationParametersSchema, worldConfigSchema } from "./world";
+import {
+  simulationParametersSchema,
+  worldConfigSchema,
+  worldPhysicsSchema,
+} from "./world";
 
 /**
  * State Schemas - Runtime state management
@@ -103,6 +107,7 @@ export const runtimeStoreSchema = z.object({
     world: worldConfigSchema, // World dimensions and initial populations
     species: speciesRecordSchema, // All species in this simulation
     parameters: simulationParametersSchema, // Global rules
+    physics: worldPhysicsSchema, // World physics
   }),
   simulation: z.object({
     obstacles: z.array(obstacleSchema), // Physical barriers

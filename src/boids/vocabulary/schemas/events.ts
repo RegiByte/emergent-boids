@@ -83,16 +83,18 @@ export const timeEventSchemas = {
 // Boid Events - Lifecycle and interactions
 // ============================================
 
+export const catchEventSchema = z.object({
+  type: z.literal(eventKeywords.boids.caught),
+  predatorId: z.string(),
+  preyId: z.string(),
+  preyTypeId: z.string(), // Species of prey (for analytics)
+  preyEnergy: z.number(), // Energy to convert to food
+  preyPosition: z.object({ x: z.number(), y: z.number() }), // Where to place food
+});
+
 export const boidEventSchemas = {
   // Predator catches prey
-  caught: z.object({
-    type: z.literal(eventKeywords.boids.caught),
-    predatorId: z.string(),
-    preyId: z.string(),
-    preyTypeId: z.string(), // Species of prey (for analytics)
-    preyEnergy: z.number(), // Energy to convert to food
-    preyPosition: z.object({ x: z.number(), y: z.number() }), // Where to place food
-  }),
+  caught: catchEventSchema,
   // Boid dies (any reason)
   died: z.object({
     type: z.literal(eventKeywords.boids.died),
@@ -274,3 +276,4 @@ export type ProfileEvent = z.infer<typeof profileEventSchema>;
 export type AtmosphereEvent = z.infer<typeof atmosphereEventSchema>;
 export type AnalyticsEvent = z.infer<typeof analyticsEventSchema>;
 export type AllEvents = z.infer<typeof allEventSchema>;
+export type CatchEvent = z.infer<typeof catchEventSchema>;

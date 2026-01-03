@@ -36,3 +36,7 @@ export const clientStatusKeywords = {
   error: "error",
   terminated: "terminated",
 } as const;
+
+export const sharedMemoryKeywords = {
+  boidsPhysics: "boidsPhysics",
+} as const;

@@ -1,9 +1,10 @@
-import type { FoodSource } from "./vocabulary/schemas/entities";
+import type { BoidsById, FoodSource } from "./vocabulary/schemas/entities";
 import type { SpeciesConfig } from "./vocabulary/schemas/species";
 import type { WorldConfig } from "./vocabulary/schemas/world";
 import type { Boid } from "./vocabulary/schemas/entities";
 import { FOOD_CONSTANTS } from "./food";
 import type { DomainRNG } from "@/lib/seededRandom";
+import { filterBoidsWhere } from "./iterators";
 
 /**
  * Food Management System
@@ -39,7 +40,7 @@ export function createPredatorFood(
   preyPosition: { x: number; y: number },
   currentTick: number,
   rng: DomainRNG,
-  simulationTime: number, // NEW: Pass simulation time for ID generation
+  simulationTime: number // NEW: Pass simulation time for ID generation
 ): FoodSource {
   const foodEnergy =
     preyEnergy * FOOD_CONSTANTS.PREDATOR_FOOD_FROM_PREY_MULTIPLIER;
@@ -59,10 +60,10 @@ export function createPredatorFood(
  * Check if we can create a predator food source (cap check)
  */
 export function canCreatePredatorFood(
-  currentFoodSources: FoodSource[],
+  currentFoodSources: FoodSource[]
 ): boolean {
   const existingPredatorFoodCount = currentFoodSources.filter(
-    (food) => food.sourceType === "predator",
+    (food) => food.sourceType === "predator"
   ).length;
 
   return existingPredatorFoodCount < FOOD_CONSTANTS.MAX_PREDATOR_FOOD_SOURCES;
@@ -77,11 +78,11 @@ export function generatePreyFood(
   world: WorldConfig,
   currentTick: number,
   rng: DomainRNG,
-  simulationTime: number, // NEW: Pass simulation time for ID generation
+  simulationTime: number // NEW: Pass simulation time for ID generation
 ): FoodSpawnResult {
   // Count existing prey food sources
   const existingPreyFoodCount = currentFoodSources.filter(
-    (food) => food.sourceType === "prey",
+    (food) => food.sourceType === "prey"
   ).length;
 
   // Don't spawn if at or above cap
@@ -92,7 +93,7 @@ export function generatePreyFood(
   // Calculate how many we can spawn
   const maxToSpawn = Math.min(
     FOOD_CONSTANTS.PREY_FOOD_SPAWN_COUNT,
-    FOOD_CONSTANTS.MAX_PREY_FOOD_SOURCES - existingPreyFoodCount,
+    FOOD_CONSTANTS.MAX_PREY_FOOD_SOURCES - existingPreyFoodCount
   );
 
   const newFoodSources: FoodSource[] = [];
@@ -121,7 +122,7 @@ export function generatePreyFood(
 function canBoidEatFood(
   boid: Boid,
   food: FoodSource,
-  speciesConfig: SpeciesConfig,
+  speciesConfig: SpeciesConfig
 ): boolean {
   // Must be correct role
   if (food.sourceType === "prey" && speciesConfig.role !== "prey") return false;
@@ -147,8 +148,8 @@ function canBoidEatFood(
  */
 export function processFoodConsumption(
   foodSources: FoodSource[],
-  boids: Boid[],
-  speciesTypes: Record<string, SpeciesConfig>,
+  boids: BoidsById,
+  speciesTypes: Record<string, SpeciesConfig>
 ): FoodSourceUpdate {
   const updatedFoodSources: FoodSource[] = [];
   const boidsToUpdate: Array<{ boid: Boid; energyGain: number }> = [];
@@ -161,7 +162,7 @@ export function processFoodConsumption(
     }
 
     // Find boids eating from this source
-    const eatingBoids = boids.filter((boid) => {
+    const eatingBoids = filterBoidsWhere(boids, (boid) => {
       const speciesConfig = speciesTypes[boid.typeId];
       if (!speciesConfig) return false;
       return canBoidEatFood(boid, food, speciesConfig);
@@ -210,7 +211,7 @@ export function processFoodConsumption(
  */
 export function applyEnergyGains(
   boidsToUpdate: Array<{ boid: Boid; energyGain: number }>,
-  _speciesTypes: Record<string, SpeciesConfig>,
+  _speciesTypes: Record<string, SpeciesConfig>
 ): void {
   for (const { boid, energyGain } of boidsToUpdate) {
     // Use individual phenotype.maxEnergy instead of species config
@@ -223,11 +224,11 @@ export function applyEnergyGains(
  */
 export function haveFoodSourcesChanged(
   oldSources: FoodSource[],
-  newSources: FoodSource[],
+  newSources: FoodSource[]
 ): boolean {
   if (oldSources.length !== newSources.length) return true;
 
   return newSources.some(
-    (food, idx) => food.energy !== oldSources[idx]?.energy,
+    (food, idx) => food.energy !== oldSources[idx]?.energy
   );
 }

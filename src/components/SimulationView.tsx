@@ -10,22 +10,23 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { CanvasAPI } from "@/resources/canvas";
-import { useResource, useSystem } from "@/system";
+import { CanvasAPI } from "@/resources/browser/canvas.ts";
+import { useResource, useSystem } from "@/systems/standard.ts";
 import { IconAdjustmentsHorizontal } from "@tabler/icons-react";
 import { useDebouncer } from "@tanstack/react-pacer";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CameraMode } from "@/resources/camera";
+import { CameraMode } from "@/resources/browser/camera.ts";
+import { iterateBoids } from "@/boids/iterators";
 
 function SimulationView() {
   const runtimeController = useResource("runtimeController");
   const runtimeStore = useResource("runtimeStore");
+  const { store: boidStore } = useResource("localBoidStore");
   const canvas = useResource("canvas");
   const camera = useResource("camera");
   const renderer = useResource("renderer");
-  const engine = useResource("engine");
   const webglRenderer = useResource("webglRenderer");
   const { useStore } = runtimeStore;
   const sidebarOpen = useStore((state) => state.ui.sidebarOpen);
@@ -147,7 +148,7 @@ function SimulationView() {
         const worldPos = camera.screenToWorld(screenX, screenY);
         const searchRadiusWorld = maxScreenDistance / camera.zoom;
 
-        for (const boid of engine.boids) {
+        for (const boid of iterateBoids(boidStore.boids)) {
           // Quick world-space distance check first (cheaper than screen transform)
           const worldDx = boid.position.x - worldPos.x;
           const worldDy = boid.position.y - worldPos.y;
@@ -287,7 +288,7 @@ function SimulationView() {
     renderer,
     runtimeController,
     camera,
-    engine,
+    boidStore,
   ]);
 
   // Use reactive camera mode for cursor updates

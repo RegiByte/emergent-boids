@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { useResource } from "../system";
+import { useResource } from "../systems/standard.ts";
 import type { Boid } from "../boids/vocabulary/schemas/entities";
+import { iterateBoids } from "@/boids/iterators.ts";
 
 export function Minimap({ backgroundColor }: { backgroundColor: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const engine = useResource("engine");
   const camera = useResource("camera");
   const runtimeStore = useResource("runtimeStore");
+  const { store: boidStore } = useResource("localBoidStore");
 
   // Get world dimensions from config
   const worldWidth = runtimeStore.useStore((state) => state.config.world.width);
   const worldHeight = runtimeStore.useStore(
-    (state) => state.config.world.height,
+    (state) => state.config.world.height
   );
   const speciesConfigs = runtimeStore.useStore((state) => state.config.species);
 
@@ -55,7 +56,7 @@ export function Minimap({ backgroundColor }: { backgroundColor: string }) {
 
       // Draw all boids as tiny dots (grouped by species for batching)
       const boidsBySpecies = new Map<string, Boid[]>();
-      for (const boid of engine.boids) {
+      for (const boid of iterateBoids(boidStore.boids)) {
         const existing = boidsBySpecies.get(boid.typeId);
         if (existing) {
           existing.push(boid);
@@ -124,7 +125,7 @@ export function Minimap({ backgroundColor }: { backgroundColor: string }) {
       cancelAnimationFrame(animationId);
     };
   }, [
-    engine,
+    boidStore,
     camera,
     worldWidth,
     worldHeight,
@@ -138,7 +139,7 @@ export function Minimap({ backgroundColor }: { backgroundColor: string }) {
   // Helper function to convert minimap coordinates to world coordinates
   const minimapToWorld = (
     minimapX: number,
-    minimapY: number,
+    minimapY: number
   ): { x: number; y: number } => {
     const MINIMAP_SIZE = 200;
     const scaleX = MINIMAP_SIZE / worldWidth;

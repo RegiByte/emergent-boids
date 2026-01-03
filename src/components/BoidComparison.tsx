@@ -8,7 +8,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Genome } from "@/boids/vocabulary/schemas/genetics";
 import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
-import type { AtlasesResult } from "@/resources/atlases";
+import type { AtlasesResult } from "@/resources/browser/atlases.ts";
 import { useStaticBoid, type RenderMode } from "@/hooks/useStaticBoid";
 import { cn } from "@/lib/utils";
 

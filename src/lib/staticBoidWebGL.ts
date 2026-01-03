@@ -14,18 +14,18 @@
 import REGL from "regl";
 import type { Boid } from "@/boids/vocabulary/schemas/entities";
 import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
-import type { AtlasesResult } from "@/resources/atlases";
+import type { AtlasesResult } from "@/resources/browser/atlases.ts";
 import {
   createShapeTexture,
   type ShapeAtlasResult,
-} from "@/resources/webgl/atlases/shapeAtlas";
+} from "@/resources/browser/webgl/atlases/shapeAtlas";
 import {
   createBodyPartsTexture,
   type BodyPartsAtlasResult,
-} from "@/resources/webgl/atlases/bodyPartsAtlas";
-import { createShapeBoidsDrawCommand } from "@/resources/webgl/drawCommands/shapeBoids";
-import { createBodyPartsDrawCommand } from "@/resources/webgl/drawCommands/bodyParts";
-import { colorToRgb } from "@/resources/webgl/dataPreparation/utils";
+} from "@/resources/browser/webgl/atlases/bodyPartsAtlas";
+import { createShapeBoidsDrawCommand } from "@/resources/browser/webgl/drawCommands/shapeBoids";
+import { createBodyPartsDrawCommand } from "@/resources/browser/webgl/drawCommands/bodyParts";
+import { colorToRgb } from "@/resources/browser/webgl/dataPreparation/utils";
 import { transformBodyPartWebGL, type BodyPartType } from "@/lib/coordinates";
 import { shapeSizeParamFromBaseSize } from "@/lib/shapeSizing";
 import { darken } from "@/lib/colors"; // Session 101 Phase 2: Perceptual shadow colors

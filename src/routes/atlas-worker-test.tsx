@@ -20,8 +20,8 @@ import { atlasGenerationClientResource } from "@/workers/atlasGenerationTasks";
 import {
   createFontAtlas,
   DEFAULT_FONT_CHARS,
-} from "@/resources/webgl/atlases/fontAtlas";
-import { createBodyPartsAtlas } from "@/resources/webgl/atlases/bodyPartsAtlas";
+} from "@/resources/browser/webgl/atlases/fontAtlas";
+import { createBodyPartsAtlas } from "@/resources/browser/webgl/atlases/bodyPartsAtlas";
 import { createSystemHooks, createSystemManager } from "braided-react";
 
 // Create a minimal system with just the atlas generation worker resource

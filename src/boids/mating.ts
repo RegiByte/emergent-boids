@@ -3,12 +3,13 @@ import {
   calculateOffspringPosition,
   calculateReproductionEnergyCost,
 } from "./calculations";
-import { findBoidById } from "./filters";
 import { isEligibleMate } from "./predicates";
-import type { Boid } from "./vocabulary/schemas/entities";
+import type { Boid, BoidsById } from "./vocabulary/schemas/entities";
 import type { Vector2 } from "./vocabulary/schemas/primitives";
 import { SimulationParameters } from "./vocabulary/schemas/world";
 import { SpeciesConfig } from "./vocabulary/schemas/species";
+import { lookupBoid } from "./conversions";
+import { iterateBoids } from "./iterators";
 
 /**
  * Pure mating state machine
@@ -51,7 +52,7 @@ export type MatingResult =
  * Context for applying mating results (side effects)
  */
 export type MatingContext = {
-  boidsMap: Record<string, Boid>;
+  boids: BoidsById;
   matedBoids: Set<string>;
   boidsToAdd: OffspringData[];
 };
@@ -65,11 +66,11 @@ export type MatingContext = {
  */
 export function findNearbyMate(
   boid: Boid,
-  allBoids: Boid[],
+  allBoids: BoidsById,
   alreadyMated: Set<string>,
-  mateRadius: number,
+  mateRadius: number
 ): Boid | null {
-  for (const other of allBoids) {
+  for (const other of iterateBoids(allBoids)) {
     if (isEligibleMate(other, boid, alreadyMated)) {
       const distance = calculateDistance(boid.position, other.position);
       if (distance < mateRadius) {
@@ -87,11 +88,11 @@ export function findNearbyMate(
 export function processAsexualReproduction(
   boid: Boid,
   parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
+  speciesConfig: SpeciesConfig
 ): MatingResult {
   // Asexual reproduction is instant - no mate needed, no buildup
   const reproductionEnergy = calculateReproductionEnergyCost(
-    boid.phenotype.maxEnergy,
+    boid.phenotype.maxEnergy
   );
 
   // Use type-specific cooldown if available, otherwise use global
@@ -131,10 +132,10 @@ export function processAsexualReproduction(
  */
 export function processMatingCycle(
   boid: Boid,
-  allBoids: Boid[],
+  allBoids: BoidsById,
   parameters: SimulationParameters,
   speciesConfig: SpeciesConfig,
-  matedBoids: Set<string>,
+  matedBoids: Set<string>
 ): MatingResult {
   // Check if this type uses asexual reproduction
   if (speciesConfig.reproduction.type === "asexual") {
@@ -144,7 +145,7 @@ export function processMatingCycle(
   // Sexual reproduction logic below
   // If already paired, check mating progress
   if (boid.mateId) {
-    const mate = findBoidById(allBoids, boid.mateId);
+    const mate = lookupBoid(boid.mateId, allBoids);
 
     // Mate died or disappeared
     if (!mate) {
@@ -166,13 +167,13 @@ export function processMatingCycle(
     if (distance < parameters.mateRadius) {
       const newBuildup = Math.min(
         boid.matingBuildupCounter + 1,
-        parameters.matingBuildupTicks,
+        parameters.matingBuildupTicks
       );
 
       // Buildup complete - reproduce!
       if (newBuildup >= parameters.matingBuildupTicks) {
         const reproductionEnergy = calculateReproductionEnergyCost(
-          boid.phenotype.maxEnergy,
+          boid.phenotype.maxEnergy
         );
 
         // Use type-specific cooldown if available, otherwise use global
@@ -229,7 +230,7 @@ export function processMatingCycle(
       boid,
       allBoids,
       matedBoids,
-      parameters.mateRadius,
+      parameters.mateRadius
     );
 
     if (mate) {
@@ -271,7 +272,7 @@ export function applyBoidUpdates(boid: Boid, updates: BoidUpdates): void {
 export function incrementMatingBuildup(
   boid: Boid,
   mate: Boid,
-  amount: number = 1,
+  amount: number = 1
 ): void {
   boid.matingBuildupCounter += amount;
   mate.matingBuildupCounter += amount;
@@ -320,9 +321,9 @@ export function unpairBoids(boid: Boid, mate: Boid | null | undefined): void {
 export function applyMatingResult(
   boid: Boid,
   result: MatingResult,
-  context: MatingContext,
+  context: MatingContext
 ): void {
-  const { boidsMap, matedBoids, boidsToAdd } = context;
+  const { boids, matedBoids, boidsToAdd } = context;
 
   switch (result.type) {
     case "reproduction_complete": {
@@ -331,7 +332,7 @@ export function applyMatingResult(
 
       // For sexual reproduction, update mate
       if (result.offspring.parent2Id) {
-        const mate = boidsMap[result.offspring.parent2Id];
+        const mate = lookupBoid(result.offspring.parent2Id, boids);
         if (mate) {
           applyBoidUpdates(mate, result.mateUpdates);
           matedBoids.add(result.offspring.parent2Id);
@@ -345,7 +346,7 @@ export function applyMatingResult(
     }
 
     case "pair_found": {
-      const mate = boidsMap[result.mateId];
+      const mate = lookupBoid(result.mateId, boids);
       if (mate) {
         pairBoids(boid, mate);
         matedBoids.add(boid.id);
@@ -355,7 +356,7 @@ export function applyMatingResult(
     }
 
     case "building_up": {
-      const mate = boidsMap[boid.mateId!];
+      const mate = lookupBoid(boid.mateId!, boids);
       if (mate) {
         incrementMatingBuildup(boid, mate);
       }
@@ -363,7 +364,7 @@ export function applyMatingResult(
     }
 
     case "buildup_reset": {
-      const mate = boidsMap[boid.mateId!];
+      const mate = lookupBoid(boid.mateId!, boids);
       if (mate) {
         resetMatingBuildup(boid, mate);
       }

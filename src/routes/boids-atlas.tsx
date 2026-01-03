@@ -14,7 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import type { RenderMode } from "@/hooks/useStaticBoid";
 import { stableEcosystemProfile } from "@/profiles/stable-ecosystem";
 import { createSystemHooks, createSystemManager } from "braided-react";
-import { atlases } from "@/resources/atlases";
+import { atlases } from "@/resources/browser/atlases.ts";
 
 // Session 105: Minimal system config with just the atlases resource
 // This generates all texture atlases once and shares them across all boid cards

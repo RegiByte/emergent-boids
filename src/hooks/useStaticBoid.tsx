@@ -13,7 +13,7 @@
 import { useEffect, useRef } from "react";
 import type { Genome } from "@/boids/vocabulary/schemas/genetics";
 import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
-import type { AtlasesResult } from "@/resources/atlases";
+import type { AtlasesResult } from "@/resources/browser/atlases.ts";
 import {
   createStaticBoid,
   renderBoidCanvas2D,
@@ -148,6 +148,7 @@ export function useStaticBoid(
     const boid = createStaticBoid(
       completeGenome,
       typeId,
+      0,
       { x: 0, y: 0 },
       rotation,
     );
@@ -190,6 +191,7 @@ export function useStaticBoid(
     const boid = createStaticBoid(
       completeGenome,
       typeId,
+      0,
       { x: 0, y: 0 },
       rotation,
     );

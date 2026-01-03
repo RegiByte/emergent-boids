@@ -1,4 +1,5 @@
-import type { Boid } from "../vocabulary/schemas/entities";
+import { iterateBoids } from "../iterators";
+import type { Boid, BoidsById } from "../vocabulary/schemas/entities";
 import type { SpeciesConfig } from "../vocabulary/schemas/species";
 import { colorDistance } from "@/lib/colors";
 
@@ -107,7 +108,7 @@ function quantizeColor(color: string): string {
 export function computeGeneticsStats(
   boids: Boid[],
   speciesConfig: SpeciesConfig,
-  mutationCounters: MutationCounters,
+  mutationCounters: MutationCounters
 ): GeneticsStats {
   if (boids.length === 0) {
     return {
@@ -193,7 +194,7 @@ export function computeGeneticsStats(
 
   // Unique colors (quantized to reduce noise)
   const quantizedColors = new Set(
-    boids.map((b) => quantizeColor(b.genome.visual.color)),
+    boids.map((b) => quantizeColor(b.genome.visual.color))
   );
   const uniqueColors = quantizedColors.size;
 
@@ -238,15 +239,15 @@ export function computeGeneticsStats(
  * @returns Genetics statistics per species
  */
 export function computeGeneticsStatsBySpecies(
-  boids: Boid[],
+  boids: BoidsById,
   speciesConfigs: Record<string, SpeciesConfig>,
-  mutationCountersBySpecies: Record<string, MutationCounters>,
+  mutationCountersBySpecies: Record<string, MutationCounters>
 ): Record<string, GeneticsStats> {
   const result: Record<string, GeneticsStats> = {};
 
   // Group boids by species
   const boidsBySpecies: Record<string, Boid[]> = {};
-  for (const boid of boids) {
+  for (const boid of iterateBoids(boids)) {
     if (!boidsBySpecies[boid.typeId]) {
       boidsBySpecies[boid.typeId] = [];
     }
@@ -268,7 +269,7 @@ export function computeGeneticsStatsBySpecies(
     result[speciesId] = computeGeneticsStats(
       speciesBoids,
       speciesConfig,
-      mutationCounters,
+      mutationCounters
     );
   }
 
@@ -338,7 +339,7 @@ export interface EvolutionMetrics {
 export function computeEvolutionMetrics(
   current: GeneticsStats,
   previous: GeneticsStats | null,
-  tickDelta: number,
+  tickDelta: number
 ): EvolutionMetrics {
   if (!previous || tickDelta === 0) {
     // First snapshot or no time elapsed - return zero rates

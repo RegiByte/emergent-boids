@@ -51,16 +51,13 @@ export function createAtom<T>(initialState: T) {
       state = newState;
       stateSubscription.notify(state);
     },
+    mutate: (mutator: (state: T) => void) => {
+      mutator(state);
+      stateSubscription.notify(state);
+    },
     subscribe: (callback: (state: T) => void): (() => void) => {
       return stateSubscription.subscribe(callback);
     },
-    // useState: () => {
-    //   return useSyncExternalStore(
-    //     stateSubscription.subscribe,
-    //     api.get,
-    //     () => initialState
-    //   );
-    // },
   };
 
   return api;

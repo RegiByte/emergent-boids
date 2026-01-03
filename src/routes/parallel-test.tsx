@@ -19,6 +19,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { iterateBoids } from "@/boids/iterators";
+import { getBoidPhysics } from "@/resources/browser/localBoidStore";
 
 export const Route = createFileRoute("/parallel-test")({
   component: ParallelTest,
@@ -42,7 +44,7 @@ function ParallelTest() {
     if (!parallelSystem) return;
 
     const engine = parallelSystem.engine as any;
-    
+
     // Poll stats every 100ms for responsive UI
     const pollInterval = setInterval(() => {
       if (engine.getWorkerStats) {
@@ -85,15 +87,17 @@ function ParallelTest() {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Get boids using getter pattern (like camera.x, camera.y)
-      const boids = engine.boids; // This calls getBoids() internally!
+      const boids = parallelSystem.localBoidStore.store.boids;
 
       // Draw boids
       ctx.fillStyle = "#00ff00";
-      for (const boid of boids) {
+      const bufferViews = engine.getBufferViews();
+      for (const boid of iterateBoids(boids)) {
+        const physics = getBoidPhysics(boid.index, bufferViews);
         ctx.beginPath();
         ctx.arc(
-          boid.position.x * (canvas.width / 2500), // Scale to canvas
-          boid.position.y * (canvas.height / 2500),
+          physics.position.x * (canvas.width / 2500), // Scale to canvas
+          physics.position.y * (canvas.height / 2500),
           5,
           0,
           Math.PI * 2
@@ -113,21 +117,21 @@ function ParallelTest() {
 
   const handlePause = async () => {
     if (!parallelSystem) return;
-    const tasks = parallelSystem.sharedEngineTasks;
+    const tasks = parallelSystem.engineTasks;
     await tasks.dispatch("pauseSimulation", {});
     setIsRunning(false);
   };
 
   const handleResume = async () => {
     if (!parallelSystem) return;
-    const tasks = parallelSystem.sharedEngineTasks;
+    const tasks = parallelSystem.engineTasks;
     await tasks.dispatch("resumeSimulation", {});
     setIsRunning(true);
   };
 
   const handleStep = async () => {
     if (!parallelSystem) return;
-    const tasks = parallelSystem.sharedEngineTasks;
+    const tasks = parallelSystem.engineTasks;
     const result = await tasks.dispatch("stepSimulation", {
       deltaTime: 1 / 60,
     });
@@ -191,9 +195,7 @@ function ParallelTest() {
                   <div className="text-2xl font-bold">{stats.frame}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground">
-                    Sim Time
-                  </div>
+                  <div className="text-sm text-muted-foreground">Sim Time</div>
                   <div className="text-2xl font-bold">
                     {(stats.simulationTime / 1000).toFixed(1)}s
                   </div>

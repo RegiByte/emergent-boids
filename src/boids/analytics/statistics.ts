@@ -1,6 +1,12 @@
-import { Boid, FoodSource, DeathMarker } from "../vocabulary/schemas/entities";
+import {
+  Boid,
+  FoodSource,
+  DeathMarker,
+  BoidsById,
+} from "../vocabulary/schemas/entities";
 import { SpeciesConfig } from "../vocabulary/schemas/species";
 import * as vec from "../vector";
+import { iterateBoids } from "../iterators";
 
 // ============================================
 // Behavioral Distribution
@@ -12,20 +18,20 @@ export function getStanceDistribution(boids: Boid[]) {
       acc[boid.stance] = (acc[boid.stance] || 0) + 1;
       return acc;
     },
-    {} as Partial<Record<Boid["stance"], number>>,
+    {} as Partial<Record<Boid["stance"], number>>
   );
 }
 
-export function getStanceDistributionBySpecies(boids: Boid[]) {
+export function getStanceDistributionBySpecies(boids: BoidsById) {
   const result: Record<string, Record<string, number>> = {};
 
-  boids.forEach((boid) => {
+  for (const boid of iterateBoids(boids)) {
     if (!result[boid.typeId]) {
       result[boid.typeId] = {};
     }
     result[boid.typeId][boid.stance] =
       (result[boid.typeId][boid.stance] || 0) + 1;
-  });
+  }
 
   return result;
 }
@@ -62,16 +68,16 @@ export function computeEnergyStats(boids: Boid[]): EnergyStats {
 }
 
 export function computeEnergyStatsBySpecies(
-  boids: Boid[],
+  boids: BoidsById
 ): Record<string, EnergyStats> {
   const bySpecies: Record<string, Boid[]> = {};
 
-  boids.forEach((boid) => {
+  for (const boid of iterateBoids(boids)) {
     if (!bySpecies[boid.typeId]) {
       bySpecies[boid.typeId] = [];
     }
     bySpecies[boid.typeId].push(boid);
-  });
+  }
 
   const result: Record<string, EnergyStats> = {};
   for (const [typeId, speciesBoids] of Object.entries(bySpecies)) {
@@ -132,17 +138,17 @@ export function computeAgeDistribution(boids: Boid[]): AgeDistribution {
 }
 
 export function computeAgeDistributionBySpecies(
-  boids: Boid[],
-  speciesConfigs: Record<string, SpeciesConfig>,
+  boids: BoidsById,
+  speciesConfigs: Record<string, SpeciesConfig>
 ): Record<string, AgeDistribution> {
   const bySpecies: Record<string, Boid[]> = {};
 
-  boids.forEach((boid) => {
+  for (const boid of iterateBoids(boids)) {
     if (!bySpecies[boid.typeId]) {
       bySpecies[boid.typeId] = [];
     }
     bySpecies[boid.typeId].push(boid);
-  });
+  }
 
   const result: Record<string, AgeDistribution> = {};
   for (const [typeId, speciesBoids] of Object.entries(bySpecies)) {
@@ -171,7 +177,7 @@ export interface SpatialPattern {
 export function computeSpatialPattern(
   boids: Boid[],
   worldWidth: number,
-  worldHeight: number,
+  worldHeight: number
 ): SpatialPattern {
   if (boids.length === 0) {
     return {
@@ -208,7 +214,7 @@ export function computeSpatialPattern(
           boid.position,
           other.position,
           worldWidth,
-          worldHeight,
+          worldHeight
         );
         if (dist < minDist) {
           minDist = dist;
@@ -242,7 +248,7 @@ export function computeSpatialPattern(
             current.position,
             other.position,
             worldWidth,
-            worldHeight,
+            worldHeight
           );
           if (dist < clusterThreshold) {
             stack.push(other);
@@ -271,25 +277,25 @@ export function computeSpatialPattern(
 }
 
 export function computeSpatialPatternsBySpecies(
-  boids: Boid[],
+  boids: BoidsById,
   worldWidth: number,
-  worldHeight: number,
+  worldHeight: number
 ): Record<string, SpatialPattern> {
   const bySpecies: Record<string, Boid[]> = {};
 
-  boids.forEach((boid) => {
+  for (const boid of iterateBoids(boids)) {
     if (!bySpecies[boid.typeId]) {
       bySpecies[boid.typeId] = [];
     }
     bySpecies[boid.typeId].push(boid);
-  });
+  }
 
   const result: Record<string, SpatialPattern> = {};
   for (const [typeId, speciesBoids] of Object.entries(bySpecies)) {
     result[typeId] = computeSpatialPattern(
       speciesBoids,
       worldWidth,
-      worldHeight,
+      worldHeight
     );
   }
 
@@ -309,7 +315,7 @@ export interface ReproductionMetrics {
 
 export function computeReproductionMetrics(
   boids: Boid[],
-  reproductionEnergyThreshold: number,
+  reproductionEnergyThreshold: number
 ): ReproductionMetrics {
   if (boids.length === 0) {
     return {
@@ -351,18 +357,18 @@ export function computeReproductionMetrics(
 }
 
 export function computeReproductionMetricsBySpecies(
-  boids: Boid[],
+  boids: BoidsById,
   speciesConfigs: Record<string, SpeciesConfig>,
-  reproductionEnergyThreshold: number,
+  reproductionEnergyThreshold: number
 ): Record<string, ReproductionMetrics> {
   const bySpecies: Record<string, Boid[]> = {};
 
-  boids.forEach((boid) => {
+  for (const boid of iterateBoids(boids)) {
     if (!bySpecies[boid.typeId]) {
       bySpecies[boid.typeId] = [];
     }
     bySpecies[boid.typeId].push(boid);
-  });
+  }
 
   const result: Record<string, ReproductionMetrics> = {};
   for (const [typeId, speciesBoids] of Object.entries(bySpecies)) {
@@ -370,7 +376,7 @@ export function computeReproductionMetricsBySpecies(
     if (config) {
       result[typeId] = computeReproductionMetrics(
         speciesBoids,
-        reproductionEnergyThreshold,
+        reproductionEnergyThreshold
       );
     }
   }
@@ -389,7 +395,7 @@ export interface FoodSourceStats {
 }
 
 export function computeFoodSourceStats(
-  foodSources: FoodSource[],
+  foodSources: FoodSource[]
 ): FoodSourceStats {
   if (foodSources.length === 0) {
     return { count: 0, totalEnergy: 0, meanEnergy: 0 };
@@ -427,7 +433,7 @@ export interface DeathMarkerStats {
 }
 
 export function computeDeathMarkerStats(
-  deathMarkers: DeathMarker[],
+  deathMarkers: DeathMarker[]
 ): DeathMarkerStats {
   if (deathMarkers.length === 0) {
     return { count: 0, totalStrength: 0, meanStrength: 0 };
@@ -449,14 +455,14 @@ type StanceDistribution = ReturnType<typeof getStanceDistribution>;
 
 export function getStancePercentageDistribution(
   stanceDistribution: StanceDistribution,
-  total: number,
+  total: number
 ) {
   return Object.entries(stanceDistribution).reduce(
     (acc, [stance, count]) => {
       acc[stance as Boid["stance"]] = (count / total) * 100;
       return acc;
     },
-    {} as Partial<Record<Boid["stance"], number>>,
+    {} as Partial<Record<Boid["stance"], number>>
   );
 }
 
@@ -466,7 +472,7 @@ export function countFoodSourcesBySourceType(foodSources: FoodSource[]) {
       acc[foodSource.sourceType] = (acc[foodSource.sourceType] || 0) + 1;
       return acc;
     },
-    {} as Partial<Record<FoodSource["sourceType"], number>>,
+    {} as Partial<Record<FoodSource["sourceType"], number>>
   );
 }
 

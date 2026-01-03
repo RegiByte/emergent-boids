@@ -229,3 +229,82 @@ export const renderModeKeywords = {
   canvas: "canvas",
   webgl: "webgl",
 } as const;
+
+export const profilerKeywords = {
+  engine: {
+    update: "engine.update",
+    updateBoids: "engine.updateBoids",
+    updateBoid: "engine.updateBoid",
+    updateTrail: "engine.updateTrail",
+    createFrameUpdateContext: "engine.createFrameUpdateContext",
+    buildFrameUpdateContext: "engine.buildFrameUpdateContext",
+    insertBoidSpatialHash: "engine.insertBoidSpatialHash",
+    insertFoodSpatialHash: "engine.insertFoodSpatialHash",
+    insertObstacleSpatialHash: "engine.insertObstacleSpatialHash",
+    insertDeathMarkerSpatialHash: "engine.insertDeathMarkerSpatialHash",
+    updatePredator: "engine.updatePredator",
+    updatePrey: "engine.updatePrey",
+  },
+  behavior: {
+    evaluate: "behavior.evaluate",
+  },
+  boids: {
+    syncSharedMemory: "boids.syncSharedMemory",
+    getNeighbors: "boids.getNeighbors",
+    getNearbyFoodSources: "boids.getNearbyFoodSources",
+    getNearbyObstacles: "boids.getNearbyObstacles",
+    getNearbyDeathMarkers: "boids.getNearbyDeathMarkers",
+  },
+  renderer: {
+    draw: "renderer.draw",
+    createRenderContext: "renderer.createRenderContext",
+  },
+  updateLoop: {
+    update: "updateLoop.update",
+    frameTotal: "updateLoop.frameTotal",
+    frameUpdateTime: "updateLoop.frameUpdate",
+    frameTimePassed: "updateLoop.frameTimePassed",
+    frameCatches: "updateLoop.frameCatches",
+    frameStep: "updateLoop.frameStep",
+  },
+  rules: {
+    separation: "rules.separation",
+    alignment: "rules.alignment",
+    cohesion: "rules.cohesion",
+    avoidObstacles: "rules.avoidObstacles",
+    fear: "rules.fear",
+    chase: "rules.chase",
+    seekMate: "rules.seekMate",
+    avoidDeathMarkers: "rules.avoidDeathMarkers",
+    seekFood: "rules.seekFood",
+    orbitFood: "rules.orbitFood",
+    avoidPredatorFood: "rules.avoidPredatorFood",
+    avoidCrowdedAreas: "rules.avoidCrowdedAreas",
+  },
+} as const;
+
+export const ruleKeywords = {
+  separation: "separation",
+  alignment: "alignment",
+  cohesion: "cohesion",
+  avoidObstacles: "avoidObstacles",
+  fear: "fear",
+  selectBestPrey: "selectBestPrey",
+  chase: "chase",
+  selectBestMate: "selectBestMate",
+  seekMate: "seekMate",
+  avoidDeathMarkers: "avoidDeathMarkers",
+  selectBestFood: "selectBestFood",
+  seekFood: "seekFood",
+  orbitFood: "orbitFood",
+  avoidPredatorFood: "avoidPredatorFood",
+  avoidCrowdedAreas: "avoidCrowdedAreas",
+} as const;
+
+export const cameraKeywords = {
+  mode: {
+    free: "free",
+    picker: "picker",
+    following: "following",
+  },
+} as const;

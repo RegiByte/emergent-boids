@@ -1,4 +1,4 @@
-import { useResource } from "../system";
+import { useResource } from "../systems/standard.ts";
 import { Card } from "./ui/card";
 
 export function CameraControls() {

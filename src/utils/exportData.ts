@@ -1,9 +1,9 @@
-import type { BoidEngine } from "../resources/engine";
-
 import { RuntimeStore } from "../boids/vocabulary/schemas/state.ts";
 import { EvolutionSnapshot } from "@/boids/vocabulary/schemas/evolution.ts";
 import { computeGeneticsStatsBySpecies } from "@/boids/analytics/genetics";
 import JSZip from "jszip";
+import { iterateBoids } from "@/boids/iterators.ts";
+import { BoidsById } from "@/boids/vocabulary/schemas/entities.ts";
 
 /**
  * Export Utilities
@@ -31,7 +31,7 @@ import JSZip from "jszip";
  * Human-readable and LLM-friendly format
  */
 export function exportCurrentStats(
-  engine: BoidEngine,
+  boids: BoidsById,
   runtimeStore: RuntimeStore,
   mutationCounters?: Record<
     string,
@@ -41,7 +41,7 @@ export function exportCurrentStats(
       bodyPartMutations: number;
       totalOffspring: number;
     }
-  >,
+  >
 ): string {
   const { config, simulation } = runtimeStore;
 
@@ -49,7 +49,7 @@ export function exportCurrentStats(
   const populations: Record<string, number> = {};
   const populationsByRole: Record<string, number> = { prey: 0, predator: 0 };
 
-  engine.boids.forEach((boid) => {
+  for (const boid of iterateBoids(boids)) {
     const typeId = boid.typeId;
     populations[typeId] = (populations[typeId] || 0) + 1;
 
@@ -58,7 +58,7 @@ export function exportCurrentStats(
       populationsByRole[typeConfig.role] =
         (populationsByRole[typeConfig.role] || 0) + 1;
     }
-  });
+  }
 
   // Calculate energy statistics per type
   const energyStats: Record<
@@ -66,7 +66,7 @@ export function exportCurrentStats(
     { avg: number; min: number; max: number; total: number }
   > = {};
 
-  engine.boids.forEach((boid) => {
+  for (const boid of iterateBoids(boids)) {
     const typeId = boid.typeId;
     if (!energyStats[typeId]) {
       energyStats[typeId] = {
@@ -80,7 +80,7 @@ export function exportCurrentStats(
     energyStats[typeId].total += boid.energy;
     energyStats[typeId].min = Math.min(energyStats[typeId].min, boid.energy);
     energyStats[typeId].max = Math.max(energyStats[typeId].max, boid.energy);
-  });
+  }
 
   // Calculate averages
   Object.keys(energyStats).forEach((typeId) => {
@@ -93,14 +93,14 @@ export function exportCurrentStats(
   // Calculate stance distribution
   const stancesByType: Record<string, Record<string, number>> = {};
 
-  engine.boids.forEach((boid) => {
+  for (const boid of iterateBoids(boids)) {
     const typeId = boid.typeId;
     if (!stancesByType[typeId]) {
       stancesByType[typeId] = {};
     }
     const stance = boid.stance;
     stancesByType[typeId][stance] = (stancesByType[typeId][stance] || 0) + 1;
-  });
+  }
 
   // Count food sources
   const foodSources = {
@@ -112,9 +112,9 @@ export function exportCurrentStats(
 
   // Compute genetics statistics
   const genetics = computeGeneticsStatsBySpecies(
-    engine.boids,
+    boids,
     config.species,
-    mutationCounters || {},
+    mutationCounters || {}
   );
 
   // Build export object
@@ -122,7 +122,7 @@ export function exportCurrentStats(
     timestamp: Date.now(),
     date: new Date().toISOString(),
     populations: {
-      total: engine.boids.length,
+      total: Object.keys(boids).length,
       byRole: populationsByRole,
       byType: populations,
       preyToPredatorRatio:
@@ -255,9 +255,9 @@ export interface MultiRateExportConfig {
  */
 export async function exportEvolutionMultiRate(
   snapshots: EvolutionSnapshot[],
-  engine?: BoidEngine,
-  runtimeStore?: RuntimeStore,
-  config: MultiRateExportConfig = {},
+  boids: BoidsById,
+  runtimeStore: RuntimeStore,
+  config: MultiRateExportConfig = {}
 ): Promise<Blob> {
   const {
     samplingRates = [1, 3, 10, 50, 100],
@@ -287,7 +287,7 @@ export async function exportEvolutionMultiRate(
           tick: snapshots[snapshots.length - 1].tick,
           timestamp: snapshots[snapshots.length - 1].timestamp,
           date: new Date(
-            snapshots[snapshots.length - 1].timestamp,
+            snapshots[snapshots.length - 1].timestamp
           ).toISOString(),
         },
       },
@@ -315,8 +315,8 @@ export async function exportEvolutionMultiRate(
   }
 
   // Add current stats (if available)
-  if (includeCurrentStats && engine && runtimeStore) {
-    const currentStats = exportCurrentStats(engine, runtimeStore);
+  if (includeCurrentStats && runtimeStore) {
+    const currentStats = exportCurrentStats(boids, runtimeStore);
     zip.file("stats_current.json", currentStats);
   }
 
@@ -363,16 +363,16 @@ export function downloadBlob(blob: Blob, filename: string): void {
  */
 export async function exportAndDownloadMultiRate(
   snapshots: EvolutionSnapshot[],
-  engine?: BoidEngine,
-  runtimeStore?: RuntimeStore,
-  config: MultiRateExportConfig = {},
+  boids: BoidsById,
+  runtimeStore: RuntimeStore,
+  config: MultiRateExportConfig = {}
 ): Promise<void> {
   try {
     const blob = await exportEvolutionMultiRate(
       snapshots,
-      engine,
+      boids,
       runtimeStore,
-      config,
+      config
     );
     const filename = `${config.baseFilename || `evolution_export_${Date.now()}`}.zip`;
     downloadBlob(blob, filename);
@@ -392,7 +392,7 @@ export function copyToClipboard(text: string, label: string = "Data"): void {
     .then(() => {
       console.log(`✅ ${label} copied to clipboard!`);
       console.log(
-        `📊 Preview (first 500 chars):\n${text.substring(0, 500)}...`,
+        `📊 Preview (first 500 chars):\n${text.substring(0, 500)}...`
       );
     })
     .catch((err) => {

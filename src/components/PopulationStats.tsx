@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
-import { useResource } from "../system";
-import { eventKeywords } from "../boids/vocabulary/keywords";
 import { getStanceDistribution } from "@/boids/analytics/statistics";
 import { getPredators, getPrey } from "@/boids/filters";
 import { boidsBySpecies, boidsToAge, boidsToEnergy } from "@/boids/mappings";
 import { calcAvg } from "@/lib/math";
+import { useEffect, useState } from "react";
+import { eventKeywords } from "../boids/vocabulary/keywords";
+import { useResource } from "../systems/standard.ts";
 
 export function PopulationStats() {
-  const engine = useResource("engine");
   const { useStore } = useResource("runtimeStore");
+  const { store: boidStore } = useResource("localBoidStore");
   const species = useStore((state) => state.config.species);
   const { subscribe } = useResource("runtimeController");
   const simulation = useStore((state) => state.simulation);
@@ -28,7 +28,7 @@ export function PopulationStats() {
   }, [subscribe]);
 
   // Calculate statistics
-  const allBoids = engine.boids;
+  const allBoids = boidStore.boids;
 
   // Separate by role
   const prey = getPrey(allBoids, species);
@@ -65,7 +65,11 @@ export function PopulationStats() {
 
       {/* Overall Population */}
       <StatSection title="Overall Population">
-        <StatRow label="Total Boids" value={allBoids.length} color="#00ff88" />
+        <StatRow
+          label="Total Boids"
+          value={boidStore.count()}
+          color="#00ff88"
+        />
         <StatRow label="Prey" value={prey.length} color="#00aaff" />
         <StatRow label="Predators" value={predators.length} color="#ff0000" />
         <StatRow

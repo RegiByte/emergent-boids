@@ -32,6 +32,7 @@ export default defineConfig([
       "react-refresh/only-export-components": "off",
       "no-explicit-any": "off",
       "@typescript-eslint/no-explicit-any": "off",
+      'no-fallthrough': 'off'
     },
   },
 ]);

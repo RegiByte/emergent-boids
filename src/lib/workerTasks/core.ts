@@ -83,6 +83,14 @@
  */
 
 import z, { ZodType } from "zod";
+import * as z4 from "zod/v4/core";
+
+function inferSchema<T extends z4.$ZodType>(schema: T) {
+  return schema;
+}
+
+inferSchema(z.string());
+
 import {
   clientStatusKeywords,
   effectKeywords,
@@ -103,7 +111,7 @@ export type TaskExecutionContext<TProgress> = {
    */
   reportProgress: TProgress extends never
     ? never
-    : (progress: TProgress) => Promise<void>;
+    : (progress: z4.infer<TProgress>) => Promise<void>;
 };
 
 /**
@@ -112,17 +120,17 @@ export type TaskExecutionContext<TProgress> = {
  * Progress is optional (defaults to never)
  */
 export type TaskDefinition<
-  TInput = unknown,
-  TOutput = unknown,
-  TProgress = never,
+  TInput extends z4.$ZodType,
+  TOutput extends z4.$ZodType,
+  TProgress extends z4.$ZodType = never,
 > = {
-  input: ZodType<TInput>;
-  output: ZodType<TOutput>;
-  progress?: TProgress extends never ? never : ZodType<TProgress>;
+  input: TInput;
+  output: TOutput;
+  progress?: TProgress extends never ? never : TProgress;
   execute: (
-    input: TInput,
+    input: z4.infer<TInput>,
     ctx: TaskExecutionContext<TProgress>
-  ) => Promise<TOutput>;
+  ) => Promise<z4.infer<TOutput>>;
   // granularly define if input and output should be parsed
   // reduces overhead for tasks that require every milisecond of performance
   parseIO?: boolean;
@@ -188,7 +196,11 @@ export type HasProgress<T> = T extends { progress: ZodType<any> }
  * All tasks receive a context parameter, even without progress
  * This allows future extensibility without breaking changes
  */
-export function defineTask<TInput, TOutput, TProgress = never>(
+export function defineTask<
+  TInput extends z4.$ZodType,
+  TOutput extends z4.$ZodType,
+  TProgress extends z4.$ZodType = never,
+>(
   definition: TaskDefinition<TInput, TOutput, TProgress>
 ): TaskDefinition<TInput, TOutput, TProgress> {
   return definition;
@@ -240,14 +252,14 @@ export type TaskRequest = z.infer<
   /**
    * Optional array of transferable objects (for zero-copy transfer)
    * Examples: ArrayBuffer, MessagePort, ImageBitmap, OffscreenCanvas
-   * 
+   *
    * These objects will be transferred (not copied) to the worker.
    * After transfer, they become unusable in the sender.
-   * 
+   *
    * @example
    * const canvas = document.createElement('canvas');
    * const offscreen = canvas.transferControlToOffscreen();
-   * 
+   *
    * dispatch('taskName', { offscreen }, [offscreen]);  // Transfer canvas
    */
   transferables?: Transferable[];

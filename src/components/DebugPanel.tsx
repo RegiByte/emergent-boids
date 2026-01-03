@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useResource } from "../system";
+import { useResource } from "../systems/standard.ts";
 import { AllEvents } from "../boids/vocabulary/schemas/events.ts";
 import { AllEffects } from "../boids/vocabulary/schemas/effects.ts";
+import { filterBoidsWhere } from "@/boids/iterators.ts";
 
 type EventLogEntry = {
   id: string;
@@ -14,7 +15,7 @@ let eventCounter = 0;
 
 export function DebugPanel() {
   const runtimeController = useResource("runtimeController");
-  const engine = useResource("engine");
+  const { store: boidStore } = useResource("localBoidStore");
   const [eventLog, setEventLog] = useState<EventLogEntry[]>([]);
   const [maxEntries] = useState(20);
   const { useStore: useRuntimeStore } = useResource("runtimeStore");
@@ -38,7 +39,7 @@ export function DebugPanel() {
   }, [runtimeController, maxEntries]);
 
   // Count predators with high energy
-  const predators = engine.boids.filter((b) => {
+  const predators = filterBoidsWhere(boidStore.boids, (b) => {
     const typeConfig = species[b.typeId];
     return typeConfig && typeConfig.role === "predator";
   });
@@ -122,10 +123,10 @@ export function DebugPanel() {
                 >
                   {JSON.stringify(
                     Object.fromEntries(
-                      Object.entries(entry.event).filter(([k]) => k !== "type"),
+                      Object.entries(entry.event).filter(([k]) => k !== "type")
                     ),
                     null,
-                    2,
+                    2
                   )}
                 </div>
               )}

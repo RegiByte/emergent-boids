@@ -1,21 +1,18 @@
-import * as vec from "./vector";
-import {
-  Boid,
-  Obstacle,
-  DeathMarker,
-  FoodSource,
-} from "./vocabulary/schemas/entities";
-import { Vector2 } from "./vocabulary/schemas/primitives";
-import { SimulationParameters, WorldConfig } from "./vocabulary/schemas/world";
-import { SpeciesConfig } from "./vocabulary/schemas/species";
-import type { Profiler } from "../resources/profiler";
+import { weightedScoreNormalized } from "@/lib/weightedMath";
 import {
   getAffinity,
-  getSeparationModifier,
   getCohesionWeight,
+  getSeparationModifier,
   shouldFlock,
 } from "./affinity";
-import { weightedScoreNormalized } from "@/lib/weightedMath";
+import { BoidUpdateContext } from "./context.ts";
+import { FOOD_CONSTANTS } from "./food.ts";
+import { ItemWithDistance } from "./spatialHash.ts";
+import * as vec from "./vector";
+import { profilerKeywords, roleKeywords } from "./vocabulary/keywords.ts";
+import { Boid, FoodSource } from "./vocabulary/schemas/entities";
+import { Vector2 } from "./vocabulary/schemas/primitives";
+import { WorldConfig } from "./vocabulary/schemas/world";
 
 /**
  * Separation: Steer to avoid crowding local flockmates
@@ -24,33 +21,22 @@ import { weightedScoreNormalized } from "@/lib/weightedMath";
  * Affinity System: Low affinity increases separation (avoid clustering)
  * High affinity decreases separation (allow close proximity)
  */
-export function separation(
-  boid: Boid,
-  neighbors: Boid[],
-  parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
-  world: WorldConfig,
-  profiler?: Profiler,
-): Vector2 {
-  if (profiler) {
-    profiler.start("rule.separation");
+export function separation(boid: Boid, context: BoidUpdateContext): Vector2 {
+  if (context.profiler) {
+    context.profiler.start(profilerKeywords.rules.separation);
   }
   const steering: Vector2 = { x: 0, y: 0 };
   let total = 0;
 
-  for (const other of neighbors) {
-    // Calculate toroidal distance
-    const dist = vec.toroidalDistance(
-      boid.position,
-      other.position,
-      world.width,
-      world.height,
-    );
-
+  for (const { item: other, distance } of context.nearbyBoids) {
     // Only consider boids within perception radius
-    if (dist > 0 && dist < parameters.perceptionRadius) {
+    if (distance > 0 && distance < context.config.parameters.perceptionRadius) {
       // Get affinity between species
-      const affinity = getAffinity(boid.typeId, other.typeId, speciesConfig);
+      const affinity = getAffinity(
+        boid.typeId,
+        other.typeId,
+        context.config.species[other.typeId]
+      );
 
       // Calculate separation modifier based on affinity
       // Low affinity = stronger separation (avoid clustering)
@@ -61,11 +47,11 @@ export function separation(
       let diff = vec.toroidalSubtract(
         boid.position,
         other.position,
-        world.width,
-        world.height,
+        context.config.world.width,
+        context.config.world.height
       );
       // Weight by distance (closer = stronger force)
-      diff = vec.divide(diff, dist * dist);
+      diff = vec.divide(diff, distance * distance);
       // Apply affinity modifier
       diff = vec.multiply(diff, affinityModifier);
       steering.x += diff.x;
@@ -78,11 +64,11 @@ export function separation(
     const avg = vec.divide(steering, total);
     const desired = vec.setMagnitude(avg, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
-    profiler?.end("rule.separation");
+    context.profiler?.end(profilerKeywords.rules.separation);
     return vec.limit(steer, boid.phenotype.maxForce);
   }
 
-  profiler?.end("rule.separation");
+  context.profiler?.end(profilerKeywords.rules.separation);
   return steering;
 }
 
@@ -93,30 +79,21 @@ export function separation(
  * Affinity System: Only align with species above affinity threshold
  * Weight contribution by affinity strength (higher affinity = stronger alignment)
  */
-export function alignment(
-  boid: Boid,
-  neighbors: Boid[],
-  parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
-  world: WorldConfig,
-  profiler?: Profiler,
-): Vector2 {
-  profiler?.start("rule.alignment");
+export function alignment(boid: Boid, context: BoidUpdateContext): Vector2 {
+  context.profiler?.start(profilerKeywords.rules.alignment);
   const steering: Vector2 = { x: 0, y: 0 };
   let totalWeight = 0;
 
-  for (const other of neighbors) {
+  for (const { item: other, distance } of context.nearbyBoids) {
     // Calculate toroidal distance
-    const dist = vec.toroidalDistance(
-      boid.position,
-      other.position,
-      world.width,
-      world.height,
-    );
 
-    if (dist > 0 && dist < parameters.perceptionRadius) {
+    if (distance > 0 && distance < context.config.parameters.perceptionRadius) {
       // Get affinity and check if we should align with this species
-      const affinity = getAffinity(boid.typeId, other.typeId, speciesConfig);
+      const affinity = getAffinity(
+        boid.typeId,
+        other.typeId,
+        context.config.species[other.typeId]
+      );
 
       // Only align with species above affinity threshold
       if (shouldFlock(affinity)) {
@@ -133,11 +110,11 @@ export function alignment(
     const avg = vec.divide(steering, totalWeight);
     const desired = vec.setMagnitude(avg, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
-    profiler?.end("rule.alignment");
+    context.profiler?.end(profilerKeywords.rules.alignment);
     return vec.limit(steer, boid.phenotype.maxForce);
   }
 
-  profiler?.end("rule.alignment");
+  context.profiler?.end(profilerKeywords.rules.alignment);
   return steering;
 }
 
@@ -148,30 +125,20 @@ export function alignment(
  * Affinity System: Only flock with species above affinity threshold
  * Weight contribution by affinity strength (higher affinity = stronger pull)
  */
-export function cohesion(
-  boid: Boid,
-  neighbors: Boid[],
-  parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
-  world: WorldConfig,
-  profiler?: Profiler,
-): Vector2 {
-  profiler?.start("rule.cohesion");
+export function cohesion(boid: Boid, context: BoidUpdateContext): Vector2 {
+  context.profiler?.start(profilerKeywords.rules.cohesion);
   const steering: Vector2 = { x: 0, y: 0 };
   let totalWeight = 0;
 
-  for (const other of neighbors) {
+  for (const { item: other, distance } of context.nearbyBoids) {
     // Calculate toroidal distance
-    const dist = vec.toroidalDistance(
-      boid.position,
-      other.position,
-      world.width,
-      world.height,
-    );
-
-    if (dist > 0 && dist < parameters.perceptionRadius) {
+    if (distance > 0 && distance < context.config.parameters.perceptionRadius) {
       // Get affinity and check if we should flock with this species
-      const affinity = getAffinity(boid.typeId, other.typeId, speciesConfig);
+      const affinity = getAffinity(
+        boid.typeId,
+        other.typeId,
+        context.config.species[other.typeId]
+      );
 
       // Only flock with species above affinity threshold
       if (shouldFlock(affinity)) {
@@ -190,16 +157,16 @@ export function cohesion(
     const desired = vec.toroidalSubtract(
       avg,
       boid.position,
-      world.width,
-      world.height,
+      context.config.world.width,
+      context.config.world.height
     );
     const desiredVelocity = vec.setMagnitude(desired, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desiredVelocity, boid.velocity);
-    profiler?.end("rule.cohesion");
+    context.profiler?.end(profilerKeywords.rules.cohesion);
     return vec.limit(steer, boid.phenotype.maxForce);
   }
 
-  profiler?.end("rule.cohesion");
+  context.profiler?.end(profilerKeywords.rules.cohesion);
   return steering;
 }
 
@@ -209,28 +176,24 @@ export function cohesion(
  */
 export function avoidObstacles(
   boid: Boid,
-  obstacles: Obstacle[],
-  parameters: SimulationParameters,
-  _speciesConfig: SpeciesConfig,
-  _world: WorldConfig,
-  profiler?: Profiler,
+  context: BoidUpdateContext
 ): Vector2 {
-  profiler?.start("rule.avoidObstacles");
+  context.profiler?.start(profilerKeywords.rules.avoidObstacles);
   const steering: Vector2 = { x: 0, y: 0 };
   let total = 0;
 
-  for (const obstacle of obstacles) {
-    const dist = vec.distance(boid.position, obstacle.position);
-    const avoidanceRadius = obstacle.radius + parameters.perceptionRadius;
+  for (const { item: obstacle, distance } of context.nearbyObstacles) {
+    const avoidanceRadius =
+      obstacle.radius + context.config.parameters.perceptionRadius;
 
     // Only consider obstacles within avoidance radius
-    if (dist > 0 && dist < avoidanceRadius) {
+    if (distance > 0 && distance < avoidanceRadius) {
       // Calculate vector pointing away from obstacle
       let diff = vec.subtract(boid.position, obstacle.position);
 
       // Weight by distance (closer = stronger force)
       // Extra weight near the obstacle surface
-      const distFromSurface = dist - obstacle.radius;
+      const distFromSurface = distance - obstacle.radius;
       const weight =
         distFromSurface > 0 ? 1 / (distFromSurface * distFromSurface) : 1000;
 
@@ -245,11 +208,11 @@ export function avoidObstacles(
     const avg = vec.divide(steering, total);
     const desired = vec.setMagnitude(avg, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
-    profiler?.end("rule.avoidObstacles");
+    context.profiler?.end(profilerKeywords.rules.avoidObstacles);
     return vec.limit(steer, boid.phenotype.maxForce);
   }
 
-  profiler?.end("rule.avoidObstacles");
+  context.profiler?.end(profilerKeywords.rules.avoidObstacles);
   return steering;
 }
 
@@ -259,32 +222,32 @@ export function avoidObstacles(
  */
 export function fear(
   boid: Boid,
-  predators: Boid[],
-  parameters: SimulationParameters,
-  _speciesConfig: SpeciesConfig,
-  world: WorldConfig,
-  profiler?: Profiler,
+  context: BoidUpdateContext
 ): { force: Vector2; isAfraid: boolean } {
-  profiler?.start("rule.fear");
+  context.profiler?.start(profilerKeywords.rules.fear);
   const steering: Vector2 = { x: 0, y: 0 };
   let total = 0;
 
-  for (const predator of predators) {
+  if (!context.nearbyPredators.length) {
+    return { force: steering, isAfraid: false };
+  }
+
+  for (const { item: predator, distance } of context.nearbyPredators) {
     // Calculate toroidal distance
     const dist = vec.toroidalDistance(
       boid.position,
       predator.position,
-      world.width,
-      world.height,
+      context.config.world.width,
+      context.config.world.height
     );
 
-    if (dist > 0 && dist < parameters.fearRadius) {
+    if (distance > 0 && distance < context.config.parameters.fearRadius) {
       // Flee away from predator
       let diff = vec.toroidalSubtract(
         boid.position,
         predator.position,
-        world.width,
-        world.height,
+        context.config.world.width,
+        context.config.world.height
       );
       // Weight by distance (closer = stronger fear)
       diff = vec.divide(diff, dist * dist);
@@ -298,14 +261,14 @@ export function fear(
     const avg = vec.divide(steering, total);
     const desired = vec.setMagnitude(avg, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
-    profiler?.end("rule.fear");
+    context.profiler?.end(profilerKeywords.rules.fear);
     return {
       force: vec.limit(steer, boid.phenotype.maxForce),
-      isAfraid: true,
+      isAfraid: boid.phenotype.fearFactor > 0.5,
     };
   }
 
-  profiler?.end("rule.fear");
+  context.profiler?.end(profilerKeywords.rules.fear);
   return { force: steering, isAfraid: false };
 }
 
@@ -324,7 +287,7 @@ function selectBestPrey(
   prey: Boid[],
   world: WorldConfig,
   chaseRadius: number,
-  maxEnergy: number,
+  maxEnergy: number
 ): Boid | null {
   if (prey.length === 0) return null;
 
@@ -336,7 +299,7 @@ function selectBestPrey(
       predator.position,
       target.position,
       world.width,
-      world.height,
+      world.height
     );
 
     // Only consider prey within chase radius
@@ -382,57 +345,52 @@ function selectBestPrey(
  *
  * Uses weighted scoring to select prey based on proximity, energy, and age
  */
-export function chase(
-  predator: Boid,
-  prey: Boid[],
-  parameters: SimulationParameters,
-  _speciesConfig: SpeciesConfig,
-  world: WorldConfig,
-  profiler?: Profiler,
-): Vector2 {
-  profiler?.start("rule.chase");
+export function chase(predator: Boid, context: BoidUpdateContext): Vector2 {
+  context.profiler?.start(profilerKeywords.rules.chase);
 
   // NEW (Session 73): Target tracking with lock persistence
   // Check for locked target first (commitment to chase)
   if (predator.targetId && predator.targetLockStrength > 0) {
-    const lockedPrey = prey.find((p) => p.id === predator.targetId);
+    const lockedPrey = context.nearbyBoids.find(
+      (p) => p.item.id === predator.targetId
+    );
 
     if (lockedPrey) {
       const dist = vec.toroidalDistance(
         predator.position,
-        lockedPrey.position,
-        world.width,
-        world.height,
+        lockedPrey.item.position,
+        context.config.world.width,
+        context.config.world.height
       );
 
       // Grace distance: 20% extra range while locked (commitment!)
-      const graceRadius = parameters.chaseRadius * 1.2;
+      const graceRadius = context.config.parameters.chaseRadius * 1.2;
 
       if (dist < graceRadius) {
         // Continue chasing locked target
         const desired = vec.toroidalSubtract(
-          lockedPrey.position,
+          lockedPrey.item.position,
           predator.position,
-          world.width,
-          world.height,
+          context.config.world.width,
+          context.config.world.height
         );
         const desiredVelocity = vec.setMagnitude(
           desired,
-          predator.phenotype.maxSpeed,
+          predator.phenotype.maxSpeed
         );
         const steer = vec.subtract(desiredVelocity, predator.velocity);
 
         // Increment lock time (tracks commitment duration)
         predator.targetLockTime++;
 
-        profiler?.end("rule.chase");
+        context.profiler?.end(profilerKeywords.rules.chase);
         return vec.limit(steer, predator.phenotype.maxForce);
       }
 
       // Target escaped grace radius → decay lock
       predator.targetLockStrength = Math.max(
         0,
-        predator.targetLockStrength - 0.1,
+        predator.targetLockStrength - 0.1
       );
       if (predator.targetLockStrength === 0) {
         predator.targetId = null;
@@ -449,10 +407,10 @@ export function chase(
   // No locked target or target lost → select new target
   const targetPrey = selectBestPrey(
     predator,
-    prey,
-    world,
-    parameters.chaseRadius,
-    predator.phenotype.maxEnergy,
+    context.boidsByRole.prey,
+    context.config.world,
+    context.config.parameters.chaseRadius,
+    predator.phenotype.maxEnergy
   );
 
   if (targetPrey) {
@@ -467,19 +425,19 @@ export function chase(
     const desired = vec.toroidalSubtract(
       targetPrey.position,
       predator.position,
-      world.width,
-      world.height,
+      context.config.world.width,
+      context.config.world.height
     );
     const desiredVelocity = vec.setMagnitude(
       desired,
-      predator.phenotype.maxSpeed,
+      predator.phenotype.maxSpeed
     );
     const steer = vec.subtract(desiredVelocity, predator.velocity);
-    profiler?.end("rule.chase");
+    context.profiler?.end(profilerKeywords.rules.chase);
     return vec.limit(steer, predator.phenotype.maxForce);
   }
 
-  profiler?.end("rule.chase");
+  context.profiler?.end(profilerKeywords.rules.chase);
   return { x: 0, y: 0 };
 }
 
@@ -495,9 +453,8 @@ export function chase(
  */
 function selectBestMate(
   boid: Boid,
-  potentialMates: Boid[],
-  world: WorldConfig,
-  _speciesConfig: SpeciesConfig,
+  potentialMates: ItemWithDistance<Boid>[],
+  world: WorldConfig
 ): Boid | null {
   if (potentialMates.length === 0) return null;
 
@@ -505,7 +462,7 @@ function selectBestMate(
   let bestScore = -Infinity;
   const maxSearchDist = 500; // Maximum search distance for normalization
 
-  for (const candidate of potentialMates) {
+  for (const { item: candidate } of potentialMates) {
     // Eligibility checks (must pass all)
     if (
       candidate.id === boid.id ||
@@ -520,7 +477,7 @@ function selectBestMate(
       boid.position,
       candidate.position,
       world.width,
-      world.height,
+      world.height
     );
 
     // Multi-factor mate scoring
@@ -565,34 +522,34 @@ function selectBestMate(
  *
  * Uses weighted scoring to select mates based on proximity, health, and maturity
  */
-export function seekMate(
-  boid: Boid,
-  potentialMates: Boid[],
-  _parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
-  world: WorldConfig,
-  profiler?: Profiler,
-): Vector2 {
-  profiler?.start("rule.seekMate");
+export function seekMate(boid: Boid, context: BoidUpdateContext): Vector2 {
+  context.profiler?.start(profilerKeywords.rules.seekMate);
+  const boidRole = context.config.species[boid.typeId].role;
 
   // Use weighted selection to find best mate
-  const targetMate = selectBestMate(boid, potentialMates, world, speciesConfig);
+  const targetMate = selectBestMate(
+    boid,
+    boidRole === roleKeywords.prey
+      ? context.nearbyPrey
+      : context.nearbyPredators,
+    context.config.world
+  );
 
   if (targetMate) {
     // Strong steering force toward mate
     const desired = vec.toroidalSubtract(
       targetMate.position,
       boid.position,
-      world.width,
-      world.height,
+      context.config.world.width,
+      context.config.world.height
     );
     const desiredVelocity = vec.setMagnitude(desired, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desiredVelocity, boid.velocity);
-    profiler?.end("rule.seekMate");
+    context.profiler?.end(profilerKeywords.rules.seekMate);
     return vec.limit(steer, boid.phenotype.maxForce * 2.0); // Extra strong force!
   }
 
-  profiler?.end("rule.seekMate");
+  context.profiler?.end(profilerKeywords.rules.seekMate);
   return { x: 0, y: 0 };
 }
 
@@ -604,42 +561,35 @@ export function seekMate(
  */
 export function avoidDeathMarkers(
   boid: Boid,
-  deathMarkers: Array<DeathMarker>,
-  _parameters: SimulationParameters,
-  _speciesConfig: SpeciesConfig,
-  world: WorldConfig,
-  profiler?: Profiler,
+  context: BoidUpdateContext
 ): Vector2 {
-  profiler?.start("rule.avoidDeathMarkers");
+  context.profiler?.start(profilerKeywords.rules.avoidDeathMarkers);
   const steering: Vector2 = { x: 0, y: 0 };
   let total = 0;
+
+  if (!context.nearbyDeathMarkers.length) {
+    return steering;
+  }
 
   // Avoidance radius scales with marker strength
   const baseAvoidanceRadius = 60;
 
-  for (const marker of deathMarkers) {
+  for (const { item: marker, distance } of context.nearbyDeathMarkers) {
     // Stronger markers have larger avoidance radius (up to 100px)
     const strengthRatio = marker.strength / 5.0; // Max strength is 5.0
     const avoidanceRadius = baseAvoidanceRadius + strengthRatio * 50; // 60-100px
 
-    const dist = vec.toroidalDistance(
-      boid.position,
-      marker.position,
-      world.width,
-      world.height,
-    );
-
-    if (dist > 0 && dist < avoidanceRadius) {
+    if (distance > 0 && distance < avoidanceRadius) {
       // Flee away from death marker
       let diff = vec.toroidalSubtract(
         boid.position,
         marker.position,
-        world.width,
-        world.height,
+        context.config.world.width,
+        context.config.world.height
       );
 
       // Weight by distance (closer = stronger avoidance)
-      const distanceWeight = 1 / (dist * dist);
+      const distanceWeight = 1 / (distance * distance);
 
       // Weight by marker strength (more deaths = stronger repulsion)
       const strengthWeight = marker.strength;
@@ -661,11 +611,11 @@ export function avoidDeathMarkers(
     const desired = vec.setMagnitude(avg, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
     // Moderate force - less than fear but still significant
-    profiler?.end("rule.avoidDeathMarkers");
+    context.profiler?.end(profilerKeywords.rules.avoidDeathMarkers);
     return vec.limit(steer, boid.phenotype.maxForce * 0.85);
   }
 
-  profiler?.end("rule.avoidDeathMarkers");
+  context.profiler?.end(profilerKeywords.rules.avoidDeathMarkers);
   return steering;
 }
 
@@ -680,41 +630,30 @@ export function avoidDeathMarkers(
  */
 function selectBestFood(
   boid: Boid,
-  foodSources: FoodSource[],
-  role: "prey" | "predator",
-  world: WorldConfig,
-  detectionRadius: number,
-): FoodSource | null {
+  context: BoidUpdateContext
+): ItemWithDistance<FoodSource> | null {
+  const profileConfig = context.config.species[boid.typeId];
   // Filter compatible food sources
-  const compatibleFood = foodSources.filter((food) => {
-    if (role === "prey") return food.sourceType === "prey" && food.energy > 0;
-    if (role === "predator")
-      return food.sourceType === "predator" && food.energy > 0;
-    return false;
+  const compatibleFood = context.nearbyFoodSources.filter((food) => {
+    return food.item.sourceType === boid.typeId && food.item.energy > 0;
   });
+  const detectionRadius = FOOD_CONSTANTS.FOOD_DETECTION_RADIUS;
 
   if (compatibleFood.length === 0) return null;
 
-  let bestFood: FoodSource | null = null;
+  let bestFood: ItemWithDistance<FoodSource> | null = null;
   let bestScore = -Infinity;
   const maxFoodEnergy = 100; // Typical max food energy
 
-  for (const food of compatibleFood) {
-    const dist = vec.toroidalDistance(
-      boid.position,
-      food.position,
-      world.width,
-      world.height,
-    );
-
+  for (const { item: food, distance } of compatibleFood) {
     // Only consider food within detection radius
-    if (dist >= detectionRadius) continue;
+    if (distance >= detectionRadius) continue;
 
     // Multi-factor food scoring
     const score = weightedScoreNormalized([
       // Proximity: closer = better
       {
-        value: detectionRadius - dist,
+        value: detectionRadius - distance,
         weight: 2.0,
         min: 0,
         max: detectionRadius,
@@ -730,7 +669,7 @@ function selectBestFood(
 
     if (score > bestScore) {
       bestScore = score;
-      bestFood = food;
+      bestFood = { item: food, distance };
     }
   }
 
@@ -745,42 +684,41 @@ function selectBestFood(
  */
 export function seekFood(
   boid: Boid,
-  foodSources: Array<FoodSource>,
-  speciesConfig: SpeciesConfig,
-  world: WorldConfig,
-  detectionRadius: number,
-  profiler?: Profiler,
-): { force: Vector2; targetFoodId: string | null } {
-  profiler?.start("rule.seekFood");
+  context: BoidUpdateContext
+): {
+  force: Vector2;
+  targetFoodId: string | null;
+  targetFoodDistance: number | null;
+} {
+  context.profiler?.start(profilerKeywords.rules.seekFood);
 
   // Use weighted selection to find best food source
-  const targetFood = selectBestFood(
-    boid,
-    foodSources,
-    speciesConfig.role,
-    world,
-    detectionRadius,
-  );
+  const targetFood = selectBestFood(boid, context);
 
   if (targetFood) {
     // Steer toward selected food
     const desired = vec.toroidalSubtract(
-      targetFood.position,
+      targetFood.item.position,
       boid.position,
-      world.width,
-      world.height,
+      context.config.world.width,
+      context.config.world.height
     );
     const desiredVelocity = vec.setMagnitude(desired, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desiredVelocity, boid.velocity);
-    profiler?.end("rule.seekFood");
+    context.profiler?.end(profilerKeywords.rules.seekFood);
     return {
       force: vec.limit(steer, boid.phenotype.maxForce),
-      targetFoodId: targetFood.id,
+      targetFoodId: targetFood.item.id,
+      targetFoodDistance: targetFood.distance,
     };
   }
 
-  profiler?.end("rule.seekFood");
-  return { force: { x: 0, y: 0 }, targetFoodId: null };
+  context.profiler?.end(profilerKeywords.rules.seekFood);
+  return {
+    force: { x: 0, y: 0 },
+    targetFoodId: null,
+    targetFoodDistance: null,
+  };
 }
 
 /**
@@ -790,19 +728,17 @@ export function seekFood(
  */
 export function orbitFood(
   boid: Boid,
-  foodPosition: Vector2,
-  _speciesConfig: SpeciesConfig,
-  world: WorldConfig,
+  targetFoodPosition: Vector2,
   eatingRadius: number,
-  profiler?: Profiler,
+  context: BoidUpdateContext
 ): Vector2 {
-  profiler?.start("rule.orbitFood");
+  context.profiler?.start(profilerKeywords.rules.orbitFood);
   // Calculate vector to food
   const toFood = vec.toroidalSubtract(
-    foodPosition,
+    targetFoodPosition,
     boid.position,
-    world.width,
-    world.height,
+    context.config.world.width,
+    context.config.world.height
   );
 
   const dist = vec.magnitude(toFood);
@@ -811,7 +747,7 @@ export function orbitFood(
   if (dist > eatingRadius * 1.2) {
     const desired = vec.setMagnitude(toFood, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
-    profiler?.end("rule.orbitFood");
+    context.profiler?.end(profilerKeywords.rules.orbitFood);
     return vec.limit(steer, boid.phenotype.maxForce);
   }
 
@@ -819,7 +755,7 @@ export function orbitFood(
   const tangent = { x: -toFood.y, y: toFood.x }; // 90° rotation
   const desired = vec.setMagnitude(tangent, boid.phenotype.maxSpeed * 0.5);
   const steer = vec.subtract(desired, boid.velocity);
-  profiler?.end("rule.orbitFood");
+  context.profiler?.end(profilerKeywords.rules.orbitFood);
   return vec.limit(steer, boid.phenotype.maxForce * 0.8);
 }
 
@@ -830,43 +766,37 @@ export function orbitFood(
  */
 export function avoidPredatorFood(
   boid: Boid,
-  foodSources: Array<FoodSource>,
-  parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
-  world: WorldConfig,
-  profiler?: Profiler,
+  context: BoidUpdateContext
 ): Vector2 {
-  profiler?.start("rule.avoidPredatorFood");
+  context.profiler?.start(profilerKeywords.rules.avoidPredatorFood);
+  const steering: Vector2 = { x: 0, y: 0 };
+  if (!context.nearbyFoodSources.length) {
+    return steering;
+  }
   // Only prey avoid predator food
-  if (speciesConfig.role !== "prey") {
-    profiler?.end("rule.avoidPredatorFood");
-    return { x: 0, y: 0 };
+  if (context.config.species[boid.typeId].role !== roleKeywords.prey) {
+    context.profiler?.end(profilerKeywords.rules.avoidPredatorFood);
+    return steering;
   }
 
-  const predatorFood = foodSources.filter((f) => f.sourceType === "predator");
+  const predatorFood = context.nearbyFoodSources.filter(
+    (f) => f.item.sourceType === roleKeywords.predator
+  );
 
-  const steering: Vector2 = { x: 0, y: 0 };
   let count = 0;
 
-  for (const food of predatorFood) {
-    const dist = vec.toroidalDistance(
-      boid.position,
-      food.position,
-      world.width,
-      world.height,
-    );
-
-    if (dist < parameters.fearRadius) {
+  for (const { item: food, distance } of predatorFood) {
+    if (distance < FOOD_CONSTANTS.PREDATOR_FOOD_FEAR_RADIUS) {
       // Flee away from predator food
       const away = vec.toroidalSubtract(
         boid.position,
         food.position,
-        world.width,
-        world.height,
+        context.config.world.width,
+        context.config.world.height
       );
 
       // Weight by distance and fear factor (closer = stronger)
-      const weight = 1 / (dist * dist);
+      const weight = 1 / (distance * distance);
       const weightedDist = vec.multiply(away, weight);
       const fearFactor = boid.phenotype.fearFactor;
       const weightedFear = vec.multiply(away, fearFactor);
@@ -883,11 +813,11 @@ export function avoidPredatorFood(
     const avg = vec.divide(steering, count);
     const desired = vec.setMagnitude(avg, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desired, boid.velocity);
-    profiler?.end("rule.avoidPredatorFood");
+    context.profiler?.end(profilerKeywords.rules.avoidPredatorFood);
     return vec.limit(steer, boid.phenotype.maxForce);
   }
 
-  profiler?.end("rule.avoidPredatorFood");
+  context.profiler?.end(profilerKeywords.rules.avoidPredatorFood);
   return { x: 0, y: 0 };
 }
 
@@ -904,20 +834,16 @@ export function avoidPredatorFood(
  */
 export function avoidCrowdedAreas(
   boid: Boid,
-  neighbors: Boid[],
-  parameters: SimulationParameters,
-  _speciesConfig: SpeciesConfig,
-  world: WorldConfig,
-  profiler?: Profiler,
+  context: BoidUpdateContext
 ): Vector2 {
-  profiler?.start("rule.avoidCrowdedAreas");
+  context.profiler?.start(profilerKeywords.rules.avoidCrowdedAreas);
 
   const threshold = boid.phenotype.crowdTolerance;
-  const nearbyCount = neighbors.length;
+  const nearbyCount = context.nearbyBoids.length;
 
   // If below threshold, no avoidance needed
   if (nearbyCount <= threshold) {
-    profiler?.end("rule.avoidCrowdedAreas");
+    context.profiler?.end(profilerKeywords.rules.avoidCrowdedAreas);
     return { x: 0, y: 0 };
   }
 
@@ -930,15 +856,8 @@ export function avoidCrowdedAreas(
   let centerY = 0;
   let count = 0;
 
-  for (const other of neighbors) {
-    const dist = vec.toroidalDistance(
-      boid.position,
-      other.position,
-      world.width,
-      world.height,
-    );
-
-    if (dist > 0 && dist < parameters.perceptionRadius) {
+  for (const { item: other, distance } of context.nearbyBoids) {
+    if (distance > 0 && distance < context.config.parameters.perceptionRadius) {
       centerX += other.position.x;
       centerY += other.position.y;
       count++;
@@ -946,7 +865,7 @@ export function avoidCrowdedAreas(
   }
 
   if (count === 0) {
-    profiler?.end("rule.avoidCrowdedAreas");
+    context.profiler?.end(profilerKeywords.rules.avoidCrowdedAreas);
     return { x: 0, y: 0 };
   }
 
@@ -959,8 +878,8 @@ export function avoidCrowdedAreas(
   const awayFromCenter = vec.toroidalSubtract(
     boid.position,
     centerOfMass,
-    world.width,
-    world.height,
+    context.config.world.width,
+    context.config.world.height
   );
 
   // Desired velocity: away from crowd at max speed
@@ -974,6 +893,6 @@ export function avoidCrowdedAreas(
   const maxForce =
     boid.phenotype.maxForce * boid.phenotype.crowdAversionStrength;
 
-  profiler?.end("rule.avoidCrowdedAreas");
+  context.profiler?.end(profilerKeywords.rules.avoidCrowdedAreas);
   return vec.limit(scaled, maxForce);
 }

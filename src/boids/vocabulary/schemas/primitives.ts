@@ -4,6 +4,7 @@ import {
   renderModeKeywords,
   reproductionTypeKeywords,
   roleKeywords,
+  ruleKeywords,
   stanceKeywords,
 } from "../keywords";
 
@@ -28,6 +29,16 @@ export const vectorSchema = z.object({
 });
 
 export type Vector2 = z.infer<typeof vectorSchema>;
+export type Area2D = {
+  width: number;
+  height: number;
+};
+export type Positionable = {
+  position: Vector2;
+};
+export type Identifiable = {
+  id: string;
+};
 
 /**
  * Role Schema - Indicates the role of a boid
@@ -69,6 +80,24 @@ export type PreyStance = z.infer<typeof preyStanceSchema>;
 export type PredatorStance = z.infer<typeof predatorStanceSchema>;
 export type BoidStance = z.infer<typeof stanceSchema>;
 
+export const ruleSchema = z.enum([
+  ruleKeywords.separation,
+  ruleKeywords.alignment,
+  ruleKeywords.cohesion,
+  ruleKeywords.avoidObstacles,
+  ruleKeywords.fear,
+  ruleKeywords.selectBestPrey,
+  ruleKeywords.chase,
+  ruleKeywords.selectBestMate,
+  ruleKeywords.seekMate,
+  ruleKeywords.avoidDeathMarkers,
+  ruleKeywords.selectBestFood,
+  ruleKeywords.seekFood,
+  ruleKeywords.orbitFood,
+  ruleKeywords.avoidPredatorFood,
+  ruleKeywords.avoidCrowdedAreas,
+]);
+export type Rule = z.infer<typeof ruleSchema>;
 /**
  * Death Cause Schema - Indicates the cause of a boid's death
  *
