@@ -54,14 +54,6 @@ export type FrameUpdateContext = {
  * Complete boid update context - everything needed to update boid behavior
  * Combines simulation state, configuration, and time delta
  */
-// export type BoidUpdateContext = FrameUpdateContext & {
-//   nearbyBoids: ItemWithDistance<Boid>[];
-//   nearbyPrey: ItemWithDistance<Boid>[];
-//   nearbyPredators: ItemWithDistance<Boid>[];
-//   nearbyFoodSources: ItemWithDistance<FoodSource>[];
-//   nearbyObstacles: ItemWithDistance<Obstacle>[];
-//   nearbyDeathMarkers: ItemWithDistance<DeathMarker>[];
-// };
 
 export type EngineUpdateContext = {
   // Time tracking
@@ -113,6 +105,7 @@ export type BoidUpdateContext = ExpandType<
     | "boidsByRole"
     | "forcesCollector"
     | "profiler"
+    | "scaledTime"
   > & {
     nearbyBoids: ItemWithDistance<Boid>[];
     nearbyPrey: ItemWithDistance<Boid>[];

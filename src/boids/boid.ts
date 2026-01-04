@@ -77,7 +77,7 @@ export function createBoid(
   typeIds: string[],
   context: BoidCreationContext,
   age: number | null = null,
-  index: number,
+  index: number
 ): Boid {
   const { world, species, rng, physics = defaultWorldPhysics } = context;
 
@@ -94,7 +94,7 @@ export function createBoid(
   // Create genome from species config
   const genome = createGenesisGenome(
     speciesConfig.baseGenome.traits,
-    speciesConfig.baseGenome.visual,
+    speciesConfig.baseGenome.visual
   );
 
   // Compute phenotype from genome + physics
@@ -161,7 +161,7 @@ export function createBoidOfType(
   context: BoidCreationContext,
   energyBonus: number = 0, // Optional energy bonus for offspring (0-1)
   index: number,
-  parentGenomes?: { parent1: Genome; parent2?: Genome }, // Optional parent genomes for inheritance
+  parentGenomes?: { parent1: Genome; parent2?: Genome } // Optional parent genomes for inheritance
 ): {
   boid: Boid;
   mutationMetadata: {
@@ -208,7 +208,7 @@ export function createBoidOfType(
       parentGenomes.parent2,
       mutationConfig,
       rng,
-      enableLogging,
+      enableLogging
     );
     genome = inheritanceResult.genome;
     mutationMetadata = {
@@ -220,7 +220,7 @@ export function createBoidOfType(
     // Genesis: Create genome from species config
     genome = createGenesisGenome(
       speciesConfig.baseGenome.traits,
-      speciesConfig.baseGenome.visual,
+      speciesConfig.baseGenome.visual
     );
   }
 
@@ -232,7 +232,7 @@ export function createBoidOfType(
   const bonusEnergy = phenotype.maxEnergy * energyBonus;
   const startingEnergy = Math.min(
     baseEnergy + bonusEnergy,
-    phenotype.maxEnergy,
+    phenotype.maxEnergy
   );
 
   const boid: Boid = {
@@ -350,7 +350,7 @@ function updatePredator(boid: Boid, context: BoidUpdateContext): void {
 
   const energySpeedFactor = calculateEnergySpeedFactor(
     boid.energy,
-    boid.phenotype.maxEnergy,
+    boid.phenotype.maxEnergy
   );
   let effectiveMaxSpeed = boid.phenotype.maxSpeed * energySpeedFactor;
 
@@ -384,7 +384,7 @@ function updatePredator(boid: Boid, context: BoidUpdateContext): void {
             boid,
             targetFood.position,
             FOOD_CONSTANTS.FOOD_EATING_RADIUS,
-            context,
+            context
           );
           forcesCollector.collect({
             force: orbitForce,
@@ -441,7 +441,7 @@ function updatePredator(boid: Boid, context: BoidUpdateContext): void {
   }
 
   const forces = forcesCollector.items.filter(
-    (force) => force.weight > 0 && force.force.x !== 0 && force.force.y !== 0,
+    (force) => force.weight > 0 && force.force.x !== 0 && force.force.y !== 0
   );
 
   applyWeightedForces(boid, forces);
@@ -451,7 +451,7 @@ function updatePredator(boid: Boid, context: BoidUpdateContext): void {
   const newVecY = boid.velocity.y + boid.acceleration.y;
   const limitedVelocity = vec.limit(
     { x: newVecX, y: newVecY },
-    effectiveMaxSpeed,
+    effectiveMaxSpeed
   );
   boid.velocity.x = limitedVelocity.x;
   boid.velocity.y = limitedVelocity.y;
@@ -481,7 +481,7 @@ function updatePrey(boid: Boid, context: BoidUpdateContext): void {
   // Calculate effective speed modifiers
   const energySpeedFactor = calculateEnergySpeedFactor(
     boid.energy,
-    boid.phenotype.maxEnergy,
+    boid.phenotype.maxEnergy
   );
   let effectiveMaxSpeed = boid.phenotype.maxSpeed * energySpeedFactor;
 
@@ -516,7 +516,7 @@ function updatePrey(boid: Boid, context: BoidUpdateContext): void {
   const flockingMultiplier = stance === stanceKeywords.eating ? 0.3 : 1.0;
   const cohesionWeight = calculatePreyCohesionWeight(
     boid.phenotype.cohesionWeight,
-    stance,
+    stance
   );
 
   for (const rule of activeRules) {
@@ -582,7 +582,7 @@ function updatePrey(boid: Boid, context: BoidUpdateContext): void {
             boid,
             targetFood.position,
             FOOD_CONSTANTS.FOOD_EATING_RADIUS,
-            context,
+            context
           );
           forcesCollector.collect({
             force: orbitForce,
@@ -608,7 +608,7 @@ function updatePrey(boid: Boid, context: BoidUpdateContext): void {
 
   // Filter and apply all collected forces
   const forces = forcesCollector.items.filter(
-    (force) => force.weight > 0 && (force.force.x !== 0 || force.force.y !== 0),
+    (force) => force.weight > 0 && (force.force.x !== 0 || force.force.y !== 0)
   );
 
   applyWeightedForces(boid, forces);
@@ -625,7 +625,7 @@ function updatePrey(boid: Boid, context: BoidUpdateContext): void {
 
   const limitedVelocity = vec.limit(
     { x: newVecX, y: newVecY },
-    effectiveMaxSpeed,
+    effectiveMaxSpeed
   );
   boid.velocity.x = limitedVelocity.x;
   boid.velocity.y = limitedVelocity.y;
@@ -677,7 +677,7 @@ export function updateBoid(boid: Boid, context: BoidUpdateContext): void {
       height: context.config.world.height,
     },
     context.config.parameters,
-    context.config.species,
+    context.config.species
   );
 }
 
@@ -700,7 +700,7 @@ function enforceMinimumDistance(
   nearbyBoids: ItemWithDistance<Boid>[],
   worldSize: { width: number; height: number },
   parameters: SimulationParameters,
-  speciesTypes: Record<string, SpeciesConfig>,
+  speciesTypes: Record<string, SpeciesConfig>
 ): void {
   const speciesConfig = speciesTypes[boid.typeId];
   const minDist =
@@ -741,7 +741,7 @@ function enforceMinimumDistance(
         boid.position,
         other.position,
         worldSize.width,
-        worldSize.height,
+        worldSize.height
       );
 
       // Normalize and scale by half the overlap

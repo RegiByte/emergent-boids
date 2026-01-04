@@ -8,190 +8,190 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as WorkerTasksDemoRouteImport } from "./routes/worker-tasks-demo";
-import { Route as SharedMemoryTestRouteImport } from "./routes/shared-memory-test";
-import { Route as ParallelTestRouteImport } from "./routes/parallel-test";
-import { Route as BoidsAtlasRouteImport } from "./routes/boids-atlas";
-import { Route as AtlasesRouteImport } from "./routes/atlases";
-import { Route as AtlasWorkerTestRouteImport } from "./routes/atlas-worker-test";
-import { Route as AboutRouteImport } from "./routes/about";
-import { Route as IndexRouteImport } from "./routes/index";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorkerTasksDemoRouteImport } from './routes/worker-tasks-demo'
+import { Route as SharedMemoryTestRouteImport } from './routes/shared-memory-test'
+import { Route as ParallelTestRouteImport } from './routes/parallel-test'
+import { Route as BoidsAtlasRouteImport } from './routes/boids-atlas'
+import { Route as AtlasesRouteImport } from './routes/atlases'
+import { Route as AtlasWorkerTestRouteImport } from './routes/atlas-worker-test'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as IndexRouteImport } from './routes/index'
 
 const WorkerTasksDemoRoute = WorkerTasksDemoRouteImport.update({
-  id: "/worker-tasks-demo",
-  path: "/worker-tasks-demo",
+  id: '/worker-tasks-demo',
+  path: '/worker-tasks-demo',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const SharedMemoryTestRoute = SharedMemoryTestRouteImport.update({
-  id: "/shared-memory-test",
-  path: "/shared-memory-test",
+  id: '/shared-memory-test',
+  path: '/shared-memory-test',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ParallelTestRoute = ParallelTestRouteImport.update({
-  id: "/parallel-test",
-  path: "/parallel-test",
+  id: '/parallel-test',
+  path: '/parallel-test',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const BoidsAtlasRoute = BoidsAtlasRouteImport.update({
-  id: "/boids-atlas",
-  path: "/boids-atlas",
+  id: '/boids-atlas',
+  path: '/boids-atlas',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AtlasesRoute = AtlasesRouteImport.update({
-  id: "/atlases",
-  path: "/atlases",
+  id: '/atlases',
+  path: '/atlases',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AtlasWorkerTestRoute = AtlasWorkerTestRouteImport.update({
-  id: "/atlas-worker-test",
-  path: "/atlas-worker-test",
+  id: '/atlas-worker-test',
+  path: '/atlas-worker-test',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AboutRoute = AboutRouteImport.update({
-  id: "/about",
-  path: "/about",
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const IndexRoute = IndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute;
-  "/about": typeof AboutRoute;
-  "/atlas-worker-test": typeof AtlasWorkerTestRoute;
-  "/atlases": typeof AtlasesRoute;
-  "/boids-atlas": typeof BoidsAtlasRoute;
-  "/parallel-test": typeof ParallelTestRoute;
-  "/shared-memory-test": typeof SharedMemoryTestRoute;
-  "/worker-tasks-demo": typeof WorkerTasksDemoRoute;
+  '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/atlas-worker-test': typeof AtlasWorkerTestRoute
+  '/atlases': typeof AtlasesRoute
+  '/boids-atlas': typeof BoidsAtlasRoute
+  '/parallel-test': typeof ParallelTestRoute
+  '/shared-memory-test': typeof SharedMemoryTestRoute
+  '/worker-tasks-demo': typeof WorkerTasksDemoRoute
 }
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute;
-  "/about": typeof AboutRoute;
-  "/atlas-worker-test": typeof AtlasWorkerTestRoute;
-  "/atlases": typeof AtlasesRoute;
-  "/boids-atlas": typeof BoidsAtlasRoute;
-  "/parallel-test": typeof ParallelTestRoute;
-  "/shared-memory-test": typeof SharedMemoryTestRoute;
-  "/worker-tasks-demo": typeof WorkerTasksDemoRoute;
+  '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/atlas-worker-test': typeof AtlasWorkerTestRoute
+  '/atlases': typeof AtlasesRoute
+  '/boids-atlas': typeof BoidsAtlasRoute
+  '/parallel-test': typeof ParallelTestRoute
+  '/shared-memory-test': typeof SharedMemoryTestRoute
+  '/worker-tasks-demo': typeof WorkerTasksDemoRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  "/": typeof IndexRoute;
-  "/about": typeof AboutRoute;
-  "/atlas-worker-test": typeof AtlasWorkerTestRoute;
-  "/atlases": typeof AtlasesRoute;
-  "/boids-atlas": typeof BoidsAtlasRoute;
-  "/parallel-test": typeof ParallelTestRoute;
-  "/shared-memory-test": typeof SharedMemoryTestRoute;
-  "/worker-tasks-demo": typeof WorkerTasksDemoRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/atlas-worker-test': typeof AtlasWorkerTestRoute
+  '/atlases': typeof AtlasesRoute
+  '/boids-atlas': typeof BoidsAtlasRoute
+  '/parallel-test': typeof ParallelTestRoute
+  '/shared-memory-test': typeof SharedMemoryTestRoute
+  '/worker-tasks-demo': typeof WorkerTasksDemoRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
+  fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | "/"
-    | "/about"
-    | "/atlas-worker-test"
-    | "/atlases"
-    | "/boids-atlas"
-    | "/parallel-test"
-    | "/shared-memory-test"
-    | "/worker-tasks-demo";
-  fileRoutesByTo: FileRoutesByTo;
+    | '/'
+    | '/about'
+    | '/atlas-worker-test'
+    | '/atlases'
+    | '/boids-atlas'
+    | '/parallel-test'
+    | '/shared-memory-test'
+    | '/worker-tasks-demo'
+  fileRoutesByTo: FileRoutesByTo
   to:
-    | "/"
-    | "/about"
-    | "/atlas-worker-test"
-    | "/atlases"
-    | "/boids-atlas"
-    | "/parallel-test"
-    | "/shared-memory-test"
-    | "/worker-tasks-demo";
+    | '/'
+    | '/about'
+    | '/atlas-worker-test'
+    | '/atlases'
+    | '/boids-atlas'
+    | '/parallel-test'
+    | '/shared-memory-test'
+    | '/worker-tasks-demo'
   id:
-    | "__root__"
-    | "/"
-    | "/about"
-    | "/atlas-worker-test"
-    | "/atlases"
-    | "/boids-atlas"
-    | "/parallel-test"
-    | "/shared-memory-test"
-    | "/worker-tasks-demo";
-  fileRoutesById: FileRoutesById;
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/atlas-worker-test'
+    | '/atlases'
+    | '/boids-atlas'
+    | '/parallel-test'
+    | '/shared-memory-test'
+    | '/worker-tasks-demo'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute;
-  AboutRoute: typeof AboutRoute;
-  AtlasWorkerTestRoute: typeof AtlasWorkerTestRoute;
-  AtlasesRoute: typeof AtlasesRoute;
-  BoidsAtlasRoute: typeof BoidsAtlasRoute;
-  ParallelTestRoute: typeof ParallelTestRoute;
-  SharedMemoryTestRoute: typeof SharedMemoryTestRoute;
-  WorkerTasksDemoRoute: typeof WorkerTasksDemoRoute;
+  IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  AtlasWorkerTestRoute: typeof AtlasWorkerTestRoute
+  AtlasesRoute: typeof AtlasesRoute
+  BoidsAtlasRoute: typeof BoidsAtlasRoute
+  ParallelTestRoute: typeof ParallelTestRoute
+  SharedMemoryTestRoute: typeof SharedMemoryTestRoute
+  WorkerTasksDemoRoute: typeof WorkerTasksDemoRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/worker-tasks-demo": {
-      id: "/worker-tasks-demo";
-      path: "/worker-tasks-demo";
-      fullPath: "/worker-tasks-demo";
-      preLoaderRoute: typeof WorkerTasksDemoRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/shared-memory-test": {
-      id: "/shared-memory-test";
-      path: "/shared-memory-test";
-      fullPath: "/shared-memory-test";
-      preLoaderRoute: typeof SharedMemoryTestRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/parallel-test": {
-      id: "/parallel-test";
-      path: "/parallel-test";
-      fullPath: "/parallel-test";
-      preLoaderRoute: typeof ParallelTestRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/boids-atlas": {
-      id: "/boids-atlas";
-      path: "/boids-atlas";
-      fullPath: "/boids-atlas";
-      preLoaderRoute: typeof BoidsAtlasRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/atlases": {
-      id: "/atlases";
-      path: "/atlases";
-      fullPath: "/atlases";
-      preLoaderRoute: typeof AtlasesRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/atlas-worker-test": {
-      id: "/atlas-worker-test";
-      path: "/atlas-worker-test";
-      fullPath: "/atlas-worker-test";
-      preLoaderRoute: typeof AtlasWorkerTestRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/about": {
-      id: "/about";
-      path: "/about";
-      fullPath: "/about";
-      preLoaderRoute: typeof AboutRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/": {
-      id: "/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof IndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+    '/worker-tasks-demo': {
+      id: '/worker-tasks-demo'
+      path: '/worker-tasks-demo'
+      fullPath: '/worker-tasks-demo'
+      preLoaderRoute: typeof WorkerTasksDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shared-memory-test': {
+      id: '/shared-memory-test'
+      path: '/shared-memory-test'
+      fullPath: '/shared-memory-test'
+      preLoaderRoute: typeof SharedMemoryTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parallel-test': {
+      id: '/parallel-test'
+      path: '/parallel-test'
+      fullPath: '/parallel-test'
+      preLoaderRoute: typeof ParallelTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/boids-atlas': {
+      id: '/boids-atlas'
+      path: '/boids-atlas'
+      fullPath: '/boids-atlas'
+      preLoaderRoute: typeof BoidsAtlasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/atlases': {
+      id: '/atlases'
+      path: '/atlases'
+      fullPath: '/atlases'
+      preLoaderRoute: typeof AtlasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/atlas-worker-test': {
+      id: '/atlas-worker-test'
+      path: '/atlas-worker-test'
+      fullPath: '/atlas-worker-test'
+      preLoaderRoute: typeof AtlasWorkerTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -204,7 +204,7 @@ const rootRouteChildren: RootRouteChildren = {
   ParallelTestRoute: ParallelTestRoute,
   SharedMemoryTestRoute: SharedMemoryTestRoute,
   WorkerTasksDemoRoute: WorkerTasksDemoRoute,
-};
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()

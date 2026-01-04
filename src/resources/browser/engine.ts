@@ -114,12 +114,12 @@ const createBoids = ({
   };
   for (let i = 0; i < preyCount; i++) {
     boidsStore.addBoid(
-      createBoid(preyTypeIds, creationContext, 0, boidsStore.nextIndex()),
+      createBoid(preyTypeIds, creationContext, 0, boidsStore.nextIndex())
     );
   }
   for (let i = 0; i < predatorCount; i++) {
     boidsStore.addBoid(
-      createBoid(predatorTypeIds, creationContext, 0, boidsStore.nextIndex()),
+      createBoid(predatorTypeIds, creationContext, 0, boidsStore.nextIndex())
     );
   }
 };
@@ -155,10 +155,10 @@ export const engine = defineResource({
 
     // Get available type IDs (prey for initial spawn, predators from profile)
     let preyTypeIds = Object.keys(initialSpecies).filter(
-      (id) => initialSpecies[id].role === "prey",
+      (id) => initialSpecies[id].role === "prey"
     );
     let predatorTypeIds = Object.keys(initialSpecies).filter(
-      (id) => initialSpecies[id].role === "predator",
+      (id) => initialSpecies[id].role === "predator"
     );
 
     // Get physics from config (or use defaults)
@@ -180,7 +180,7 @@ export const engine = defineResource({
     // Create SharedArrayBuffer
     const boidsPhysicsMemory = sharedMemoryManager.initialize(
       sharedMemoryKeywords.boidsPhysics,
-      initialConfig.parameters.maxBoids,
+      initialConfig.parameters.maxBoids
     );
     syncBoidsToSharedMemory(boidsPhysicsMemory.views, boidsStore.boids);
     initializeBoidsStats(boidsPhysicsMemory.views, {
@@ -194,23 +194,23 @@ export const engine = defineResource({
     const boidSpatialHash = createSpatialHash<Boid>(
       initialWorld.width,
       initialWorld.height,
-      initialConfig.parameters.perceptionRadius,
+      initialConfig.parameters.perceptionRadius
     );
 
     const foodSourceSpatialHash = createSpatialHash<FoodSource>(
       initialWorld.width,
       initialWorld.height,
-      FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5,
+      FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5
     );
     const obstacleSpatialHash = createSpatialHash<Obstacle>(
       initialWorld.width,
       initialWorld.height,
-      initialConfig.parameters.perceptionRadius,
+      initialConfig.parameters.perceptionRadius
     );
     const deathMarkerSpatialHash = createSpatialHash<DeathMarker>(
       initialWorld.width,
       initialWorld.height,
-      initialConfig.parameters.perceptionRadius,
+      initialConfig.parameters.perceptionRadius
     );
 
     // Create behavior ruleset for stance evaluation (Session 76)
@@ -277,7 +277,7 @@ export const engine = defineResource({
           evaluateBoidBehavior: (boid: Boid, context: BoidUpdateContext) => {
             evaluateBoidBehavior(boid, context);
           },
-        },
+        }
       );
     };
 
@@ -311,25 +311,22 @@ export const engine = defineResource({
               isWithinRadius(
                 boid.position,
                 p.item.position,
-                parameters.chaseRadius,
-              ),
+                parameters.chaseRadius
+              )
             )
           : [];
 
       const nearbyFlock: ItemWithDistance<Boid>[] = [];
-      const allNearbyBoidsCount = nearbyPredators.length + nearbyPrey.length;
-      const preyStartOffset = nearbyPredators.length;
-      let offset = 0;
-      // iterator, zero allocations
-      while (offset < allNearbyBoidsCount) {
-        const nearbyBoid =
-          offset < preyStartOffset
-            ? nearbyPredators[offset]
-            : nearbyPrey[offset - preyStartOffset];
-        if (nearbyBoid) {
+      const boidsToCheck =
+        role === roleKeywords.predator ? nearbyPredators : nearbyPrey;
+
+      for (const nearbyBoid of boidsToCheck) {
+        if (
+          nearbyBoid.item.typeId === boid.typeId && // same species
+          nearbyBoid.item.id !== boid.id // not self
+        ) {
           nearbyFlock.push(nearbyBoid);
         }
-        offset += nearbyBoid ? 1 : 0;
       }
 
       const populationRatio = boidsStore.count() / parameters.maxBoids;
@@ -355,7 +352,7 @@ export const engine = defineResource({
           decision,
           currentFrame, // Use frame for stance tracking!
           MINIMUM_STANCE_DURATION_FRAMES,
-          profiler,
+          profiler
         );
       }
     };
@@ -386,7 +383,7 @@ export const engine = defineResource({
             predator.position,
             preyBoid.position,
             cfg.world.width,
-            cfg.world.height,
+            cfg.world.height
           );
 
           if (dist < parameters.catchRadius) {
@@ -455,10 +452,10 @@ export const engine = defineResource({
       // Recalculate type IDs from current species config
       // (Species change when profile switches, so we need fresh IDs)
       const currentPreyTypeIds = Object.keys(species).filter(
-        (id) => species[id].role === "prey",
+        (id) => species[id].role === "prey"
       );
       const currentPredatorTypeIds = Object.keys(species).filter(
-        (id) => species[id].role === "predator",
+        (id) => species[id].role === "predator"
       );
 
       // Update module-level type ID arrays for future spawns
@@ -488,8 +485,8 @@ export const engine = defineResource({
             currentPreyTypeIds,
             creationContext,
             0,
-            boidsStore.nextIndex(),
-          ),
+            boidsStore.nextIndex()
+          )
         );
       }
 
@@ -500,13 +497,13 @@ export const engine = defineResource({
             currentPredatorTypeIds,
             creationContext,
             0,
-            boidsStore.nextIndex(),
-          ),
+            boidsStore.nextIndex()
+          )
         );
       }
 
       console.log(
-        `[engine.reset] Respawned ${boidsStore.boids.length} boids (${currentPreyTypeIds.length} prey species, ${currentPredatorTypeIds.length} predator species)`,
+        `[engine.reset] Respawned ${boidsStore.boids.length} boids (${currentPreyTypeIds.length} prey species, ${currentPredatorTypeIds.length} predator species)`
       );
     };
 
