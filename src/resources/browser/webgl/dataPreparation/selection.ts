@@ -60,7 +60,7 @@ let cachedFollowedBoid: { id: string; boid: Boid } | null = null;
  */
 export const prepareSelectionData = (
   camera: CameraAPI,
-  boids: BoidsById
+  boids: BoidsById,
 ): SelectionInstanceData => {
   const circles: Array<{
     centerX: number;
@@ -124,7 +124,7 @@ export const prepareSelectionData = (
     ) {
       const followedBoid = findBoidWhere(
         boids,
-        (boid) => boid.id === followedBoidId
+        (boid) => boid.id === followedBoidId,
       );
       cachedFollowedBoid = followedBoid
         ? { id: followedBoidId, boid: followedBoid }

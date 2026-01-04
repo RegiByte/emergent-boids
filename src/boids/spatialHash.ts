@@ -23,7 +23,7 @@ export type SpatialHash<TData extends Positionable = Boid> = {
     position: Vector2,
     world: Area2D,
     maxNeighbors?: number,
-    maxDistance?: number
+    maxDistance?: number,
   ) => ItemWithDistance<TData>[];
 };
 
@@ -34,7 +34,7 @@ export type SpatialHash<TData extends Positionable = Boid> = {
 export function createSpatialHash<TData extends Positionable = Boid>(
   width: number,
   height: number,
-  cellSize: number
+  cellSize: number,
 ): SpatialHash<TData> {
   // Query result cache (per instance, not module-level)
   const queryCache = [] as ItemWithDistance<TData>[];
@@ -69,7 +69,7 @@ export function createSpatialHash<TData extends Positionable = Boid>(
       position: Vector2,
       world: Area2D,
       maxNeighbors = 60,
-      maxDistance?: number
+      maxDistance?: number,
     ) => {
       const col = Math.floor(position.x / api.cellSize);
       const row = Math.floor(position.y / api.cellSize);
@@ -98,7 +98,7 @@ export function createSpatialHash<TData extends Positionable = Boid>(
                 item.position,
                 position,
                 world.width,
-                world.height
+                world.height,
               );
               const distanceSq = dx * dx + dy * dy;
 

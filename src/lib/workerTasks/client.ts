@@ -149,7 +149,7 @@ const clientExecutors: EffectExecutorMap<
         const { transferables, ...eventWithoutTransferables } = event;
         if (transferables && transferables.length > 0) {
           console.log(
-            `[Client] Transferring ${transferables.length} queued object(s)`
+            `[Client] Transferring ${transferables.length} queued object(s)`,
           );
           worker.postMessage(eventWithoutTransferables, transferables);
         } else {
@@ -165,13 +165,13 @@ type ClientTaskSubscription<TTasks, TName extends keyof TTasks> = {
   taskId: string;
   taskName: TName;
   onProgress: (
-    callback: (progress: InferProgress<TTasks[TName]>) => void
+    callback: (progress: InferProgress<TTasks[TName]>) => void,
   ) => ClientTaskSubscription<TTasks, TName>;
   onComplete: (
-    callback: (output: InferOutput<TTasks[TName]>) => void
+    callback: (output: InferOutput<TTasks[TName]>) => void,
   ) => ClientTaskSubscription<TTasks, TName>;
   onError: (
-    callback: (error: string) => void
+    callback: (error: string) => void,
   ) => ClientTaskSubscription<TTasks, TName>;
   unsubscribe: () => void;
 };
@@ -181,7 +181,7 @@ type ClientTaskSubscription<TTasks, TName extends keyof TTasks> = {
  */
 export function createClientResource<TTasks extends TaskRegistry>(
   workerImport: WorkerImportFn,
-  _tasks: TTasks
+  _tasks: TTasks,
 ) {
   return defineResource({
     dependencies: [],
@@ -264,7 +264,7 @@ export function createClientResource<TTasks extends TaskRegistry>(
             status: clientStatusKeywords.waitingForReady,
           }));
           console.log(
-            "[Client] ⏳ Worker created, waiting for ready signal..."
+            "[Client] ⏳ Worker created, waiting for ready signal...",
           );
         } catch (error) {
           console.error("[Client] Failed to initialize worker:", error);
@@ -291,7 +291,7 @@ export function createClientResource<TTasks extends TaskRegistry>(
       const dispatch = <TName extends TaskName>(
         taskName: TName,
         input: InferInput<TTasks[TName]>,
-        transferables?: Transferable[]
+        transferables?: Transferable[],
       ): TaskSubscription<TName> => {
         const taskId = generateTaskId();
         const event: ClientEvent = {
@@ -310,7 +310,7 @@ export function createClientResource<TTasks extends TaskRegistry>(
           if (xfer && xfer.length > 0) {
             console.log(
               `[Client] Transferring ${xfer.length} object(s):`,
-              xfer.map((t) => t.constructor.name)
+              xfer.map((t) => t.constructor.name),
             );
             worker.postMessage(eventWithoutTransferables, xfer);
           } else {
@@ -323,7 +323,7 @@ export function createClientResource<TTasks extends TaskRegistry>(
           console.log(
             "[Client] Queueing task (worker not ready):",
             taskName,
-            taskId
+            taskId,
           );
           clientState.update((state) => ({
             ...state,
@@ -332,7 +332,7 @@ export function createClientResource<TTasks extends TaskRegistry>(
         } else {
           console.error(
             "[Client] Cannot dispatch - worker status:",
-            state.status
+            state.status,
           );
         }
 
@@ -357,7 +357,7 @@ export function createClientResource<TTasks extends TaskRegistry>(
 
         // Auto-cleanup helper: unsubscribe after all callbacks have fired
         const maybeAutoCleanup = (
-          callbacks: AtomState<typeof callbacksAtom>
+          callbacks: AtomState<typeof callbacksAtom>,
         ) => {
           if (!terminalEventReceived) return;
 
@@ -374,7 +374,7 @@ export function createClientResource<TTasks extends TaskRegistry>(
           // Only auto-cleanup if we've delivered to all registered callbacks of the terminal type
           if (allCompleteFired && allErrorFired) {
             console.log(
-              "[Client] All callbacks fired, auto-cleaning up subscription"
+              "[Client] All callbacks fired, auto-cleaning up subscription",
             );
             subscription.unsubscribe();
           }
@@ -525,13 +525,13 @@ export function createClientResource<TTasks extends TaskRegistry>(
               isLoading: loading,
             }));
           },
-          [setState]
+          [setState],
         );
 
         const dispatchTask = useCallback(
           (
             input: InferInput<TTasks[TName]>,
-            transferables?: Transferable[]
+            transferables?: Transferable[],
           ) => {
             reset(true);
 
@@ -569,7 +569,7 @@ export function createClientResource<TTasks extends TaskRegistry>(
 
             return sub;
           },
-          [reset, setState, stateRef, taskName]
+          [reset, setState, stateRef, taskName],
         );
 
         return {
@@ -626,7 +626,7 @@ export function createClientResource<TTasks extends TaskRegistry>(
  */
 export function createWorkerClientResource<T extends TaskRegistry>(
   workerImport: WorkerImportFn,
-  tasks: T
+  tasks: T,
 ) {
   return createClientResource(workerImport, tasks);
 }

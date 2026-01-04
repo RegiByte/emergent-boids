@@ -65,8 +65,8 @@ export const behaviorContextSchema = z.object({
   environmentPressure: z.number().min(0).max(1), // 0 = no pressure, 1 = max pressure
 
   // Timing
-  tick: z.number(),
-  ticksSinceTransition: z.number(),
+  frame: z.number(),
+  framesSinceTransition: z.number(),
 
   // Species config (for rule customization)
   role: z.enum([roleKeywords.prey, roleKeywords.predator]),
@@ -121,8 +121,6 @@ export const behaviorRuleMetadataSchema = z.object({
  */
 export const stanceDecisionSchema = z.object({
   boidId: z.string(),
-  boidIndex: z.number(),
-  tick: z.number(),
   frame: z.number(),
 
   // Transition

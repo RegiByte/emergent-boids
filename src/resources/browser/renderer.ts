@@ -155,7 +155,7 @@ export const renderer = defineResource({
     let fps = 60;
 
     const boidsPhysicsMemory = sharedMemoryManager.get(
-      sharedMemoryKeywords.boidsPhysics
+      sharedMemoryKeywords.boidsPhysics,
     );
     const boidStore = localBoidStore.store;
     const simulationExecutor = frameRater.fixed("simulation", {
@@ -282,7 +282,7 @@ export const renderer = defineResource({
           }
 
           console.log(
-            `🎮 Renderer: ${newMode.toUpperCase()} ${newMode === "webgl" ? "⚡" : "🖌️"}`
+            `🎮 Renderer: ${newMode.toUpperCase()} ${newMode === "webgl" ? "⚡" : "🖌️"}`,
           );
           break;
         }
@@ -415,7 +415,7 @@ export const renderer = defineResource({
           ?.lastTime || 0;
       const updateTime =
         metrics.find(
-          (m) => m.name === profilerKeywords.updateLoop.frameUpdateTime
+          (m) => m.name === profilerKeywords.updateLoop.frameUpdateTime,
         )?.lastTime || 0;
       const renderTime =
         metrics.find((m) => m.name === profilerKeywords.renderer.draw)
@@ -430,7 +430,7 @@ export const renderer = defineResource({
       {
         wait: 100,
         maxSize: 2,
-      }
+      },
     );
 
     const updateCamera = () => {
@@ -439,7 +439,7 @@ export const renderer = defineResource({
         if (!cachedFollowedBoid || cachedFollowedBoid.id !== followedBoidId) {
           const followedBoid = findBoidWhere(
             boidStore.boids,
-            (boid) => boid.id === followedBoidId
+            (boid) => boid.id === followedBoidId,
           );
           if (followedBoid) {
             cachedFollowedBoid = { id: followedBoidId, boid: followedBoid };
@@ -450,7 +450,7 @@ export const renderer = defineResource({
         if (cachedFollowedBoid) {
           camera.updateFollowPosition(
             cachedFollowedBoid.boid.position.x,
-            cachedFollowedBoid.boid.position.y
+            cachedFollowedBoid.boid.position.y,
           );
         } else {
           // Boid died or disappeared - exit follow mode

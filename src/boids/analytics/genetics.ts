@@ -108,7 +108,7 @@ function quantizeColor(color: string): string {
 export function computeGeneticsStats(
   boids: Boid[],
   speciesConfig: SpeciesConfig,
-  mutationCounters: MutationCounters
+  mutationCounters: MutationCounters,
 ): GeneticsStats {
   if (boids.length === 0) {
     return {
@@ -194,7 +194,7 @@ export function computeGeneticsStats(
 
   // Unique colors (quantized to reduce noise)
   const quantizedColors = new Set(
-    boids.map((b) => quantizeColor(b.genome.visual.color))
+    boids.map((b) => quantizeColor(b.genome.visual.color)),
   );
   const uniqueColors = quantizedColors.size;
 
@@ -241,7 +241,7 @@ export function computeGeneticsStats(
 export function computeGeneticsStatsBySpecies(
   boids: BoidsById,
   speciesConfigs: Record<string, SpeciesConfig>,
-  mutationCountersBySpecies: Record<string, MutationCounters>
+  mutationCountersBySpecies: Record<string, MutationCounters>,
 ): Record<string, GeneticsStats> {
   const result: Record<string, GeneticsStats> = {};
 
@@ -269,7 +269,7 @@ export function computeGeneticsStatsBySpecies(
     result[speciesId] = computeGeneticsStats(
       speciesBoids,
       speciesConfig,
-      mutationCounters
+      mutationCounters,
     );
   }
 
@@ -339,7 +339,7 @@ export interface EvolutionMetrics {
 export function computeEvolutionMetrics(
   current: GeneticsStats,
   previous: GeneticsStats | null,
-  tickDelta: number
+  tickDelta: number,
 ): EvolutionMetrics {
   if (!previous || tickDelta === 0) {
     // First snapshot or no time elapsed - return zero rates

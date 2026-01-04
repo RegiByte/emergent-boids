@@ -50,7 +50,7 @@ function AtlasWorkerTestRoute() {
   const atlasGenerationTasks = useResource("atlasGenerationTasks");
 
   const [mainThreadResult, setMainThreadResult] = useState<TestResult | null>(
-    null
+    null,
   );
   const [workerResult, setWorkerResult] = useState<TestResult | null>(null);
   const [workerOffscreenResult, setWorkerOffscreenResult] =
@@ -66,10 +66,10 @@ function AtlasWorkerTestRoute() {
   const fontAtlasTask =
     atlasGenerationTasks.useTaskDispatcher("generateFontAtlas");
   const fontAtlasOffscreenTask = atlasGenerationTasks.useTaskDispatcher(
-    "generateFontAtlasOffscreen"
+    "generateFontAtlasOffscreen",
   );
   const bodyPartsAtlasTask = atlasGenerationTasks.useTaskDispatcher(
-    "generateBodyPartsAtlas"
+    "generateBodyPartsAtlas",
   );
 
   const runMainThreadTest = async () => {
@@ -148,7 +148,7 @@ function AtlasWorkerTestRoute() {
       const reconstructedImageData = new ImageData(
         new Uint8ClampedArray(imageData.data),
         imageData.width,
-        imageData.height
+        imageData.height,
       );
       ctx.putImageData(reconstructedImageData, 0, 0);
 
@@ -218,7 +218,7 @@ function AtlasWorkerTestRoute() {
           atlasSize,
           charSize,
         },
-        [offscreenCanvas]
+        [offscreenCanvas],
       ); // ← Transfer the offscreen canvas!
 
       // Wait for completion
@@ -360,7 +360,7 @@ function AtlasWorkerTestRoute() {
       const reconstructedImageData = new ImageData(
         new Uint8ClampedArray(imageData.data),
         imageData.width,
-        imageData.height
+        imageData.height,
       );
       ctx.putImageData(reconstructedImageData, 0, 0);
 
@@ -713,7 +713,7 @@ function AtlasWorkerTestRoute() {
                                   ctx.drawImage(
                                     workerOffscreenResult.canvas,
                                     0,
-                                    0
+                                    0,
                                   );
                                 }
                               }
@@ -797,7 +797,7 @@ function AtlasWorkerTestRoute() {
                                   ctx.drawImage(
                                     bodyPartsMainResult.canvas,
                                     0,
-                                    0
+                                    0,
                                   );
                                 }
                               }
@@ -864,7 +864,7 @@ function AtlasWorkerTestRoute() {
                                   ctx.drawImage(
                                     bodyPartsWorkerResult.canvas,
                                     0,
-                                    0
+                                    0,
                                   );
                                 }
                               }
@@ -999,7 +999,7 @@ function AtlasWorkerTestRoute() {
                               },
                             ];
                             const winner = times.reduce((min, curr) =>
-                              curr.time < min.time ? curr : min
+                              curr.time < min.time ? curr : min,
                             );
                             return winner.name;
                           })()

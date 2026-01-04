@@ -64,7 +64,7 @@ export const boidSchema = z.object({
 
   // Stance transition tracking (Session 74: Behavior Scoring System)
   // Session 76: Now tracks physics frames (30-60 Hz) instead of lifecycle ticks (1 Hz)
-  stanceEnteredAt: z.number().default(0), // Frame when current stance was entered
+  stanceEnteredAtFrame: z.number().default(0), // Frame when current stance was entered
   substate: z.string().nullable().default(null), // Rich substate (e.g., "searching", "chasing", "panic")
 });
 

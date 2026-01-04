@@ -42,7 +42,7 @@ type BoidUpdateContext = FrameUpdateContext & {
 
 type MovementForceExecutor = (
   boid: Boid,
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ) => Vector2;
 
 type MovementForces =
@@ -66,7 +66,7 @@ const ruleExecutors = {
       context.config.parameters,
       context.config.species[boid.typeId],
       context.config.world,
-      context.profiler
+      context.profiler,
     ),
   [ruleKeywords.alignment]: (boid: Boid, context: BoidUpdateContext) =>
     rules.alignment(
@@ -75,7 +75,7 @@ const ruleExecutors = {
       context.config.parameters,
       context.config.species[boid.typeId],
       context.config.world,
-      context.profiler
+      context.profiler,
     ),
   [ruleKeywords.cohesion]: (boid: Boid, context: BoidUpdateContext) =>
     rules.cohesion(
@@ -84,7 +84,7 @@ const ruleExecutors = {
       context.config.parameters,
       context.config.species[boid.typeId],
       context.config.world,
-      context.profiler
+      context.profiler,
     ),
   [ruleKeywords.avoidObstacles]: (boid: Boid, context: BoidUpdateContext) =>
     rules.avoidObstacles(
@@ -93,7 +93,7 @@ const ruleExecutors = {
       context.config.parameters,
       context.config.species[boid.typeId],
       context.config.world,
-      context.profiler
+      context.profiler,
     ),
   [ruleKeywords.chase]: (boid: Boid, context: BoidUpdateContext) =>
     rules.chase(
@@ -102,7 +102,7 @@ const ruleExecutors = {
       context.config.parameters,
       context.config.species[boid.typeId],
       context.config.world,
-      context.profiler
+      context.profiler,
     ),
   [ruleKeywords.seekMate]: (boid: Boid, context: BoidUpdateContext) =>
     rules.seekMate(
@@ -111,7 +111,7 @@ const ruleExecutors = {
       context.config.parameters,
       context.config.species[boid.typeId],
       context.config.world,
-      context.profiler
+      context.profiler,
     ),
   [ruleKeywords.avoidDeathMarkers]: (boid: Boid, context: BoidUpdateContext) =>
     rules.avoidDeathMarkers(
@@ -120,13 +120,13 @@ const ruleExecutors = {
       context.config.parameters,
       context.config.species[boid.typeId],
       context.config.world,
-      context.profiler
+      context.profiler,
     ),
 } as const satisfies MovementForceExecutorMap;
 
 export function getStanceMovementForces(
   boid: Boid,
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ) {
   const stance = boid.stance;
   // Get the effective forces for the stance

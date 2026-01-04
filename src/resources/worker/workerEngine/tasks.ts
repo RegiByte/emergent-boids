@@ -103,7 +103,7 @@ export const initializeEngine = defineTask({
       return {
         success: false,
         message: `System start failed: ${Array.from(
-          systemResult.errors.entries()
+          systemResult.errors.entries(),
         )
           .map(([k, v]) => `${k}: ${v.message}`)
           .join(", ")}`,
@@ -157,7 +157,7 @@ export const startSimulationLoop = defineTask({
       },
       (lifecycle) => {
         reportProgress(lifecycle);
-      }
+      },
     );
 
     console.log("[Worker] Update loop started");

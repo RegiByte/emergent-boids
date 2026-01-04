@@ -251,9 +251,13 @@ export function formatCumulativeSummary(
     const name = metric.name.padEnd(23).slice(0, 23);
     const total = metric.totalTime.toFixed(2).padStart(10);
     const avg = (metric.avgTime * 1000).toFixed(2).padStart(8); // Convert to µs
-    const callsPerFrame = (metric.callCount / windowFrames).toFixed(1).padStart(11);
+    const callsPerFrame = (metric.callCount / windowFrames)
+      .toFixed(1)
+      .padStart(11);
     const totalCalls = metric.callCount.toString().padStart(12);
-    const percent = ((metric.totalTime / totalTime) * 100).toFixed(1).padStart(6);
+    const percent = ((metric.totalTime / totalTime) * 100)
+      .toFixed(1)
+      .padStart(6);
     lines.push(
       `║ ${name} ${total} ${avg} ${callsPerFrame} ${totalCalls} ${percent}%║`,
     );
@@ -514,10 +518,9 @@ export const profiler = defineResource({
             .toFixed(1)
             .padStart(10);
           const totalCalls = metric.callCount.toString().padStart(10);
-          const pct = `${(
-            (metric.totalTime / totalRuleTime) *
-            100
-          ).toFixed(1)}%`.padStart(7);
+          const pct = `${((metric.totalTime / totalRuleTime) * 100).toFixed(
+            1,
+          )}%`.padStart(7);
           lines.push(
             `${name} Total: ${total}  Avg: ${avg}  Calls/frame: ${callsPerFrame}  Total: ${totalCalls}  ${pct}`,
           );

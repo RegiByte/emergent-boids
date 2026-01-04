@@ -51,7 +51,7 @@ export function toroidalSubtract(
   a: Vector2,
   b: Vector2,
   width: number,
-  height: number
+  height: number,
 ): Vector2 {
   let dx = a.x - b.x;
   let dy = a.y - b.y;
@@ -74,7 +74,7 @@ export function toroidalDistance(
   a: Vector2,
   b: Vector2,
   width: number,
-  height: number
+  height: number,
 ): number {
   return magnitude(toroidalSubtract(a, b, width, height));
 }

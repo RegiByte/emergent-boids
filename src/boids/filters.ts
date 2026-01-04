@@ -20,7 +20,7 @@ import { roleKeywords } from "./vocabulary/keywords";
 export function getBoidsOfRole(
   boids: BoidsById,
   role: "prey" | "predator",
-  speciesTypes: Record<string, SpeciesConfig>
+  speciesTypes: Record<string, SpeciesConfig>,
 ): Boid[] {
   const filteredBoids: Boid[] = [];
   for (const boid of iterateBoids(boids)) {
@@ -37,7 +37,7 @@ export function getBoidsOfRole(
  */
 export function getPrey(
   boids: BoidsById,
-  speciesTypes: Record<string, SpeciesConfig>
+  speciesTypes: Record<string, SpeciesConfig>,
 ): Boid[] {
   return getBoidsOfRole(boids, "prey", speciesTypes);
 }
@@ -47,7 +47,7 @@ export function getPrey(
  */
 export function getPredators(
   boids: BoidsById,
-  speciesTypes: Record<string, SpeciesConfig>
+  speciesTypes: Record<string, SpeciesConfig>,
 ): Boid[] {
   return getBoidsOfRole(boids, "predator", speciesTypes);
 }
@@ -78,7 +78,7 @@ export function getBoidsOfSameType(boids: Boid[], typeId: string): Boid[] {
  */
 export function findBoidById(
   boids: Boid[],
-  id: string | undefined | null
+  id: string | undefined | null,
 ): Boid | undefined {
   return boids.find((boid) => boid.id === id);
 }
@@ -100,7 +100,7 @@ export function boidsByIdFromArray(boids: Boid[]): BoidsById {
 export function countByRole(
   boids: BoidsById,
   role: "prey" | "predator",
-  speciesTypes: Record<string, SpeciesConfig>
+  speciesTypes: Record<string, SpeciesConfig>,
 ): number {
   return getBoidsOfRole(boids, role, speciesTypes).length;
 }
@@ -110,7 +110,7 @@ export function countByRole(
  */
 export function countPrey(
   boids: BoidsById,
-  speciesTypes: Record<string, SpeciesConfig>
+  speciesTypes: Record<string, SpeciesConfig>,
 ): number {
   return countByRole(boids, "prey", speciesTypes);
 }
@@ -120,14 +120,14 @@ export function countPrey(
  */
 export function countPredators(
   boids: BoidsById,
-  speciesTypes: Record<string, SpeciesConfig>
+  speciesTypes: Record<string, SpeciesConfig>,
 ): number {
   return countByRole(boids, "predator", speciesTypes);
 }
 
 export function countBoidsByRole(
   boids: BoidsById,
-  speciesTypes: Record<string, SpeciesConfig>
+  speciesTypes: Record<string, SpeciesConfig>,
 ): Record<string, number> {
   const counts = {
     prey: 0,
@@ -146,7 +146,7 @@ export function countBoidsByRole(
 
 export function getBoidsByRole(
   boids: BoidsById,
-  speciesTypes: Record<string, SpeciesConfig>
+  speciesTypes: Record<string, SpeciesConfig>,
 ): Record<Role, Boid[]> {
   const byRole = {
     prey: [],

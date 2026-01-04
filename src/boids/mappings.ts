@@ -14,7 +14,7 @@ export function boidsBySpecies(boids: Boid[]) {
       acc[boid.typeId].push(boid);
       return acc;
     },
-    {} as Record<Boid["typeId"], Boid[]>
+    {} as Record<Boid["typeId"], Boid[]>,
   );
 }
 
@@ -32,7 +32,7 @@ export function boidsToStance(boids: Boid[]) {
 
 export function getNearbyBoidsByRole(
   boid: Boid,
-  nearbyBoids: ItemWithDistance<Boid>[]
+  nearbyBoids: ItemWithDistance<Boid>[],
 ) {
   const result = {
     nearbyPrey: [] as ItemWithDistance<Boid>[],

@@ -21,7 +21,7 @@ startSystem(engineWorkerSystem).then(({ system, errors }) => {
     system.workerTransport.notifyError(
       `System started with ${errors.size} error(s)`,
       "sharedEngineTasksSetup",
-      "sharedEngineTasksSetup"
+      "sharedEngineTasksSetup",
     );
     return;
   }

@@ -95,7 +95,7 @@ export type FixedTimestepExecutor = {
 
 function createFixedExecutor(
   name: string,
-  config: FixedTimestepConfig
+  config: FixedTimestepConfig,
 ): FixedTimestepExecutor {
   const stateAtom = createAtom<FixedTimestepState>({
     config,
@@ -131,7 +131,7 @@ function createFixedExecutor(
       // Clamp accumulator to prevent death spiral
       if (acc > state.config.maxAccumulatedTime) {
         droppedFrames = Math.floor(
-          (acc - state.config.maxAccumulatedTime) / timestep
+          (acc - state.config.maxAccumulatedTime) / timestep,
         );
         acc = state.config.maxAccumulatedTime;
       }
@@ -154,7 +154,7 @@ function createFixedExecutor(
 
       if (droppedFrames > 0) {
         console.warn(
-          `[frameRater:${name}] Dropped ${droppedFrames} frame(s) to prevent spiral`
+          `[frameRater:${name}] Dropped ${droppedFrames} frame(s) to prevent spiral`,
         );
       }
 
@@ -246,7 +246,7 @@ export type VariableTimestepExecutor = {
 
 function createVariableExecutor(
   name: string,
-  config: VariableTimestepConfig
+  config: VariableTimestepConfig,
 ): VariableTimestepExecutor {
   const stateAtom = createAtom<VariableTimestepState>({
     config,
@@ -262,7 +262,7 @@ function createVariableExecutor(
 
   console.log(
     `[frameRater:${name}] Variable timestep executor: target ${config.targetFPS} FPS, ` +
-      `smoothing window: ${config.smoothingWindow} frames, max delta: ${config.maxDeltaMs}ms`
+      `smoothing window: ${config.smoothingWindow} frames, max delta: ${config.maxDeltaMs}ms`,
   );
 
   return {
@@ -367,7 +367,7 @@ export type ThrottledExecutor = {
 
 function createThrottledExecutor(
   name: string,
-  config: ThrottledConfig
+  config: ThrottledConfig,
 ): ThrottledExecutor {
   const stateAtom = createAtom<ThrottledState>({
     config,
@@ -383,7 +383,7 @@ function createThrottledExecutor(
 
   console.log(
     `[frameRater:${name}] Throttled executor: ${config.intervalMs}ms interval ` +
-      `(${(ONE_SECOND_MS / config.intervalMs).toFixed(2)} Hz)`
+      `(${(ONE_SECOND_MS / config.intervalMs).toFixed(2)} Hz)`,
   );
 
   return {
@@ -461,7 +461,7 @@ export type FrameRaterAPI = {
   /** Create a variable timestep executor (for rendering) */
   variable: (
     name: string,
-    config: VariableTimestepConfig
+    config: VariableTimestepConfig,
   ) => VariableTimestepExecutor;
 
   /** Create a throttled executor (for periodic tasks) */
@@ -497,7 +497,7 @@ export const frameRater = defineResource({
       fixed: (name: string, config: FixedTimestepConfig) => {
         if (executors.has(name)) {
           console.warn(
-            `[frameRater] Executor "${name}" already exists, returning existing`
+            `[frameRater] Executor "${name}" already exists, returning existing`,
           );
           return executors.get(name)!.instance as FixedTimestepExecutor;
         }
@@ -510,7 +510,7 @@ export const frameRater = defineResource({
       variable: (name: string, config: VariableTimestepConfig) => {
         if (executors.has(name)) {
           console.warn(
-            `[frameRater] Executor "${name}" already exists, returning existing`
+            `[frameRater] Executor "${name}" already exists, returning existing`,
           );
           return executors.get(name)!.instance as VariableTimestepExecutor;
         }
@@ -523,7 +523,7 @@ export const frameRater = defineResource({
       throttled: (name: string, config: ThrottledConfig) => {
         if (executors.has(name)) {
           console.warn(
-            `[frameRater] Executor "${name}" already exists, returning existing`
+            `[frameRater] Executor "${name}" already exists, returning existing`,
           );
           return executors.get(name)!.instance as ThrottledExecutor;
         }

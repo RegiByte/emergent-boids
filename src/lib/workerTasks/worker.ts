@@ -134,7 +134,7 @@ const workerExecutors: EffectExecutorMap<
 
   [effectKeywords.worker.executeTask]: async (
     { taskId, taskName, input },
-    ctx
+    ctx,
   ) => {
     const task = ctx.tasks[taskName];
     if (!task) {

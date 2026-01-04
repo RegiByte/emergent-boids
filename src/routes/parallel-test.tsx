@@ -100,7 +100,7 @@ function ParallelTest() {
           physics.position.y * (canvas.height / 2500),
           5,
           0,
-          Math.PI * 2
+          Math.PI * 2,
         );
         ctx.fill();
       }

@@ -1,24 +1,25 @@
+import { getMaxCrowdTolerance } from "@/boids/affinity";
 import { ForceCollector } from "@/boids/collectors";
-import { BoidUpdateContext, FrameUpdateContext } from "@/boids/context";
-import { SpatialHash } from "@/boids/spatialHash";
 import {
-  FoodSource,
-  Boid,
-  Obstacle,
-  DeathMarker,
-  BoidsById,
-} from "@/boids/vocabulary/schemas/entities";
-import { Profiler } from "@/resources/shared/profiler";
-import { RuntimeStoreResource } from "../runtimeStore";
+  BoidUpdateContext,
+  ConfigContext,
+  EngineUpdateContext,
+  SimulationContext,
+} from "@/boids/context";
 import { getBoidsByRole } from "@/boids/filters";
 import { FOOD_CONSTANTS } from "@/boids/food";
 import { getNearbyBoidsByRole } from "@/boids/mappings";
-import { Vector2 } from "@/boids/vocabulary/schemas/primitives";
-import { SharedMemoryManager } from "@/resources/shared/sharedMemoryManager";
-import { LocalBoidStore } from "../localBoidStore";
-import { TimeResource } from "@/resources/shared/time";
+import { SpatialHash } from "@/boids/spatialHash";
 import { profilerKeywords } from "@/boids/vocabulary/keywords";
-import { getMaxCrowdTolerance } from "@/boids/affinity";
+import {
+  Boid,
+  DeathMarker,
+  FoodSource,
+  Obstacle,
+} from "@/boids/vocabulary/schemas/entities";
+import { Vector2 } from "@/boids/vocabulary/schemas/primitives";
+import { Profiler } from "@/resources/shared/profiler";
+import { LocalBoidStore } from "../localBoidStore";
 
 export type FrameUpdateOpsLayout = {
   boidsToUpdate: number;
@@ -118,7 +119,7 @@ const rangeToOperationMap = {
 
 export const getActiveOperation = (
   opsRanges: FrameUpdateOpsLayout["opsRanges"],
-  index: number
+  index: number,
 ): [string, [number, number]] | null => {
   for (const key in opsRanges) {
     const range = opsRanges[key as keyof FrameUpdateOpsLayout["opsRanges"]];
@@ -138,33 +139,13 @@ export const getActiveOperation = (
   return null;
 };
 
-export type OperationContext = {
-  frameCounter: number;
-  boidUpdateContext: BoidUpdateContext;
-  obstacleSpatialHash: SpatialHash<Obstacle>;
-  deathMarkerSpatialHash: SpatialHash<DeathMarker>;
-  foodSourceSpatialHash: SpatialHash<FoodSource>;
-  boidSpatialHash: SpatialHash<Boid>;
-  boidsById: BoidsById;
-  forcesCollector: ForceCollector;
-  profiler: Profiler;
-  deathMarkers: DeathMarker[];
-  obstacles: Obstacle[];
-  foodSources: FoodSource[];
-  boidIds: string[];
-  staggerFrames: {
-    tail: number;
-    behavior: number;
-  };
-};
-
 type EnvironmentHandlers = {
   updateTrail: (boid: Boid, position: Vector2) => void;
   evaluateBoidBehavior: (boid: Boid, context: BoidUpdateContext) => void;
   updateBoid: (boid: Boid, context: BoidUpdateContext) => void;
 };
 
-type OperationFn = (index: number, context: OperationContext) => void;
+type OperationFn = (index: number, context: EngineUpdateContext) => void;
 type OperationsMap<Fn = OperationFn> = {
   updateDeathMarkers: Fn;
   updateObstacles: Fn;
@@ -174,17 +155,17 @@ type OperationsMap<Fn = OperationFn> = {
 };
 type OperationFnWithHandlers = (
   index: number,
-  context: OperationContext,
-  handlers: EnvironmentHandlers
+  context: EngineUpdateContext,
+  handlers: EnvironmentHandlers,
 ) => void;
 type OperationsMapWithHandlers<Fn = OperationFnWithHandlers> =
   OperationsMap<Fn>;
 
 export const updateEngine = (
   opsLayout: FrameUpdateOpsLayout,
-  operationContext: OperationContext,
+  operationContext: EngineUpdateContext,
   operations: OperationsMapWithHandlers,
-  handlers: EnvironmentHandlers
+  handlers: EnvironmentHandlers,
 ) => {
   for (let i = 0; i < opsLayout.totalOps; i++) {
     const op = getActiveOperation(opsLayout.opsRanges, i);
@@ -207,65 +188,75 @@ export const updateEngine = (
 
 export const updateDeathMarkers = (
   index: number,
-  context: OperationContext
+  context: EngineUpdateContext,
 ) => {
-  context.deathMarkerSpatialHash.insertItem(context.deathMarkers[index]);
+  context.deathMarkerSpatialHash.insertItem(
+    context.simulation.deathMarkers[index],
+  );
 };
 
-export const updateObstacles = (index: number, context: OperationContext) => {
-  context.obstacleSpatialHash.insertItem(context.obstacles[index]);
+export const updateObstacles = (
+  index: number,
+  context: EngineUpdateContext,
+) => {
+  context.obstacleSpatialHash.insertItem(context.simulation.obstacles[index]);
 };
 
-export const updateFoodSources = (index: number, context: OperationContext) => {
-  context.foodSourceSpatialHash.insertItem(context.foodSources[index]);
+export const updateFoodSources = (
+  index: number,
+  context: EngineUpdateContext,
+) => {
+  context.foodSourceSpatialHash.insertItem(
+    context.simulation.foodSources[index],
+  );
 };
 
 export const updateBoidSpatialHash = (
   index: number,
-  context: OperationContext
+  context: EngineUpdateContext,
 ) => {
   context.boidSpatialHash.insertItem(context.boidsById[context.boidIds[index]]);
 };
 
 export const updateBoids = (
   index: number,
-  context: OperationContext,
-  handlers: EnvironmentHandlers
+  context: EngineUpdateContext,
+  handlers: EnvironmentHandlers,
 ) => {
   const boidKey = context.boidIds[index];
   const boid = context.boidsById[boidKey];
   if (boid) {
-    const boidCtx = context.boidUpdateContext;
+    const maxNeighborsLookup = context.constraints.maxNeighborsLookup;
     const nearbyBoids = context.boidSpatialHash.getNearbyItems(
       boid.position,
-      boidCtx.config.world,
-      boidCtx.maxNeighborsLookup,
-      boidCtx.config.parameters.perceptionRadius
+      context.config.world,
+      maxNeighborsLookup,
+      context.config.parameters.perceptionRadius,
     );
     const nearbyFoodSources = context.foodSourceSpatialHash.getNearbyItems(
       boid.position,
-      boidCtx.config.world,
-      boidCtx.maxNeighborsLookup,
-      FOOD_CONSTANTS.FOOD_EATING_RADIUS * 2
+      context.config.world,
+      maxNeighborsLookup,
+      FOOD_CONSTANTS.FOOD_EATING_RADIUS * 2,
     );
     const nearbyObstacles = context.obstacleSpatialHash.getNearbyItems(
       boid.position,
-      boidCtx.config.world,
-      boidCtx.maxNeighborsLookup
+      context.config.world,
+      maxNeighborsLookup,
     );
     const nearbyDeathMarkers = context.deathMarkerSpatialHash.getNearbyItems(
       boid.position,
-      boidCtx.config.world,
-      boidCtx.maxNeighborsLookup,
-      boidCtx.config.parameters.perceptionRadius
+      context.config.world,
+      maxNeighborsLookup,
+      context.config.parameters.perceptionRadius,
     );
     const { nearbyPrey, nearbyPredators } = getNearbyBoidsByRole(
       boid,
-      nearbyBoids
+      nearbyBoids,
     );
     // Buildup local context for boid update
     const localContext = {
-      ...boidCtx,
+      ...context,
       nearbyBoids,
       nearbyFoodSources,
       nearbyObstacles,
@@ -279,7 +270,7 @@ export const updateBoids = (
     // Update trail
     const shouldUpdateTrail =
       boid.index % context.staggerFrames.tail ===
-      context.frameCounter % context.staggerFrames.tail;
+      context.currentFrame % context.staggerFrames.tail;
     if (shouldUpdateTrail) {
       handlers.updateTrail(boid, { x: boid.position.x, y: boid.position.y });
     }
@@ -287,7 +278,7 @@ export const updateBoids = (
     // Update behavior
     const shouldUpdateBehavior =
       boid.index % context.staggerFrames.behavior ===
-      index % context.staggerFrames.behavior;
+      context.currentFrame % context.staggerFrames.behavior;
     if (shouldUpdateBehavior) {
       handlers.evaluateBoidBehavior(boid, localContext);
     }
@@ -299,41 +290,42 @@ export const updateBoids = (
  * Will be removed in the future
  */
 export const createBaseFrameUpdateContext = ({
-  runtimeStore,
-  time,
+  frame,
+  config,
+  profiler,
+  simulation,
+  boidsCount,
   boidsStore,
   deltaSeconds,
-  profiler,
-  boidsCount,
   forcesCollector,
+  boidSpatialHash,
+  obstacleSpatialHash,
+  foodSourceSpatialHash,
+  deathMarkerSpatialHash,
 }: {
-  runtimeStore: RuntimeStoreResource;
-  time: TimeResource;
-  boidsStore: LocalBoidStore;
-  sharedMemoryManager: SharedMemoryManager;
-  deltaSeconds: number;
+  frame: number;
+  config: ConfigContext;
   profiler: Profiler | undefined;
-  boidSpatialHash: SpatialHash<Boid>;
-  foodSpatialHash: SpatialHash<FoodSource>;
-  obstacleSpatialHash: SpatialHash<Obstacle>;
-  deathMarkerSpatialHash: SpatialHash<DeathMarker>;
-  forcesCollector: ForceCollector;
+  simulation: SimulationContext;
   boidsCount: number;
-}): {
-  baseUpdateContext: FrameUpdateContext;
-  baseBoidUpdateContext: BoidUpdateContext;
-} => {
+  boidsStore: LocalBoidStore;
+  deltaSeconds: number;
+  forcesCollector: ForceCollector;
+  boidSpatialHash: SpatialHash<Boid>;
+  obstacleSpatialHash: SpatialHash<Obstacle>;
+  foodSourceSpatialHash: SpatialHash<FoodSource>;
+  deathMarkerSpatialHash: SpatialHash<DeathMarker>;
+}): EngineUpdateContext => {
   profiler?.start(profilerKeywords.engine.createFrameUpdateContext);
-  const { config, simulation } = runtimeStore.store.getState();
+  // const { config, simulation } = runtimeStore.store.getState();
   const maxBoidCrowdTolerance = getMaxCrowdTolerance(config.species);
-  // Max neighbors lookup is 25% more than the max crowd tolerance to prevent concentration bottleneck
+  // Max neighbors lookup is 30% more than the max crowd tolerance to prevent concentration bottleneck
   // but still allow for some extra crowd tolerance
   // we need to ensure the maxNeighbors is at least the maxBoidCrowdTolerance
   // this is because, if it's lower, we will never reach the aversion threshold
   // since we will always consider less neighbors than the maxBoidCrowdTolerance
-  const maxNeighborsLookup = Math.ceil(maxBoidCrowdTolerance * 1.25);
+  const maxNeighborsLookup = Math.ceil(maxBoidCrowdTolerance * 1.3);
   const boids = boidsStore.boids;
-  const frame = time.getFrame();
 
   // Build update context from state slices
   profiler?.start(profilerKeywords.engine.buildFrameUpdateContext);
@@ -342,8 +334,6 @@ export const createBaseFrameUpdateContext = ({
       obstacles: simulation.obstacles,
       deathMarkers: simulation.deathMarkers,
       foodSources: simulation.foodSources,
-      tick: 0, // Engine doesn't track lifecycle ticks (only lifecycleManager does)
-      frame,
     },
     config: {
       parameters: config.parameters,
@@ -352,23 +342,26 @@ export const createBaseFrameUpdateContext = ({
     },
     deltaSeconds,
     profiler,
-    maxNeighborsLookup,
-    boids,
+    boidsById: boids,
+    boidIds: Object.keys(boids),
     scaledTime: deltaSeconds * 30,
     boidsByRole: getBoidsByRole(boids, config.species),
     currentFrame: frame,
     boidsCount,
     forcesCollector,
-  } satisfies FrameUpdateContext;
+    boidSpatialHash,
+    foodSourceSpatialHash,
+    obstacleSpatialHash,
+    deathMarkerSpatialHash,
+    staggerFrames: {
+      tail: 3,
+      behavior: 20,
+    },
+    constraints: {
+      maxNeighborsLookup,
+    },
+  } satisfies EngineUpdateContext;
   profiler?.end(profilerKeywords.engine.buildFrameUpdateContext);
-  const baseBoidUpdateContext = {
-    ...baseUpdateContext,
-    nearbyBoids: [],
-    nearbyPrey: [],
-    nearbyPredators: [],
-    nearbyFoodSources: [],
-    nearbyObstacles: [],
-    nearbyDeathMarkers: [],
-  } satisfies BoidUpdateContext;
-  return { baseUpdateContext, baseBoidUpdateContext };
+
+  return baseUpdateContext;
 };

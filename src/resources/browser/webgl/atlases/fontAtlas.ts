@@ -7,10 +7,10 @@
 
 import type REGL from "regl";
 import type { AtlasResult } from "./types.ts";
-import type { PrettifyType } from "@/utils/types.ts";
+import type { ExpandType } from "@/utils/types.ts";
 import { createPreviewURL } from "./utils.ts";
 
-export type FontAtlasResult = PrettifyType<
+export type FontAtlasResult = ExpandType<
   AtlasResult<{
     u: number;
     v: number;

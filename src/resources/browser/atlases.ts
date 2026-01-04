@@ -88,4 +88,3 @@ export const atlases = defineResource({
     console.log("🎨 [Atlases Resource] Shutting down (atlases released)");
   },
 });
-

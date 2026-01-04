@@ -114,7 +114,7 @@ const executors = {
 
   [effectKeywords.worker.performHeavyComputation]: (
     effect,
-    ctx: ExecutorContext
+    ctx: ExecutorContext,
   ) => {
     const { iterations } = effect;
     const startTime = performance.now();

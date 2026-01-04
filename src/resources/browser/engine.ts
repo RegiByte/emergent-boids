@@ -1,5 +1,6 @@
-import { iterateBoids, iterateBoidsWithIndex } from "@/boids/iterators.ts";
+import { createForceCollector } from "@/boids/collectors.ts";
 import type { CatchEvent } from "@/boids/vocabulary/schemas/events.ts";
+import { Vector2 } from "@/boids/vocabulary/schemas/primitives.ts";
 import { SpeciesConfig } from "@/boids/vocabulary/schemas/species.ts";
 import type {
   WorldConfig,
@@ -10,12 +11,9 @@ import {
   bufferViewIndexes,
   setActiveBufferIndex,
   SharedBoidViews,
-  swapBuffers,
 } from "@/lib/sharedMemory.ts";
 import { sharedMemoryKeywords } from "@/lib/workerTasks/vocabulary.ts";
-import { queue } from "@tanstack/pacer";
 import { defineResource } from "braided";
-import { getMaxCrowdTolerance } from "../../boids/affinity.ts";
 import {
   applyBehaviorDecision,
   buildBehaviorContext,
@@ -23,21 +21,19 @@ import {
 } from "../../boids/behavior/evaluator.ts";
 import {
   createBehaviorRuleset,
-  MINIMUM_STANCE_DURATION,
+  MINIMUM_STANCE_DURATION_FRAMES,
 } from "../../boids/behavior/rules";
 import { createBoid, updateBoid } from "../../boids/boid.ts";
-import type {
-  BoidUpdateContext,
-  ConfigContext,
-  FrameUpdateContext,
-  SimulationContext,
-} from "../../boids/context.ts";
+import type { BoidUpdateContext } from "../../boids/context.ts";
 import { defaultWorldPhysics } from "../../boids/defaultPhysics.ts";
-import { getBoidsByRole, getPredators, getPrey } from "../../boids/filters.ts";
+import { getPredators, getPrey } from "../../boids/filters.ts";
 import { FOOD_CONSTANTS } from "../../boids/food.ts";
 import { isDead } from "../../boids/lifecycle/health.ts";
 import { isReadyToMate, isWithinRadius } from "../../boids/predicates.ts";
-import { createSpatialHash, SpatialHash } from "../../boids/spatialHash.ts";
+import {
+  createSpatialHash,
+  ItemWithDistance,
+} from "../../boids/spatialHash.ts";
 import * as vec from "../../boids/vector.ts";
 import {
   eventKeywords,
@@ -46,7 +42,6 @@ import {
 } from "../../boids/vocabulary/keywords.ts";
 import {
   Boid,
-  BoidsById,
   DeathMarker,
   FoodSource,
   Obstacle,
@@ -56,21 +51,8 @@ import { RandomnessResource } from "../shared/randomness.ts";
 import { SharedMemoryManager } from "../shared/sharedMemoryManager.ts";
 import type { TimeResource } from "../shared/time.ts";
 import {
-  initializeBoidsStats,
-  LocalBoidStore,
-  LocalBoidStoreResource,
-  syncBoidsToSharedMemory,
-} from "./localBoidStore.ts";
-import type { RuntimeStoreResource } from "./runtimeStore.ts";
-import { getNearbyBoidsByRole } from "@/boids/mappings.ts";
-import { createForceCollector, ForceCollector } from "@/boids/collectors.ts";
-import { FrameRaterAPI } from "../shared/frameRater.ts";
-import {
   computeOpsLayout,
   createBaseFrameUpdateContext,
-  FrameUpdateOpsLayout,
-  getActiveOperation,
-  OperationContext,
   updateBoids,
   updateBoidSpatialHash,
   updateDeathMarkers,
@@ -78,7 +60,13 @@ import {
   updateFoodSources,
   updateObstacles,
 } from "./engine/update.ts";
-import { Role, Vector2 } from "@/boids/vocabulary/schemas/primitives.ts";
+import {
+  initializeBoidsStats,
+  LocalBoidStore,
+  LocalBoidStoreResource,
+  syncBoidsToSharedMemory,
+} from "./localBoidStore.ts";
+import type { RuntimeStoreResource } from "./runtimeStore.ts";
 
 export type BoidEngine = {
   // boids: Boid[];
@@ -126,104 +114,15 @@ const createBoids = ({
   };
   for (let i = 0; i < preyCount; i++) {
     boidsStore.addBoid(
-      createBoid(preyTypeIds, creationContext, 0, boidsStore.nextIndex())
+      createBoid(preyTypeIds, creationContext, 0, boidsStore.nextIndex()),
     );
   }
   for (let i = 0; i < predatorCount; i++) {
     boidsStore.addBoid(
-      createBoid(predatorTypeIds, creationContext, 0, boidsStore.nextIndex())
+      createBoid(predatorTypeIds, creationContext, 0, boidsStore.nextIndex()),
     );
   }
 };
-
-const createFrameUpdateContext = ({
-  runtimeStore,
-  time,
-  boidsStore,
-  sharedMemoryManager,
-  deltaSeconds,
-  profiler,
-  boidSpatialHash,
-  foodSpatialHash,
-  obstacleSpatialHash,
-  deathMarkerSpatialHash,
-  boidsCount,
-  forcesCollector,
-}: {
-  runtimeStore: RuntimeStoreResource;
-  time: TimeResource;
-  boidsStore: LocalBoidStore;
-  sharedMemoryManager: SharedMemoryManager;
-  deltaSeconds: number;
-  profiler: Profiler | undefined;
-  boidSpatialHash: SpatialHash<Boid>;
-  foodSpatialHash: SpatialHash<FoodSource>;
-  obstacleSpatialHash: SpatialHash<Obstacle>;
-  deathMarkerSpatialHash: SpatialHash<DeathMarker>;
-  boidsCount: number;
-  forcesCollector: ForceCollector;
-}) => {
-  profiler?.start(profilerKeywords.engine.createFrameUpdateContext);
-  const { config, simulation } = runtimeStore.store.getState();
-  const maxBoidCrowdTolerance = getMaxCrowdTolerance(config.species);
-  // Max neighbors lookup is 25% more than the max crowd tolerance to prevent concentration bottleneck
-  // but still allow for some extra crowd tolerance
-  // we need to ensure the maxNeighbors is at least the maxBoidCrowdTolerance
-  // this is because, if it's lower, we will never reach the aversion threshold
-  // since we will always consider less neighbors than the maxBoidCrowdTolerance
-  const maxNeighborsLookup = Math.ceil(maxBoidCrowdTolerance * 1.25);
-  const boids = boidsStore.boids;
-  const frame = time.getFrame();
-
-  // Build update context from state slices
-  profiler?.start(profilerKeywords.engine.buildFrameUpdateContext);
-  const context = {
-    simulation: {
-      obstacles: simulation.obstacles,
-      deathMarkers: simulation.deathMarkers,
-      foodSources: simulation.foodSources,
-      tick: 0, // Engine doesn't track lifecycle ticks (only lifecycleManager does)
-      frame,
-    },
-    config: {
-      parameters: config.parameters,
-      world: config.world,
-      species: config.species,
-    },
-    deltaSeconds,
-    profiler,
-    maxNeighborsLookup,
-    boids,
-    scaledTime: deltaSeconds * 30,
-    boidsByRole: getBoidsByRole(boids, config.species),
-    currentFrame: frame,
-    boidsCount,
-    forcesCollector,
-  } satisfies FrameUpdateContext;
-  profiler?.end(profilerKeywords.engine.buildFrameUpdateContext);
-
-  // Insert items into spatial hashes for efficient neighbor lookups
-  profiler?.start(profilerKeywords.engine.insertBoidSpatialHash);
-  boidSpatialHash.insertItems(boids);
-  profiler?.end(profilerKeywords.engine.insertBoidSpatialHash);
-
-  profiler?.start(profilerKeywords.engine.insertFoodSpatialHash);
-  foodSpatialHash.insertItems(simulation.foodSources);
-  profiler?.end(profilerKeywords.engine.insertFoodSpatialHash);
-
-  profiler?.start(profilerKeywords.engine.insertObstacleSpatialHash);
-  obstacleSpatialHash.insertItems(simulation.obstacles);
-  profiler?.end(profilerKeywords.engine.insertObstacleSpatialHash);
-
-  profiler?.start(profilerKeywords.engine.insertDeathMarkerSpatialHash);
-  deathMarkerSpatialHash.insertItems(simulation.deathMarkers);
-  profiler?.end(profilerKeywords.engine.insertDeathMarkerSpatialHash);
-
-  profiler?.end(profilerKeywords.engine.createFrameUpdateContext);
-  return context;
-};
-
-type CreateFrameUpdateContext = Parameters<typeof createFrameUpdateContext>[0];
 
 export const engine = defineResource({
   dependencies: [
@@ -233,7 +132,6 @@ export const engine = defineResource({
     "time",
     "localBoidStore",
     "sharedMemoryManager",
-    "frameRater",
   ],
   start: ({
     runtimeStore,
@@ -242,7 +140,6 @@ export const engine = defineResource({
     time,
     localBoidStore,
     sharedMemoryManager,
-    frameRater,
   }: {
     runtimeStore: RuntimeStoreResource;
     profiler: Profiler;
@@ -250,23 +147,18 @@ export const engine = defineResource({
     time: TimeResource;
     localBoidStore: LocalBoidStoreResource;
     sharedMemoryManager: SharedMemoryManager;
-    frameRater: FrameRaterAPI;
   }) => {
     const { config: initialConfig } = runtimeStore.store.getState();
     const { world: initialWorld, species: initialSpecies } = initialConfig;
-
-    const spatialHashExecutor = frameRater.throttled("spatialHash", {
-      intervalMs: 1000 / 20, // 20Hz
-    });
 
     const boidsStore = localBoidStore.store;
 
     // Get available type IDs (prey for initial spawn, predators from profile)
     let preyTypeIds = Object.keys(initialSpecies).filter(
-      (id) => initialSpecies[id].role === "prey"
+      (id) => initialSpecies[id].role === "prey",
     );
     let predatorTypeIds = Object.keys(initialSpecies).filter(
-      (id) => initialSpecies[id].role === "predator"
+      (id) => initialSpecies[id].role === "predator",
     );
 
     // Get physics from config (or use defaults)
@@ -288,7 +180,7 @@ export const engine = defineResource({
     // Create SharedArrayBuffer
     const boidsPhysicsMemory = sharedMemoryManager.initialize(
       sharedMemoryKeywords.boidsPhysics,
-      initialConfig.parameters.maxBoids
+      initialConfig.parameters.maxBoids,
     );
     syncBoidsToSharedMemory(boidsPhysicsMemory.views, boidsStore.boids);
     initializeBoidsStats(boidsPhysicsMemory.views, {
@@ -302,225 +194,32 @@ export const engine = defineResource({
     const boidSpatialHash = createSpatialHash<Boid>(
       initialWorld.width,
       initialWorld.height,
-      initialConfig.parameters.perceptionRadius
+      initialConfig.parameters.perceptionRadius,
     );
 
     const foodSourceSpatialHash = createSpatialHash<FoodSource>(
       initialWorld.width,
       initialWorld.height,
-      FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5
+      FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5,
     );
     const obstacleSpatialHash = createSpatialHash<Obstacle>(
       initialWorld.width,
       initialWorld.height,
-      initialConfig.parameters.perceptionRadius
+      initialConfig.parameters.perceptionRadius,
     );
     const deathMarkerSpatialHash = createSpatialHash<DeathMarker>(
       initialWorld.width,
       initialWorld.height,
-      initialConfig.parameters.perceptionRadius
+      initialConfig.parameters.perceptionRadius,
     );
 
     // Create behavior ruleset for stance evaluation (Session 76)
     const behaviorRuleset = createBehaviorRuleset();
     const forcesCollector = createForceCollector();
-    const BEHAVIOR_STAGGER_FRAMES = 30;
-    const TAIL_STAGGER_FRAMES = 2;
 
-    // Frame counter for trail sampling (update trails every other frame)
-    let frameCounter = 0;
-
-    const update = (deltaSeconds: number) => {
-      profiler.start(profilerKeywords.engine.update);
-
-      // Increment frame counter for trail sampling
-      frameCounter++;
-
-      const ctx = {
-        runtimeStore,
-        time,
-        boidsStore,
-        sharedMemoryManager,
-        deltaSeconds,
-        profiler,
-        boidSpatialHash,
-        foodSpatialHash: foodSourceSpatialHash,
-        obstacleSpatialHash,
-        deathMarkerSpatialHash,
-        boidsCount: boidsStore.count(),
-        forcesCollector,
-      } satisfies CreateFrameUpdateContext;
-      const updateContext = createFrameUpdateContext(ctx);
-      // const simulation = updateContext.simulation;
-      // const opsLayout = computeOpsLayout({
-      //   deathMarkersCount: simulation.deathMarkers.length,
-      //   obstaclesCount: simulation.obstacles.length,
-      //   foodSourcesCount: simulation.foodSources.length,
-      //   boidsCount: updateContext.boidsCount,
-      // });
-      // if (frameCounter % 10 === 0 && opsLayout.totalOps > 0) {
-      //   const lines = [];
-      //   lines.push("Running ops:");
-      //   lines.push("--------------------------------");
-      //   lines.push(
-      //     `Food sources: ${opsLayout.foodSourcesToUpdate} [${opsLayout.opsRanges.foodSources[0]}, ${opsLayout.opsRanges.foodSources[1]}]`
-      //   );
-      //   lines.push(
-      //     `Obstacles: ${opsLayout.obstaclesToUpdate} [${opsLayout.opsRanges.obstacles[0]}, ${opsLayout.opsRanges.obstacles[1]}]`
-      //   );
-      //   lines.push(
-      //     `Death markers: ${opsLayout.deathMarkersToUpdate} [${opsLayout.opsRanges.deathMarkers[0]}, ${opsLayout.opsRanges.deathMarkers[1]}]`
-      //   );
-      //   lines.push(
-      //     `Boids: ${opsLayout.boidsToUpdate} [${opsLayout.opsRanges.boids[0]}, ${opsLayout.opsRanges.boids[1]}]`
-      //   );
-      //   lines.push("--------------------------------");
-      //   console.log(lines.join("\n"));
-      //   for (let i = 0; i < opsLayout.totalOps; i++) {
-      //     const op = getActiveOperation(opsLayout.opsRanges, i);
-      //     if (op) {
-      //       const [key, range] = op;
-      //       // compute index for inner
-      //       const index = i - range[0];
-      //       if (index >= 0 && index < range[1] - range[0]) {
-      //         console.log(`${key}: ${index}`);
-      //       }
-      //     }
-      //   }
-      // }
-
-      // Update each boid with only nearby boids (O(n) instead of O(n²))
-      profiler.start(profilerKeywords.engine.updateBoids);
-      for (const boid of iterateBoids(boidsStore.boids)) {
-        profiler.start(profilerKeywords.boids.getNeighbors);
-        const nearbyBoids = boidSpatialHash.getNearbyItems(
-          boid.position,
-          updateContext.config.world,
-          updateContext.maxNeighborsLookup,
-          updateContext.config.parameters.perceptionRadius // Only consider boids within perception radius
-        );
-        profiler.end(profilerKeywords.boids.getNeighbors);
-        const nearbyFoodSources = foodSourceSpatialHash.getNearbyItems(
-          boid.position,
-          updateContext.config.world,
-          updateContext.maxNeighborsLookup,
-          FOOD_CONSTANTS.FOOD_EATING_RADIUS * 2
-        );
-        const nearbyObstacles = obstacleSpatialHash.getNearbyItems(
-          boid.position,
-          updateContext.config.world,
-          updateContext.maxNeighborsLookup
-        );
-        const nearbyDeathMarkers = deathMarkerSpatialHash.getNearbyItems(
-          boid.position,
-          updateContext.config.world,
-          updateContext.maxNeighborsLookup,
-          initialConfig.parameters.perceptionRadius
-        );
-        const { nearbyPrey, nearbyPredators } = getNearbyBoidsByRole(
-          boid,
-          nearbyBoids
-        );
-
-        const boidUpdateContext = {
-          ...updateContext,
-          nearbyBoids,
-          nearbyPrey,
-          nearbyPredators,
-          nearbyFoodSources,
-          nearbyObstacles,
-          nearbyDeathMarkers,
-          forcesCollector,
-        } satisfies BoidUpdateContext;
-
-        profiler.start(profilerKeywords.engine.updateBoid);
-        updateBoid(boid, boidUpdateContext);
-        profiler.end(profilerKeywords.engine.updateBoid);
-
-        // Update position history for motion trails (every 3rd frame for performance)
-        profiler.start(profilerKeywords.engine.updateTrail);
-        const speciesConfig = updateContext.config.species[boid.typeId];
-        /**
-         * Performance optimization
-         * Distribute trail updates across 3 frames instead of 2
-         * Each boid updates on its designated frame (i % 3 === frameCounter % 3)
-         * This reduces trail update cost by 33% with minimal visual impact
-         */
-        const shouldUpdateTrail =
-          boid.index % TAIL_STAGGER_FRAMES ===
-          frameCounter % TAIL_STAGGER_FRAMES;
-        if (speciesConfig && shouldUpdateTrail) {
-          // Add current position to history
-          boid.positionHistory.push({ x: boid.position.x, y: boid.position.y });
-
-          // Keep only the last N positions based on type config
-          if (
-            boid.positionHistory.length > speciesConfig.visualConfig.trailLength
-          ) {
-            boid.positionHistory.shift(); // Remove oldest position
-          }
-        }
-        profiler.end(profilerKeywords.engine.updateTrail);
-        // if (frameCounter % 10 === 0) {
-        //   profiler.start(profilerKeywords.boids.syncSharedMemory);
-        //   queueSyncToSharedMemory({
-        //     bufferViews: boidsPhysicsMemory.views,
-        //     boids: boidsStore.boids,
-        //   });
-        //   profiler.end(profilerKeywords.boids.syncSharedMemory);
-        // }
-      }
-      profiler.end(profilerKeywords.engine.updateBoids);
-
-      // Session 76: Behavior evaluation at frame rate (30-60 Hz) with staggering
-      profiler.start(profilerKeywords.behavior.evaluate);
-      const currentFrame = time.getFrame();
-      const boids = boidsStore.boids;
-      const predators = getPredators(boids, updateContext.config.species);
-      const prey = getPrey(boids, updateContext.config.species);
-
-      for (const [boid, index] of iterateBoidsWithIndex(boids)) {
-        // Staggered: each boid checks every 30 frames
-        if (
-          currentFrame % BEHAVIOR_STAGGER_FRAMES ===
-          index % BEHAVIOR_STAGGER_FRAMES
-        ) {
-          evaluateBoidBehavior(
-            boid,
-            index,
-            boids,
-            predators,
-            prey,
-            updateContext.config,
-            updateContext.simulation,
-            currentFrame
-          );
-        }
-      }
-      profiler.end(profilerKeywords.behavior.evaluate);
-
-      profiler.end(profilerKeywords.engine.update);
-    };
-
-    const { baseUpdateContext, baseBoidUpdateContext } =
-      createBaseFrameUpdateContext({
-        runtimeStore,
-        time,
-        boidsStore,
-        sharedMemoryManager,
-        deltaSeconds: 0,
-        profiler,
-        boidSpatialHash,
-        foodSpatialHash: foodSourceSpatialHash,
-        obstacleSpatialHash,
-        deathMarkerSpatialHash,
-        boidsCount: boidsStore.count(),
-        forcesCollector,
-      });
     const newUpdate = (deltaSeconds: number) => {
       profiler.start(profilerKeywords.engine.update);
       const { simulation, config } = runtimeStore.store.getState();
-      frameCounter++;
       time.incrementFrame();
       const opsLayout = computeOpsLayout({
         deathMarkersCount: simulation.deathMarkers.length,
@@ -529,63 +228,30 @@ export const engine = defineResource({
         boidsCount: boidsStore.count(),
       });
 
+      const updateContext = createBaseFrameUpdateContext({
+        frame: time.getFrame(),
+        config,
+        profiler,
+        simulation,
+        boidsCount: boidsStore.count(),
+        boidsStore,
+        deltaSeconds,
+        boidSpatialHash,
+        deathMarkerSpatialHash,
+        foodSourceSpatialHash,
+        forcesCollector,
+        obstacleSpatialHash,
+      });
+
       // Cleanup things
       boidSpatialHash.grid.clear();
       foodSourceSpatialHash.grid.clear();
       obstacleSpatialHash.grid.clear();
       deathMarkerSpatialHash.grid.clear();
 
-      const localFrameUpdateContext = {
-        ...baseUpdateContext,
-        simulation: {
-          obstacles: simulation.obstacles,
-          deathMarkers: simulation.deathMarkers,
-          foodSources: simulation.foodSources,
-          tick: 0,
-          frame: time.getFrame(),
-        },
-        config: {
-          parameters: config.parameters,
-          world: config.world,
-          species: config.species,
-        },
-        deltaSeconds,
-        boids: boidsStore.boids,
-        scaledTime: deltaSeconds * 30,
-        currentFrame: time.getFrame(),
-      } satisfies FrameUpdateContext;
-      const localBoidUpdateContext = {
-        ...localFrameUpdateContext,
-        nearbyBoids: baseBoidUpdateContext.nearbyBoids,
-        nearbyPrey: baseBoidUpdateContext.nearbyPrey,
-        nearbyPredators: baseBoidUpdateContext.nearbyPredators,
-        nearbyFoodSources: baseBoidUpdateContext.nearbyFoodSources,
-        nearbyObstacles: baseBoidUpdateContext.nearbyObstacles,
-        nearbyDeathMarkers: baseBoidUpdateContext.nearbyDeathMarkers,
-      } satisfies BoidUpdateContext;
-      const operationsContext = {
-        boidUpdateContext: localBoidUpdateContext,
-        obstacleSpatialHash,
-        deathMarkerSpatialHash,
-        foodSourceSpatialHash,
-        boidSpatialHash,
-        boidsById: boidsStore.boids,
-        forcesCollector,
-        profiler,
-        deathMarkers: simulation.deathMarkers,
-        obstacles: simulation.obstacles,
-        foodSources: simulation.foodSources,
-        boidIds: Object.keys(boidsStore.boids),
-        staggerFrames: {
-          tail: TAIL_STAGGER_FRAMES,
-          behavior: BEHAVIOR_STAGGER_FRAMES,
-        },
-        frameCounter: localFrameUpdateContext.currentFrame,
-      } satisfies OperationContext;
-
       updateEngine(
         opsLayout,
-        operationsContext,
+        updateContext,
         {
           updateBoids: updateBoids,
           updateDeathMarkers: updateDeathMarkers,
@@ -609,33 +275,20 @@ export const engine = defineResource({
             }
           },
           evaluateBoidBehavior: (boid: Boid, context: BoidUpdateContext) => {
-            const index = boid.index;
-            evaluateBoidBehavior(
-              boid,
-              index,
-              boidsStore.boids,
-              Object.values(context.nearbyPredators).map((p) => p.item),
-              Object.values(context.nearbyPrey).map((p) => p.item),
-              context.config,
-              context.simulation,
-              context.currentFrame
-            );
+            evaluateBoidBehavior(boid, context);
           },
-        }
+        },
       );
     };
 
     // Evaluate behavior for a single boid (Session 76: Frame-rate evaluation)
-    const evaluateBoidBehavior = (
-      boid: Boid,
-      boidIndex: number,
-      allBoids: BoidsById,
-      predators: Boid[],
-      prey: Boid[],
-      config: ConfigContext,
-      simulation: SimulationContext,
-      currentFrame: number
-    ) => {
+    const evaluateBoidBehavior = (boid: Boid, context: BoidUpdateContext) => {
+      const {
+        config,
+        currentFrame,
+        nearbyPrey: prey,
+        nearbyPredators: predators,
+      } = context;
       const speciesConfig = config.species[boid.typeId];
       if (!speciesConfig) return;
 
@@ -648,52 +301,50 @@ export const engine = defineResource({
           ? predators.filter((p) => {
               const fearRadius =
                 speciesConfig.limits.fearRadius ?? parameters.fearRadius;
-              return isWithinRadius(boid.position, p.position, fearRadius);
+              return isWithinRadius(boid.position, p.item.position, fearRadius);
             })
           : [];
 
       const nearbyPrey =
         role === roleKeywords.predator
           ? prey.filter((p) =>
-              isWithinRadius(boid.position, p.position, parameters.chaseRadius)
+              isWithinRadius(
+                boid.position,
+                p.item.position,
+                parameters.chaseRadius,
+              ),
             )
           : [];
 
-      const nearbyFood = simulation.foodSources.filter((f) => {
-        if (f.sourceType !== role || f.energy <= 0) return false;
-        const detectionRadius = FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5;
-        return isWithinRadius(boid.position, f.position, detectionRadius);
-      });
-
-      const nearbyFlock: Boid[] = [];
+      const nearbyFlock: ItemWithDistance<Boid>[] = [];
+      const allNearbyBoidsCount = nearbyPredators.length + nearbyPrey.length;
+      const preyStartOffset = nearbyPredators.length;
+      let offset = 0;
       // iterator, zero allocations
-      for (const b of iterateBoids(allBoids)) {
-        if (
-          b.typeId === boid.typeId &&
-          b.id !== boid.id &&
-          isWithinRadius(boid.position, b.position, parameters.perceptionRadius)
-        ) {
-          nearbyFlock.push(b);
+      while (offset < allNearbyBoidsCount) {
+        const nearbyBoid =
+          offset < preyStartOffset
+            ? nearbyPredators[offset]
+            : nearbyPrey[offset - preyStartOffset];
+        if (nearbyBoid) {
+          nearbyFlock.push(nearbyBoid);
         }
+        offset += nearbyBoid ? 1 : 0;
       }
 
       const populationRatio = boidsStore.count() / parameters.maxBoids;
       const readyToMate = isReadyToMate(boid, parameters, speciesConfig);
 
       // Build context
-      const behaviorContext = buildBehaviorContext(
-        boid,
-        boidIndex,
+      const behaviorContext = buildBehaviorContext(boid, speciesConfig, {
+        frame: time.getFrame(),
+        populationRatio,
+        readyToMate,
         nearbyPredators,
         nearbyPrey,
-        nearbyFood,
+        nearbyFood: context.nearbyFoodSources,
         nearbyFlock,
-        simulation.tick,
-        role,
-        speciesConfig.reproduction.type,
-        readyToMate,
-        populationRatio
-      );
+      });
 
       // Evaluate and apply
       const decision = evaluateBehavior(behaviorContext, behaviorRuleset, role);
@@ -702,9 +353,9 @@ export const engine = defineResource({
         applyBehaviorDecision(
           boid,
           decision,
-          simulation.tick,
           currentFrame, // Use frame for stance tracking!
-          MINIMUM_STANCE_DURATION
+          MINIMUM_STANCE_DURATION_FRAMES,
+          profiler,
         );
       }
     };
@@ -735,7 +386,7 @@ export const engine = defineResource({
             predator.position,
             preyBoid.position,
             cfg.world.width,
-            cfg.world.height
+            cfg.world.height,
           );
 
           if (dist < parameters.catchRadius) {
@@ -804,10 +455,10 @@ export const engine = defineResource({
       // Recalculate type IDs from current species config
       // (Species change when profile switches, so we need fresh IDs)
       const currentPreyTypeIds = Object.keys(species).filter(
-        (id) => species[id].role === "prey"
+        (id) => species[id].role === "prey",
       );
       const currentPredatorTypeIds = Object.keys(species).filter(
-        (id) => species[id].role === "predator"
+        (id) => species[id].role === "predator",
       );
 
       // Update module-level type ID arrays for future spawns
@@ -837,8 +488,8 @@ export const engine = defineResource({
             currentPreyTypeIds,
             creationContext,
             0,
-            boidsStore.nextIndex()
-          )
+            boidsStore.nextIndex(),
+          ),
         );
       }
 
@@ -849,57 +500,31 @@ export const engine = defineResource({
             currentPredatorTypeIds,
             creationContext,
             0,
-            boidsStore.nextIndex()
-          )
+            boidsStore.nextIndex(),
+          ),
         );
       }
 
       console.log(
-        `[engine.reset] Respawned ${boidsStore.boids.length} boids (${currentPreyTypeIds.length} prey species, ${currentPredatorTypeIds.length} predator species)`
+        `[engine.reset] Respawned ${boidsStore.boids.length} boids (${currentPreyTypeIds.length} prey species, ${currentPredatorTypeIds.length} predator species)`,
       );
     };
 
     const addBoid = (boid: Boid) => {
-      const { config } = runtimeStore.store.getState();
+      profiler.start(profilerKeywords.engine.addBoid);
       boidsStore.addBoid(boid);
-      const speciesConfig = config.species[boid.typeId];
-      if (speciesConfig) {
-        const role = speciesConfig.role;
-        baseBoidUpdateContext.boidsByRole[role].push(boid);
-      }
+      profiler.end(profilerKeywords.engine.addBoid);
     };
 
     const removeBoid = (boidId: string) => {
-      const { config } = runtimeStore.store.getState();
-      const boid = boidsStore.getBoidById(boidId);
-      if (boid) {
-        const speciesConfig = config.species[boid.typeId];
-        if (speciesConfig) {
-          const role = speciesConfig.role;
-          const roleArray = baseBoidUpdateContext.boidsByRole[role];
-          const index = roleArray.indexOf(boid);
-          if (index !== -1) {
-            roleArray.splice(index, 1);
-          }
-        }
-        boidsStore.removeBoid(boidId);
-      }
+      profiler.start(profilerKeywords.engine.removeBoid);
+      boidsStore.removeBoid(boidId);
+      profiler.end(profilerKeywords.engine.removeBoid);
     };
 
     const getBoidById = (boidId: string) => {
       return boidsStore.getBoidById(boidId);
     };
-
-    // const queuedUpdate = queue(
-    //   (deltaSeconds: number) => {
-    //     update(deltaSeconds);
-    //   },
-    //   {
-    //     maxSize: 10,
-    //     // wait: 1000 / 60,
-    //     wait: 0,
-    //   }
-    // );
 
     return {
       update: newUpdate,

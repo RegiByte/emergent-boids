@@ -20,7 +20,7 @@ import { defineResource, StartedResource } from "braided";
  */
 export function getBoidPhysics(
   index: number,
-  views: SharedBoidViews
+  views: SharedBoidViews,
 ): PhysicalBoid {
   const positions = getActivePositions(views);
   const velocities = getActiveVelocities(views);
@@ -43,7 +43,7 @@ export function getBoidPhysics(
 
 export function getBoidsPhysicsIndexed(
   indexes: number[],
-  views: SharedBoidViews
+  views: SharedBoidViews,
 ): PhysicalBoid[] {
   const positions = getActivePositions(views);
   const velocities = getActiveVelocities(views);
@@ -166,7 +166,7 @@ export type LocalBoidStoreResource = StartedResource<typeof localBoidStore>;
  */
 export function syncBoidsToSharedMemory(
   bufferViews: SharedBoidViews,
-  boids: BoidsById
+  boids: BoidsById,
 ) {
   const writePositions = getInactivePositions(bufferViews);
   const writeVelocities = getInactiveVelocities(bufferViews);
@@ -186,13 +186,13 @@ export function initializeBoidsStats(
     aliveCount,
     frameCount,
     simulationTimeMs,
-  }: { aliveCount: number; frameCount: number; simulationTimeMs: number }
+  }: { aliveCount: number; frameCount: number; simulationTimeMs: number },
 ) {
   Atomics.store(bufferViews.stats, StatsIndex.ALIVE_COUNT, aliveCount);
   Atomics.store(bufferViews.stats, StatsIndex.FRAME_COUNT, frameCount);
   Atomics.store(
     bufferViews.stats,
     StatsIndex.SIMULATION_TIME_MS,
-    simulationTimeMs
+    simulationTimeMs,
   );
 }

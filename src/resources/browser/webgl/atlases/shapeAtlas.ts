@@ -84,7 +84,7 @@ const shapeRenderers = {
   },
   [shapeKeywords.pentagon_inverted]: (
     ctx: CanvasRenderingContext2D,
-    size: number
+    size: number,
   ) => {
     // Pentagon pointing backward (defensive)
     ctx.beginPath();
@@ -248,7 +248,7 @@ export const createShapeAtlas = (): AtlasResult | null => {
  */
 export const createShapeTexture = (
   regl: REGL.Regl,
-  atlas: AtlasResult
+  atlas: AtlasResult,
 ): REGL.Texture2D => {
   return regl.texture({
     data: atlas.canvas,

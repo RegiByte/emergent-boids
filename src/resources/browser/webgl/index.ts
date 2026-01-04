@@ -76,7 +76,10 @@ export {
   type TriangleBoidInstanceData,
 } from "./dataPreparation/triangleBoids.ts";
 
-export { prepareFoodData, type FoodInstanceData } from "./dataPreparation/food.ts";
+export {
+  prepareFoodData,
+  type FoodInstanceData,
+} from "./dataPreparation/food.ts";
 
 export {
   prepareTrailData,

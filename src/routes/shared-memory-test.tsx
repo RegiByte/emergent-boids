@@ -33,11 +33,11 @@ function SharedMemoryTest() {
       view[0] = 42;
 
       setTestResult(
-        `✅ Created SharedArrayBuffer(1024), wrote value: ${view[0]}`
+        `✅ Created SharedArrayBuffer(1024), wrote value: ${view[0]}`,
       );
     } catch (error) {
       setTestResult(
-        `❌ Failed: ${error instanceof Error ? error.message : String(error)}`
+        `❌ Failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   };
@@ -62,11 +62,11 @@ function SharedMemoryTest() {
       setTestResult(
         `✅ Created buffer for 100 boids (${layout.totalBytes} bytes)\n` +
           `   Written [${inactive[0]}, ${inactive[1]}]\n` +
-          `   Read back [${active[0]}, ${active[1]}]`
+          `   Read back [${active[0]}, ${active[1]}]`,
       );
     } catch (error) {
       setTestResult(
-        `❌ Failed: ${error instanceof Error ? error.message : String(error)}`
+        `❌ Failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   };
@@ -133,7 +133,7 @@ function SharedMemoryTest() {
           `✅ Animation running: ${frame} frames\n` +
             `   Buffer size: ${layout.totalBytes} bytes\n` +
             `   Boids: ${boidCount}\n` +
-            `   Buffer index: ${views.bufferIndex[0]}`
+            `   Buffer index: ${views.bufferIndex[0]}`,
         );
       }
 

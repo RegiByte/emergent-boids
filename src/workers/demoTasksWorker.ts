@@ -66,6 +66,3 @@ self.addEventListener("close", () => {
     });
   }
 });
-
-
-

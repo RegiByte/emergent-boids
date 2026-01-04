@@ -38,7 +38,7 @@ startSystem(workerSystemConfig)
   .catch((error: unknown) => {
     console.error(
       "❌ [Atlas Generation Worker] Failed to start system:",
-      error
+      error,
     );
 
     // Send error to client

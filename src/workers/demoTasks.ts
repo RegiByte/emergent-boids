@@ -106,5 +106,5 @@ export const workerSystemConfig = createWorkerSystemConfig(demoTasks);
 
 export const clientResource = createWorkerClientResource(
   () => import("@/workers/demoTasksWorker?worker"),
-  demoTasks
+  demoTasks,
 );

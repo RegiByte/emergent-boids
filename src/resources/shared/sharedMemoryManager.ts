@@ -5,7 +5,7 @@ import {
 } from "@/lib/sharedMemory";
 import { createAtom } from "@/lib/state";
 import { sharedMemoryKeywords } from "@/lib/workerTasks/vocabulary";
-import { PrettifyType } from "@/utils/types";
+import { ExpandType } from "@/utils/types";
 import { defineResource, StartedResource } from "braided";
 
 type BufferLayout = Record<string, number>;
@@ -39,7 +39,7 @@ export function defineSharedMemory<
   TLayout extends BufferLayout,
   TViews extends BufferViews,
 >(
-  config: SharedMemoryDefinition<TLayout, TViews>
+  config: SharedMemoryDefinition<TLayout, TViews>,
 ): SharedMemoryDefinition<TLayout, TViews> {
   return config;
 }
@@ -71,7 +71,7 @@ const definitions = {
 type SharedMemoryKeys = keyof typeof definitions;
 
 type SharedMemoryInstances = {
-  [Key in SharedMemoryKeys]: PrettifyType<
+  [Key in SharedMemoryKeys]: ExpandType<
     InferMemoryType<(typeof definitions)[Key]>
   >;
 };
@@ -101,7 +101,7 @@ export const sharedMemoryManager = defineResource({
         const definition = definitions[memoryKey];
         if (!definition) {
           throw new Error(
-            `Shared memory definition not found for ${memoryKey}`
+            `Shared memory definition not found for ${memoryKey}`,
           );
         }
         const memory = {
@@ -119,7 +119,7 @@ export const sharedMemoryManager = defineResource({
         const definition = definitions[memoryKey];
         if (!definition) {
           throw new Error(
-            `Shared memory definition not found for ${memoryKey}`
+            `Shared memory definition not found for ${memoryKey}`,
           );
         }
         const layout = definition.createLayout(buffer.byteLength);
@@ -138,7 +138,7 @@ export const sharedMemoryManager = defineResource({
         const definition = definitions[memoryKey];
         if (!definition) {
           throw new Error(
-            `Shared memory definition not found for ${memoryKey}`
+            `Shared memory definition not found for ${memoryKey}`,
           );
         }
         const instances = sharedMemoryStore.get().instances;

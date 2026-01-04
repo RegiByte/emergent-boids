@@ -63,7 +63,7 @@ export const workerEngine = defineResource({
       spatialHash = createSpatialHash(
         config.world.width,
         config.world.height,
-        config.parameters.perceptionRadius
+        config.parameters.perceptionRadius,
       );
 
       // Sync initial positions/velocities to SharedArrayBuffer
@@ -79,7 +79,7 @@ export const workerEngine = defineResource({
       });
 
       console.log(
-        `[WorkerEngine] Initialized with ${boidsStore.count()} boids`
+        `[WorkerEngine] Initialized with ${boidsStore.count()} boids`,
       );
     };
 
@@ -132,7 +132,7 @@ export const workerEngine = defineResource({
           spatialHash,
           boid.position,
           50, // maxNeighbors
-          config.parameters.perceptionRadius
+          config.parameters.perceptionRadius,
         );
         workerProfiler.end("boid.spatial.query");
 

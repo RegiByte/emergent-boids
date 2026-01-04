@@ -12,7 +12,7 @@ export function Minimap({ backgroundColor }: { backgroundColor: string }) {
   // Get world dimensions from config
   const worldWidth = runtimeStore.useStore((state) => state.config.world.width);
   const worldHeight = runtimeStore.useStore(
-    (state) => state.config.world.height
+    (state) => state.config.world.height,
   );
   const speciesConfigs = runtimeStore.useStore((state) => state.config.species);
 
@@ -139,7 +139,7 @@ export function Minimap({ backgroundColor }: { backgroundColor: string }) {
   // Helper function to convert minimap coordinates to world coordinates
   const minimapToWorld = (
     minimapX: number,
-    minimapY: number
+    minimapY: number,
   ): { x: number; y: number } => {
     const MINIMAP_SIZE = 200;
     const scaleX = MINIMAP_SIZE / worldWidth;

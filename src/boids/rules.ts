@@ -35,7 +35,7 @@ export function separation(boid: Boid, context: BoidUpdateContext): Vector2 {
       const affinity = getAffinity(
         boid.typeId,
         other.typeId,
-        context.config.species[other.typeId]
+        context.config.species[other.typeId],
       );
 
       // Calculate separation modifier based on affinity
@@ -48,7 +48,7 @@ export function separation(boid: Boid, context: BoidUpdateContext): Vector2 {
         boid.position,
         other.position,
         context.config.world.width,
-        context.config.world.height
+        context.config.world.height,
       );
       // Weight by distance (closer = stronger force)
       diff = vec.divide(diff, distance * distance);
@@ -92,7 +92,7 @@ export function alignment(boid: Boid, context: BoidUpdateContext): Vector2 {
       const affinity = getAffinity(
         boid.typeId,
         other.typeId,
-        context.config.species[other.typeId]
+        context.config.species[other.typeId],
       );
 
       // Only align with species above affinity threshold
@@ -137,7 +137,7 @@ export function cohesion(boid: Boid, context: BoidUpdateContext): Vector2 {
       const affinity = getAffinity(
         boid.typeId,
         other.typeId,
-        context.config.species[other.typeId]
+        context.config.species[other.typeId],
       );
 
       // Only flock with species above affinity threshold
@@ -158,7 +158,7 @@ export function cohesion(boid: Boid, context: BoidUpdateContext): Vector2 {
       avg,
       boid.position,
       context.config.world.width,
-      context.config.world.height
+      context.config.world.height,
     );
     const desiredVelocity = vec.setMagnitude(desired, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desiredVelocity, boid.velocity);
@@ -176,7 +176,7 @@ export function cohesion(boid: Boid, context: BoidUpdateContext): Vector2 {
  */
 export function avoidObstacles(
   boid: Boid,
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): Vector2 {
   context.profiler?.start(profilerKeywords.rules.avoidObstacles);
   const steering: Vector2 = { x: 0, y: 0 };
@@ -222,7 +222,7 @@ export function avoidObstacles(
  */
 export function fear(
   boid: Boid,
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): { force: Vector2; isAfraid: boolean } {
   context.profiler?.start(profilerKeywords.rules.fear);
   const steering: Vector2 = { x: 0, y: 0 };
@@ -238,7 +238,7 @@ export function fear(
       boid.position,
       predator.position,
       context.config.world.width,
-      context.config.world.height
+      context.config.world.height,
     );
 
     if (distance > 0 && distance < context.config.parameters.fearRadius) {
@@ -247,7 +247,7 @@ export function fear(
         boid.position,
         predator.position,
         context.config.world.width,
-        context.config.world.height
+        context.config.world.height,
       );
       // Weight by distance (closer = stronger fear)
       diff = vec.divide(diff, dist * dist);
@@ -287,7 +287,7 @@ function selectBestPrey(
   prey: Boid[],
   world: WorldConfig,
   chaseRadius: number,
-  maxEnergy: number
+  maxEnergy: number,
 ): Boid | null {
   if (prey.length === 0) return null;
 
@@ -299,7 +299,7 @@ function selectBestPrey(
       predator.position,
       target.position,
       world.width,
-      world.height
+      world.height,
     );
 
     // Only consider prey within chase radius
@@ -352,7 +352,7 @@ export function chase(predator: Boid, context: BoidUpdateContext): Vector2 {
   // Check for locked target first (commitment to chase)
   if (predator.targetId && predator.targetLockStrength > 0) {
     const lockedPrey = context.nearbyBoids.find(
-      (p) => p.item.id === predator.targetId
+      (p) => p.item.id === predator.targetId,
     );
 
     if (lockedPrey) {
@@ -360,7 +360,7 @@ export function chase(predator: Boid, context: BoidUpdateContext): Vector2 {
         predator.position,
         lockedPrey.item.position,
         context.config.world.width,
-        context.config.world.height
+        context.config.world.height,
       );
 
       // Grace distance: 20% extra range while locked (commitment!)
@@ -372,11 +372,11 @@ export function chase(predator: Boid, context: BoidUpdateContext): Vector2 {
           lockedPrey.item.position,
           predator.position,
           context.config.world.width,
-          context.config.world.height
+          context.config.world.height,
         );
         const desiredVelocity = vec.setMagnitude(
           desired,
-          predator.phenotype.maxSpeed
+          predator.phenotype.maxSpeed,
         );
         const steer = vec.subtract(desiredVelocity, predator.velocity);
 
@@ -390,7 +390,7 @@ export function chase(predator: Boid, context: BoidUpdateContext): Vector2 {
       // Target escaped grace radius → decay lock
       predator.targetLockStrength = Math.max(
         0,
-        predator.targetLockStrength - 0.1
+        predator.targetLockStrength - 0.1,
       );
       if (predator.targetLockStrength === 0) {
         predator.targetId = null;
@@ -410,7 +410,7 @@ export function chase(predator: Boid, context: BoidUpdateContext): Vector2 {
     context.boidsByRole.prey,
     context.config.world,
     context.config.parameters.chaseRadius,
-    predator.phenotype.maxEnergy
+    predator.phenotype.maxEnergy,
   );
 
   if (targetPrey) {
@@ -426,11 +426,11 @@ export function chase(predator: Boid, context: BoidUpdateContext): Vector2 {
       targetPrey.position,
       predator.position,
       context.config.world.width,
-      context.config.world.height
+      context.config.world.height,
     );
     const desiredVelocity = vec.setMagnitude(
       desired,
-      predator.phenotype.maxSpeed
+      predator.phenotype.maxSpeed,
     );
     const steer = vec.subtract(desiredVelocity, predator.velocity);
     context.profiler?.end(profilerKeywords.rules.chase);
@@ -454,7 +454,7 @@ export function chase(predator: Boid, context: BoidUpdateContext): Vector2 {
 function selectBestMate(
   boid: Boid,
   potentialMates: ItemWithDistance<Boid>[],
-  world: WorldConfig
+  world: WorldConfig,
 ): Boid | null {
   if (potentialMates.length === 0) return null;
 
@@ -477,7 +477,7 @@ function selectBestMate(
       boid.position,
       candidate.position,
       world.width,
-      world.height
+      world.height,
     );
 
     // Multi-factor mate scoring
@@ -532,7 +532,7 @@ export function seekMate(boid: Boid, context: BoidUpdateContext): Vector2 {
     boidRole === roleKeywords.prey
       ? context.nearbyPrey
       : context.nearbyPredators,
-    context.config.world
+    context.config.world,
   );
 
   if (targetMate) {
@@ -541,7 +541,7 @@ export function seekMate(boid: Boid, context: BoidUpdateContext): Vector2 {
       targetMate.position,
       boid.position,
       context.config.world.width,
-      context.config.world.height
+      context.config.world.height,
     );
     const desiredVelocity = vec.setMagnitude(desired, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desiredVelocity, boid.velocity);
@@ -561,7 +561,7 @@ export function seekMate(boid: Boid, context: BoidUpdateContext): Vector2 {
  */
 export function avoidDeathMarkers(
   boid: Boid,
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): Vector2 {
   context.profiler?.start(profilerKeywords.rules.avoidDeathMarkers);
   const steering: Vector2 = { x: 0, y: 0 };
@@ -585,7 +585,7 @@ export function avoidDeathMarkers(
         boid.position,
         marker.position,
         context.config.world.width,
-        context.config.world.height
+        context.config.world.height,
       );
 
       // Weight by distance (closer = stronger avoidance)
@@ -630,7 +630,7 @@ export function avoidDeathMarkers(
  */
 function selectBestFood(
   boid: Boid,
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): ItemWithDistance<FoodSource> | null {
   const profileConfig = context.config.species[boid.typeId];
   // Filter compatible food sources
@@ -684,7 +684,7 @@ function selectBestFood(
  */
 export function seekFood(
   boid: Boid,
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): {
   force: Vector2;
   targetFoodId: string | null;
@@ -701,7 +701,7 @@ export function seekFood(
       targetFood.item.position,
       boid.position,
       context.config.world.width,
-      context.config.world.height
+      context.config.world.height,
     );
     const desiredVelocity = vec.setMagnitude(desired, boid.phenotype.maxSpeed);
     const steer = vec.subtract(desiredVelocity, boid.velocity);
@@ -730,7 +730,7 @@ export function orbitFood(
   boid: Boid,
   targetFoodPosition: Vector2,
   eatingRadius: number,
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): Vector2 {
   context.profiler?.start(profilerKeywords.rules.orbitFood);
   // Calculate vector to food
@@ -738,7 +738,7 @@ export function orbitFood(
     targetFoodPosition,
     boid.position,
     context.config.world.width,
-    context.config.world.height
+    context.config.world.height,
   );
 
   const dist = vec.magnitude(toFood);
@@ -766,7 +766,7 @@ export function orbitFood(
  */
 export function avoidPredatorFood(
   boid: Boid,
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): Vector2 {
   context.profiler?.start(profilerKeywords.rules.avoidPredatorFood);
   const steering: Vector2 = { x: 0, y: 0 };
@@ -780,7 +780,7 @@ export function avoidPredatorFood(
   }
 
   const predatorFood = context.nearbyFoodSources.filter(
-    (f) => f.item.sourceType === roleKeywords.predator
+    (f) => f.item.sourceType === roleKeywords.predator,
   );
 
   let count = 0;
@@ -792,7 +792,7 @@ export function avoidPredatorFood(
         boid.position,
         food.position,
         context.config.world.width,
-        context.config.world.height
+        context.config.world.height,
       );
 
       // Weight by distance and fear factor (closer = stronger)
@@ -834,7 +834,7 @@ export function avoidPredatorFood(
  */
 export function avoidCrowdedAreas(
   boid: Boid,
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): Vector2 {
   context.profiler?.start(profilerKeywords.rules.avoidCrowdedAreas);
 
@@ -879,7 +879,7 @@ export function avoidCrowdedAreas(
     boid.position,
     centerOfMass,
     context.config.world.width,
-    context.config.world.height
+    context.config.world.height,
   );
 
   // Desired velocity: away from crowd at max speed

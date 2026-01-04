@@ -146,14 +146,15 @@ function AtlasesRoute() {
               lines to 490 lines (75% reduction!)
             </p>
             <p>
-              <strong>Session 105 Victory:</strong> The atlases resource generates
-              all textures once on app startup (~195ms) and shares them everywhere.
-              This eliminated redundant generation (was causing 24s+ page loads!)
+              <strong>Session 105 Victory:</strong> The atlases resource
+              generates all textures once on app startup (~195ms) and shares
+              them everywhere. This eliminated redundant generation (was causing
+              24s+ page loads!)
             </p>
             <p>
-              <strong>Braided Flexibility:</strong> This route composes a minimal
-              system with just the atlases resource. No simulation, no physics,
-              no lifecycle - just what we need! 🎯
+              <strong>Braided Flexibility:</strong> This route composes a
+              minimal system with just the atlases resource. No simulation, no
+              physics, no lifecycle - just what we need! 🎯
             </p>
           </CardContent>
         </Card>

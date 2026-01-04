@@ -6,9 +6,7 @@
  */
 
 import { iterateBoids } from "@/boids/iterators.ts";
-import type {
-  BoidsById,
-} from "../../../../boids/vocabulary/schemas/entities.ts";
+import type { BoidsById } from "../../../../boids/vocabulary/schemas/entities.ts";
 import type { EmojiAtlasResult } from "../atlases/emojiAtlas.ts";
 import { stanceSymbols } from "../atlases/emojiAtlas.ts";
 
@@ -43,7 +41,7 @@ export const prepareStanceSymbolData = (
   boids: BoidsById,
   emojiAtlas: EmojiAtlasResult,
   currentFrame: number,
-  stanceSymbolsEnabled: boolean
+  stanceSymbolsEnabled: boolean,
 ): StanceSymbolInstanceData | null => {
   // Check if stance symbols are enabled
   if (!stanceSymbolsEnabled) {
@@ -56,7 +54,7 @@ export const prepareStanceSymbolData = (
 
   for (const boid of iterateBoids(boids)) {
     // Check if stance changed recently (matches Canvas 2D logic from pipeline.ts)
-    const framesSinceChange = currentFrame - boid.stanceEnteredAt;
+    const framesSinceChange = currentFrame - boid.stanceEnteredAtFrame;
 
     if (framesSinceChange > STANCE_SYMBOL_CONFIG.displayDuration) {
       continue; // Don't show old stances

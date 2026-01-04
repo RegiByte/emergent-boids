@@ -60,7 +60,7 @@ export interface StaticWebGLContext {
  */
 export function createMinimalWebGLContext(
   canvas: HTMLCanvasElement,
-  atlases: AtlasesResult
+  atlases: AtlasesResult,
 ): StaticWebGLContext | null {
   try {
     // Create a raw WebGL context first
@@ -78,7 +78,7 @@ export function createMinimalWebGLContext(
 
     if (!gl) {
       console.error(
-        "Failed to create WebGL context - WebGL may not be available"
+        "Failed to create WebGL context - WebGL may not be available",
       );
       return null;
     }
@@ -122,12 +122,12 @@ export function createMinimalWebGLContext(
     const drawShapeBoids = createShapeBoidsDrawCommand(
       regl,
       shapeTexture,
-      shapeAtlas
+      shapeAtlas,
     );
     const drawBodyParts = createBodyPartsDrawCommand(
       regl,
       bodyPartsTexture,
-      bodyPartsAtlas
+      bodyPartsAtlas,
     );
 
     return {
@@ -157,7 +157,7 @@ export function createMinimalWebGLContext(
 function createStaticTransformMatrix(
   _scale: number,
   width: number,
-  height: number
+  height: number,
 ): number[] {
   // Simple orthographic projection that centers content
   // Note: We apply visual scaling in boidScale, so keep projection unscaled
@@ -198,7 +198,7 @@ export function renderBoidWebGL(
     scale?: number;
     width: number;
     height: number;
-  }
+  },
 ): void {
   const { regl, shapeAtlas, bodyPartsAtlas, drawShapeBoids, drawBodyParts } =
     context;
@@ -218,7 +218,7 @@ export function renderBoidWebGL(
     boid,
     speciesConfig,
     shapeAtlas,
-    scale
+    scale,
   );
 
   // Draw boid shape
@@ -232,7 +232,7 @@ export function renderBoidWebGL(
     boid,
     speciesConfig,
     bodyPartsAtlas,
-    scale
+    scale,
   );
 
   if (bodyPartsData && bodyPartsData.count > 0) {
@@ -257,7 +257,7 @@ function prepareShapeBoidInstanceData(
   boid: Boid,
   speciesConfig: SpeciesConfig | undefined,
   shapeAtlas: ShapeAtlasResult,
-  scale: number
+  scale: number,
 ) {
   const { position, velocity, phenotype } = boid;
 
@@ -309,7 +309,7 @@ function prepareBodyPartsInstanceData(
   boid: Boid,
   speciesConfig: SpeciesConfig | undefined,
   bodyPartsAtlas: BodyPartsAtlasResult,
-  scale: number
+  scale: number,
 ) {
   const { position, velocity, phenotype } = boid;
   // Use species config body parts (matches main simulation pattern)
@@ -397,7 +397,7 @@ function prepareBodyPartsInstanceData(
       { x: partPosX, y: partPosY },
       partRotation,
       partType as BodyPartType,
-      boidScale
+      boidScale,
     );
 
     partDataArrays.partOffset.push(offset.x, offset.y);
@@ -415,7 +415,7 @@ function prepareBodyPartsInstanceData(
     partDataArrays.secondaryColor.push(
       partColor[0],
       partColor[1],
-      partColor[2]
+      partColor[2],
     ); // Part color
     partDataArrays.tertiaryColor.push(0.0, 0.0, 0.0); // Black
   }
@@ -447,7 +447,7 @@ function drawDebugCollisionCircle(
   regl: REGL.Regl,
   transform: number[],
   position: { x: number; y: number },
-  radius: number
+  radius: number,
 ): void {
   // Create circle vertices
   const segments = 32;
@@ -457,7 +457,7 @@ function drawDebugCollisionCircle(
     const angle = (i / segments) * Math.PI * 2;
     positions.push(
       position.x + Math.cos(angle) * radius,
-      position.y + Math.sin(angle) * radius
+      position.y + Math.sin(angle) * radius,
     );
   }
 

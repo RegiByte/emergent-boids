@@ -1,13 +1,20 @@
-import { roleKeywords } from "../vocabulary/keywords";
+import { Profiler } from "@/resources/shared/profiler";
+import { ItemWithDistance } from "../spatialHash";
+import {
+  profilerKeywords,
+  roleKeywords,
+  stanceKeywords,
+} from "../vocabulary/keywords";
 import type {
   BehaviorContext,
-  BehaviorScore,
   BehaviorRuleset,
-  StanceDecision,
+  BehaviorScore,
   MinimumStanceDuration,
+  StanceDecision,
 } from "../vocabulary/schemas/behavior";
 import type { Boid, FoodSource } from "../vocabulary/schemas/entities";
-import type { ReproductionType, Role } from "../vocabulary/schemas/primitives";
+import type { Role } from "../vocabulary/schemas/primitives";
+import { SpeciesConfig } from "../vocabulary/schemas/species";
 
 /**
  * Behavior Evaluator - Core logic for behavior scoring system
@@ -67,15 +74,17 @@ export function evaluateBehavior(
 export function applyBehaviorDecision(
   boid: Boid,
   decision: BehaviorScore,
-  tick: number,
   frame: number,
   minDurations: MinimumStanceDuration,
+  profiler: Profiler | undefined,
 ): StanceDecision | null {
-  const framesSinceTransition = frame - boid.stanceEnteredAt;
+  profiler?.start(profilerKeywords.behavior.applyDecision);
+  const framesSinceTransition = frame - boid.stanceEnteredAtFrame;
   const minDuration = minDurations[boid.stance] ?? 0;
   const canTransition = framesSinceTransition >= minDuration || decision.urgent;
 
   if (!canTransition) {
+    profiler?.end(profilerKeywords.behavior.applyDecision);
     return null; // Blocked by minimum duration
   }
 
@@ -84,14 +93,13 @@ export function applyBehaviorDecision(
     boid.stance !== decision.stance || boid.substate !== decision.substate;
 
   if (!isChanging) {
+    profiler?.end(profilerKeywords.behavior.applyDecision);
     return null; // Already in desired stance
   }
 
   // Create decision record
   const stanceDecision: StanceDecision = {
     boidId: boid.id,
-    boidIndex: -1, // Will be set by caller
-    tick,
     frame,
     previousStance: boid.stance,
     previousSubstate: boid.substate,
@@ -111,8 +119,9 @@ export function applyBehaviorDecision(
   boid.previousStance = boid.stance;
   boid.stance = decision.stance;
   boid.substate = decision.substate;
-  boid.stanceEnteredAt = frame;
+  boid.stanceEnteredAtFrame = frame;
 
+  profiler?.end(profilerKeywords.behavior.applyDecision);
   return stanceDecision;
 }
 
@@ -136,28 +145,36 @@ export function applyBehaviorDecision(
  */
 export function buildBehaviorContext(
   boid: Boid,
-  boidIndex: number,
-  nearbyPredators: Boid[],
-  nearbyPrey: Boid[],
-  nearbyFood: FoodSource[],
-  nearbyFlock: Boid[],
-  tick: number,
-  role: Role,
-  reproductionType: ReproductionType,
-  readyToMate: boolean,
-  populationRatio: number,
+  speciesConfig: SpeciesConfig,
+  context: {
+    frame: number;
+    populationRatio: number;
+    readyToMate: boolean;
+    nearbyPrey: ItemWithDistance<Boid>[];
+    nearbyFood: ItemWithDistance<FoodSource>[];
+    nearbyFlock: ItemWithDistance<Boid>[];
+    nearbyPredators: ItemWithDistance<Boid>[];
+  },
 ): BehaviorContext {
   // Find closest distances (inline for performance)
   let closestPredatorDistance: number | null = null;
   let closestPredatorStance: string | null = null;
   let threatLevel = 0;
 
-  if (nearbyPredators.length > 0) {
-    const closestPredator = nearbyPredators[0];
-    const dx = boid.position.x - closestPredator.position.x;
-    const dy = boid.position.y - closestPredator.position.y;
+  const closestPredator = context.nearbyPredators.reduce(
+    (closest, current) => {
+      return current.distance < (closest?.distance ?? Infinity)
+        ? current
+        : closest;
+    },
+    null as ItemWithDistance<Boid> | null,
+  );
+
+  if (closestPredator) {
+    const dx = boid.position.x - closestPredator.item.position.x;
+    const dy = boid.position.y - closestPredator.item.position.y;
     closestPredatorDistance = Math.sqrt(dx * dx + dy * dy);
-    closestPredatorStance = closestPredator.stance;
+    closestPredatorStance = closestPredator.item.stance;
 
     // Threat assessment based on predator stance (Session 75)
     // hunting = full threat, idle/eating = reduced, mating = minimal
@@ -178,42 +195,61 @@ export function buildBehaviorContext(
     threatLevel = stanceThreatMultiplier * distanceFactor;
   }
 
+  const closestPrey = context.nearbyPrey.reduce(
+    (closest, current) => {
+      return current.distance < (closest?.distance ?? Infinity)
+        ? current
+        : closest;
+    },
+    null as ItemWithDistance<Boid> | null,
+  );
   let closestPreyDistance: number | null = null;
-  if (nearbyPrey.length > 0) {
-    const dx = boid.position.x - nearbyPrey[0].position.x;
-    const dy = boid.position.y - nearbyPrey[0].position.y;
+  if (closestPrey) {
+    const dx = boid.position.x - closestPrey.item.position.x;
+    const dy = boid.position.y - closestPrey.item.position.y;
     closestPreyDistance = Math.sqrt(dx * dx + dy * dy);
   }
 
+  const closestFood = context.nearbyFood.reduce(
+    (closest, current) => {
+      return current.distance < (closest?.distance ?? Infinity)
+        ? current
+        : closest;
+    },
+    null as ItemWithDistance<FoodSource> | null,
+  );
   let closestFoodDistance: number | null = null;
-  if (nearbyFood.length > 0) {
-    const dx = boid.position.x - nearbyFood[0].position.x;
-    const dy = boid.position.y - nearbyFood[0].position.y;
+  if (closestFood) {
+    const dx = boid.position.x - closestFood.item.position.x;
+    const dy = boid.position.y - closestFood.item.position.y;
     closestFoodDistance = Math.sqrt(dx * dx + dy * dy);
   }
 
   // Count available mates (Session 75: Seeking mates that are ready)
   // Only count flock members that are seeking mates or ready to mate
-  const nearbyAvailableMatesCount = nearbyFlock.filter(
-    (b) => b.seekingMate || b.stance === "seeking_mate",
+  const nearbyAvailableMatesCount = context.nearbyFlock.filter(
+    (b) => b.item.seekingMate || b.item.stance === stanceKeywords.seeking_mate,
   ).length;
 
   // Calculate environment pressure from population ratio
   // 0.0-0.7 = no pressure, 0.7-0.9 = moderate, 0.9-1.0 = extreme
-  const environmentPressure = Math.max(0, (populationRatio - 0.7) / 0.3);
+  const environmentPressure = Math.max(
+    0,
+    (context.populationRatio - 0.7) / 0.3,
+  );
 
   return {
     boidId: boid.id,
-    boidIndex,
+    boidIndex: boid.index,
     currentStance: boid.stance,
     currentSubstate: boid.substate,
-    stanceEnteredAt: boid.stanceEnteredAt,
+    stanceEnteredAt: boid.stanceEnteredAtFrame,
     energyRatio: boid.energy / boid.phenotype.maxEnergy,
     healthRatio: boid.health / boid.phenotype.maxHealth,
-    nearbyPredatorCount: nearbyPredators.length,
-    nearbyPreyCount: nearbyPrey.length,
-    nearbyFoodCount: nearbyFood.length,
-    nearbyFlockCount: nearbyFlock.length,
+    nearbyPredatorCount: context.nearbyPredators.length,
+    nearbyPreyCount: context.nearbyPrey.length,
+    nearbyFoodCount: context.nearbyFood.length,
+    nearbyFlockCount: context.nearbyFlock.length,
     nearbyAvailableMatesCount, // NEW - Session 75
     closestPredatorDistance,
     closestPreyDistance,
@@ -225,12 +261,12 @@ export function buildBehaviorContext(
     targetLockDuration: boid.targetLockTime,
     hasMate: boid.mateId !== null,
     mateCommitmentTime: boid.mateCommitmentTime,
-    readyToMate,
-    populationRatio,
+    readyToMate: context.readyToMate,
+    populationRatio: context.populationRatio,
     environmentPressure,
-    tick,
-    ticksSinceTransition: tick - boid.stanceEnteredAt,
-    role,
-    reproductionType,
+    frame: context.frame,
+    framesSinceTransition: context.frame - boid.stanceEnteredAtFrame,
+    role: speciesConfig.role,
+    reproductionType: speciesConfig.reproduction.type,
   };
 }

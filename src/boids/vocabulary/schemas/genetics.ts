@@ -68,7 +68,7 @@ export const genomeSchema = z.object({
         oldValue: z.number(),
         newValue: z.number(),
         magnitude: z.number(),
-      })
+      }),
     )
     .optional(), // History of mutations (for analytics)
 });

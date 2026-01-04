@@ -41,7 +41,7 @@ export const workerLifecycleManager = defineResource({
     const applyDeathMarkersFade = () => {
       const { simulation } = workerStore.getState();
       const { markers: updatedMarkers, shouldUpdate } = fadeDeathMarkers(
-        simulation.deathMarkers
+        simulation.deathMarkers,
       );
       if (shouldUpdate) {
         workerStore.store.updateState((state) => ({
@@ -60,7 +60,7 @@ export const workerLifecycleManager = defineResource({
         processFoodConsumption(
           simulation.foodSources,
           workerStore.boids.getBoids(),
-          config.species
+          config.species,
         );
 
       // Apply energy gains to boids (impure but isolated)
@@ -79,7 +79,7 @@ export const workerLifecycleManager = defineResource({
     };
 
     const spawnPreyFoodSources = (
-      collectEvent: CollectEventCallback<typeof eventCollector>
+      collectEvent: CollectEventCallback<typeof eventCollector>,
     ) => {
       const state = workerStore.getState();
       const { simulation, config } = state;
@@ -90,7 +90,7 @@ export const workerLifecycleManager = defineResource({
         config.world,
         tickCounter,
         workerRandomness.domain("food"),
-        workerTime.now()
+        workerTime.now(),
       );
 
       if (!shouldUpdate) {
@@ -120,7 +120,7 @@ export const workerLifecycleManager = defineResource({
 
     const applyLifecycleChanges = (
       changes: LifecycleUpdates,
-      collectEvent: (event: AllEvents) => void
+      collectEvent: (event: AllEvents) => void,
     ) => {
       const state = workerStore.getState();
       const { config, simulation } = state;
@@ -130,7 +130,7 @@ export const workerLifecycleManager = defineResource({
       const { markers: updateMarkers, shouldUpdate } = processDeathMarkers(
         simulation.deathMarkers,
         changes.deathEvents,
-        (id) => workerStore.boids.getBoidById(id)
+        (id) => workerStore.boids.getBoidById(id),
       );
 
       if (shouldUpdate) {
@@ -185,7 +185,7 @@ export const workerLifecycleManager = defineResource({
           // Count current population of this specific type
           const currentTypeCount = filterBoidsWhere(
             boidStore.getBoids(),
-            (b) => b.typeId === offspring.typeId
+            (b) => b.typeId === offspring.typeId,
           ).length;
 
           const canSpawn = canSpawnOffspring(
@@ -201,7 +201,7 @@ export const workerLifecycleManager = defineResource({
               totalPrey: currentPreyCount,
               totalPredators: currentPredatorCount,
             },
-            currentTypeCount // Pass current type count
+            currentTypeCount, // Pass current type count
           );
 
           if (canSpawn) {
@@ -233,7 +233,7 @@ export const workerLifecycleManager = defineResource({
               creationContext,
               energyBonus, // Apply energy bonus
               Object.keys(workerStore.boids.getBoids()).length,
-              parentGenomes // Pass parent genomes for inheritance
+              parentGenomes, // Pass parent genomes for inheritance
             );
             const newBoid = result.boid;
             workerStore.boids.addBoid(newBoid);
@@ -242,7 +242,7 @@ export const workerLifecycleManager = defineResource({
             // Dispatch reproduction event (only for first offspring to avoid spam)
             if (i === 0) {
               const reproductionEvent = changes.reproductionEvents.find(
-                (e) => e.parent1Id === offspring.parent1Id
+                (e) => e.parent1Id === offspring.parent1Id,
               );
               if (reproductionEvent) {
                 collectEvent({
@@ -269,7 +269,7 @@ export const workerLifecycleManager = defineResource({
           const randomIndex = lifecycleRng.intRange(0, boidStore.count());
           const boid = findBoidWhere(
             boidStore.getBoids(),
-            (b) => b.index === randomIndex
+            (b) => b.index === randomIndex,
           );
           if (boid) {
             workerStore.boids.removeBoid(boid.id);

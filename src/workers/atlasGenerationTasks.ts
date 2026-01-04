@@ -238,8 +238,14 @@ export const atlasGenerationTasks = {
         total: 3,
       });
 
-      const { offscreenCanvas, fontFamily, fontSize, chars, gridSize, charSize } =
-        input;
+      const {
+        offscreenCanvas,
+        fontFamily,
+        fontSize,
+        chars,
+        gridSize,
+        charSize,
+      } = input;
 
       // Get context from the transferred OffscreenCanvas
       const ctx = offscreenCanvas.getContext("2d");
@@ -351,16 +357,13 @@ export const atlasGenerationTasks = {
     parseIO: false,
     execute: async (_input, { reportProgress }) => {
       console.log("Executing generateBodyPartsAtlas task");
-      
+
       // Import Voronoi functions (they're pure - perfect for workers!)
-      const { generateRingSeeds, lloydRelaxation, drawVoronoi } = await import(
-        "@/lib/voronoi"
-      );
-      
+      const { generateRingSeeds, lloydRelaxation, drawVoronoi } =
+        await import("@/lib/voronoi");
+
       // Import body part keywords
-      const { bodyPartKeywords } = await import(
-        "@/boids/vocabulary/keywords"
-      );
+      const { bodyPartKeywords } = await import("@/boids/vocabulary/keywords");
 
       const parts = [
         bodyPartKeywords.eye,
@@ -611,5 +614,5 @@ export const workerSystemConfig =
 
 export const atlasGenerationClientResource = createWorkerClientResource(
   () => import("@/workers/atlasGenerationWorker?worker"),
-  atlasGenerationTasks
+  atlasGenerationTasks,
 );

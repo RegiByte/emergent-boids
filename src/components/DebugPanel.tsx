@@ -123,10 +123,10 @@ export function DebugPanel() {
                 >
                   {JSON.stringify(
                     Object.fromEntries(
-                      Object.entries(entry.event).filter(([k]) => k !== "type")
+                      Object.entries(entry.event).filter(([k]) => k !== "type"),
                     ),
                     null,
-                    2
+                    2,
                   )}
                 </div>
               )}

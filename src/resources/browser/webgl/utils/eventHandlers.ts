@@ -13,7 +13,7 @@ import { BoidsById } from "@/boids/vocabulary/schemas/entities.ts";
  */
 export const createWheelHandler = (
   canvas: HTMLCanvasElement,
-  camera: CameraAPI
+  camera: CameraAPI,
 ) => {
   return (e: WheelEvent) => {
     e.preventDefault();
@@ -58,7 +58,7 @@ export const findClosestBoidToScreen = (
   camera: CameraAPI,
   screenX: number,
   screenY: number,
-  maxScreenDistance: number
+  maxScreenDistance: number,
 ): string | null => {
   let closestBoid: string | null = null;
   let closestDistance = maxScreenDistance;
@@ -100,7 +100,7 @@ export const findClosestBoidToScreen = (
 export const createMouseMoveHandler = (
   canvas: HTMLCanvasElement,
   camera: CameraAPI,
-  boids: BoidsById
+  boids: BoidsById,
 ) => {
   let lastPickerUpdate = 0;
   const PICKER_UPDATE_INTERVAL = 16; // ~60 FPS (16ms)
@@ -124,7 +124,7 @@ export const createMouseMoveHandler = (
       camera,
       screenX,
       screenY,
-      80
+      80,
     );
 
     camera.updatePickerTarget(closestBoidId, worldPos);
@@ -175,7 +175,7 @@ export const createClickHandler = (camera: CameraAPI) => {
 export const attachEventHandlers = (
   canvas: HTMLCanvasElement,
   camera: CameraAPI,
-  boids: BoidsById
+  boids: BoidsById,
 ): (() => void) => {
   const wheelHandler = createWheelHandler(canvas, camera);
   const mouseMoveHandler = createMouseMoveHandler(canvas, camera, boids);

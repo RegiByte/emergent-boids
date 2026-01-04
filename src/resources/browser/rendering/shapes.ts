@@ -37,7 +37,7 @@ import { toRgb, darken } from "@/lib/colors.ts"; // Session 101 Phase 2: Percept
 
 export type ShapeRenderer = (
   _ctx: CanvasRenderingContext2D,
-  _size: number
+  _size: number,
 ) => void;
 
 // ============================================================================
@@ -75,7 +75,7 @@ function renderAtlasShape(
     primary?: string;
     border?: string;
     shadow?: string;
-  }
+  },
 ): void {
   if (!atlas) {
     // Fallback: render circle manually with complete drawing
@@ -153,7 +153,7 @@ function renderAtlasShape(
       0,
       0,
       cellPixelSize,
-      cellPixelSize
+      cellPixelSize,
     );
 
     // Get pixel data
@@ -221,7 +221,7 @@ function renderAtlasShape(
     -destSize / 2,
     -destSize / 2,
     destSize,
-    destSize
+    destSize,
   );
 
   // Atlas rendering complete - shape is now colored at pixel level!
@@ -237,7 +237,7 @@ function renderAtlasShape(
  */
 export const getShapeRenderer = (
   shape: RenderShapeType,
-  atlases: AtlasesResult
+  atlases: AtlasesResult,
 ): ShapeRenderer => {
   const shapeAtlas = atlases.shapes;
 
@@ -333,7 +333,7 @@ function renderAtlasPart({
       { x: partPosX, y: partPosY },
       partRotation,
       partTypeName as BodyPartType,
-      boidSize
+      boidSize,
     );
 
     // Calculate destination size
@@ -418,7 +418,7 @@ function renderAtlasPart({
           0,
           0,
           cellPixelSize,
-          cellPixelSize
+          cellPixelSize,
         );
 
         // Get pixel data
@@ -426,7 +426,7 @@ function renderAtlasPart({
           0,
           0,
           cellPixelSize,
-          cellPixelSize
+          cellPixelSize,
         );
         const data = imageData.data;
 
@@ -481,7 +481,7 @@ function renderAtlasPart({
         -destSize / 2,
         -destSize / 2,
         destSize,
-        destSize
+        destSize,
       );
     } else {
       // Standard rendering: just draw the white atlas part (tinting happens elsewhere if needed)
@@ -494,7 +494,7 @@ function renderAtlasPart({
         -destSize / 2,
         -destSize / 2,
         destSize,
-        destSize // Dest rect (centered)
+        destSize, // Dest rect (centered)
       );
     }
 
@@ -594,7 +594,7 @@ const bodyPartRendererFactories = {
  * @returns Body part renderer function, or undefined if not found
  */
 export const getBodyPartRenderer = (
-  part: RenderBodyPartType
+  part: RenderBodyPartType,
 ): BodyPartRenderer | undefined => {
   return bodyPartRendererFactories[part] || undefined;
 };

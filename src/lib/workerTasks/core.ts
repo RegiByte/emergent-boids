@@ -129,7 +129,7 @@ export type TaskDefinition<
   progress?: TProgress extends never ? never : TProgress;
   execute: (
     input: z4.infer<TInput>,
-    ctx: TaskExecutionContext<TProgress>
+    ctx: TaskExecutionContext<TProgress>,
   ) => Promise<z4.infer<TOutput>>;
   // granularly define if input and output should be parsed
   // reduces overhead for tasks that require every milisecond of performance
@@ -146,7 +146,7 @@ export type TaskRegistry = Record<string, TaskDefinition<any, any, any>>;
  * Helper to check if task has progress schema
  */
 export function hasProgress(
-  task: TaskDefinition<any, any, any>
+  task: TaskDefinition<any, any, any>,
 ): task is TaskDefinition<any, any, any> & { progress: ZodType<any> } {
   return "progress" in task && task.progress !== undefined;
 }
@@ -201,7 +201,7 @@ export function defineTask<
   TOutput extends z4.$ZodType,
   TProgress extends z4.$ZodType = never,
 >(
-  definition: TaskDefinition<TInput, TOutput, TProgress>
+  definition: TaskDefinition<TInput, TOutput, TProgress>,
 ): TaskDefinition<TInput, TOutput, TProgress> {
   return definition;
 }

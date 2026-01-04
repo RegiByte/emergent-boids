@@ -88,16 +88,16 @@ export const sharedEngine = defineResource({
 
     // Get available type IDs
     const preyTypeIds = Object.keys(initialSpecies).filter(
-      (id) => initialSpecies[id].role === "prey"
+      (id) => initialSpecies[id].role === "prey",
     );
     const predatorTypeIds = Object.keys(initialSpecies).filter(
-      (id) => initialSpecies[id].role === "predator"
+      (id) => initialSpecies[id].role === "predator",
     );
 
     // Spawn initial prey
     for (let i = 0; i < initialWorld.initialPreyCount; i++) {
       boidsStore.addBoid(
-        createBoid(preyTypeIds, creationContext, null, boidsStore.nextIndex())
+        createBoid(preyTypeIds, creationContext, null, boidsStore.nextIndex()),
       );
     }
 
@@ -108,8 +108,8 @@ export const sharedEngine = defineResource({
           predatorTypeIds,
           creationContext,
           null,
-          boidsStore.nextIndex()
-        )
+          boidsStore.nextIndex(),
+        ),
       );
     }
 
@@ -196,7 +196,7 @@ export const sharedEngine = defineResource({
         frame: Atomics.load(bufferViews.stats, StatsIndex.FRAME_COUNT),
         simulationTime: Atomics.load(
           bufferViews.stats,
-          StatsIndex.SIMULATION_TIME_MS
+          StatsIndex.SIMULATION_TIME_MS,
         ),
         aliveCount: Atomics.load(bufferViews.stats, StatsIndex.ALIVE_COUNT),
       };
@@ -228,10 +228,10 @@ export const sharedEngine = defineResource({
 
       // Recalculate type IDs
       const currentPreyTypeIds = Object.keys(species).filter(
-        (id) => species[id].role === "prey"
+        (id) => species[id].role === "prey",
       );
       const currentPredatorTypeIds = Object.keys(species).filter(
-        (id) => species[id].role === "predator"
+        (id) => species[id].role === "predator",
       );
 
       const resetPhysics = cfg.physics || defaultWorldPhysics;
@@ -250,8 +250,8 @@ export const sharedEngine = defineResource({
             currentPreyTypeIds,
             resetContext,
             null,
-            boidsStore.nextIndex()
-          )
+            boidsStore.nextIndex(),
+          ),
         );
       }
 
@@ -262,8 +262,8 @@ export const sharedEngine = defineResource({
             currentPredatorTypeIds,
             resetContext,
             null,
-            boidsStore.nextIndex()
-          )
+            boidsStore.nextIndex(),
+          ),
         );
       }
 
@@ -300,7 +300,7 @@ export const sharedEngine = defineResource({
         switch (progress.type) {
           case "frame": {
             console.log(
-              `[sharedEngine] Frame ${progress.frame}, FPS: ${progress.fps}`
+              `[sharedEngine] Frame ${progress.frame}, FPS: ${progress.fps}`,
             );
             break;
           }
@@ -327,8 +327,15 @@ export const sharedEngine = defineResource({
     const removeBoid = (boidId: string) => {
       if (boidsStore.removeBoid(boidId)) {
         // Update alive count
-        const currentCount = Atomics.load(bufferViews.stats, StatsIndex.ALIVE_COUNT);
-        Atomics.store(bufferViews.stats, StatsIndex.ALIVE_COUNT, currentCount - 1);
+        const currentCount = Atomics.load(
+          bufferViews.stats,
+          StatsIndex.ALIVE_COUNT,
+        );
+        Atomics.store(
+          bufferViews.stats,
+          StatsIndex.ALIVE_COUNT,
+          currentCount - 1,
+        );
       }
     };
 

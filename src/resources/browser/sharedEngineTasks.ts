@@ -15,7 +15,7 @@ import { StartedResource } from "braided";
  */
 export const engineTasksResource = createWorkerClientResource(
   () => import("@/resources/worker/workerEngine/workerScript.ts?worker"),
-  sharedEngineTasks
+  sharedEngineTasks,
 );
 
 export type EngineTasks = StartedResource<typeof engineTasksResource>;

@@ -29,17 +29,17 @@ export function createBehaviorRuleset(): BehaviorRuleset {
  *
  * Note: Shared stances (eating, seeking_mate, mating) have same duration for both roles.
  */
-export const MINIMUM_STANCE_DURATION: MinimumStanceDuration = {
+export const MINIMUM_STANCE_DURATION_FRAMES: MinimumStanceDuration = {
   // Prey-specific stances
-  flocking: 0, // Can switch immediately
-  fleeing: 10, // ~0.33 seconds (commit to fleeing)
+  flocking: 60, // Can switch immediately
+  fleeing: 60, // ~0.33 seconds (commit to fleeing)
 
   // Predator-specific stances
-  hunting: 0, // Can switch immediately
+  hunting: 60, // Can switch immediately
   idle: 30, // ~1 second (rest before hunting again)
 
   // Shared stances (both prey and predator)
   eating: 20, // ~0.67 seconds (finish eating)
-  seeking_mate: 15, // ~0.5 seconds
-  mating: 60, // ~2 seconds (complete mating)
+  seeking_mate: 30, // ~0.5 seconds
+  mating: 120, // ~2 seconds (complete mating)
 } as const;

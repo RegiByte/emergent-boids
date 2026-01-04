@@ -145,7 +145,7 @@ export const analyticsStoreSchema = z.object({
           timestamp: z.number(), // Real-world timestamp (for display)
           tick: z.number(), // Simulation tick (for aggregation)
           event: allEventSchema, // The event data
-        })
+        }),
       ),
     }),
     config: z.object({

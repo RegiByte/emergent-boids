@@ -232,6 +232,8 @@ export const renderModeKeywords = {
 
 export const profilerKeywords = {
   engine: {
+    addBoid: "engine.addBoid",
+    removeBoid: "engine.removeBoid",
     update: "engine.update",
     updateBoids: "engine.updateBoids",
     updateBoid: "engine.updateBoid",
@@ -247,6 +249,7 @@ export const profilerKeywords = {
   },
   behavior: {
     evaluate: "behavior.evaluate",
+    applyDecision: "behavior.applyDecision",
   },
   boids: {
     syncSharedMemory: "boids.syncSharedMemory",

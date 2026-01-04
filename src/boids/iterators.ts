@@ -1,7 +1,7 @@
 import { Boid, BoidsById } from "./vocabulary/schemas/entities";
 
 export function* iterateBoidsWithIndex(
-  boids: BoidsById
+  boids: BoidsById,
 ): Generator<[Boid, number]> {
   for (const id in boids) {
     const boid = boids[id];
@@ -19,7 +19,7 @@ export function* iterateBoids(boids: BoidsById): Generator<Boid, void, void> {
 
 export function findBoidWhere(
   boids: BoidsById,
-  predicate: (boid: Boid) => boolean
+  predicate: (boid: Boid) => boolean,
 ): Boid | undefined {
   for (const boid of iterateBoids(boids)) {
     if (predicate(boid)) {
@@ -31,7 +31,7 @@ export function findBoidWhere(
 
 export function filterBoidsWhere(
   boids: BoidsById,
-  predicate: (boid: Boid) => boolean
+  predicate: (boid: Boid) => boolean,
 ) {
   const filtered = [];
   for (const boid of iterateBoids(boids)) {
@@ -45,7 +45,7 @@ export function filterBoidsWhere(
 export function mapFilteringWhere<TOutput>(
   boids: BoidsById,
   filterPredicate: (boid: Boid) => boolean,
-  mapFunction: (boid: Boid) => TOutput
+  mapFunction: (boid: Boid) => TOutput,
 ): TOutput[] {
   const result = [];
 

@@ -42,8 +42,8 @@ function BoidsAtlasRoute() {
         name: species.name,
         role: species.role,
         speciesConfig: species,
-      })
-    )
+      }),
+    ),
   );
 
   return (

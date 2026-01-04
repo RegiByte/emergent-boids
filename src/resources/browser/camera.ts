@@ -38,7 +38,7 @@ export type CameraAPI = {
   enterPickerMode: () => void;
   updatePickerTarget: (
     boidId: string | null,
-    mouseWorldPos: { x: number; y: number }
+    mouseWorldPos: { x: number; y: number },
   ) => void;
   setMouseInCanvas: (inCanvas: boolean) => void;
   exitPickerMode: () => void;
@@ -134,7 +134,7 @@ export const camera = defineResource({
         limit: 4,
         window: 100,
         windowType: "sliding",
-      }
+      },
     );
 
     const setZoom = (newZoom: number) => {
@@ -283,7 +283,7 @@ export const camera = defineResource({
 
     const updatePickerTarget = (
       boidId: string | null,
-      mouseWorldPos: { x: number; y: number }
+      mouseWorldPos: { x: number; y: number },
     ) => {
       const state = cameraAtom.get();
       if (state.type === "picker") {

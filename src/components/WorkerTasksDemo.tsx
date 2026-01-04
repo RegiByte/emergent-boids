@@ -159,7 +159,7 @@ function WorkerTasksDemoInner() {
               <div className="text-sm text-muted-foreground">
                 Progress:{" "}
                 {Math.floor(
-                  (heavy.progress.current / heavy.progress.total) * 100
+                  (heavy.progress.current / heavy.progress.total) * 100,
                 )}
                 %
               </div>

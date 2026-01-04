@@ -40,7 +40,6 @@ export const prepareShapeBoidData = (
   const shapeUVs = new Float32Array(count * 2);
 
   for (let i = 0; i < count; i++) {
-    
     const boid = boids[i];
 
     // Position

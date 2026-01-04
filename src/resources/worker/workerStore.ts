@@ -4,7 +4,7 @@ import {
   createSharedBoidViews,
   SharedBoidBufferLayout,
   SharedBoidViews,
-  StatsIndex
+  StatsIndex,
 } from "@/lib/sharedMemory";
 import { createAtom } from "@/lib/state";
 import { defineResource, StartedResource } from "braided";
@@ -33,7 +33,7 @@ const createBoidsStore = () => {
         Atomics.store(
           bufferViews.stats,
           StatsIndex.ALIVE_COUNT,
-          localStore.count()
+          localStore.count(),
         );
       }
     },
@@ -44,7 +44,7 @@ const createBoidsStore = () => {
           Atomics.store(
             bufferViews.stats,
             StatsIndex.ALIVE_COUNT,
-            localStore.count()
+            localStore.count(),
           );
         }
       }
@@ -61,7 +61,7 @@ const createBoidsStore = () => {
     getSharedBuffer: () => sharedBuffer,
     setSharedBuffer: (
       buffer: SharedArrayBuffer,
-      layout: SharedBoidBufferLayout
+      layout: SharedBoidBufferLayout,
     ) => {
       sharedBuffer = buffer;
       bufferLayout = layout;

@@ -117,7 +117,7 @@ export const analytics = defineResource({
         // Find prey type from boid list
         const prey = findBoidWhere(
           boidStore.boids,
-          (b) => b.id === event.preyId
+          (b) => b.id === event.preyId,
         );
         if (prey) {
           const typeId = prey.typeId;
@@ -151,17 +151,17 @@ export const analytics = defineResource({
       const energyStats = computeEnergyStatsBySpecies(boidStore.boids);
       const ageStats = computeAgeDistributionBySpecies(
         boidStore.boids,
-        config.species
+        config.species,
       );
       const spatialPatterns = computeSpatialPatternsBySpecies(
         boidStore.boids,
         config.world.width,
-        config.world.height
+        config.world.height,
       );
       const reproductionMetrics = computeReproductionMetricsBySpecies(
         boidStore.boids,
         config.species,
-        config.parameters.reproductionEnergyThreshold
+        config.parameters.reproductionEnergyThreshold,
       );
 
       // Stance distribution by species
@@ -169,7 +169,7 @@ export const analytics = defineResource({
 
       // Food source statistics
       const foodSourceStats = computeFoodSourceStatsByType(
-        simulation.foodSources
+        simulation.foodSources,
       );
 
       // Death marker statistics
@@ -216,7 +216,7 @@ export const analytics = defineResource({
                   reproductionType: "sexual" | "asexual";
                   offspringCount: number;
                 }
-              >
+              >,
             ),
           }
         : undefined;
@@ -298,7 +298,7 @@ export const analytics = defineResource({
             ? computeGeneticsStatsBySpecies(
                 boidStore.boids,
                 config.species,
-                lifecycleManager.getMutationCounters()
+                lifecycleManager.getMutationCounters(),
               )
             : {}, // Empty object when not sampling (saves ~55% of snapshot size)
 

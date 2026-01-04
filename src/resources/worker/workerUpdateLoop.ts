@@ -118,7 +118,7 @@ export const workerUpdateLoop = defineResource({
     const start = (
       _targetFps: number,
       onUpdateEngine: SubscriptionCallback<typeof updateSubscription>,
-      onUpdateLifecycle: SubscriptionCallback<typeof lifecycleSubscription>
+      onUpdateLifecycle: SubscriptionCallback<typeof lifecycleSubscription>,
     ) => {
       targetFps = _targetFps;
       if (!isRunning) {

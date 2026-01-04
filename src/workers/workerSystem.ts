@@ -168,7 +168,7 @@ export const createWorkerRandomnessResource = (seed?: string | number) => {
       const rng = createSeededRNG(seed ?? "worker-default-seed");
 
       console.log(
-        `[WorkerRandomness] Initialized with seed: "${rng.getMasterSeed()}" (${rng.getMasterSeedNumber()})`
+        `[WorkerRandomness] Initialized with seed: "${rng.getMasterSeed()}" (${rng.getMasterSeedNumber()})`,
       );
 
       return {

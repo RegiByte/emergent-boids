@@ -110,7 +110,7 @@ export type SharedBoidBufferLayout = {
  * - [...-...): Statistics (Uint32, 8 elements = 32 bytes)
  */
 export function calculateBufferLayout(
-  boidCount: number
+  boidCount: number,
 ): SharedBoidBufferLayout {
   let offset = 0;
 
@@ -193,29 +193,29 @@ export type SharedBoidViews = {
  */
 export function createSharedBoidViews(
   buffer: SharedArrayBuffer,
-  layout: SharedBoidBufferLayout
+  layout: SharedBoidBufferLayout,
 ): SharedBoidViews {
   return {
     bufferIndex: new Uint32Array(buffer, layout.bufferIndexOffset, 1),
     positions0: new Float32Array(
       buffer,
       layout.positions0Offset,
-      layout.boidCount * 2
+      layout.boidCount * 2,
     ),
     positions1: new Float32Array(
       buffer,
       layout.positions1Offset,
-      layout.boidCount * 2
+      layout.boidCount * 2,
     ),
     velocities0: new Float32Array(
       buffer,
       layout.velocities0Offset,
-      layout.boidCount * 2
+      layout.boidCount * 2,
     ),
     velocities1: new Float32Array(
       buffer,
       layout.velocities1Offset,
-      layout.boidCount * 2
+      layout.boidCount * 2,
     ),
     stats: new Uint32Array(buffer, layout.statsOffset, 8),
   };
@@ -258,7 +258,7 @@ export function getInactiveVelocities(views: SharedBoidViews): Float32Array {
  */
 export function setActiveBufferIndex(
   views: SharedBoidViews,
-  bufferIndex: number
+  bufferIndex: number,
 ) {
   Atomics.store(views.bufferIndex, 0, bufferIndex);
 }

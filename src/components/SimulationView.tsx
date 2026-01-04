@@ -35,10 +35,10 @@ function SimulationView() {
 
   // Get atmosphere settings (select individual values to avoid creating new objects)
   const atmosphereBase = useStore(
-    (state) => state.ui.visualSettings.atmosphere.base
+    (state) => state.ui.visualSettings.atmosphere.base,
   );
   const atmosphereEvent = useStore(
-    (state) => state.ui.visualSettings.atmosphere.activeEvent
+    (state) => state.ui.visualSettings.atmosphere.activeEvent,
   );
 
   // Compute final settings (memoized to prevent re-renders)
@@ -76,7 +76,7 @@ function SimulationView() {
   const updateCanvasDebouncer = useDebouncer(
     (
       canvas: CanvasAPI,
-      webglRenderer: { resize: (w: number, h: number) => void }
+      webglRenderer: { resize: (w: number, h: number) => void },
     ) => {
       const { width, height } = getParentDimensions();
       canvas.resize(width, height);
@@ -86,7 +86,7 @@ function SimulationView() {
       wait: 200,
       leading: false,
       trailing: true,
-    }
+    },
   );
 
   useEffect(() => {
@@ -102,7 +102,7 @@ function SimulationView() {
 
       // Find or create the canvas wrapper div
       let canvasWrapper = container.querySelector(
-        "[data-canvas-wrapper]"
+        "[data-canvas-wrapper]",
       ) as HTMLDivElement;
       if (!canvasWrapper) {
         canvasWrapper = document.createElement("div");
@@ -139,7 +139,7 @@ function SimulationView() {
       const findClosestBoidToScreen = (
         screenX: number,
         screenY: number,
-        maxScreenDistance: number
+        maxScreenDistance: number,
       ): string | null => {
         let closestBoid: string | null = null;
         let closestDistance = maxScreenDistance;
@@ -160,7 +160,7 @@ function SimulationView() {
           // Now do accurate screen-space distance check
           const boidScreen = camera.worldToScreen(
             boid.position.x,
-            boid.position.y
+            boid.position.y,
           );
           const dx = boidScreen.x - screenX;
           const dy = boidScreen.y - screenY;
@@ -352,7 +352,7 @@ function SimulationView() {
           toast.info(
             newMode === "obstacle"
               ? "Mode: Place Obstacles"
-              : "Mode: Spawn Predators"
+              : "Mode: Spawn Predators",
           );
           return newMode;
         });
@@ -412,7 +412,7 @@ function SimulationView() {
                   <label
                     className={cn(
                       "absolute left-2 top-2 px-1 py-1 inline-flex items-center justify-center gap-2",
-                      "rounded-md group-hover:bg-slate-100/30 z-50"
+                      "rounded-md group-hover:bg-slate-100/30 z-50",
                     )}
                   >
                     <SidebarTrigger
@@ -443,7 +443,7 @@ function SimulationView() {
             ref={canvasAreaRef}
             data-testid="canvas-area"
             className={cn(
-              "flex-1 flex items-center justify-center bg-(--simulation-bg) relative overflow-hidden"
+              "flex-1 flex items-center justify-center bg-(--simulation-bg) relative overflow-hidden",
             )}
             style={
               {
@@ -481,7 +481,7 @@ function SimulationView() {
                     <label
                       className={cn(
                         "px-1 py-1 inline-flex items-center justify-center gap-2",
-                        "rounded-md group-hover:bg-slate-100/30 bg-card/80 backdrop-blur-sm border border-primary/30"
+                        "rounded-md group-hover:bg-slate-100/30 bg-card/80 backdrop-blur-sm border border-primary/30",
                       )}
                     >
                       <SidebarTrigger
@@ -502,7 +502,7 @@ function SimulationView() {
               ref={canvasContainerRef}
               data-testid="canvas-container"
               className={cn(
-                "relative w-full h-full border-2 border-(--simulation-fog-color) rounded-b-lg overflow-hidden"
+                "relative w-full h-full border-2 border-(--simulation-fog-color) rounded-b-lg overflow-hidden",
               )}
             >
               <CanvasFrame

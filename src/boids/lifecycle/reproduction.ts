@@ -13,7 +13,7 @@ export function processBoidReproduction(
   allBoids: BoidsById,
   parameters: SimulationParameters,
   speciesConfig: SpeciesConfig,
-  matedBoids: Set<string>
+  matedBoids: Set<string>,
 ): MatingResult {
   const ready = isReadyToMate(boid, parameters, speciesConfig);
 
@@ -23,7 +23,7 @@ export function processBoidReproduction(
       allBoids,
       parameters,
       speciesConfig,
-      matedBoids
+      matedBoids,
     );
   } else if (boid.mateId && !ready) {
     // No longer ready to mate

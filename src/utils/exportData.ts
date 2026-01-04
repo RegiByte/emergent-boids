@@ -41,7 +41,7 @@ export function exportCurrentStats(
       bodyPartMutations: number;
       totalOffspring: number;
     }
-  >
+  >,
 ): string {
   const { config, simulation } = runtimeStore;
 
@@ -114,7 +114,7 @@ export function exportCurrentStats(
   const genetics = computeGeneticsStatsBySpecies(
     boids,
     config.species,
-    mutationCounters || {}
+    mutationCounters || {},
   );
 
   // Build export object
@@ -257,7 +257,7 @@ export async function exportEvolutionMultiRate(
   snapshots: EvolutionSnapshot[],
   boids: BoidsById,
   runtimeStore: RuntimeStore,
-  config: MultiRateExportConfig = {}
+  config: MultiRateExportConfig = {},
 ): Promise<Blob> {
   const {
     samplingRates = [1, 3, 10, 50, 100],
@@ -287,7 +287,7 @@ export async function exportEvolutionMultiRate(
           tick: snapshots[snapshots.length - 1].tick,
           timestamp: snapshots[snapshots.length - 1].timestamp,
           date: new Date(
-            snapshots[snapshots.length - 1].timestamp
+            snapshots[snapshots.length - 1].timestamp,
           ).toISOString(),
         },
       },
@@ -365,14 +365,14 @@ export async function exportAndDownloadMultiRate(
   snapshots: EvolutionSnapshot[],
   boids: BoidsById,
   runtimeStore: RuntimeStore,
-  config: MultiRateExportConfig = {}
+  config: MultiRateExportConfig = {},
 ): Promise<void> {
   try {
     const blob = await exportEvolutionMultiRate(
       snapshots,
       boids,
       runtimeStore,
-      config
+      config,
     );
     const filename = `${config.baseFilename || `evolution_export_${Date.now()}`}.zip`;
     downloadBlob(blob, filename);
@@ -392,7 +392,7 @@ export function copyToClipboard(text: string, label: string = "Data"): void {
     .then(() => {
       console.log(`✅ ${label} copied to clipboard!`);
       console.log(
-        `📊 Preview (first 500 chars):\n${text.substring(0, 500)}...`
+        `📊 Preview (first 500 chars):\n${text.substring(0, 500)}...`,
       );
     })
     .catch((err) => {

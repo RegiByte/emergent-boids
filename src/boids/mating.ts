@@ -68,7 +68,7 @@ export function findNearbyMate(
   boid: Boid,
   allBoids: BoidsById,
   alreadyMated: Set<string>,
-  mateRadius: number
+  mateRadius: number,
 ): Boid | null {
   for (const other of iterateBoids(allBoids)) {
     if (isEligibleMate(other, boid, alreadyMated)) {
@@ -88,11 +88,11 @@ export function findNearbyMate(
 export function processAsexualReproduction(
   boid: Boid,
   parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig
+  speciesConfig: SpeciesConfig,
 ): MatingResult {
   // Asexual reproduction is instant - no mate needed, no buildup
   const reproductionEnergy = calculateReproductionEnergyCost(
-    boid.phenotype.maxEnergy
+    boid.phenotype.maxEnergy,
   );
 
   // Use type-specific cooldown if available, otherwise use global
@@ -135,7 +135,7 @@ export function processMatingCycle(
   allBoids: BoidsById,
   parameters: SimulationParameters,
   speciesConfig: SpeciesConfig,
-  matedBoids: Set<string>
+  matedBoids: Set<string>,
 ): MatingResult {
   // Check if this type uses asexual reproduction
   if (speciesConfig.reproduction.type === "asexual") {
@@ -167,13 +167,13 @@ export function processMatingCycle(
     if (distance < parameters.mateRadius) {
       const newBuildup = Math.min(
         boid.matingBuildupCounter + 1,
-        parameters.matingBuildupTicks
+        parameters.matingBuildupTicks,
       );
 
       // Buildup complete - reproduce!
       if (newBuildup >= parameters.matingBuildupTicks) {
         const reproductionEnergy = calculateReproductionEnergyCost(
-          boid.phenotype.maxEnergy
+          boid.phenotype.maxEnergy,
         );
 
         // Use type-specific cooldown if available, otherwise use global
@@ -230,7 +230,7 @@ export function processMatingCycle(
       boid,
       allBoids,
       matedBoids,
-      parameters.mateRadius
+      parameters.mateRadius,
     );
 
     if (mate) {
@@ -272,7 +272,7 @@ export function applyBoidUpdates(boid: Boid, updates: BoidUpdates): void {
 export function incrementMatingBuildup(
   boid: Boid,
   mate: Boid,
-  amount: number = 1
+  amount: number = 1,
 ): void {
   boid.matingBuildupCounter += amount;
   mate.matingBuildupCounter += amount;
@@ -321,7 +321,7 @@ export function unpairBoids(boid: Boid, mate: Boid | null | undefined): void {
 export function applyMatingResult(
   boid: Boid,
   result: MatingResult,
-  context: MatingContext
+  context: MatingContext,
 ): void {
   const { boids, matedBoids, boidsToAdd } = context;
 

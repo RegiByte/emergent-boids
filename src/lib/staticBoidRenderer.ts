@@ -38,7 +38,7 @@ export function createStaticBoid(
   typeId: string,
   index: number,
   position: Vector2 = { x: 0, y: 0 },
-  rotation: number = 0
+  rotation: number = 0,
 ): Boid {
   const phenotype = computePhenotype(genome, defaultWorldPhysics);
 
@@ -73,7 +73,7 @@ export function createStaticBoid(
     targetLockTime: 0,
     targetLockStrength: 0,
     mateCommitmentTime: 0,
-    stanceEnteredAt: 0,
+    stanceEnteredAtFrame: 0,
     substate: null,
   };
 }
@@ -96,7 +96,7 @@ export function renderBoidCanvas2D(
   boid: Boid,
   scale: number = 1,
   speciesConfig?: SpeciesConfig,
-  atlases?: AtlasesResult
+  atlases?: AtlasesResult,
 ): void {
   const { velocity, genome } = boid;
 
@@ -208,7 +208,7 @@ export function applyCameraTransform(
   ctx: CanvasRenderingContext2D,
   camera: StaticCamera,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
 ): void {
   // Center the canvas
   ctx.translate(canvasWidth / 2, canvasHeight / 2);
@@ -232,7 +232,7 @@ export function renderBoidsCanvas2D(
     scale?: number;
     clearCanvas?: boolean;
     speciesConfig?: SpeciesConfig;
-  }
+  },
 ): void {
   const {
     camera = { position: { x: 0, y: 0 }, zoom: 1 },

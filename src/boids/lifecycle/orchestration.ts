@@ -17,7 +17,7 @@ import { processBoidReproduction } from "./reproduction";
  */
 export function processLifecycleUpdates(
   boids: BoidsById,
-  context: BoidUpdateContext
+  context: BoidUpdateContext,
 ): {
   boidsToRemove: string[];
   boidsToAdd: OffspringData[];
@@ -87,7 +87,7 @@ export function processLifecycleUpdates(
       boids,
       parameters,
       speciesConfig,
-      matedBoids
+      matedBoids,
     );
 
     // Apply mating result
