@@ -66,3 +66,4 @@ self.addEventListener("close", () => {
     });
   }
 });
+
