@@ -38,7 +38,7 @@ export function createStaticBoid(
   typeId: string,
   index: number,
   position: Vector2 = { x: 0, y: 0 },
-  rotation: number = 0,
+  rotation: number = 0
 ): Boid {
   const phenotype = computePhenotype(genome, defaultWorldPhysics);
 
@@ -51,6 +51,7 @@ export function createStaticBoid(
   return {
     id: `static-${Math.random().toString(36).substr(2, 9)}`,
     index,
+    isDead: false,
     position,
     velocity,
     acceleration: { x: 0, y: 0 },
@@ -63,18 +64,20 @@ export function createStaticBoid(
     reproductionCooldown: 0,
     seekingMate: false,
     mateId: null,
-    matingBuildupCounter: 0,
-    eatingCooldown: 0,
-    attackCooldown: 0,
+    matingBuildupFrames: 0,
+    eatingCooldownFrames: 0,
+    attackCooldownFrames: 0,
     stance: "idle" as const,
     previousStance: null,
     positionHistory: [],
     targetId: null,
-    targetLockTime: 0,
+    targetLockFrame: 0,
     targetLockStrength: 0,
-    mateCommitmentTime: 0,
+    mateCommitmentFrames: 0,
     stanceEnteredAtFrame: 0,
     substate: null,
+    knockbackVelocity: null,
+    knockbackFramesRemaining: 0,
   };
 }
 
@@ -96,7 +99,7 @@ export function renderBoidCanvas2D(
   boid: Boid,
   scale: number = 1,
   speciesConfig?: SpeciesConfig,
-  atlases?: AtlasesResult,
+  atlases?: AtlasesResult
 ): void {
   const { velocity, genome } = boid;
 
@@ -208,7 +211,7 @@ export function applyCameraTransform(
   ctx: CanvasRenderingContext2D,
   camera: StaticCamera,
   canvasWidth: number,
-  canvasHeight: number,
+  canvasHeight: number
 ): void {
   // Center the canvas
   ctx.translate(canvasWidth / 2, canvasHeight / 2);
@@ -232,7 +235,7 @@ export function renderBoidsCanvas2D(
     scale?: number;
     clearCanvas?: boolean;
     speciesConfig?: SpeciesConfig;
-  },
+  }
 ): void {
   const {
     camera = { position: { x: 0, y: 0 }, zoom: 1 },

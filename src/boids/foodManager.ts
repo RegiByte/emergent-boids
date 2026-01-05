@@ -52,7 +52,7 @@ export function createPredatorFood(
     energy: foodEnergy,
     maxEnergy: foodEnergy,
     sourceType: "predator",
-    createdTick: currentTick,
+    createdFrame: currentTick,
   };
 }
 
@@ -109,7 +109,7 @@ export function generatePreyFood(
       energy: FOOD_CONSTANTS.PREY_FOOD_INITIAL_ENERGY,
       maxEnergy: FOOD_CONSTANTS.PREY_FOOD_INITIAL_ENERGY,
       sourceType: "prey",
-      createdTick: currentTick,
+      createdFrame: currentTick,
     });
   }
 
@@ -133,7 +133,7 @@ function canBoidEatFood(
   if (boid.stance !== "eating") return false;
 
   // Must NOT have eating cooldown (respects turn-taking)
-  if (boid.eatingCooldown > 0) return false;
+  if (boid.eatingCooldownFrames > 0) return false;
 
   // Must be close enough
   const dx = boid.position.x - food.position.x;

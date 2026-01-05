@@ -15,6 +15,7 @@ import type {
   SimulationParameters,
   WorldConfig,
 } from "./vocabulary/schemas/world";
+import type { LifecycleEvent } from "./lifecycle/events";
 
 /**
  * Simulation state context - dynamic world state that changes every frame
@@ -85,12 +86,19 @@ export type EngineUpdateContext = {
   staggerFrames: {
     tail: number;
     behavior: number;
+    lifecycle: number;
   };
 
   // Constraints (engine limits)
   constraints: {
     maxNeighborsLookup: number;
   };
+
+  // Lifecycle tracking (optional - only when lifecycle integration is active)
+  lifecycleCollector?: {
+    collect: (event: LifecycleEvent) => void;
+  };
+  matedBoidsThisFrame?: Set<string>;
 };
 
 export type BoidUpdateContext = ExpandType<
@@ -127,6 +135,7 @@ export type LifecycleUpdateContext = ExpandType<
     | "boidsByRole"
     | "forcesCollector"
     | "profiler"
+    | "deltaSeconds"
   > & {
     tick: number;
   }

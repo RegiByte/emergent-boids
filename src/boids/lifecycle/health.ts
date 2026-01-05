@@ -32,7 +32,7 @@ export function regenerateHealth(boid: Boid): Boid {
     ...boid,
     health: Math.min(
       boid.phenotype.maxHealth,
-      boid.health + boid.phenotype.healthRegenRate,
+      boid.health + boid.phenotype.healthRegenRate
     ),
   };
 }
@@ -70,7 +70,7 @@ export function takeDamage(boid: Boid, damage: number): Boid {
 export function healFromFood(
   boid: Boid,
   energyGained: number,
-  physics: WorldPhysics,
+  physics: WorldPhysics
 ): Boid {
   const healing = energyGained * physics.health.foodHealingMultiplier;
 
@@ -105,7 +105,7 @@ export function isDead(boid: Boid): boolean {
  */
 export function getDeathCause(
   boid: Boid,
-  maxAge: number,
+  maxAge: number
 ): "old_age" | "starvation" | "predation" {
   if (boid.health <= 0) return "predation"; // Combat death
   if (boid.energy <= 0) return "starvation"; // Energy depletion
@@ -122,12 +122,14 @@ export function getDeathCause(
  * @param boid - Boid to check
  * @returns RGBA color string or null if healthy
  */
-export function getWoundedTint(boid: Boid): string | null {
+export function getWoundedTint(
+  boid: Boid
+): { color: string; alpha: number } | null {
   const healthPercent = boid.health / boid.phenotype.maxHealth;
 
   if (healthPercent > 0.7) return null; // Healthy (>70%)
-  if (healthPercent > 0.4) return "rgba(255, 200, 0, 0.3)"; // Wounded (40-70%, yellow)
-  return "rgba(255, 0, 0, 0.5)"; // Critical (<40%, red)
+  if (healthPercent > 0.4) return { color: "rgba(255, 200, 0)", alpha: 0.2 }; // Wounded (40-70%, yellow)
+  return { color: "rgba(255, 0, 0)", alpha: 0.4 }; // Critical (<40%, red)
 }
 
 /**

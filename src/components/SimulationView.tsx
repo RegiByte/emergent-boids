@@ -11,7 +11,12 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { CanvasAPI } from "@/resources/browser/canvas.ts";
-import { useResource, useSystem } from "@/systems/standard.ts";
+import {
+  StandardSystem,
+  SystemProvider,
+  useResource,
+  useSystem,
+} from "@/systems/standard.ts";
 import { IconAdjustmentsHorizontal } from "@tabler/icons-react";
 import { useDebouncer } from "@tanstack/react-pacer";
 import { AnimatePresence, motion } from "motion/react";
@@ -24,9 +29,11 @@ function SimulationView() {
   const runtimeController = useResource("runtimeController");
   const runtimeStore = useResource("runtimeStore");
   const { store: boidStore } = useResource("localBoidStore");
+  const simulation = useResource("simulation");
   const canvas = useResource("canvas");
   const camera = useResource("camera");
   const renderer = useResource("renderer");
+  const updateLoop = useResource("updateLoop");
   const webglRenderer = useResource("webglRenderer");
   const { useStore } = runtimeStore;
   const sidebarOpen = useStore((state) => state.ui.sidebarOpen);
@@ -35,10 +42,10 @@ function SimulationView() {
 
   // Get atmosphere settings (select individual values to avoid creating new objects)
   const atmosphereBase = useStore(
-    (state) => state.ui.visualSettings.atmosphere.base,
+    (state) => state.ui.visualSettings.atmosphere.base
   );
   const atmosphereEvent = useStore(
-    (state) => state.ui.visualSettings.atmosphere.activeEvent,
+    (state) => state.ui.visualSettings.atmosphere.activeEvent
   );
 
   // Compute final settings (memoized to prevent re-renders)
@@ -76,7 +83,7 @@ function SimulationView() {
   const updateCanvasDebouncer = useDebouncer(
     (
       canvas: CanvasAPI,
-      webglRenderer: { resize: (w: number, h: number) => void },
+      webglRenderer: { resize: (w: number, h: number) => void }
     ) => {
       const { width, height } = getParentDimensions();
       canvas.resize(width, height);
@@ -86,7 +93,7 @@ function SimulationView() {
       wait: 200,
       leading: false,
       trailing: true,
-    },
+    }
   );
 
   useEffect(() => {
@@ -102,7 +109,7 @@ function SimulationView() {
 
       // Find or create the canvas wrapper div
       let canvasWrapper = container.querySelector(
-        "[data-canvas-wrapper]",
+        "[data-canvas-wrapper]"
       ) as HTMLDivElement;
       if (!canvasWrapper) {
         canvasWrapper = document.createElement("div");
@@ -139,7 +146,7 @@ function SimulationView() {
       const findClosestBoidToScreen = (
         screenX: number,
         screenY: number,
-        maxScreenDistance: number,
+        maxScreenDistance: number
       ): string | null => {
         let closestBoid: string | null = null;
         let closestDistance = maxScreenDistance;
@@ -160,7 +167,7 @@ function SimulationView() {
           // Now do accurate screen-space distance check
           const boidScreen = camera.worldToScreen(
             boid.position.x,
-            boid.position.y,
+            boid.position.y
           );
           const dx = boidScreen.x - screenX;
           const dy = boidScreen.y - screenY;
@@ -266,15 +273,29 @@ function SimulationView() {
       canvas.canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
 
       // Start the renderer
-      if (renderer) {
-        renderer.start();
+      // if (updateLoop && !updateLoop.isPaused()) {
+      //   updateLoop.start(
+      //     30,
+      //     (updates) => {
+      //       // console.log("updates", updates);
+      //     },
+      //     (events) => {
+      //       // console.log("events", events);
+      //     }
+      //   );
+
+      //   if (renderer) {
+      //     renderer.start();
+      //   }
+      // }
+
+      // Start the simulation
+      if (simulation && !simulation.isPaused()) {
+        simulation.commands.start();
       }
 
       return () => {
         // Stop renderer on cleanup
-        if (renderer) {
-          renderer.stop();
-        }
         canvas.canvas.removeEventListener("click", handleCanvasClick);
         canvas.canvas.removeEventListener("mousemove", handleCanvasMouseMove);
         canvas.canvas.removeEventListener("mouseenter", handleCanvasMouseEnter);
@@ -285,10 +306,12 @@ function SimulationView() {
     spawnMode,
     canvas,
     webglRenderer,
-    renderer,
     runtimeController,
     camera,
     boidStore,
+    updateLoop,
+    renderer,
+    simulation,
   ]);
 
   // Use reactive camera mode for cursor updates
@@ -336,42 +359,6 @@ function SimulationView() {
     };
   }, [canvas, webglRenderer, updateCanvasDebouncer]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't interfere with browser shortcuts (Cmd/Ctrl + key combinations)
-      if (e.metaKey || e.ctrlKey) {
-        return;
-      }
-
-      // Space: Toggle spawn mode
-      if (e.code === "Space" && !e.repeat) {
-        e.preventDefault();
-        setSpawnMode((prev) => {
-          const newMode = prev === "obstacle" ? "predator" : "obstacle";
-          toast.info(
-            newMode === "obstacle"
-              ? "Mode: Place Obstacles"
-              : "Mode: Spawn Predators",
-          );
-          return newMode;
-        });
-      }
-
-      // Escape: Clear obstacles
-      if (e.code === "Escape") {
-        e.preventDefault();
-        runtimeController.dispatch({
-          type: eventKeywords.obstacles.cleared,
-        });
-        toast.success("All obstacles cleared");
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [runtimeController]);
-
   return (
     <SidebarProvider
       open={sidebarOpen}
@@ -412,7 +399,7 @@ function SimulationView() {
                   <label
                     className={cn(
                       "absolute left-2 top-2 px-1 py-1 inline-flex items-center justify-center gap-2",
-                      "rounded-md group-hover:bg-slate-100/30 z-50",
+                      "rounded-md group-hover:bg-slate-100/30 z-50"
                     )}
                   >
                     <SidebarTrigger
@@ -443,7 +430,7 @@ function SimulationView() {
             ref={canvasAreaRef}
             data-testid="canvas-area"
             className={cn(
-              "flex-1 flex items-center justify-center bg-(--simulation-bg) relative overflow-hidden",
+              "flex-1 flex items-center justify-center bg-(--simulation-bg) relative overflow-hidden"
             )}
             style={
               {
@@ -481,7 +468,7 @@ function SimulationView() {
                     <label
                       className={cn(
                         "px-1 py-1 inline-flex items-center justify-center gap-2",
-                        "rounded-md group-hover:bg-slate-100/30 bg-card/80 backdrop-blur-sm border border-primary/30",
+                        "rounded-md group-hover:bg-slate-100/30 bg-card/80 backdrop-blur-sm border border-primary/30"
                       )}
                     >
                       <SidebarTrigger
@@ -502,7 +489,7 @@ function SimulationView() {
               ref={canvasContainerRef}
               data-testid="canvas-container"
               className={cn(
-                "relative w-full h-full border-2 border-(--simulation-fog-color) rounded-b-lg overflow-hidden",
+                "relative w-full h-full border-2 border-(--simulation-fog-color) rounded-b-lg overflow-hidden"
               )}
             >
               <CanvasFrame
@@ -521,6 +508,20 @@ function SimulationView() {
         </SidebarInset>
       </div>
     </SidebarProvider>
+  );
+}
+
+/**
+ * Create a simple wrapper that overrides the default system used by the simulation view
+ * by whathever system is passed in the context.
+ *
+ * By default, braided does not require a context to work though
+ */
+export function SimulationWrapper({ system }: { system: StandardSystem }) {
+  return (
+    <SystemProvider system={system}>
+      <SimulationView />
+    </SystemProvider>
   );
 }
 

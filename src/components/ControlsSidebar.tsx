@@ -1,12 +1,17 @@
-import { useState } from "react";
-import { useResource } from "@/systems/standard.ts";
 import { eventKeywords } from "@/boids/vocabulary/keywords";
 import {
-  exportCurrentStats,
-  exportEvolutionJSONL,
-  exportAndDownloadMultiRate,
-  copyToClipboard,
-} from "@/utils/exportData";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -17,40 +22,34 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { generateRandomSeed } from "@/lib/seededRandom";
+import { useResource } from "@/systems/standard.ts";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Kbd } from "@/components/ui/kbd";
+  copyToClipboard,
+  exportAndDownloadMultiRate,
+  exportEvolutionJSONL
+} from "@/utils/exportData";
 import {
-  IconSettings,
-  IconDna,
-  IconAdjustments,
-  IconClick,
-  IconDatabase,
-  IconRefresh,
-  IconCopy,
   IconActivity,
+  IconAdjustments,
   IconChartBar,
   IconChartLine,
+  IconClick,
+  IconCopy,
+  IconDatabase,
+  IconDna,
+  IconRefresh,
+  IconSettings,
 } from "@tabler/icons-react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { generateRandomSeed } from "@/lib/seededRandom";
-import { EventsPanel } from "./EventsPanel";
-import { PopulationStats } from "./PopulationStats";
-import { PopulationGraph } from "./PopulationGraph";
-import { EnergyGraph } from "./EnergyGraph";
 import { BirthRatesGraph } from "./BirthRatesGraph";
 import { DeathRatesGraph } from "./DeathRatesGraph";
+import { EnergyGraph } from "./EnergyGraph";
+import { EventsPanel } from "./EventsPanel";
+import { PopulationGraph } from "./PopulationGraph";
+import { PopulationStats } from "./PopulationStats";
 
 export type SpawnMode = "obstacle" | "predator";
 
@@ -70,7 +69,7 @@ export function ControlsSidebar({
   const { config, simulation } = runtimeStore;
   const analytics = useAnalyticsStore((state) => state.evolution.data);
   const runtimeController = useResource("runtimeController");
-  const lifecycleManager = useResource("lifecycleManager");
+  // const lifecycleManager = useResource("lifecycleManager");
   const randomness = useResource("randomness");
   const time = useResource("time");
   const timeState = time.useTime();
@@ -373,13 +372,14 @@ export function ControlsSidebar({
                   size="sm"
                   className="w-full justify-start"
                   onClick={() => {
-                    const json = exportCurrentStats(
-                      boidStore.boids,
-                      runtimeStore,
-                      lifecycleManager.getMutationCounters(),
-                    );
-                    copyToClipboard(json, "Current Stats (JSON)");
-                    toast.success("Stats copied to clipboard!");
+                    // TODO: reimplement this with the new architecture
+                    // const json = exportCurrentStats(
+                    //   boidStore.boids,
+                    //   runtimeStore,
+                    //   lifecycleManager.getMutationCounters(),
+                    // );
+                    // copyToClipboard(json, "Current Stats (JSON)");
+                    // toast.success("Stats copied to clipboard!");
                   }}
                 >
                   📋 Copy Current Stats

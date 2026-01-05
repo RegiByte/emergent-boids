@@ -405,7 +405,7 @@ export const createBodyPartsTexture = (
  * Log body parts atlas debug info to console
  */
 export const logBodyPartsAtlasDebugInfo = (atlas: AtlasResult): void => {
-  console.log("🎨 Body Parts Atlas Preview URL:", atlas.previewURL);
+  // console.log("🎨 Body Parts Atlas Preview URL:", atlas.previewURL);
   console.log("📊 Body Parts Atlas Info:", {
     parts: Array.from(atlas.uvMap.keys()),
     gridSize: atlas.gridSize,

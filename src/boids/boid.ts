@@ -103,6 +103,7 @@ export function createBoid(
   return {
     id: `boid-${boidIdCounter++}`,
     index,
+    isDead: false,
     position: {
       x: rng.range(0, world.width),
       y: rng.range(0, world.height),
@@ -126,24 +127,28 @@ export function createBoid(
     reproductionCooldown: 0, // Start ready to mate
     seekingMate: false, // Not seeking initially
     mateId: null, // No mate initially
-    matingBuildupCounter: 0, // No buildup initially
-    eatingCooldown: 0, // Not eating initially
-    attackCooldown: 0, // Not attacking initially
+    matingBuildupFrames: 0, // No buildup initially
+    eatingCooldownFrames: 0, // Not eating initially
+    attackCooldownFrames: 0, // Not attacking initially
     stance: role === "predator" ? "hunting" : "flocking", // Initial stance based on role
     previousStance: null, // No previous stance
     positionHistory: [], // Empty trail initially
 
     // Target tracking (NEW - Session 74)
     targetId: null, // No target initially
-    targetLockTime: 0, // No lock time
+    targetLockFrame: 0, // No lock time
     targetLockStrength: 0, // No lock strength
 
     // Mate commitment tracking (NEW - Session 75)
-    mateCommitmentTime: 0, // No mate commitment initially
+    mateCommitmentFrames: 0, // No mate commitment initially
 
     // Stance transition tracking (NEW - Session 74)
     stanceEnteredAtFrame: 0, // Entered at tick 0
     substate: null, // No substate initially
+
+    // Knockback tracking
+    knockbackVelocity: null, // No knockback velocity initially
+    knockbackFramesRemaining: 0, // No knockback frames remaining initially
   };
 }
 
@@ -238,6 +243,7 @@ export function createBoidOfType(
   const boid: Boid = {
     id: `boid-${boidIdCounter++}`,
     index,
+    isDead: false,
     position: {
       x:
         (position.x + rng.range(-offset / 2, offset / 2) + world.width) %
@@ -265,24 +271,28 @@ export function createBoidOfType(
     reproductionCooldown: 0, // Start ready to mate
     seekingMate: false, // Not seeking initially
     mateId: null, // No mate initially
-    matingBuildupCounter: 0, // No buildup initially
-    eatingCooldown: 0, // Not eating initially
-    attackCooldown: 0, // Not attacking initially
+    matingBuildupFrames: 0, // No buildup initially
+    eatingCooldownFrames: 0, // Not eating initially
+    attackCooldownFrames: 0, // Not attacking initially
     stance: speciesConfig.role === "predator" ? "hunting" : "flocking", // Initial stance based on role
     previousStance: null, // No previous stance
     positionHistory: [], // Empty trail initially
 
     // Target tracking (NEW - Session 74)
     targetId: null, // No target initially
-    targetLockTime: 0, // No lock time
+    targetLockFrame: 0, // No lock time
     targetLockStrength: 0, // No lock strength
 
     // Mate commitment tracking (NEW - Session 75)
-    mateCommitmentTime: 0, // No mate commitment initially
+    mateCommitmentFrames: 0, // No mate commitment initially
 
     // Stance transition tracking (NEW - Session 74)
     stanceEnteredAtFrame: 0, // Entered at tick 0
     substate: null, // No substate initially
+
+    // Knockback tracking
+    knockbackVelocity: null, // No knockback velocity initially
+    knockbackFramesRemaining: 0, // No knockback frames remaining initially
   };
 
   return { boid, mutationMetadata };
@@ -631,6 +641,27 @@ function updatePrey(boid: Boid, context: BoidUpdateContext): void {
   boid.velocity.y = limitedVelocity.y;
 }
 
+function updateKnockback(boid: Boid, context: BoidUpdateContext): void {
+  if (boid.knockbackVelocity) {
+    const velocityX = boid.knockbackVelocity.x;
+    const velocityY = boid.knockbackVelocity.y;
+    boid.velocity.x = velocityX;
+    boid.velocity.y = velocityY;
+
+    const decayFactor = 0.8; // reduce knockback gradually over time
+    boid.knockbackVelocity.x *= decayFactor;
+    boid.knockbackVelocity.y *= decayFactor;
+    boid.knockbackFramesRemaining--;
+    if (boid.knockbackFramesRemaining <= 0) {
+      boid.knockbackVelocity = null;
+    }
+
+    boid.position.x += velocityX * context.scaledTime;
+    boid.position.y += velocityY * context.scaledTime;
+    wrapEdges(boid, context.config.world.width, context.config.world.height);
+  }
+}
+
 /**
  * Update a single boid based on its neighbors and obstacles
  * Dispatches to role-specific update functions
@@ -647,6 +678,10 @@ export function updateBoid(boid: Boid, context: BoidUpdateContext): void {
   // Reset acceleration
   boid.acceleration = { x: 0, y: 0 };
   context.forcesCollector.reset();
+
+  if (boid.knockbackFramesRemaining > 0) {
+    updateKnockback(boid, context);
+  }
 
   // Dispatch to role-specific update function
   if (speciesConfig.role === roleKeywords.predator) {

@@ -123,7 +123,7 @@ export const renderBackground = (rc: RenderContext): void => {
   // Use background color from profile with trail alpha for motion blur effect
   rc.ctx.fillStyle = hexToRgba(
     rc.backgroundColor,
-    rc.visualSettings.atmosphere.trailAlpha,
+    rc.visualSettings.atmosphere.trailAlpha
   );
   rc.ctx.fillRect(0, 0, rc.width, rc.height);
   rc.profiler?.end("render.clear");
@@ -156,7 +156,7 @@ export const renderObstacles = (rc: RenderContext): void => {
         x - radius * 2 + i * stripeWidth,
         y - radius * 2,
         stripeWidth,
-        radius * 4,
+        radius * 4
       );
     }
 
@@ -205,7 +205,7 @@ export const renderDeathMarkers = (rc: RenderContext): void => {
 
     // Calculate visual properties based on strength and remaining ticks
     const strengthRatio = marker.strength / 5.0; // Max strength is 5.0
-    const tickRatio = marker.remainingTicks / marker.maxLifetimeTicks;
+    const tickRatio = marker.remainingFrames / marker.maxLifetimeFrames;
 
     // Opacity based on remaining ticks (fades as it expires)
     const opacity = Math.max(0.3, tickRatio);
@@ -231,7 +231,7 @@ export const renderDeathMarkers = (rc: RenderContext): void => {
       marker.position.y,
       circleRadius,
       0,
-      Math.PI * 2,
+      Math.PI * 2
     );
     rc.ctx.fill();
 
@@ -461,13 +461,13 @@ export const renderBoidBodies = (rc: RenderContext): void => {
     const energyRatio = boid.energy / boid.phenotype.maxEnergy;
     const dynamicColor = adjustColorBrightness(
       boid.phenotype.color, // Use individual genome color, not species color
-      energyRatio,
+      energyRatio
     );
 
     // Check if glow effect is requested (from genome body parts)
     const bodyParts = speciesConfig.baseGenome?.visual?.bodyParts || [];
     const hasGlow = bodyParts.some(
-      (part: { type: string }) => part.type === "glow",
+      (part: { type: string }) => part.type === "glow"
     );
 
     if (hasGlow) {
@@ -528,10 +528,13 @@ export const renderBoidBodies = (rc: RenderContext): void => {
     // Session 99: Renderer handles complete drawing
     const woundedTint = getWoundedTint(boid);
     if (woundedTint) {
-      rc.ctx.fillStyle = woundedTint;
+      const originalAlpha = rc.ctx.globalAlpha || 1;
+      rc.ctx.globalAlpha = woundedTint.alpha;
+      rc.ctx.fillStyle = woundedTint.color;
       rc.ctx.strokeStyle = "rgba(255, 255, 255, 0.2)"; // Subtle outline for wounded
       rc.ctx.lineWidth = 1;
       shapeRenderer(rc.ctx, shapeSize); // Renderer handles fill/stroke internally
+      rc.ctx.globalAlpha = originalAlpha;
     }
 
     // DEBUG: Draw collision radius circle (Session 96)
@@ -577,8 +580,8 @@ export const renderStanceSymbols = (rc: RenderContext): void => {
 
     // Session 75: Only show symbol if stance changed recently
     const framesSinceChange = rc.simulationFrame - boid.stanceEnteredAtFrame;
-    const DISPLAY_DURATION = 90; // Show for 30 ticks (~1 second at 30 UPS)
-    const FADE_START = 60; // Start fading at 20 ticks (~1 second)
+    const DISPLAY_DURATION = 120; // Show for 4 seconds (120 frames at 30 FPS)
+    const FADE_START = 60; // Start fading at 2 seconds (60 frames at 30 FPS)
 
     // Don't render if stance change was too long ago
     if (framesSinceChange > DISPLAY_DURATION) {
@@ -849,7 +852,7 @@ export const renderStats = (rc: RenderContext, fps: number): void => {
   rc.ctx.fillText(
     `Total: ${rc.allBoids.length}`,
     startingX,
-    startingY + lineHeight,
+    startingY + lineHeight
   );
   rc.ctx.fillStyle = "#00ff88";
   rc.ctx.fillText(`Prey: ${preyCount}`, startingX, startingY + lineHeight * 2);
@@ -857,13 +860,13 @@ export const renderStats = (rc: RenderContext, fps: number): void => {
   rc.ctx.fillText(
     `Predators: ${predatorCount}`,
     startingX,
-    startingY + lineHeight * 3,
+    startingY + lineHeight * 3
   );
   rc.ctx.fillStyle = "#00ff88";
   rc.ctx.fillText(
     `Obstacles: ${rc.obstacles.length}`,
     startingX,
-    startingY + lineHeight * 4,
+    startingY + lineHeight * 4
   );
 
   // Paused overlay (if paused)
@@ -887,7 +890,7 @@ export const renderStats = (rc: RenderContext, fps: number): void => {
     rc.ctx.fillText(
       "Press SPACE to resume or → to step forward",
       rc.width / 2,
-      rc.height / 2 + 60,
+      rc.height / 2 + 60
     );
 
     // Frame counter
@@ -896,7 +899,7 @@ export const renderStats = (rc: RenderContext, fps: number): void => {
     rc.ctx.fillText(
       `Frame: ${rc.timeState.simulationFrame}`,
       rc.width / 2,
-      rc.height / 2 + 90,
+      rc.height / 2 + 90
     );
 
     rc.ctx.restore();
@@ -948,12 +951,12 @@ export const renderPickerMode = (rc: RenderContext): void => {
   if (targetBoidId) {
     const targetBoid = findBoidWhere(
       rc.allBoids,
-      (boid) => boid.id === targetBoidId,
+      (boid) => boid.id === targetBoidId
     );
     if (targetBoid) {
       const boidScreenPos = rc.camera.worldToScreen(
         targetBoid.position.x,
-        targetBoid.position.y,
+        targetBoid.position.y
       );
 
       ctx.save();
@@ -990,7 +993,7 @@ export const renderFollowedBoid = (rc: RenderContext): void => {
   ) {
     const followedBoid = findBoidWhere(
       rc.allBoids,
-      (boid) => boid.id === followedBoidId,
+      (boid) => boid.id === followedBoidId
     );
     if (!followedBoid) {
       cachedFollowedBoidForRender = null;
@@ -1002,7 +1005,7 @@ export const renderFollowedBoid = (rc: RenderContext): void => {
   const ctx = rc.ctx;
   const screenPos = rc.camera.worldToScreen(
     cachedFollowedBoidForRender.boid.position.x,
-    cachedFollowedBoidForRender.boid.position.y,
+    cachedFollowedBoidForRender.boid.position.y
   );
 
   // Pulsing effect based on time
@@ -1026,6 +1029,7 @@ export const renderFollowedBoid = (rc: RenderContext): void => {
  * Complete rendering pipeline - orchestrates all render passes
  */
 export const renderFrame = (rc: RenderContext, fps: number): void => {
+  // console.log("renderFrame", rc);
   // Layer 1: Background (with trails)
   renderBackground(rc);
 

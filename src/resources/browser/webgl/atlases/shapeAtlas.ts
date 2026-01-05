@@ -263,7 +263,7 @@ export const createShapeTexture = (
  * Log shape atlas debug info to console
  */
 export const logShapeAtlasDebugInfo = (atlas: AtlasResult): void => {
-  console.log("🎨 Shape Atlas Preview URL:", atlas.previewURL);
+  // console.log("🎨 Shape Atlas Preview URL:", atlas.previewURL);
   console.log("📊 Shape Atlas Info:", {
     shapes: Array.from(atlas.uvMap.keys()),
     gridSize: atlas.gridSize,

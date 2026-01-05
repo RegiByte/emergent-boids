@@ -1,27 +1,27 @@
 import { Boid } from "@/boids/vocabulary/schemas/entities";
 import { RuntimeStore } from "@/boids/vocabulary/schemas/state";
 import {
-  createSharedBoidViews,
   SharedBoidBufferLayout,
-  SharedBoidViews,
-  StatsIndex,
+  StatsIndex
 } from "@/lib/sharedMemory";
 import { createAtom } from "@/lib/state";
+import { sharedMemoryKeywords } from "@/lib/workerTasks/vocabulary";
 import { defineResource, StartedResource } from "braided";
 import {
   createLocalBoidStore,
   syncBoidsToSharedMemory,
 } from "../browser/localBoidStore";
+import { SharedMemoryManager } from "../shared/sharedMemoryManager";
 
 export type WorkerStoreState = Pick<RuntimeStore, "config" | "simulation">;
 
-const createBoidsStore = () => {
+const createBoidsStore = (sharedMemoryManager: SharedMemoryManager) => {
   const localStore = createLocalBoidStore();
 
   // Shared array buffers from client
-  let sharedBuffer: SharedArrayBuffer | null = null;
-  let bufferLayout: SharedBoidBufferLayout | null = null;
-  let bufferViews: SharedBoidViews | null = null;
+  // let sharedBuffer: SharedArrayBuffer | null = null;
+  // let bufferLayout: SharedBoidBufferLayout | null = null;
+  // let bufferViews: SharedBoidViews | null = null;
 
   const api = {
     getBoids: () => localStore.boids,
@@ -33,7 +33,7 @@ const createBoidsStore = () => {
         Atomics.store(
           bufferViews.stats,
           StatsIndex.ALIVE_COUNT,
-          localStore.count(),
+          localStore.count()
         );
       }
     },
@@ -44,7 +44,7 @@ const createBoidsStore = () => {
           Atomics.store(
             bufferViews.stats,
             StatsIndex.ALIVE_COUNT,
-            localStore.count(),
+            localStore.count()
           );
         }
       }
@@ -58,20 +58,27 @@ const createBoidsStore = () => {
     },
 
     // SharedArrayBuffer access (mutable, shared reference)
-    getSharedBuffer: () => sharedBuffer,
+    getSharedBuffer: () =>
+      sharedMemoryManager.get(sharedMemoryKeywords.boidsPhysics),
     setSharedBuffer: (
       buffer: SharedArrayBuffer,
-      layout: SharedBoidBufferLayout,
+      layout: SharedBoidBufferLayout
     ) => {
-      sharedBuffer = buffer;
-      bufferLayout = layout;
-      bufferViews = createSharedBoidViews(buffer, layout);
+      sharedMemoryManager.attach(
+        sharedMemoryKeywords.boidsPhysics,
+        buffer,
+        layout
+      );
     },
-    getBufferLayout: () => bufferLayout,
-    getBufferViews: () => bufferViews,
+    getBufferLayout: () =>
+      sharedMemoryManager.get(sharedMemoryKeywords.boidsPhysics).layout,
+    getBufferViews: () =>
+      sharedMemoryManager.get(sharedMemoryKeywords.boidsPhysics).views,
     reset: () => {
       localStore.clear();
-      const bufferViews = api.getBufferViews();
+      const bufferViews = sharedMemoryManager.get(
+        sharedMemoryKeywords.boidsPhysics
+      ).views;
       if (bufferViews) {
         Atomics.store(bufferViews.stats, StatsIndex.ALIVE_COUNT, 0);
         Atomics.store(bufferViews.stats, StatsIndex.FRAME_COUNT, 0);
@@ -93,9 +100,14 @@ const createBoidsStore = () => {
 
 export const createWorkerStore = (initialState: WorkerStoreState) =>
   defineResource({
-    start: () => {
+    dependencies: ["workerSharedMemoryManager"],
+    start: ({
+      workerSharedMemoryManager,
+    }: {
+      workerSharedMemoryManager: SharedMemoryManager;
+    }) => {
       const state = createAtom<WorkerStoreState>(initialState);
-      const boidStore = createBoidsStore();
+      const boidStore = createBoidsStore(workerSharedMemoryManager);
 
       const storeApi = {
         getState: () => state.get(),

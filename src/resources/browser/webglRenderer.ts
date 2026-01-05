@@ -12,7 +12,7 @@
  * Future work: Gradually migrate to use the modular components.
  */
 
-import { defineResource } from "braided";
+import { defineResource, StartedResource } from "braided";
 import REGL from "regl";
 import type {
   Boid,
@@ -521,3 +521,5 @@ export const webglRenderer = defineResource({
     }
   },
 });
+
+export type WebGLRendererResource = StartedResource<typeof webglRenderer>;

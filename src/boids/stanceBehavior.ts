@@ -1,4 +1,4 @@
-import { FrameUpdateContext } from "@/resources/browser/engine";
+import { BoidUpdateContext } from "@/boids/context";
 import { ruleKeywords, stanceKeywords } from "./vocabulary/keywords";
 import { Boid } from "./vocabulary/schemas/entities";
 import type {
@@ -36,13 +36,9 @@ const boidStanceEffectiveForces = {
   [stanceKeywords.idle]: [defaultSeparation],
 } as EffectiveForceMap;
 
-type BoidUpdateContext = FrameUpdateContext & {
-  boids: Boid[];
-};
-
 type MovementForceExecutor = (
   boid: Boid,
-  context: BoidUpdateContext,
+  context: BoidUpdateContext
 ) => Vector2;
 
 type MovementForces =
@@ -54,79 +50,28 @@ type MovementForces =
   | typeof ruleKeywords.seekMate
   | typeof ruleKeywords.avoidDeathMarkers;
 
-type MovementForceExecutorMap = {
-  [key in MovementForces]: MovementForceExecutor;
-};
+type MovementForceExecutorMap = Record<MovementForces, MovementForceExecutor>;
 
 const ruleExecutors = {
   [ruleKeywords.separation]: (boid: Boid, context: BoidUpdateContext) =>
-    rules.separation(
-      boid,
-      context.boids,
-      context.config.parameters,
-      context.config.species[boid.typeId],
-      context.config.world,
-      context.profiler,
-    ),
+    rules.separation(boid, context),
   [ruleKeywords.alignment]: (boid: Boid, context: BoidUpdateContext) =>
-    rules.alignment(
-      boid,
-      context.boids,
-      context.config.parameters,
-      context.config.species[boid.typeId],
-      context.config.world,
-      context.profiler,
-    ),
+    rules.alignment(boid, context),
   [ruleKeywords.cohesion]: (boid: Boid, context: BoidUpdateContext) =>
-    rules.cohesion(
-      boid,
-      context.boids,
-      context.config.parameters,
-      context.config.species[boid.typeId],
-      context.config.world,
-      context.profiler,
-    ),
+    rules.cohesion(boid, context),
   [ruleKeywords.avoidObstacles]: (boid: Boid, context: BoidUpdateContext) =>
-    rules.avoidObstacles(
-      boid,
-      context.simulation.obstacles,
-      context.config.parameters,
-      context.config.species[boid.typeId],
-      context.config.world,
-      context.profiler,
-    ),
+    rules.avoidObstacles(boid, context),
   [ruleKeywords.chase]: (boid: Boid, context: BoidUpdateContext) =>
-    rules.chase(
-      boid,
-      context.boids,
-      context.config.parameters,
-      context.config.species[boid.typeId],
-      context.config.world,
-      context.profiler,
-    ),
+    rules.chase(boid, context),
   [ruleKeywords.seekMate]: (boid: Boid, context: BoidUpdateContext) =>
-    rules.seekMate(
-      boid,
-      context.boids,
-      context.config.parameters,
-      context.config.species[boid.typeId],
-      context.config.world,
-      context.profiler,
-    ),
+    rules.seekMate(boid, context),
   [ruleKeywords.avoidDeathMarkers]: (boid: Boid, context: BoidUpdateContext) =>
-    rules.avoidDeathMarkers(
-      boid,
-      context.simulation.deathMarkers,
-      context.config.parameters,
-      context.config.species[boid.typeId],
-      context.config.world,
-      context.profiler,
-    ),
+    rules.avoidDeathMarkers(boid, context),
 } as const satisfies MovementForceExecutorMap;
 
 export function getStanceMovementForces(
   boid: Boid,
-  context: BoidUpdateContext,
+  context: BoidUpdateContext
 ) {
   const stance = boid.stance;
   // Get the effective forces for the stance

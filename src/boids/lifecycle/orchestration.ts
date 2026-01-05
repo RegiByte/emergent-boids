@@ -1,4 +1,4 @@
-import type { BoidUpdateContext } from "../context";
+import type { LifecycleUpdateContext } from "../context";
 import { lookupBoid } from "../conversions";
 import { iterateBoids } from "../iterators";
 import type { MatingContext, OffspringData } from "../mating";
@@ -17,7 +17,7 @@ import { processBoidReproduction } from "./reproduction";
  */
 export function processLifecycleUpdates(
   boids: BoidsById,
-  context: BoidUpdateContext,
+  context: LifecycleUpdateContext,
 ): {
   boidsToRemove: string[];
   boidsToAdd: OffspringData[];
@@ -75,8 +75,8 @@ export function processLifecycleUpdates(
     // 5. Update cooldowns
     const cooldowns = updateBoidCooldowns(boid);
     boid.reproductionCooldown = cooldowns.reproductionCooldown;
-    boid.eatingCooldown = cooldowns.eatingCooldown;
-    boid.attackCooldown = cooldowns.attackCooldown;
+    boid.eatingCooldownFrames = cooldowns.eatingCooldown;
+    boid.attackCooldownFrames = cooldowns.attackCooldown;
 
     // 6. Update seeking state
     boid.seekingMate = isReadyToMate(boid, parameters, speciesConfig);
@@ -88,6 +88,7 @@ export function processLifecycleUpdates(
       parameters,
       speciesConfig,
       matedBoids,
+      0 // TODO: remove this logic from here, already covered in the engine update loop
     );
 
     // Apply mating result
@@ -102,19 +103,19 @@ export function processLifecycleUpdates(
         typeId: matingResult.offspring.typeId,
       });
       // Reset mate commitment after successful reproduction
-      boid.mateCommitmentTime = 0;
+      boid.mateCommitmentFrames = 0;
     } else if (matingResult.type === "mate_lost") {
       // Mate was lost, unpair if needed
       const mate = lookupBoid(boid.mateId!, boids);
       unpairBoids(boid, mate);
       // Reset mate commitment when mate lost
-      boid.mateCommitmentTime = 0;
+      boid.mateCommitmentFrames = 0;
     } else if (matingResult.type === "pair_found") {
       // Just paired with new mate, reset commitment
-      boid.mateCommitmentTime = 0;
+      boid.mateCommitmentFrames = 0;
     } else if (boid.mateId !== null) {
       // Still has mate, increment commitment time
-      boid.mateCommitmentTime++;
+      boid.mateCommitmentFrames++;
     }
   }
 

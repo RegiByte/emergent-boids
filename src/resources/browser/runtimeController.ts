@@ -21,6 +21,8 @@ import {
   AllEffects,
   ControlEffect,
 } from "../../boids/vocabulary/schemas/effects.ts";
+import { LocalBoidStoreResource } from "./localBoidStore.ts";
+import { Boid } from "@/boids/vocabulary/schemas/entities.ts";
 
 // ============================================
 // Event Handlers (Pure Functions)
@@ -29,15 +31,16 @@ import {
 type HandlerContext = {
   nextState: (
     _current: RuntimeStore,
-    _mutation: (_draft: RuntimeStore) => void,
+    _mutation: (_draft: RuntimeStore) => void
   ) => RuntimeStore;
+  nextSpawnId: () => string;
 };
 
 const handlers = {
   [eventKeywords.controls.typeConfigChanged]: (
     state: RuntimeStore,
     event,
-    ctx,
+    ctx
   ) => {
     // Note: This handler now updates genome traits instead of movement params
     // Fields should be trait names like 'speed', 'force', 'sociability', etc.
@@ -60,7 +63,7 @@ const handlers = {
   [eventKeywords.controls.perceptionRadiusChanged]: (
     state: RuntimeStore,
     event,
-    ctx,
+    ctx
   ) => {
     return [
       {
@@ -75,8 +78,8 @@ const handlers = {
   [eventKeywords.controls.obstacleAvoidanceChanged]: (
     state: RuntimeStore,
     event,
-    ctx,
-  ): ControlEffect[] => {
+    ctx
+  ) => {
     return [
       {
         type: effectKeywords.state.update,
@@ -87,16 +90,14 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.obstacles.added]: (
-    state: RuntimeStore,
-    event,
-    ctx,
-  ): ControlEffect[] => {
+  [eventKeywords.obstacles.added]: (state: RuntimeStore, event, ctx) => {
+    const newId = ctx.nextSpawnId();
     return [
       {
         type: effectKeywords.state.update,
         state: ctx.nextState(state, (draft) => {
           draft.simulation.obstacles.push({
+            id: newId,
             position: { x: event.x, y: event.y },
             radius: event.radius,
           });
@@ -105,11 +106,7 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.obstacles.removed]: (
-    state: RuntimeStore,
-    event,
-    ctx,
-  ): ControlEffect[] => {
+  [eventKeywords.obstacles.removed]: (state: RuntimeStore, event, ctx) => {
     return [
       {
         type: effectKeywords.state.update,
@@ -120,11 +117,7 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.obstacles.cleared]: (
-    state: RuntimeStore,
-    _event,
-    ctx,
-  ): ControlEffect[] => {
+  [eventKeywords.obstacles.cleared]: (state: RuntimeStore, _event, ctx) => {
     return [
       {
         type: effectKeywords.state.update,
@@ -135,9 +128,9 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.time.passed]: (): ControlEffect[] => {
+  [eventKeywords.time.passed]: () => {
     // This handler no longer auto-schedules the next tick
-    // Instead, the renderer dispatches time.passed events directly
+    // Instead, the updateLoop dispatches time.passed events directly
     // based on simulation time (respects pause/scale)
     // Energy updates are handled in lifecycleManager
     return [];
@@ -159,9 +152,28 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.boids.died]: () => {
-    // Handled in lifecycleManager - just pass through
-    return [];
+  [eventKeywords.boids.died]: (_state, event) => {
+    // When worker reports a boid died, sync the state to local boid store (Session 115)
+    return [
+      {
+        type: effectKeywords.localBoidStore.syncWorkerState,
+        updates: [
+          {
+            id: event.boidId,
+            isDead: true,
+          },
+        ],
+      },
+    ];
+  },
+
+  [eventKeywords.boids.workerStateUpdated]: (_state: RuntimeStore, event) => {
+    return [
+      {
+        type: effectKeywords.localBoidStore.syncWorkerState,
+        updates: event.updates,
+      },
+    ];
   },
 
   [eventKeywords.boids.reproduced]: () => {
@@ -216,8 +228,8 @@ const handlers = {
   [eventKeywords.atmosphere.eventStarted]: (
     state: RuntimeStore,
     event,
-    ctx,
-  ): ControlEffect[] => {
+    ctx
+  ) => {
     return [
       {
         type: effectKeywords.state.update,
@@ -244,7 +256,7 @@ const handlers = {
   [eventKeywords.atmosphere.eventEnded]: (
     state: RuntimeStore,
     event,
-    ctx,
+    ctx
   ): ControlEffect[] => {
     return [
       {
@@ -264,7 +276,7 @@ const handlers = {
 
   [eventKeywords.analytics.filterChanged]: (
     _state: RuntimeStore,
-    event,
+    event
   ): ControlEffect[] => {
     // Analytics filter changes are now handled by analyticsStore
     // We dispatch a special effect to update it
@@ -277,7 +289,7 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.analytics.filterCleared]: (): ControlEffect[] => {
+  [eventKeywords.analytics.filterCleared]: () => {
     // Analytics filter clear is now handled by analyticsStore
     return [
       {
@@ -303,6 +315,7 @@ type ExecutorContext = {
   randomness: RandomnessResource;
   timer: TimerManager;
   engine: BoidEngine;
+  localBoidStore: LocalBoidStoreResource; // Will be injected (Session 115)
 };
 
 const executors = {
@@ -331,7 +344,7 @@ const executors = {
   [effectKeywords.analytics.updateFilter]: (effect, ctx) => {
     ctx.analyticsStore.updateEventsFilter(
       effect.maxEvents,
-      effect.allowedEventTypes,
+      effect.allowedEventTypes
     );
   },
 
@@ -348,7 +361,7 @@ const executors = {
     }
 
     console.log(
-      `[profile:load] Loading profile: ${profile.name} (${profile.id})`,
+      `[profile:load] Loading profile: ${profile.name} (${profile.id})`
     );
 
     // Update profileStore active profile
@@ -384,6 +397,42 @@ const executors = {
     console.log(`[profile:load] Profile loaded successfully: ${profile.name}`);
   },
 
+  [effectKeywords.localBoidStore.syncWorkerState]: (effect, ctx) => {
+    // Sync worker state updates to local boid store (Session 115)
+    if (!ctx.localBoidStore) {
+      console.warn(
+        "[localBoidStore:syncWorkerState] localBoidStore not available"
+      );
+      return;
+    }
+    // console.log("[localBoidStore:syncWorkerState] Syncing worker state");
+    // console.log(effect.updates);
+
+    const localStore = ctx.localBoidStore.store;
+
+    effect.updates.forEach((boid) => {
+      if (!boid || !boid.id) {
+        console.warn(
+          `[localBoidStore:syncWorkerState] Boid not found: ${boid.id}`
+        );
+        return;
+      }
+
+      const boidId = boid.id;
+      localStore.updateBoid(boidId, (local) => {
+        for (const key in boid) {
+          if (key in local) {
+            (local as any)[key] = boid[key as keyof Boid];
+          }
+        }
+
+        if (boid.isDead) {
+          ctx.engine.removeBoid(boidId);
+        }
+      });
+    });
+  },
+
   [effectKeywords.runtime.dispatch]: (effect, ctx) => {
     ctx.dispatch(effect.event);
   },
@@ -402,6 +451,7 @@ function createRuntimeController(
   randomness: RandomnessResource,
   timer: TimerManager,
   engine: BoidEngine,
+  localBoidStore: LocalBoidStoreResource
 ) {
   const createControlLoop = emergentSystem<
     AllEvents,
@@ -411,6 +461,14 @@ function createRuntimeController(
     ExecutorContext
   >();
 
+  const spawnRandomness = randomness.domain("spawn");
+
+  const nextSpawnId = () => {
+    const now = performance.now();
+    const id = spawnRandomness.intRange(10_000, 99_999);
+    return `spawn-${now}-${id}`;
+  };
+
   const runtime = createControlLoop({
     getState: () => store.getState(),
     handlers,
@@ -419,6 +477,7 @@ function createRuntimeController(
       nextState: (current, mutation) => {
         return produce(current, mutation);
       },
+      nextSpawnId,
     },
     executorContext: {
       store,
@@ -427,6 +486,7 @@ function createRuntimeController(
       randomness,
       timer,
       engine,
+      localBoidStore,
     },
   });
 
@@ -441,6 +501,7 @@ export const runtimeController = defineResource({
     "randomness",
     "timer",
     "engine",
+    "localBoidStore",
   ],
   start: ({
     runtimeStore,
@@ -449,6 +510,7 @@ export const runtimeController = defineResource({
     randomness,
     timer,
     engine,
+    localBoidStore,
   }: {
     runtimeStore: RuntimeStoreResource;
     analyticsStore: AnalyticsStoreResource;
@@ -456,7 +518,9 @@ export const runtimeController = defineResource({
     randomness: RandomnessResource;
     timer: TimerManager;
     engine: BoidEngine;
+    localBoidStore: LocalBoidStoreResource;
   }) => {
+    console.log("Starting runtime controller");
     const controller = createRuntimeController(
       runtimeStore.store,
       analyticsStore,
@@ -464,7 +528,12 @@ export const runtimeController = defineResource({
       randomness,
       timer,
       engine,
+      localBoidStore
     );
+
+    engine.eventSubscription.subscribe((event) => {
+      controller.dispatch(event);
+    });
 
     // Note: time.passed events are now dispatched by the renderer
     // based on simulation time (respects pause/scale)

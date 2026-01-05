@@ -38,6 +38,7 @@ export const eventKeywords = {
     reproduced: "boids/reproduced",
     spawnPredator: "boids/spawnPredator",
     foodSourceCreated: "boids/foodSourceCreated",
+    workerStateUpdated: "boids/workerStateUpdated", // NEW: Worker → Main state sync
   },
 
   ui: {
@@ -78,6 +79,10 @@ export const effectKeywords = {
   engine: {
     addBoid: "engine:addBoid",
     removeBoid: "engine:removeBoid",
+  },
+  // Local boid store effects (NEW - Session 115)
+  localBoidStore: {
+    syncWorkerState: "localBoidStore:syncWorkerState",
   },
   // Analytics effects
   analytics: {
@@ -309,5 +314,57 @@ export const cameraKeywords = {
     free: "free",
     picker: "picker",
     following: "following",
+  },
+} as const;
+
+export const simulationKeywords = {
+  commands: {
+    // Simulation commands
+    start: "simulation:start",
+    pause: "simulation:pause",
+    resume: "simulation:resume",
+    step: "simulation:step", // Step the simulation forward by one frame
+    setTimeScale: "simulation:setTimeScale", // Change speed (0.25x - 4x)
+    // UI/UX commands
+    toggleTrails: "simulation:toggleTrails", // Toggle trails on/off
+    toggleEnergyBar: "simulation:toggleEnergyBar", // Toggle energy bar on/off
+    toggleMatingHearts: "simulation:toggleMatingHearts", // Toggle mating hearts on/off
+    toggleStanceSymbols: "simulation:toggleStanceSymbols", // Toggle stance symbols on/off
+    setRendererMode: "simulation:setRendererMode", // Set renderer mode (canvas/webgl)
+    spawnFood: "simulation:spawnFood", // Spawn food at cursor position
+    spawnObstacle: "simulation:spawnObstacle", // Spawn obstacle at cursor position
+    spawnPredator: "simulation:spawnPredator", // Spawn predator at cursor position
+    clearFood: "simulation:clearFood", // Clear all food
+    clearDeathMarkers: "simulation:clearDeathMarkers", // Clear all death markers
+    // Boid commands
+    addBoid: "simulation:addBoid",
+    removeBoid: "simulation:removeBoid",
+    followBoid: "simulation:followBoid",
+    stopFollowingBoid: "simulation:stopFollowingBoid",
+    // Environment commands
+    addObstacle: "simulation:addObstacle",
+    clearObstacle: "simulation:clearObstacle",
+    clearAllObstacles: "simulation:clearAllObstacles",
+  },
+  events: {
+    timeScaleChanged: "simulation:timeScaleChanged",
+    // Simulation events
+    initialized: "simulation:initialized",
+    updated: "simulation:updated",
+    error: "simulation:error",
+    // Boid events
+    boidsDied: "simulation:boidsDied",
+    boidsCaught: "simulation:boidsCaught",
+    boidsEvolved: "simulation:boidsEvolved",
+    boidsReproduced: "simulation:boidsReproduced",
+    boidsStanceChanged: "simulation:boidsStanceChanged",
+    // Environment events
+    foodSourcesCreated: "simulation:foodSourcesCreated",
+    foodSourcesUpdated: "simulation:foodSourcesUpdated",
+    foodSourceConsumed: "simulation:foodSourceConsumed",
+    obstaclesAdded: "simulation:obstaclesAdded",
+    obstaclesUpdated: "simulation:obstaclesUpdated",
+    obstaclesRemoved: "simulation:obstaclesRemoved",
+    obstaclesCleared: "simulation:obstaclesCleared",
   },
 } as const;

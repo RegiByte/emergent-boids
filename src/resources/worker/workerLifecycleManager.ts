@@ -1,7 +1,11 @@
 import { createBoidOfType } from "@/boids/boid";
 import { fadeDeathMarkers, processDeathMarkers } from "@/boids/deathMarkers";
-import { CollectEventCallback, createEventCollector } from "@/boids/collectors";
-import { countBoidsByRole } from "@/boids/filters";
+import {
+  CollectEventCallback,
+  createEventCollector,
+  createForceCollector,
+} from "@/boids/collectors";
+import { countBoidsByRole, getBoidsByRole } from "@/boids/filters";
 import { FOOD_CONSTANTS } from "@/boids/food";
 import {
   applyEnergyGains,
@@ -21,6 +25,7 @@ import { defineResource, StartedResource } from "braided";
 import { RandomnessResource } from "../shared/randomness";
 import { TimeAPI } from "../shared/time";
 import { WorkerStoreResource } from "./workerStore";
+import { LifecycleUpdateContext } from "@/boids/context";
 
 export const workerLifecycleManager = defineResource({
   dependencies: ["workerStore", "workerTime", "workerRandomness"],
@@ -41,7 +46,7 @@ export const workerLifecycleManager = defineResource({
     const applyDeathMarkersFade = () => {
       const { simulation } = workerStore.getState();
       const { markers: updatedMarkers, shouldUpdate } = fadeDeathMarkers(
-        simulation.deathMarkers,
+        simulation.deathMarkers
       );
       if (shouldUpdate) {
         workerStore.store.updateState((state) => ({
@@ -60,7 +65,7 @@ export const workerLifecycleManager = defineResource({
         processFoodConsumption(
           simulation.foodSources,
           workerStore.boids.getBoids(),
-          config.species,
+          config.species
         );
 
       // Apply energy gains to boids (impure but isolated)
@@ -79,7 +84,7 @@ export const workerLifecycleManager = defineResource({
     };
 
     const spawnPreyFoodSources = (
-      collectEvent: CollectEventCallback<typeof eventCollector>,
+      collectEvent: CollectEventCallback<typeof eventCollector>
     ) => {
       const state = workerStore.getState();
       const { simulation, config } = state;
@@ -90,7 +95,7 @@ export const workerLifecycleManager = defineResource({
         config.world,
         tickCounter,
         workerRandomness.domain("food"),
-        workerTime.now(),
+        workerTime.now()
       );
 
       if (!shouldUpdate) {
@@ -120,7 +125,7 @@ export const workerLifecycleManager = defineResource({
 
     const applyLifecycleChanges = (
       changes: LifecycleUpdates,
-      collectEvent: (event: AllEvents) => void,
+      collectEvent: (event: AllEvents) => void
     ) => {
       const state = workerStore.getState();
       const { config, simulation } = state;
@@ -130,7 +135,7 @@ export const workerLifecycleManager = defineResource({
       const { markers: updateMarkers, shouldUpdate } = processDeathMarkers(
         simulation.deathMarkers,
         changes.deathEvents,
-        (id) => workerStore.boids.getBoidById(id),
+        (id) => workerStore.boids.getBoidById(id)
       );
 
       if (shouldUpdate) {
@@ -144,6 +149,7 @@ export const workerLifecycleManager = defineResource({
       }
 
       // Collect death events BEFORE removing boids
+      // console.log("[workerLifecycleManager] Death events:", changes.deathEvents);
       for (const { boidId, reason } of changes.deathEvents) {
         const boid = workerStore.boids.getBoidById(boidId);
         if (boid) {
@@ -185,7 +191,7 @@ export const workerLifecycleManager = defineResource({
           // Count current population of this specific type
           const currentTypeCount = filterBoidsWhere(
             boidStore.getBoids(),
-            (b) => b.typeId === offspring.typeId,
+            (b) => b.typeId === offspring.typeId
           ).length;
 
           const canSpawn = canSpawnOffspring(
@@ -201,7 +207,7 @@ export const workerLifecycleManager = defineResource({
               totalPrey: currentPreyCount,
               totalPredators: currentPredatorCount,
             },
-            currentTypeCount, // Pass current type count
+            currentTypeCount // Pass current type count
           );
 
           if (canSpawn) {
@@ -233,7 +239,7 @@ export const workerLifecycleManager = defineResource({
               creationContext,
               energyBonus, // Apply energy bonus
               Object.keys(workerStore.boids.getBoids()).length,
-              parentGenomes, // Pass parent genomes for inheritance
+              parentGenomes // Pass parent genomes for inheritance
             );
             const newBoid = result.boid;
             workerStore.boids.addBoid(newBoid);
@@ -242,7 +248,7 @@ export const workerLifecycleManager = defineResource({
             // Dispatch reproduction event (only for first offspring to avoid spam)
             if (i === 0) {
               const reproductionEvent = changes.reproductionEvents.find(
-                (e) => e.parent1Id === offspring.parent1Id,
+                (e) => e.parent1Id === offspring.parent1Id
               );
               if (reproductionEvent) {
                 collectEvent({
@@ -269,7 +275,7 @@ export const workerLifecycleManager = defineResource({
           const randomIndex = lifecycleRng.intRange(0, boidStore.count());
           const boid = findBoidWhere(
             boidStore.getBoids(),
-            (b) => b.index === randomIndex,
+            (b) => b.index === randomIndex
           );
           if (boid) {
             workerStore.boids.removeBoid(boid.id);
@@ -292,17 +298,20 @@ export const workerLifecycleManager = defineResource({
             obstacles: simulation.obstacles,
             deathMarkers: simulation.deathMarkers,
             foodSources: simulation.foodSources,
-            tick: tickCounter,
-            frame: workerTime.getFrame(),
           },
           config: {
             parameters: config.parameters,
             world: config.world,
             species: config.species,
           },
+          boidsById: boids,
+          boidIds: Object.keys(boids),
+          boidsCount: workerStore.boids.count(),
+          boidsByRole: getBoidsByRole(boids, config.species),
+          forcesCollector: createForceCollector(),
           deltaSeconds,
-          frame: workerTime.getFrame(),
-        };
+          tick: tickCounter,
+        } as LifecycleUpdateContext;
 
         // Process lifecycle changes, pure function
         const changes = processLifecycleUpdates(boids, context);
@@ -319,6 +328,26 @@ export const workerLifecycleManager = defineResource({
         if (tickCounter % FOOD_CONSTANTS.PREY_FOOD_SPAWN_INTERVAL_TICKS === 0) {
           // TODO: Dispatch periodic events (e.g. food source creation)
           spawnPreyFoodSources(eventCollector.collect);
+        }
+
+        // Session 116: Emit periodic state snapshots to main thread
+        // Every 10 ticks (~10 seconds at 1 Hz) send energy/health/age updates
+        if (tickCounter % 10 === 0) {
+          const currentBoids = workerStore.boids.getBoids();
+          const updates = Object.values(currentBoids).map((boid) => ({
+            id: boid.id,
+            energy: boid.energy,
+            health: boid.health,
+            age: boid.age,
+            reproductionCooldown: boid.reproductionCooldown,
+          }));
+
+          if (updates.length > 0) {
+            eventCollector.collect({
+              type: eventKeywords.boids.workerStateUpdated,
+              updates,
+            });
+          }
         }
 
         return eventCollector.items;

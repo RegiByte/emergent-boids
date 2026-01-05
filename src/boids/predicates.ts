@@ -19,7 +19,7 @@ import { SpeciesConfig } from "./vocabulary/schemas/species";
 export function isWithinRadius(
   a: Vector2,
   b: Vector2,
-  radius: number,
+  radius: number
 ): boolean {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
@@ -35,7 +35,7 @@ export function isWithinToroidalRadius(
   b: Vector2,
   radius: number,
   width: number,
-  height: number,
+  height: number
 ): boolean {
   const dist = vec.toroidalDistance(a, b, width, height);
   return dist < radius;
@@ -50,7 +50,7 @@ export function isWithinToroidalRadius(
  */
 export function isPrey(
   boid: Boid,
-  speciesTypes: Record<string, SpeciesConfig>,
+  speciesTypes: Record<string, SpeciesConfig>
 ): boolean {
   const speciesConfig = speciesTypes[boid.typeId];
   return speciesConfig?.role === "prey";
@@ -61,7 +61,7 @@ export function isPrey(
  */
 export function isPredator(
   boid: Boid,
-  speciesTypes: Record<string, SpeciesConfig>,
+  speciesTypes: Record<string, SpeciesConfig>
 ): boolean {
   const speciesConfig = speciesTypes[boid.typeId];
   return speciesConfig?.role === "predator";
@@ -84,7 +84,7 @@ export function isSameType(boid1: Boid, boid2: Boid): boolean {
  */
 export function isEnergyBelowIdleThreshold(
   boid: Boid,
-  _speciesConfig: SpeciesConfig,
+  _speciesConfig: SpeciesConfig
 ): boolean {
   return boid.energy < boid.phenotype.maxEnergy * 0.3;
 }
@@ -95,7 +95,7 @@ export function isEnergyBelowIdleThreshold(
  */
 export function isEnergyAboveActiveThreshold(
   boid: Boid,
-  _speciesConfig: SpeciesConfig,
+  _speciesConfig: SpeciesConfig
 ): boolean {
   return boid.energy >= boid.phenotype.maxEnergy * 0.5;
 }
@@ -106,7 +106,7 @@ export function isEnergyAboveActiveThreshold(
 export function hasReproductionEnergy(
   boid: Boid,
   parameters: SimulationParameters,
-  _speciesConfig: SpeciesConfig,
+  _speciesConfig: SpeciesConfig
 ): boolean {
   const threshold =
     boid.phenotype.maxEnergy * parameters.reproductionEnergyThreshold;
@@ -123,7 +123,7 @@ export function hasReproductionEnergy(
 export function isReadyToMate(
   boid: Boid,
   parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
+  speciesConfig: SpeciesConfig
 ): boolean {
   return (
     boid.age >= boid.phenotype.minReproductionAge &&
@@ -147,13 +147,14 @@ export function isSeekingMate(boid: Boid): boolean {
 export function isEligibleMate(
   boid: Boid,
   otherBoid: Boid,
-  alreadyMated: Set<string>,
+  alreadyMated: Set<string>
 ): boolean {
   return (
     boid.id !== otherBoid.id &&
     boid.typeId === otherBoid.typeId &&
     boid.seekingMate && // Cached state, updated by lifecycleManager
     boid.reproductionCooldown === 0 &&
+    boid.mateId === null &&
     !alreadyMated.has(boid.id)
   );
 }
@@ -167,7 +168,7 @@ export function isEligibleMate(
  */
 export function shouldEnterIdleStance(
   boid: Boid,
-  speciesConfig: SpeciesConfig,
+  speciesConfig: SpeciesConfig
 ): boolean {
   return (
     boid.stance !== "idle" && isEnergyBelowIdleThreshold(boid, speciesConfig)
@@ -179,7 +180,7 @@ export function shouldEnterIdleStance(
  */
 export function shouldExitIdleStance(
   boid: Boid,
-  speciesConfig: SpeciesConfig,
+  speciesConfig: SpeciesConfig
 ): boolean {
   return (
     boid.stance === "idle" && isEnergyAboveActiveThreshold(boid, speciesConfig)
@@ -191,7 +192,7 @@ export function shouldExitIdleStance(
  */
 export function shouldStayIdle(
   boid: Boid,
-  speciesConfig: SpeciesConfig,
+  speciesConfig: SpeciesConfig
 ): boolean {
   return boid.stance === "idle" && !shouldExitIdleStance(boid, speciesConfig);
 }

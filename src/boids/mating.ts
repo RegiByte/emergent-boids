@@ -38,7 +38,7 @@ export type BoidUpdates = {
 export type MatingResult =
   | { type: "no_action" }
   | { type: "pair_found"; mateId: string; updates: BoidUpdates }
-  | { type: "building_up"; buildup: number }
+  | { type: "building_up"; buildup: number; updates: BoidUpdates }
   | { type: "buildup_reset"; updates: BoidUpdates }
   | { type: "mate_lost"; updates: BoidUpdates }
   | {
@@ -68,7 +68,7 @@ export function findNearbyMate(
   boid: Boid,
   allBoids: BoidsById,
   alreadyMated: Set<string>,
-  mateRadius: number,
+  mateRadius: number
 ): Boid | null {
   for (const other of iterateBoids(allBoids)) {
     if (isEligibleMate(other, boid, alreadyMated)) {
@@ -88,17 +88,17 @@ export function findNearbyMate(
 export function processAsexualReproduction(
   boid: Boid,
   parameters: SimulationParameters,
-  speciesConfig: SpeciesConfig,
+  speciesConfig: SpeciesConfig
 ): MatingResult {
   // Asexual reproduction is instant - no mate needed, no buildup
   const reproductionEnergy = calculateReproductionEnergyCost(
-    boid.phenotype.maxEnergy,
+    boid.phenotype.maxEnergy
   );
 
   // Use type-specific cooldown if available, otherwise use global
-  const cooldownTicks =
-    speciesConfig.reproduction.cooldownTicks ??
-    parameters.reproductionCooldownTicks;
+  const cooldownFrames =
+    speciesConfig.reproduction.cooldownFrames ??
+    parameters.reproductionCooldownFrames;
 
   return {
     type: "reproduction_complete",
@@ -110,7 +110,7 @@ export function processAsexualReproduction(
     },
     boidUpdates: {
       energy: reproductionEnergy,
-      reproductionCooldown: cooldownTicks, // Use type-specific or global cooldown
+      reproductionCooldown: cooldownFrames, // Use type-specific or global cooldown
       matingBuildupCounter: 0,
       mateId: null,
       seekingMate: false,
@@ -136,6 +136,7 @@ export function processMatingCycle(
   parameters: SimulationParameters,
   speciesConfig: SpeciesConfig,
   matedBoids: Set<string>,
+  elapsedFrames: number // how many frames have passed since last check?
 ): MatingResult {
   // Check if this type uses asexual reproduction
   if (speciesConfig.reproduction.type === "asexual") {
@@ -166,20 +167,20 @@ export function processMatingCycle(
     // Close enough to build up mating
     if (distance < parameters.mateRadius) {
       const newBuildup = Math.min(
-        boid.matingBuildupCounter + 1,
-        parameters.matingBuildupTicks,
+        boid.matingBuildupFrames + elapsedFrames,
+        parameters.matingBuildupFrames
       );
 
       // Buildup complete - reproduce!
-      if (newBuildup >= parameters.matingBuildupTicks) {
+      if (newBuildup >= parameters.matingBuildupFrames) {
         const reproductionEnergy = calculateReproductionEnergyCost(
-          boid.phenotype.maxEnergy,
+          boid.phenotype.maxEnergy
         );
 
         // Use type-specific cooldown if available, otherwise use global
-        const cooldownTicks =
-          speciesConfig.reproduction.cooldownTicks ??
-          parameters.reproductionCooldownTicks;
+        const cooldownFrames =
+          speciesConfig.reproduction.cooldownFrames ??
+          parameters.reproductionCooldownFrames;
 
         return {
           type: "reproduction_complete",
@@ -191,14 +192,14 @@ export function processMatingCycle(
           },
           boidUpdates: {
             energy: reproductionEnergy,
-            reproductionCooldown: cooldownTicks, // Use type-specific or global cooldown
+            reproductionCooldown: cooldownFrames, // Use type-specific or global cooldown
             matingBuildupCounter: 0,
             mateId: null,
             seekingMate: false,
           },
           mateUpdates: {
             energy: reproductionEnergy,
-            reproductionCooldown: cooldownTicks, // Use type-specific or global cooldown
+            reproductionCooldown: cooldownFrames, // Use type-specific or global cooldown
             matingBuildupCounter: 0,
             mateId: null,
             seekingMate: false,
@@ -210,6 +211,13 @@ export function processMatingCycle(
       return {
         type: "building_up",
         buildup: newBuildup,
+        updates: {
+          energy: boid.energy,
+          reproductionCooldown: boid.reproductionCooldown,
+          matingBuildupCounter: newBuildup,
+          mateId: boid.mateId,
+          seekingMate: boid.seekingMate,
+        },
       };
     } else {
       // Too far apart - reset buildup
@@ -230,7 +238,7 @@ export function processMatingCycle(
       boid,
       allBoids,
       matedBoids,
-      parameters.mateRadius,
+      parameters.mateRadius
     );
 
     if (mate) {
@@ -240,7 +248,7 @@ export function processMatingCycle(
         updates: {
           energy: boid.energy,
           reproductionCooldown: boid.reproductionCooldown,
-          matingBuildupCounter: boid.matingBuildupCounter,
+          matingBuildupCounter: boid.matingBuildupFrames,
           mateId: mate.id,
           seekingMate: boid.seekingMate,
         },
@@ -261,7 +269,7 @@ export function processMatingCycle(
 export function applyBoidUpdates(boid: Boid, updates: BoidUpdates): void {
   boid.energy = updates.energy;
   boid.reproductionCooldown = updates.reproductionCooldown;
-  boid.matingBuildupCounter = updates.matingBuildupCounter;
+  boid.matingBuildupFrames = updates.matingBuildupCounter;
   boid.mateId = updates.mateId;
   boid.seekingMate = updates.seekingMate;
 }
@@ -272,18 +280,18 @@ export function applyBoidUpdates(boid: Boid, updates: BoidUpdates): void {
 export function incrementMatingBuildup(
   boid: Boid,
   mate: Boid,
-  amount: number = 1,
+  amount: number = 1
 ): void {
-  boid.matingBuildupCounter += amount;
-  mate.matingBuildupCounter += amount;
+  boid.matingBuildupFrames += amount;
+  mate.matingBuildupFrames += amount;
 }
 
 /**
  * Reset mating buildup for both boids (side effect)
  */
 export function resetMatingBuildup(boid: Boid, mate: Boid): void {
-  boid.matingBuildupCounter = 0;
-  mate.matingBuildupCounter = 0;
+  boid.matingBuildupFrames = 0;
+  mate.matingBuildupFrames = 0;
 }
 
 /**
@@ -321,7 +329,7 @@ export function unpairBoids(boid: Boid, mate: Boid | null | undefined): void {
 export function applyMatingResult(
   boid: Boid,
   result: MatingResult,
-  context: MatingContext,
+  context: MatingContext
 ): void {
   const { boids, matedBoids, boidsToAdd } = context;
 
@@ -356,10 +364,8 @@ export function applyMatingResult(
     }
 
     case "building_up": {
-      const mate = lookupBoid(boid.mateId!, boids);
-      if (mate) {
-        incrementMatingBuildup(boid, mate);
-      }
+      console.log("building up", result.updates);
+      applyBoidUpdates(boid, result.updates);
       break;
     }
 

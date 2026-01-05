@@ -381,7 +381,7 @@ export function chase(predator: Boid, context: BoidUpdateContext): Vector2 {
         const steer = vec.subtract(desiredVelocity, predator.velocity);
 
         // Increment lock time (tracks commitment duration)
-        predator.targetLockTime++;
+        predator.targetLockFrame++;
 
         context.profiler?.end(profilerKeywords.rules.chase);
         return vec.limit(steer, predator.phenotype.maxForce);
@@ -394,13 +394,13 @@ export function chase(predator: Boid, context: BoidUpdateContext): Vector2 {
       );
       if (predator.targetLockStrength === 0) {
         predator.targetId = null;
-        predator.targetLockTime = 0;
+        predator.targetLockFrame = 0;
       }
     } else {
       // Target no longer exists (died or removed) → clear lock
       predator.targetId = null;
       predator.targetLockStrength = 0;
-      predator.targetLockTime = 0;
+      predator.targetLockFrame = 0;
     }
   }
 
@@ -418,7 +418,7 @@ export function chase(predator: Boid, context: BoidUpdateContext): Vector2 {
     if (predator.targetId !== targetPrey.id) {
       predator.targetId = targetPrey.id;
       predator.targetLockStrength = 1.0;
-      predator.targetLockTime = 0;
+      predator.targetLockFrame = 0;
     }
 
     // Steer toward selected prey
@@ -595,7 +595,7 @@ export function avoidDeathMarkers(
       const strengthWeight = marker.strength;
 
       // Weight by remaining lifetime (fresher = stronger)
-      const freshnessWeight = marker.remainingTicks / marker.maxLifetimeTicks;
+      const freshnessWeight = marker.remainingFrames / marker.maxLifetimeFrames;
 
       const totalWeight = distanceWeight * strengthWeight * freshnessWeight;
 
@@ -632,7 +632,7 @@ function selectBestFood(
   boid: Boid,
   context: BoidUpdateContext,
 ): ItemWithDistance<FoodSource> | null {
-  const profileConfig = context.config.species[boid.typeId];
+  // const profileConfig = context.config.species[boid.typeId];
   // Filter compatible food sources
   const compatibleFood = context.nearbyFoodSources.filter((food) => {
     return food.item.sourceType === boid.typeId && food.item.energy > 0;

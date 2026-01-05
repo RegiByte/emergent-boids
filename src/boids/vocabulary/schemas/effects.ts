@@ -63,6 +63,11 @@ export const controlEffectSchemas = {
     type: z.literal(effectKeywords.profile.load),
     profileId: z.string(),
   }),
+  // Sync worker state to local boid store (Session 115)
+  localBoidStoreSyncWorkerState: z.object({
+    type: z.literal(effectKeywords.localBoidStore.syncWorkerState),
+    updates: z.array(boidSchema.partial()),
+  }),
 };
 // Union of all control effects
 export const controlEffectSchema = z.discriminatedUnion("type", [
@@ -74,6 +79,7 @@ export const controlEffectSchema = z.discriminatedUnion("type", [
   controlEffectSchemas.analyticsUpdateFilter,
   controlEffectSchemas.analyticsClearFilter,
   controlEffectSchemas.profileLoad,
+  controlEffectSchemas.localBoidStoreSyncWorkerState,
 ]);
 
 // ============================================

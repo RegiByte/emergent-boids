@@ -28,6 +28,7 @@ import { genomeSchema, phenotypeSchema } from "./genetics";
  */
 export const boidSchema = z.object({
   id: z.string(),
+  isDead: z.boolean().default(false),
   index: z.number(), // index when the boid was added, may change over time, used for tracking shared buffer state
   position: vectorSchema,
   velocity: vectorSchema,
@@ -47,25 +48,27 @@ export const boidSchema = z.object({
   reproductionCooldown: z.number(), // Time passages until can reproduce again (0 = ready)
   seekingMate: z.boolean(), // Cached state: actively seeking mate (updated by lifecycleManager)
   mateId: z.string().nullable(), // ID of current mate (if paired)
-  matingBuildupCounter: z.number(), // Time passages spent close to mate (0-3, reproduce at 3)
-  eatingCooldown: z.number(), // Time passages until can eat from food again (prevents monopolizing food)
-  attackCooldown: z.number(), // Time passages until can attack again (predators only)
+  matingBuildupFrames: z.number(), // Frames spent close to mate (0-3, reproduce at 3)
+  eatingCooldownFrames: z.number(), // Frames until can eat from food again (prevents monopolizing food)
+  attackCooldownFrames: z.number(), // Frames until can attack again (predators only)
   stance: stanceSchema, // Current behavioral stance
   previousStance: stanceSchema.nullable(), // Previous stance (for returning from fleeing)
   positionHistory: z.array(vectorSchema), // Trail of recent positions for rendering motion trails
 
   // Target tracking (NEW - Session 74: Behavior Scoring System)
   targetId: z.string().nullable().default(null), // ID of locked target (predators only)
-  targetLockTime: z.number().default(0), // Ticks spent locked on current target
+  targetLockFrame: z.number().default(0), // Frames spent locked on current target
   targetLockStrength: z.number().min(0).max(1).default(0), // Lock strength (1.0 = full lock, decays when target escapes)
 
   // Mate commitment tracking (NEW - Session 75: Mate Persistence)
-  mateCommitmentTime: z.number().default(0), // Ticks spent with current mate (prevents switching)
+  mateCommitmentFrames: z.number().default(0), // Frames spent with current mate (prevents switching)
 
   // Stance transition tracking (Session 74: Behavior Scoring System)
-  // Session 76: Now tracks physics frames (30-60 Hz) instead of lifecycle ticks (1 Hz)
   stanceEnteredAtFrame: z.number().default(0), // Frame when current stance was entered
   substate: z.string().nullable().default(null), // Rich substate (e.g., "searching", "chasing", "panic")
+
+  knockbackVelocity: vectorSchema.nullable().default(null), // Velocity applied during knockback (for escape momentum)
+  knockbackFramesRemaining: z.number().default(0), // Frames remaining for knockback effect
 });
 
 export type Boid = z.infer<typeof boidSchema>;
@@ -94,7 +97,7 @@ export const foodSourceSchema = z.object({
   energy: z.number(), // Current energy remaining (decreases as consumed)
   maxEnergy: z.number(), // Initial energy (used for visual scaling)
   sourceType: roleSchema, // Determines which boids can eat it
-  createdTick: z.number(), // Tick when created (for tracking age/decay)
+  createdFrame: z.number(), // Frame when created (for tracking age/decay)
 });
 
 export type FoodSource = z.infer<typeof foodSourceSchema>;
@@ -110,6 +113,7 @@ export type FoodSource = z.infer<typeof foodSourceSchema>;
  * Obstacles are circular and immovable.
  */
 export const obstacleSchema = z.object({
+  id: z.string(),
   position: z.object({ x: z.number(), y: z.number() }),
   radius: z.number(), // Obstacle radius in pixels
 });
@@ -130,10 +134,11 @@ export type Obstacle = z.infer<typeof obstacleSchema>;
  * instead of creating new ones, preventing marker spam.
  */
 export const deathMarkerSchema = z.object({
+  id: z.string(),
   position: z.object({ x: z.number(), y: z.number() }),
-  remainingTicks: z.number(), // Countdown timer (decreases each tick, marker fades)
+  remainingFrames: z.number(), // Countdown timer (decreases each frame, marker fades)
   strength: z.number(), // Repulsive force strength (1.0-5.0, increases with consolidation)
-  maxLifetimeTicks: z.number(), // Maximum lifetime (20 ticks, prevents immortal markers)
+  maxLifetimeFrames: z.number(), // Maximum lifetime (600 frames, prevents immortal markers)
   typeId: z.string(), // Species ID of boid that died (determines marker color)
 });
 

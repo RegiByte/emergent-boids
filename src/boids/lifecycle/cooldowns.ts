@@ -11,7 +11,7 @@ export function updateBoidCooldowns(boid: Boid): {
 } {
   return {
     reproductionCooldown: Math.max(0, boid.reproductionCooldown - 1),
-    eatingCooldown: Math.max(0, boid.eatingCooldown - 1),
-    attackCooldown: Math.max(0, boid.attackCooldown - 1),
+    eatingCooldown: Math.max(0, boid.eatingCooldownFrames - 1),
+    attackCooldown: Math.max(0, boid.attackCooldownFrames - 1),
   };
 }

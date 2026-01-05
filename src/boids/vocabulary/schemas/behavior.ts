@@ -57,7 +57,7 @@ export const behaviorContextSchema = z.object({
 
   // Mating state (NEW - Session 75: mate commitment)
   hasMate: z.boolean(),
-  mateCommitmentTime: z.number().default(0), // Ticks spent with current mate
+  mateCommitmentFrames: z.number().default(0), // Frames spent with current mate
   readyToMate: z.boolean(), // isReadyToMate() result (age, cooldown, energy checks)
 
   // Environment pressure (NEW - Session 75)
@@ -150,7 +150,7 @@ export const stanceDecisionSchema = z.object({
  */
 export const minimumStanceDurationSchema = z.record(
   z.string(),
-  z.number().int().min(0),
+  z.number().int().min(0)
 );
 
 // Type exports

@@ -14,6 +14,7 @@ export function processBoidReproduction(
   parameters: SimulationParameters,
   speciesConfig: SpeciesConfig,
   matedBoids: Set<string>,
+  elapsedFrames: number
 ): MatingResult {
   const ready = isReadyToMate(boid, parameters, speciesConfig);
 
@@ -24,6 +25,7 @@ export function processBoidReproduction(
       parameters,
       speciesConfig,
       matedBoids,
+      elapsedFrames
     );
   } else if (boid.mateId && !ready) {
     // No longer ready to mate

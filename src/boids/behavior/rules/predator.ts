@@ -139,14 +139,14 @@ export const matingRule: BehaviorRule = {
 
     // Commitment bonus: score increases with time spent with mate
     // Prevents switching mates midway through mating buildup
-    const commitmentBonus = Math.min(ctx.mateCommitmentTime * 10, 200);
+    const commitmentBonus = Math.min(ctx.mateCommitmentFrames * 10, 200);
 
     return {
       stance: predator.mating,
       substate: null,
       score: 500 + commitmentBonus, // Higher score with more commitment
       reason:
-        ctx.mateCommitmentTime > 0
+        ctx.mateCommitmentFrames > 0
           ? reasons.mate_committed
           : reasons.mate_found,
       urgent: false,

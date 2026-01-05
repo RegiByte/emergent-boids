@@ -1,5 +1,5 @@
 import { toroidalSubtract } from "./vector";
-import type { Boid, BoidsById } from "./vocabulary/schemas/entities";
+import type { Boid } from "./vocabulary/schemas/entities";
 import type {
   Area2D,
   Positionable,
@@ -169,7 +169,7 @@ function getCellKey(x: number, y: number, cellSize: number): string {
 
 // PERFORMANCE OPTIMIZATION (Session 71): Reusable arrays for neighbor queries
 // Reduces allocations from ~1800 arrays/frame to 0 arrays/frame
-const neighborQueryCache: Array<BoidWithDistance> = [];
+// const neighborQueryCache: Array<BoidWithDistance> = [];
 
 export type BoidWithDistance = {
   boid: Boid;

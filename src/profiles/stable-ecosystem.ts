@@ -215,10 +215,10 @@ export const stableEcosystemProfile: SimulationProfile = {
     // Lifecycle parameters (FAST EVOLUTION: Accelerated reproduction)
     minReproductionAge: 2, // Can start reproducing at 2 seconds old (was 5)
     reproductionEnergyThreshold: 0.4, // Need 40% energy to seek mates (was 0.5)
-    reproductionCooldownTicks: 3, // 3 time passages (~3 seconds) cooldown (was 5)
-    matingBuildupTicks: 2, // Must stay close to mate for 3 ticks before reproducing
-    eatingCooldownTicks: 2, // Predators must wait 3 ticks after eating
-    attackCooldownTicks: 3, // Predators must wait 3 ticks between attacks
+    reproductionCooldownFrames: 90, // 3 time passages (~3 seconds) cooldown (was 5)
+    matingBuildupFrames: 60, // Must stay close to mate for 2 seconds before reproducing
+    eatingCooldownFrames: 60, // Predators must wait 2 seconds after eating
+    attackCooldownFrames: 90, // Predators must wait 3 seconds between attacks
   },
 
   species: {
@@ -250,7 +250,6 @@ export const stableEcosystemProfile: SimulationProfile = {
         visual: {
           color: "#00ff88", // Green
           bodyParts: [
-            ...createEyePair(),
             createTail({ size: 0.8 }),
             createAntenna({
               size: 0.7,
@@ -262,6 +261,7 @@ export const stableEcosystemProfile: SimulationProfile = {
               rotation: 135,
               position: { x: 0.5, y: 0 },
             }),
+            ...createEyePair(),
           ],
         },
       },
@@ -329,10 +329,10 @@ export const stableEcosystemProfile: SimulationProfile = {
         visual: {
           color: "#ff4488", // Pink
           bodyParts: [
-            ...createEyePair(),
-            ...createFinPair({ size: 1.2, x: 1.6, y: 1 }),
-            createTail({ size: 0.7, position: { x: 0, y: 4 } }),
             createGlow({ size: 1.0 }), // Group harmony indicator
+            createTail({ size: 0.7, position: { x: 0, y: 4 } }),
+            ...createFinPair({ size: 1.2, x: 1.6, y: 1 }),
+            ...createEyePair(),
           ],
         },
       },
@@ -396,9 +396,9 @@ export const stableEcosystemProfile: SimulationProfile = {
         visual: {
           color: "#ffaa00", // Orange
           bodyParts: [
-            ...createEyePair(),
-            createShell({ size: 1.3 }), // Heavy protective armor
             createTail({ size: 0.8, rotation: 360, position: { x: 0, y: 5 } }),
+            createShell({ size: 1.3 }), // Heavy protective armor
+            createEye({ size: 0.7, position: { x: 0, y: -0.35 } }),
           ],
         },
       },
@@ -420,7 +420,7 @@ export const stableEcosystemProfile: SimulationProfile = {
         type: "asexual", // Solo reproduction
         offspringCount: 1,
         offspringEnergyBonus: 0,
-        cooldownTicks: 8, // Longer cooldown for asexual
+        cooldownFrames: 150, // 150 frames = 5 seconds (longer cooldown for asexual)
       },
 
       limits: {
@@ -537,13 +537,13 @@ export const stableEcosystemProfile: SimulationProfile = {
         visual: {
           color: "#ff0000", // Bright red
           bodyParts: [
-            ...createEyePair({ size: 0.4 }),
-            ...createFinPair({ size: 0.8 }),
             createTail({ size: 0.9 }),
             createGlow({ size: 1.5 }), // Intimidating aura
+            ...createFinPair({ size: 0.8 }),
             createSpike({ position: { x: 0, y: -0.6 }, size: 0.7 }), // Front spike
             createSpike({ position: { x: -0.4, y: -0.3 }, size: 0.6 }), // Left spike
             createSpike({ position: { x: 0.4, y: -0.3 }, size: 0.6 }), // Right spike
+            ...createEyePair({ size: 0.4 }),
           ],
         },
       },

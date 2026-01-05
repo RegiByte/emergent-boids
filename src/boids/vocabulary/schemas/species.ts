@@ -72,7 +72,7 @@ export const speciesConfigSchema = z.object({
     type: reproductionTypeSchema, // "sexual" (needs mate) or "asexual" (solo)
     offspringCount: z.number(), // Number of offspring per reproduction (1-2 for twins)
     offspringEnergyBonus: z.number(), // Extra starting energy for offspring (0-1 ratio)
-    cooldownTicks: z.number().optional(), // Ticks to wait before reproducing again (overrides global)
+    cooldownFrames: z.number().optional(), // Frames to wait before reproducing again (overrides global)
   }),
 
   // Limits - Population caps and parameter overrides required

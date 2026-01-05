@@ -32,6 +32,8 @@ import {
 import { runtimeStoreSchema } from "../../../boids/vocabulary/schemas/state.ts";
 import { workerRuntimeStore } from "@/resources/worker/workerRuntimeStore.ts";
 import { workerLifecycleManager } from "../workerLifecycleManager.ts";
+import { frameRater } from "@/resources/shared/frameRater.ts";
+import { sharedMemoryManager } from "@/resources/shared/sharedMemoryManager.ts";
 
 const createWorkerSystemConfig = (initialState: WorkerStoreState) => {
   return {
@@ -40,6 +42,8 @@ const createWorkerSystemConfig = (initialState: WorkerStoreState) => {
     workerRandomness: randomness,
     workerLifecycleManager: workerLifecycleManager,
     workerTime: time,
+    workerFrameRater: frameRater,
+    workerSharedMemoryManager: sharedMemoryManager,
     workerEngine: workerEngine,
     workerUpdateLoop: workerUpdateLoop,
     runtimeStore: workerRuntimeStore,
@@ -103,7 +107,7 @@ export const initializeEngine = defineTask({
       return {
         success: false,
         message: `System start failed: ${Array.from(
-          systemResult.errors.entries(),
+          systemResult.errors.entries()
         )
           .map(([k, v]) => `${k}: ${v.message}`)
           .join(", ")}`,
@@ -157,12 +161,11 @@ export const startSimulationLoop = defineTask({
       },
       (lifecycle) => {
         reportProgress(lifecycle);
-      },
+      }
     );
 
     console.log("[Worker] Update loop started");
 
-    // Return a promise that never resolves (loop runs until stopped)
     return {
       running: true,
     };

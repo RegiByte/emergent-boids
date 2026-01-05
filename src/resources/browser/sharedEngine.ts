@@ -18,21 +18,21 @@
 
 import { createBoid } from "@/boids/boid.ts";
 import type { Boid } from "@/boids/vocabulary/schemas/entities.ts";
-import { CatchEvent } from "@/boids/vocabulary/schemas/events.ts";
+import { AllEvents, CatchEvent } from "@/boids/vocabulary/schemas/events.ts";
 import type { WorldPhysics } from "@/boids/vocabulary/schemas/world.ts";
-import {
-  createSharedBoidBuffer,
-  createSharedBoidViews,
-  StatsIndex,
-} from "@/lib/sharedMemory.ts";
-import { defineResource } from "braided";
+import { StatsIndex } from "@/lib/sharedMemory.ts";
+import { createSubscription } from "@/lib/state.ts";
+import { sharedMemoryKeywords } from "@/lib/workerTasks/vocabulary.ts";
+import { defineResource, StartedResource } from "braided";
 import { defaultWorldPhysics } from "../../boids/defaultPhysics.ts";
 import type { Profiler } from "../shared/profiler.ts";
 import type { RandomnessResource } from "../shared/randomness.ts";
+import type { SharedMemoryManager } from "../shared/sharedMemoryManager.ts";
 import type { BoidEngine } from "./engine.ts";
 import { LocalBoidStoreResource } from "./localBoidStore.ts";
 import type { RuntimeStoreResource } from "./runtimeStore.ts";
 import type { EngineTasks } from "./sharedEngineTasks.ts";
+import { FrameRaterAPI } from "../shared/frameRater.ts";
 
 /**
  * Logical boid state (everything except position/velocity/acceleration)
@@ -46,22 +46,35 @@ export const sharedEngine = defineResource({
     "profiler",
     "randomness",
     "localBoidStore",
+    "sharedMemoryManager",
+    "frameRater",
   ],
-  start: async ({
+  start: ({
     engineTasks,
     runtimeStore,
     profiler,
     randomness,
     localBoidStore,
+    sharedMemoryManager,
+    frameRater,
   }: {
     engineTasks: EngineTasks;
     runtimeStore: RuntimeStoreResource;
     profiler: Profiler;
     randomness: RandomnessResource;
     localBoidStore: LocalBoidStoreResource;
+    sharedMemoryManager: SharedMemoryManager;
+    frameRater: FrameRaterAPI;
   }) => {
+    console.log("[sharedEngine] Resource starting (synchronous)...");
     const { config: initialConfig } = runtimeStore.store.getState();
     const { world: initialWorld, species: initialSpecies } = initialConfig;
+
+    const engineEventSubscription = createSubscription<AllEvents>();
+
+    const updateParametersRater = frameRater.throttled("updateParameters", {
+      intervalMs: 10000,
+    });
 
     const boidsStore = localBoidStore.store;
     const maxBoids = initialConfig.parameters.maxBoids;
@@ -71,9 +84,7 @@ export const sharedEngine = defineResource({
       (initialConfig as unknown as { physics?: WorldPhysics }).physics ||
       defaultWorldPhysics;
 
-    // Logical boid state (main thread only)
-    // const logicalBoids: LogicalBoid[] = [];
-    // const boidIdToIndex = new Map<string, number>();
+    console.log("[sharedEngine] Initial physics:", physics);
 
     // Create initial boids
     const creationContext = {
@@ -88,16 +99,16 @@ export const sharedEngine = defineResource({
 
     // Get available type IDs
     const preyTypeIds = Object.keys(initialSpecies).filter(
-      (id) => initialSpecies[id].role === "prey",
+      (id) => initialSpecies[id].role === "prey"
     );
     const predatorTypeIds = Object.keys(initialSpecies).filter(
-      (id) => initialSpecies[id].role === "predator",
+      (id) => initialSpecies[id].role === "predator"
     );
 
     // Spawn initial prey
     for (let i = 0; i < initialWorld.initialPreyCount; i++) {
       boidsStore.addBoid(
-        createBoid(preyTypeIds, creationContext, null, boidsStore.nextIndex()),
+        createBoid(preyTypeIds, creationContext, null, boidsStore.nextIndex())
       );
     }
 
@@ -108,20 +119,31 @@ export const sharedEngine = defineResource({
           predatorTypeIds,
           creationContext,
           null,
-          boidsStore.nextIndex(),
-        ),
+          boidsStore.nextIndex()
+        )
       );
     }
 
-    // Create SharedArrayBuffer
-    const { buffer, layout } = createSharedBoidBuffer(maxBoids);
-    const bufferViews = createSharedBoidViews(buffer, layout);
+    // Create SharedArrayBuffer using sharedMemoryManager
+    const memory = sharedMemoryManager.initialize(
+      sharedMemoryKeywords.boidsPhysics,
+      maxBoids
+    );
 
-    // Initialize worker with shared buffer and initial boid physics
+    console.log("[sharedEngine] Created SharedArrayBuffer via manager:", {
+      maxBoids,
+      bufferSize: memory.buffer.byteLength,
+      boidCount: boidsStore.count(),
+    });
+
+    // Initialize worker asynchronously (don't block resource startup!)
+    let workerReady = false;
+
+    // Start worker initialization immediately but don't await it
     const initSubscription = engineTasks.dispatch("initializeEngine", {
-      buffer,
-      layout,
-      initialBoids: Object.values(boidsStore.boids), // Pass full Boid objects now!
+      buffer: memory.buffer,
+      layout: memory.layout,
+      initialBoids: Object.values(boidsStore.boids),
       initialState: {
         config: initialConfig,
         simulation: {
@@ -132,60 +154,54 @@ export const sharedEngine = defineResource({
       },
     });
 
-    const result = await new Promise((resolve) => {
-      initSubscription
-        .onComplete(() => {
-          resolve(true);
-        })
-        .onError((error) => {
-          console.error("[sharedEngine] Error initializing:", error);
-          resolve(false);
+    console.log("[sharedEngine] Dispatched initializeEngine task (async)...");
+
+    initSubscription
+      .onComplete((data) => {
+        console.log("[sharedEngine] Worker init complete:", data);
+        workerReady = true;
+
+        // Start simulation loop after worker is ready
+        console.log("[sharedEngine] Starting simulation loop...");
+        const loopTask = engineTasks.dispatch("startSimulationLoop", {
+          targetFPS: 30,
         });
-    });
 
-    console.log("[sharedEngine] Initialized:", result);
+        console.log("[sharedEngine] Loop task dispatched");
 
-    // Start simulation loop in worker
-    const loopTask = engineTasks.dispatch("startSimulationLoop", {
-      targetFPS: 60,
-    });
-
-    // Listen to progress updates
-    loopTask.onProgress((progress) => {
-      switch (progress.type) {
-        case "frame": {
-          // skip for now
-          break;
-        }
-        case "event": {
-          console.log(`[sharedEngine] Event:`, progress.event);
-          break;
-        }
-      }
-
-      // Update main thread profiler with worker metrics
-      // if (progress.profilerMetrics) {
-      //   for (const [name, metric] of Object.entries(progress.profilerMetrics)) {
-      //     const m = metric as { avgTime: number };
-      //     profiler.start(`worker.${name}`);
-      //     // Simulate the time taken (for profiler display)
-      //     const startTime = performance.now();
-      //     while (performance.now() - startTime < m.avgTime) {
-      //       // Busy wait to simulate time
-      //     }
-      //     profiler.end(`worker.${name}`);
-      //   }
-      // }
-    });
+        // Listen to progress updates
+        loopTask.onProgress((progress) => {
+          // console.log("[sharedEngine] Progress:", progress);
+          switch (progress.type) {
+            case "frame": {
+              // skip for now (too spammy)
+              break;
+            }
+            case "event": {
+              // Forward worker lifecycle events to runtime controller (Session 115)
+              engineEventSubscription.notify(progress.event);
+              break;
+            }
+          }
+        });
+      })
+      .onError((error) => {
+        console.error("[sharedEngine] Error initializing worker:", error);
+        workerReady = false;
+      });
 
     // Subscribe to runtime store changes
-    const unsubscribe = runtimeStore.store.subscribe((state) => {
-      const { config } = state;
-
-      // Update worker config when config changes
-      engineTasks.dispatch("updateParameters", {
-        config: config,
-      });
+    let lastUpdatedAt = 0;
+    const unsubscribe = runtimeStore.store.subscribe(({ config: _config }) => {
+      const now = performance.now();
+      const deltaMs = now - lastUpdatedAt;
+      // Update worker config when config changes (only if worker is ready)
+      if (workerReady && updateParametersRater.shouldExecute(deltaMs)) {
+        lastUpdatedAt = now;
+        // engineTasks.dispatch("updateParameters", {
+        //   config: config,
+        // });
+      }
     });
 
     /**
@@ -193,12 +209,12 @@ export const sharedEngine = defineResource({
      */
     function getWorkerStats() {
       return {
-        frame: Atomics.load(bufferViews.stats, StatsIndex.FRAME_COUNT),
+        frame: Atomics.load(memory.views.stats, StatsIndex.FRAME_COUNT),
         simulationTime: Atomics.load(
-          bufferViews.stats,
-          StatsIndex.SIMULATION_TIME_MS,
+          memory.views.stats,
+          StatsIndex.SIMULATION_TIME_MS
         ),
-        aliveCount: Atomics.load(bufferViews.stats, StatsIndex.ALIVE_COUNT),
+        aliveCount: Atomics.load(memory.views.stats, StatsIndex.ALIVE_COUNT),
       };
     }
 
@@ -228,10 +244,10 @@ export const sharedEngine = defineResource({
 
       // Recalculate type IDs
       const currentPreyTypeIds = Object.keys(species).filter(
-        (id) => species[id].role === "prey",
+        (id) => species[id].role === "prey"
       );
       const currentPredatorTypeIds = Object.keys(species).filter(
-        (id) => species[id].role === "predator",
+        (id) => species[id].role === "predator"
       );
 
       const resetPhysics = cfg.physics || defaultWorldPhysics;
@@ -250,8 +266,8 @@ export const sharedEngine = defineResource({
             currentPreyTypeIds,
             resetContext,
             null,
-            boidsStore.nextIndex(),
-          ),
+            boidsStore.nextIndex()
+          )
         );
       }
 
@@ -262,15 +278,15 @@ export const sharedEngine = defineResource({
             currentPredatorTypeIds,
             resetContext,
             null,
-            boidsStore.nextIndex(),
-          ),
+            boidsStore.nextIndex()
+          )
         );
       }
 
       // Reinitialize worker
       const newInitSubscription = engineTasks.dispatch("initializeEngine", {
-        buffer,
-        layout,
+        buffer: memory.buffer,
+        layout: memory.layout,
         initialBoids: Object.values(boidsStore.boids), // Pass full Boid objects
         initialState: {
           config: cfg,
@@ -281,6 +297,7 @@ export const sharedEngine = defineResource({
       await new Promise((resolve) => {
         newInitSubscription
           .onComplete(() => {
+            console.log("[sharedEngine] Reset complete");
             resolve(true);
           })
           .onError((error) => {
@@ -289,23 +306,21 @@ export const sharedEngine = defineResource({
           });
       });
 
-      console.log("[sharedEngine] Reset:", result);
-
       // Restart loop
       const newLoopTask = engineTasks.dispatch("startSimulationLoop", {
-        targetFPS: 60,
+        targetFPS: 30, // Match worker simulation rate (30 UPS)
       });
 
       newLoopTask.onProgress((progress) => {
         switch (progress.type) {
           case "frame": {
             console.log(
-              `[sharedEngine] Frame ${progress.frame}, FPS: ${progress.fps}`,
+              `[sharedEngine] Frame ${progress.frame}, FPS: ${progress.fps}`
             );
             break;
           }
           case "event": {
-            console.log(`[sharedEngine] Event: ${progress.event}`);
+            engineEventSubscription.notify(progress.event);
             break;
           }
         }
@@ -316,9 +331,9 @@ export const sharedEngine = defineResource({
      * Add boid: Not yet implemented for shared engine
      * Would need to resize shared buffer dynamically
      */
-    const addBoid = (_boid: Boid) => {
-      console.warn("[sharedEngine] addBoid not yet implemented");
+    const addBoid = (boid: Boid) => {
       // TODO: Dynamic buffer resizing
+      boidsStore.addBoid(boid);
     };
 
     /**
@@ -328,13 +343,13 @@ export const sharedEngine = defineResource({
       if (boidsStore.removeBoid(boidId)) {
         // Update alive count
         const currentCount = Atomics.load(
-          bufferViews.stats,
-          StatsIndex.ALIVE_COUNT,
+          memory.views.stats,
+          StatsIndex.ALIVE_COUNT
         );
         Atomics.store(
-          bufferViews.stats,
+          memory.views.stats,
           StatsIndex.ALIVE_COUNT,
-          currentCount - 1,
+          currentCount - 1
         );
       }
     };
@@ -358,11 +373,12 @@ export const sharedEngine = defineResource({
       removeBoid,
       getBoidById: boidsStore.getBoidById,
       checkCatches,
-      getBufferViews: () => bufferViews,
+      getBufferViews: () => memory.views,
       getWorkerStats, // NEW: Expose worker stats
       // Expose unsubscribe and tasks for cleanup
       _unsubscribe: unsubscribe,
       _tasks: tasksRef,
+      eventSubscription: engineEventSubscription,
     } satisfies BoidEngine & {
       getWorkerStats: () => {
         frame: number;
@@ -386,5 +402,12 @@ export const sharedEngine = defineResource({
     if (engine && engine._tasks) {
       await engine._tasks.dispatch("stopSimulationLoop", {});
     }
+
+    // Unsubscribe from engine events
+    if (engine && engine._engineEventSubscription) {
+      engine._engineEventSubscription.unsubscribe();
+    }
   },
 });
+
+export type SharedEngineResource = StartedResource<typeof sharedEngine>;

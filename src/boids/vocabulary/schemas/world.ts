@@ -126,10 +126,10 @@ export const simulationParametersSchema = z.object({
   // Lifecycle parameters (timing and thresholds)
   minReproductionAge: z.number(), // Minimum age to start reproducing (seconds)
   reproductionEnergyThreshold: z.number(), // Energy % needed to seek mates (0-1 ratio)
-  reproductionCooldownTicks: z.number(), // Ticks to wait before reproducing again
-  matingBuildupTicks: z.number(), // Ticks boids must stay close before reproducing
-  eatingCooldownTicks: z.number(), // Ticks predator must wait after eating (prevents monopolizing food)
-  attackCooldownTicks: z.number(), // Ticks predator must wait between attacks
+  reproductionCooldownFrames: z.number(), // Frames to wait before reproducing again
+  matingBuildupFrames: z.number(), // Frames boids must stay close before reproducing
+  eatingCooldownFrames: z.number(), // Frames predator must wait after eating (prevents monopolizing food)
+  attackCooldownFrames: z.number(), // Frames predator must wait between attacks
 });
 
 export type SimulationParameters = z.infer<typeof simulationParametersSchema>;

@@ -39,7 +39,7 @@ export function defineSharedMemory<
   TLayout extends BufferLayout,
   TViews extends BufferViews,
 >(
-  config: SharedMemoryDefinition<TLayout, TViews>,
+  config: SharedMemoryDefinition<TLayout, TViews>
 ): SharedMemoryDefinition<TLayout, TViews> {
   return config;
 }
@@ -101,7 +101,7 @@ export const sharedMemoryManager = defineResource({
         const definition = definitions[memoryKey];
         if (!definition) {
           throw new Error(
-            `Shared memory definition not found for ${memoryKey}`,
+            `Shared memory definition not found for ${memoryKey}`
           );
         }
         const memory = {
@@ -115,14 +115,17 @@ export const sharedMemoryManager = defineResource({
         return memory;
       },
       // Called by the thread that receives the memory and operates on it
-      attach: (memoryKey: SharedMemoryKeys, buffer: SharedArrayBuffer) => {
+      attach: <K extends SharedMemoryKeys>(
+        memoryKey: K,
+        buffer: SharedArrayBuffer,
+        layout: ReturnType<(typeof definitions)[K]["createLayout"]>
+      ) => {
         const definition = definitions[memoryKey];
         if (!definition) {
           throw new Error(
-            `Shared memory definition not found for ${memoryKey}`,
+            `Shared memory definition not found for ${memoryKey}`
           );
         }
-        const layout = definition.createLayout(buffer.byteLength);
         const views = definition.createViews(buffer, layout);
         const memory = {
           buffer,
@@ -132,13 +135,13 @@ export const sharedMemoryManager = defineResource({
         sharedMemoryStore.mutate((state) => {
           state.instances[memoryKey] = memory;
         });
-        return memory;
+        return memory as InferMemoryType<(typeof definitions)[K]>;
       },
       get: (memoryKey: SharedMemoryKeys) => {
         const definition = definitions[memoryKey];
         if (!definition) {
           throw new Error(
-            `Shared memory definition not found for ${memoryKey}`,
+            `Shared memory definition not found for ${memoryKey}`
           );
         }
         const instances = sharedMemoryStore.get().instances;

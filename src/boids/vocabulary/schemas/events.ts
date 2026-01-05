@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eventKeywords } from "../keywords.ts";
 import { deathCauseSchema } from "./primitives";
-import { foodSourceSchema } from "./entities";
+import { boidSchema, foodSourceSchema } from "./entities";
 
 /**
  * Event Schemas - Messages that trigger state changes
@@ -120,6 +120,11 @@ export const boidEventSchemas = {
   foodSourceCreated: z.object({
     type: z.literal(eventKeywords.boids.foodSourceCreated),
     foodSource: foodSourceSchema, // Complete food source data
+  }),
+  // Worker state updated (Session 115: Worker → Main sync)
+  workerStateUpdated: z.object({
+    type: z.literal(eventKeywords.boids.workerStateUpdated),
+    updates: z.array(boidSchema.partial()),
   }),
 };
 
@@ -250,6 +255,7 @@ export const boidEventSchema = z.discriminatedUnion("type", [
   boidEventSchemas.reproduced,
   boidEventSchemas.spawnPredator,
   boidEventSchemas.foodSourceCreated,
+  boidEventSchemas.workerStateUpdated,
 ]);
 
 // Union of all events (for runtime controller)

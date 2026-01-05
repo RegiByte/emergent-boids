@@ -8,29 +8,33 @@
  * All other resources (renderer, lifecycle, analytics) work unchanged.
  */
 
-import { createSystemHooks, createSystemManager } from "braided-react";
 import { analytics } from "@/resources/browser/analytics.ts";
 import { analyticsStore } from "@/resources/browser/analyticsStore.ts";
-import { atmosphere } from "@/resources/browser/atmosphere.ts";
 import { atlases } from "@/resources/browser/atlases.ts";
+import { atmosphere } from "@/resources/browser/atmosphere.ts";
 import { camera } from "@/resources/browser/camera.ts";
 import { canvas } from "@/resources/browser/canvas.ts";
-import { lifecycleManager } from "@/resources/browser/lifecycleManager.ts";
-import { profiler } from "@/resources/shared/profiler.ts";
 import { profileStore } from "@/resources/browser/profileStore.ts";
-import { randomness } from "@/resources/shared/randomness.ts";
 import { renderer } from "@/resources/browser/renderer.ts";
 import { runtimeController } from "@/resources/browser/runtimeController.ts";
 import { runtimeStore } from "@/resources/browser/runtimeStore.ts";
+import { webglRenderer } from "@/resources/browser/webglRenderer.ts";
+import { profiler } from "@/resources/shared/profiler.ts";
+import { randomness } from "@/resources/shared/randomness.ts";
 import { time } from "@/resources/shared/time.ts";
 import { timer } from "@/resources/shared/timer.ts";
-import { webglRenderer } from "@/resources/browser/webglRenderer.ts";
+import { createSystemHooks, createSystemManager } from "braided-react";
 
 // NEW: Parallel simulation resources
-import { engineTasksResource } from "@/resources/browser/sharedEngineTasks";
-import { sharedEngine } from "@/resources/browser/sharedEngine.ts";
 import { localBoidStore } from "@/resources/browser/localBoidStore";
+import { sharedEngine } from "@/resources/browser/sharedEngine.ts";
+import { engineTasksResource } from "@/resources/browser/sharedEngineTasks";
+import { sharedUpdateLoop } from "@/resources/browser/sharedUpdateLoop";
+import { frameRater } from "@/resources/shared/frameRater";
 import { sharedMemoryManager } from "@/resources/shared/sharedMemoryManager";
+import { createSystemConfigResource } from "@/resources/shared/config.ts";
+import { shortcuts } from "@/resources/browser/shortcuts";
+import { browserSimulation } from "@/resources/browser/simulation";
 
 /**
  * Parallel system configuration
@@ -39,29 +43,34 @@ import { sharedMemoryManager } from "@/resources/shared/sharedMemoryManager";
  * Everything else is identical!
  */
 export const parallelSystemConfig = {
-  localBoidStore,
+  config: createSystemConfigResource({
+    renderMode: "canvas",
+    usesSharedMemory: true,
+  }),
   time,
   timer,
-  atlases,
-  runtimeStore,
-  analyticsStore,
-  profileStore,
-  randomness,
-  runtimeController,
   canvas,
   camera,
-
-  // NEW: Worker tasks resource (auto-creates worker)
-  engineTasks: engineTasksResource,
-  sharedMemoryManager,
-  // REPLACED: Use shared engine instead of main-thread engine
   engine: sharedEngine,
-  lifecycleManager,
-  analytics,
-  atmosphere,
-  renderer,
-  webglRenderer,
+  atlases,
   profiler,
+  renderer,
+  analytics,
+  shortcuts,
+  atmosphere,
+  randomness,
+  frameRater,
+  updateLoop: sharedUpdateLoop,
+  simulation: browserSimulation,
+  profileStore,
+  runtimeStore,
+  webglRenderer,
+  analyticsStore,
+  localBoidStore,
+  // lifecycleManager,
+  runtimeController,
+  sharedMemoryManager,
+  engineTasks: engineTasksResource,
 };
 
 export const parallelManager = createSystemManager(parallelSystemConfig);

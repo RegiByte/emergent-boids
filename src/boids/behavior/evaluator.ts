@@ -258,9 +258,9 @@ export function buildBehaviorContext(
     threatLevel, // NEW - Session 75: Calculated threat based on stance + distance
     hasLockedTarget: boid.targetId !== null && boid.targetLockStrength > 0,
     targetLockStrength: boid.targetLockStrength,
-    targetLockDuration: boid.targetLockTime,
+    targetLockDuration: boid.targetLockFrame,
     hasMate: boid.mateId !== null,
-    mateCommitmentTime: boid.mateCommitmentTime,
+    mateCommitmentFrames: boid.mateCommitmentFrames,
     readyToMate: context.readyToMate,
     populationRatio: context.populationRatio,
     environmentPressure,

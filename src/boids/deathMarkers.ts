@@ -19,8 +19,8 @@ export const DEATH_MARKER_CONSTANTS = {
   INITIAL_STRENGTH: 1.0, // Starting repulsion strength
   STRENGTH_INCREMENT: 0.5, // Strength gain per consolidated death
   MAX_STRENGTH: 5.0, // Maximum repulsion strength
-  INITIAL_TICKS: 10, // Starting lifetime
-  MAX_LIFETIME_TICKS: 20, // Maximum lifetime (prevents immortal markers)
+  INITIAL_FRAMES: 300, // Starting lifetime
+  MAX_LIFETIME_FRAMES: 600, // Maximum lifetime (prevents immortal markers)
 } as const;
 
 // ============================================
@@ -47,7 +47,7 @@ export type DeathEvent = {
 function findNearbyMarkers(
   markers: DeathMarker[],
   position: { x: number; y: number },
-  radius: number,
+  radius: number
 ): number[] {
   const nearbyIndexes: number[] = [];
 
@@ -68,13 +68,16 @@ function findNearbyMarkers(
  */
 function createDeathMarker(
   position: { x: number; y: number },
-  typeId: string,
+  typeId: string
 ): DeathMarker {
+  const now = performance.now();
+  const randomId = Math.random().toString(36).substring(2, 15);
   return {
+    id: `deathMarker:${now}-${randomId}`,
     position: { x: position.x, y: position.y },
-    remainingTicks: DEATH_MARKER_CONSTANTS.INITIAL_TICKS,
+    remainingFrames: DEATH_MARKER_CONSTANTS.INITIAL_FRAMES,
     strength: DEATH_MARKER_CONSTANTS.INITIAL_STRENGTH,
-    maxLifetimeTicks: DEATH_MARKER_CONSTANTS.MAX_LIFETIME_TICKS,
+    maxLifetimeFrames: DEATH_MARKER_CONSTANTS.MAX_LIFETIME_FRAMES,
     typeId,
   };
 }
@@ -87,11 +90,11 @@ function strengthenMarker(marker: DeathMarker): DeathMarker {
     ...marker,
     strength: Math.min(
       marker.strength + DEATH_MARKER_CONSTANTS.STRENGTH_INCREMENT,
-      DEATH_MARKER_CONSTANTS.MAX_STRENGTH,
+      DEATH_MARKER_CONSTANTS.MAX_STRENGTH
     ),
-    remainingTicks: Math.min(
-      marker.remainingTicks + DEATH_MARKER_CONSTANTS.INITIAL_TICKS,
-      marker.maxLifetimeTicks,
+    remainingFrames: Math.min(
+      marker.remainingFrames + DEATH_MARKER_CONSTANTS.INITIAL_FRAMES,
+      marker.maxLifetimeFrames
     ),
   };
 }
@@ -103,7 +106,7 @@ function strengthenMarker(marker: DeathMarker): DeathMarker {
 export function processDeathMarkers(
   currentMarkers: DeathMarker[],
   deathEvents: DeathEvent[],
-  getBoidById: (id: string) => Boid | undefined,
+  getBoidById: (id: string) => Boid | undefined
 ): DeathMarkerUpdate {
   const updatedMarkers = [...currentMarkers];
   let hasChanges = false;
@@ -122,7 +125,7 @@ export function processDeathMarkers(
     const nearbyIndexes = findNearbyMarkers(
       updatedMarkers,
       boid.position,
-      DEATH_MARKER_CONSTANTS.CONSOLIDATION_RADIUS,
+      DEATH_MARKER_CONSTANTS.CONSOLIDATION_RADIUS
     );
 
     if (nearbyIndexes.length > 0) {
@@ -146,25 +149,25 @@ export function processDeathMarkers(
 
 /**
  * Fade death markers over time
- * Pure function - decrements ticks and filters expired markers
+ * Pure function - decrements frames and filters expired markers
  */
 export function fadeDeathMarkers(
-  currentMarkers: DeathMarker[],
+  currentMarkers: DeathMarker[]
 ): DeathMarkerUpdate {
   // Skip if no markers
   if (currentMarkers.length === 0) {
     return { markers: currentMarkers, shouldUpdate: false };
   }
 
-  // Decrement ticks and filter expired markers
+  // Decrement frames and filter expired markers
   const updatedMarkers = currentMarkers
     .map((marker) => ({
       ...marker,
-      remainingTicks: marker.remainingTicks - 1,
+      remainingFrames: marker.remainingFrames - 1,
     }))
-    .filter((marker) => marker.remainingTicks > 0);
+    .filter((marker) => marker.remainingFrames > 0);
 
-  // Always update (ticks change even if length doesn't)
+  // Always update (frames change even if length doesn't)
   return {
     markers: updatedMarkers,
     shouldUpdate: true,
@@ -176,13 +179,13 @@ export function fadeDeathMarkers(
  */
 export function haveMarkersChanged(
   oldMarkers: DeathMarker[],
-  newMarkers: DeathMarker[],
+  newMarkers: DeathMarker[]
 ): boolean {
   if (oldMarkers.length !== newMarkers.length) return true;
 
   return newMarkers.some(
     (marker, idx) =>
-      marker.remainingTicks !== oldMarkers[idx]?.remainingTicks ||
-      marker.strength !== oldMarkers[idx]?.strength,
+      marker.remainingFrames !== oldMarkers[idx]?.remainingFrames ||
+      marker.strength !== oldMarkers[idx]?.strength
   );
 }
