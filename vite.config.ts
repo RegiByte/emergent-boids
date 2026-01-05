@@ -20,7 +20,8 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  base: "/emergent-boids/",
+  // base path for github pages
+  // base: "/emergent-boids/",
   assetsInclude: ["**/*.vert", "**/*.frag"],
   server: {
     headers: {
