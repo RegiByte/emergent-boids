@@ -5,7 +5,6 @@ import { defineResource, StartedResource } from "braided";
 import z from "zod";
 import { FrameRaterAPI } from "../shared/frameRater";
 import { TimeAPI } from "../shared/time";
-import { RuntimeController } from "./runtimeController";
 import { SharedEngineResource } from "./sharedEngine";
 
 export const updateLoopUpdateSchema = z.discriminatedUnion("type", [
@@ -32,17 +31,15 @@ export type UpdateLoopEventUpdate = Extract<
 >;
 
 export const sharedUpdateLoop = defineResource({
-  dependencies: ["frameRater", "engine", "time", "runtimeController"],
+  dependencies: ["frameRater", "engine", "time"],
   start: ({
     frameRater,
     engine,
     time,
-    runtimeController,
   }: {
     frameRater: FrameRaterAPI;
     engine: SharedEngineResource;
     time: TimeAPI;
-    runtimeController: RuntimeController;
   }) => {
     // let animationId: number | null = null;
     // let isRunning = false;
@@ -78,24 +75,27 @@ export const sharedUpdateLoop = defineResource({
       getTimeScale: () => {
         return time.getState().timeScale;
       },
+      onStep: (_deltaTime, _scaledDeltaMs) => {
+        console.log("[SharedUpdateLoop] Stepping", _deltaTime, _scaledDeltaMs);
+      },
     });
 
     const updateSubscription = createSubscription<UpdateLoopFrameUpdate>();
     const lifecycleSubscription = createSubscription<UpdateLoopEventUpdate>();
 
     // Subscribe to worker events and forward to runtime controller
-    const workerEventUnsubscribe = engine.eventSubscription.subscribe(
-      (event) => {
-        // Forward all worker events to runtime controller
-        runtimeController.dispatch(event);
+    // const workerEventUnsubscribe = engine.watch(
+    //   (event) => {
+    //     // Forward all worker events to runtime controller
+    //     runtimeController.dispatch(event);
 
-        // Also notify our subscribers
-        lifecycleSubscription.notify({
-          type: "event",
-          event,
-        });
-      }
-    );
+    //     // Also notify our subscribers
+    //     lifecycleSubscription.notify({
+    //       type: "event",
+    //       event,
+    //     });
+    //   }
+    // );
 
     const animate = (_timestamp: number) => {
       // if (!isRunning) return;
@@ -104,14 +104,7 @@ export const sharedUpdateLoop = defineResource({
       // const realDeltaMs = currentTime - lastFrameTime;
       // lastFrameTime = currentTime;
 
-      if (!updateLoop.isPaused()) {
-        // Worker handles physics updates independently
-        // We just need to render and handle main-thread lifecycle
-
-        // renderer.drawFrame(
-        //   realDeltaMs,
-        //   Math.round(simulationRater.getMetrics().fps)
-        // );
+      if (!time.getState().isPaused) {
 
         const stats = engine.getWorkerStats();
         updateSubscription.notify({
@@ -161,7 +154,7 @@ export const sharedUpdateLoop = defineResource({
       simulationRater.reset();
 
       // Unsubscribe from worker events
-      workerEventUnsubscribe();
+      // workerEventUnsubscribe();
 
       console.log("[SharedUpdateLoop] Stopped");
     };

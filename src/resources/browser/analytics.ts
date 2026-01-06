@@ -50,6 +50,7 @@ export const analytics = defineResource({
   }) => {
     const boidStore = localBoidStore.store;
     let tickCounter = 0;
+    console.log("[Analytics] Starting", runtimeController);
     // let lastSnapshotTime = Date.now();
     // let isFirstSnapshot = true; // Track if this is the first snapshot
     // let snapshotCount = 0; // Track total snapshots for genetics sampling

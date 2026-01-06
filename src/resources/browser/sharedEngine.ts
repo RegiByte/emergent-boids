@@ -18,30 +18,62 @@
 
 import { createBoid } from "@/boids/boid.ts";
 import type { Boid } from "@/boids/vocabulary/schemas/entities.ts";
-import { AllEvents, CatchEvent } from "@/boids/vocabulary/schemas/events.ts";
+import { CatchEvent } from "@/boids/vocabulary/schemas/events.ts";
+import {
+  SimulationCommand,
+  SimulationEvent,
+} from "@/boids/vocabulary/schemas/simulation.ts";
 import type { WorldPhysics } from "@/boids/vocabulary/schemas/world.ts";
+import { Channel, createChannel } from "@/lib/channels.ts";
 import { StatsIndex } from "@/lib/sharedMemory.ts";
-import { createSubscription } from "@/lib/state.ts";
 import { sharedMemoryKeywords } from "@/lib/workerTasks/vocabulary.ts";
 import { defineResource, StartedResource } from "braided";
+import z from "zod";
 import { defaultWorldPhysics } from "../../boids/defaultPhysics.ts";
+import { FrameRaterAPI } from "../shared/frameRater.ts";
 import type { Profiler } from "../shared/profiler.ts";
 import type { RandomnessResource } from "../shared/randomness.ts";
 import type { SharedMemoryManager } from "../shared/sharedMemoryManager.ts";
-import type { BoidEngine } from "./engine.ts";
 import { LocalBoidStoreResource } from "./localBoidStore.ts";
 import type { RuntimeStoreResource } from "./runtimeStore.ts";
-import type { EngineTasks } from "./sharedEngineTasks.ts";
-import { FrameRaterAPI } from "../shared/frameRater.ts";
+import type { WorkerTasksResource } from "./workerTasks.ts";
 
 /**
  * Logical boid state (everything except position/velocity/acceleration)
  * Stored in main thread, not shared with worker
  */
 
+const engineKeywords = {
+  commands: {
+    initialize: "initialize",
+  },
+  events: {
+    error: "error",
+  },
+};
+
+const engineCommandSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal(engineKeywords.commands.initialize),
+    channel: z.any(),
+  }),
+]);
+
+export type EngineCommand = z.infer<typeof engineCommandSchema>;
+
+const engineEventSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal(engineKeywords.events.error),
+    error: z.string(),
+    meta: z.any(),
+  }),
+]);
+
+export type EngineEvent = z.infer<typeof engineEventSchema>;
+
 export const sharedEngine = defineResource({
   dependencies: [
-    "engineTasks",
+    "workerTasks",
     "runtimeStore",
     "profiler",
     "randomness",
@@ -50,15 +82,14 @@ export const sharedEngine = defineResource({
     "frameRater",
   ],
   start: ({
-    engineTasks,
+    workerTasks,
     runtimeStore,
     profiler,
     randomness,
     localBoidStore,
     sharedMemoryManager,
-    frameRater,
   }: {
-    engineTasks: EngineTasks;
+    workerTasks: WorkerTasksResource;
     runtimeStore: RuntimeStoreResource;
     profiler: Profiler;
     randomness: RandomnessResource;
@@ -70,11 +101,12 @@ export const sharedEngine = defineResource({
     const { config: initialConfig } = runtimeStore.store.getState();
     const { world: initialWorld, species: initialSpecies } = initialConfig;
 
-    const engineEventSubscription = createSubscription<AllEvents>();
 
-    const updateParametersRater = frameRater.throttled("updateParameters", {
-      intervalMs: 10000,
-    });
+    // const updateParametersRater = frameRater.throttled("updateParameters", {
+    //   intervalMs: 10000,
+    // });
+    const engineChannel = createChannel<EngineCommand, EngineEvent>();
+    let simulationChannel: Channel<SimulationCommand, SimulationEvent> | null = null;
 
     const boidsStore = localBoidStore.store;
     const maxBoids = initialConfig.parameters.maxBoids;
@@ -139,8 +171,15 @@ export const sharedEngine = defineResource({
     // Initialize worker asynchronously (don't block resource startup!)
     let workerReady = false;
 
+    const initialize = (
+      channel: Channel<SimulationCommand, SimulationEvent>
+    ) => {
+      // Bind simulation channel so we can send events to it
+      simulationChannel = channel;
+    };
+
     // Start worker initialization immediately but don't await it
-    const initSubscription = engineTasks.dispatch("initializeEngine", {
+    const initSubscription = workerTasks.dispatch("initializeWorker", {
       buffer: memory.buffer,
       layout: memory.layout,
       initialBoids: Object.values(boidsStore.boids),
@@ -163,25 +202,21 @@ export const sharedEngine = defineResource({
 
         // Start simulation loop after worker is ready
         console.log("[sharedEngine] Starting simulation loop...");
-        const loopTask = engineTasks.dispatch("startSimulationLoop", {
-          targetFPS: 30,
-        });
+        const loopTask = workerTasks.dispatch("startSimulation", {});
 
         console.log("[sharedEngine] Loop task dispatched");
 
         // Listen to progress updates
         loopTask.onProgress((progress) => {
-          // console.log("[sharedEngine] Progress:", progress);
-          switch (progress.type) {
-            case "frame": {
-              // skip for now (too spammy)
-              break;
+          if (simulationChannel) {
+            switch (progress.channel) {
+              case 'simulation': {
+                simulationChannel.out.notify(progress.event);
+                break;
+              }
             }
-            case "event": {
-              // Forward worker lifecycle events to runtime controller (Session 115)
-              engineEventSubscription.notify(progress.event);
-              break;
-            }
+          } else {
+            console.error("[sharedEngine] Simulation channel not initialized");
           }
         });
       })
@@ -191,18 +226,18 @@ export const sharedEngine = defineResource({
       });
 
     // Subscribe to runtime store changes
-    let lastUpdatedAt = 0;
-    const unsubscribe = runtimeStore.store.subscribe(({ config: _config }) => {
-      const now = performance.now();
-      const deltaMs = now - lastUpdatedAt;
-      // Update worker config when config changes (only if worker is ready)
-      if (workerReady && updateParametersRater.shouldExecute(deltaMs)) {
-        lastUpdatedAt = now;
-        // engineTasks.dispatch("updateParameters", {
-        //   config: config,
-        // });
-      }
-    });
+    // let lastUpdatedAt = 0;
+    // const unsubscribe = runtimeStore.store.subscribe(({ config: _config }) => {
+    //   const now = performance.now();
+    //   const deltaMs = now - lastUpdatedAt;
+    //   // Update worker config when config changes (only if worker is ready)
+    //   if (workerReady && updateParametersRater.shouldExecute(deltaMs)) {
+    //     lastUpdatedAt = now;
+    //     // engineTasks.dispatch("updateParameters", {
+    //     //   config: config,
+    //     // });
+    //   }
+    // });
 
     /**
      * Get worker simulation stats from SharedArrayBuffer
@@ -233,98 +268,88 @@ export const sharedEngine = defineResource({
      * Reset simulation
      */
     const reset = async () => {
-      // Stop current loop
-      engineTasks.dispatch("stopSimulationLoop", {});
-
-      // Clear logical state
-      boidsStore.clear();
-
-      const { config: cfg, simulation } = runtimeStore.store.getState();
-      const { world, species } = cfg;
-
-      // Recalculate type IDs
-      const currentPreyTypeIds = Object.keys(species).filter(
-        (id) => species[id].role === "prey"
-      );
-      const currentPredatorTypeIds = Object.keys(species).filter(
-        (id) => species[id].role === "predator"
-      );
-
-      const resetPhysics = cfg.physics || defaultWorldPhysics;
-
-      const resetContext = {
-        world: { width: world.width, height: world.height },
-        species,
-        rng: randomness.domain("spawning"),
-        physics: resetPhysics,
-      };
-
-      // Respawn prey
-      for (let i = 0; i < world.initialPreyCount; i++) {
-        boidsStore.addBoid(
-          createBoid(
-            currentPreyTypeIds,
-            resetContext,
-            null,
-            boidsStore.nextIndex()
-          )
-        );
-      }
-
-      // Respawn predators
-      for (let i = 0; i < (world.initialPredatorCount || 0); i++) {
-        boidsStore.addBoid(
-          createBoid(
-            currentPredatorTypeIds,
-            resetContext,
-            null,
-            boidsStore.nextIndex()
-          )
-        );
-      }
-
-      // Reinitialize worker
-      const newInitSubscription = engineTasks.dispatch("initializeEngine", {
-        buffer: memory.buffer,
-        layout: memory.layout,
-        initialBoids: Object.values(boidsStore.boids), // Pass full Boid objects
-        initialState: {
-          config: cfg,
-          simulation: simulation,
-        },
-      });
-
-      await new Promise((resolve) => {
-        newInitSubscription
-          .onComplete(() => {
-            console.log("[sharedEngine] Reset complete");
-            resolve(true);
-          })
-          .onError((error) => {
-            console.error("[sharedEngine] Error resetting:", error);
-            resolve(false);
-          });
-      });
-
-      // Restart loop
-      const newLoopTask = engineTasks.dispatch("startSimulationLoop", {
-        targetFPS: 30, // Match worker simulation rate (30 UPS)
-      });
-
-      newLoopTask.onProgress((progress) => {
-        switch (progress.type) {
-          case "frame": {
-            console.log(
-              `[sharedEngine] Frame ${progress.frame}, FPS: ${progress.fps}`
-            );
-            break;
-          }
-          case "event": {
-            engineEventSubscription.notify(progress.event);
-            break;
-          }
-        }
-      });
+      // TODO: Implement
+      // // Stop current loop
+      // engineTasks.dispatch("stopSimulationLoop", {});
+      // // Clear logical state
+      // boidsStore.clear();
+      // const { config: cfg, simulation } = runtimeStore.store.getState();
+      // const { world, species } = cfg;
+      // // Recalculate type IDs
+      // const currentPreyTypeIds = Object.keys(species).filter(
+      //   (id) => species[id].role === "prey"
+      // );
+      // const currentPredatorTypeIds = Object.keys(species).filter(
+      //   (id) => species[id].role === "predator"
+      // );
+      // const resetPhysics = cfg.physics || defaultWorldPhysics;
+      // const resetContext = {
+      //   world: { width: world.width, height: world.height },
+      //   species,
+      //   rng: randomness.domain("spawning"),
+      //   physics: resetPhysics,
+      // };
+      // // Respawn prey
+      // for (let i = 0; i < world.initialPreyCount; i++) {
+      //   boidsStore.addBoid(
+      //     createBoid(
+      //       currentPreyTypeIds,
+      //       resetContext,
+      //       null,
+      //       boidsStore.nextIndex()
+      //     )
+      //   );
+      // }
+      // // Respawn predators
+      // for (let i = 0; i < (world.initialPredatorCount || 0); i++) {
+      //   boidsStore.addBoid(
+      //     createBoid(
+      //       currentPredatorTypeIds,
+      //       resetContext,
+      //       null,
+      //       boidsStore.nextIndex()
+      //     )
+      //   );
+      // }
+      // // Reinitialize worker
+      // const newInitSubscription = engineTasks.dispatch("initializeEngine", {
+      //   buffer: memory.buffer,
+      //   layout: memory.layout,
+      //   initialBoids: Object.values(boidsStore.boids), // Pass full Boid objects
+      //   initialState: {
+      //     config: cfg,
+      //     simulation: simulation,
+      //   },
+      // });
+      // await new Promise((resolve) => {
+      //   newInitSubscription
+      //     .onComplete(() => {
+      //       console.log("[sharedEngine] Reset complete");
+      //       resolve(true);
+      //     })
+      //     .onError((error) => {
+      //       console.error("[sharedEngine] Error resetting:", error);
+      //       resolve(false);
+      //     });
+      // });
+      // // Restart loop
+      // const newLoopTask = engineTasks.dispatch("startSimulationLoop", {
+      //   targetFPS: 30, // Match worker simulation rate (30 UPS)
+      // });
+      // newLoopTask.onProgress((progress) => {
+      //   switch (progress.type) {
+      //     case "frame": {
+      //       console.log(
+      //         `[sharedEngine] Frame ${progress.frame}, FPS: ${progress.fps}`
+      //       );
+      //       break;
+      //     }
+      //     case "event": {
+      //       engineEventSubscription.notify(progress.event);
+      //       break;
+      //     }
+      //   }
+      // });
     };
 
     /**
@@ -360,13 +385,14 @@ export const sharedEngine = defineResource({
      */
     const checkCatches = (): CatchEvent[] => {
       // Not implemented yet - would need shared state for predator/prey tracking
+      // TODO: remove this method from here, catches are detected in the update loop now
       return [];
     };
 
     // Store tasks reference for halt
-    const tasksRef = engineTasks;
 
     const api = {
+      initialize,
       update,
       reset,
       addBoid,
@@ -375,38 +401,20 @@ export const sharedEngine = defineResource({
       checkCatches,
       getBufferViews: () => memory.views,
       getWorkerStats, // NEW: Expose worker stats
-      // Expose unsubscribe and tasks for cleanup
-      _unsubscribe: unsubscribe,
-      _tasks: tasksRef,
-      eventSubscription: engineEventSubscription,
-    } satisfies BoidEngine & {
-      getWorkerStats: () => {
-        frame: number;
-        simulationTime: number;
-        aliveCount: number;
-      };
-      _unsubscribe: () => void;
-      _tasks: EngineTasks;
+      dispatch: engineChannel.put,
+      watch: engineChannel.watch,
+      cleanup: () => {
+        engineChannel.clear();
+        workerTasks.dispatch("haltWorker", {});
+      },
+      isWorkerReady: () => workerReady,
     };
 
     return api;
   },
 
-  halt: async (engine: any) => {
-    // Unsubscribe from runtime store
-    if (engine && engine._unsubscribe) {
-      engine._unsubscribe();
-    }
-
-    // Stop simulation loop
-    if (engine && engine._tasks) {
-      await engine._tasks.dispatch("stopSimulationLoop", {});
-    }
-
-    // Unsubscribe from engine events
-    if (engine && engine._engineEventSubscription) {
-      engine._engineEventSubscription.unsubscribe();
-    }
+  halt: async ({ cleanup }) => {
+    cleanup();
   },
 });
 

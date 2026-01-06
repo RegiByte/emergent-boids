@@ -1,6 +1,6 @@
 import { ExpandType } from "@/utils/types.ts";
 import type { Profiler } from "../resources/shared/profiler.ts";
-import { ForceCollector } from "./collectors.ts";
+import { ForceCollector, LifecycleCollector } from "./collectors.ts";
 import { ItemWithDistance, SpatialHash } from "./spatialHash.ts";
 import type {
   Boid,
@@ -15,7 +15,6 @@ import type {
   SimulationParameters,
   WorldConfig,
 } from "./vocabulary/schemas/world";
-import type { LifecycleEvent } from "./lifecycle/events";
 
 /**
  * Simulation state context - dynamic world state that changes every frame
@@ -77,9 +76,10 @@ export type EngineUpdateContext = {
   foodSourceSpatialHash: SpatialHash<FoodSource>;
   obstacleSpatialHash: SpatialHash<Obstacle>;
   deathMarkerSpatialHash: SpatialHash<DeathMarker>;
-
+  
   // Utilities
   forcesCollector: ForceCollector;
+  lifecycleCollector: LifecycleCollector;
   profiler?: Profiler;
 
   // Staggering config
@@ -94,10 +94,7 @@ export type EngineUpdateContext = {
     maxNeighborsLookup: number;
   };
 
-  // Lifecycle tracking (optional - only when lifecycle integration is active)
-  lifecycleCollector?: {
-    collect: (event: LifecycleEvent) => void;
-  };
+  // Lifecycle tracking
   matedBoidsThisFrame?: Set<string>;
 };
 

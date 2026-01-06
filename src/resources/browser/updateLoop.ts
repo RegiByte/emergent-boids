@@ -60,6 +60,7 @@ export const updateLoopResource = defineResource({
     const updateLoop = createUpdateLoop({
       onStart: () => {
         console.log("[UpdateLoop] Started");
+        time.resume();
       },
       onStop: () => {
         console.log("[UpdateLoop] Stopped");
@@ -67,11 +68,16 @@ export const updateLoopResource = defineResource({
       onUpdate: (_deltaMs, scaledDeltaMs, clockDeltaMs) => {
         animate(scaledDeltaMs, clockDeltaMs);
       },
+      onStep: (deltaTime, scaledDeltaMs) => {
+        console.log("[UpdateLoop] Stepping", deltaTime, scaledDeltaMs);
+        time.step();
+      },
       onPause: () => {
         console.log("[UpdateLoop] Paused");
+        // Should be noop, update loop never stops
       },
       getDefaultTimestep: () => {
-        return simulationRater.getTimestep() / 1000;
+        return simulationRater.getTimestep();
       },
       getTimeScale: () => {
         // default to 1x
@@ -89,7 +95,6 @@ export const updateLoopResource = defineResource({
 
     const updateSubscription = createSubscription<UpdateLoopFrameUpdate>();
     const lifecycleSubscription = createSubscription<UpdateLoopEventUpdate>();
-
     const animate = (scaledDeltaMs: number, _clockDeltaMs: number) => {
       // console.log("animate", scaledDeltaMs, clockDeltaMs);
       // if (!isRunning) return;
@@ -98,7 +103,7 @@ export const updateLoopResource = defineResource({
       // const realDeltaMs = currentTime - lastFrameTime;
       // lastFrameTime = currentTime;
 
-      if (!updateLoop.isPaused()) {
+      if (!time.getState().isPaused) {
         // Apply time scale
         // const timeState = time.getState();
         // const scaledDeltaMs = realDeltaMs * timeState.timeScale;
@@ -144,6 +149,24 @@ export const updateLoopResource = defineResource({
         }
 
         // console.log("animated");
+      }
+
+      // Update 1 frame worth of time when step is requested
+      if (time.getState().stepRequested) {
+        const timestep = simulationRater.getTimestep() / 1000;
+        console.log("[UpdateLoop] Stepping", timestep);
+        engine.update(timestep); // timestep already in seconds!
+        time.tick();
+
+        updateSubscription.notify({
+          type: "frame",
+          frame: time.getFrame(),
+          fps: Math.round(simulationRater.getMetrics().fps),
+          simulationTime: time.getSimulationTime(),
+        });
+        // Record execution for metrics
+        simulationRater.recordExecution(1, 0);
+        time.clearStepRequest();
       }
 
       // renderer.drawFrame(
@@ -195,22 +218,26 @@ export const updateLoopResource = defineResource({
 
     const pause = () => {
       // isPaused = true;
-      updateLoop.pause();
+      // updateLoop.pause();
+      time.pause();
       // console.log("[UpdateLoop] Paused");
     };
 
     const resume = () => {
       // isPaused = false;
-      updateLoop.start();
+      console.log("[UpdateLoop] Resuming");
+      time.resume();
       // console.log("[UpdateLoop] Resumed");
     };
 
-    const step = (deltaTime?: number) => {
+    const step = () => {
       // Use configured timestep if not provided
       // const timestep = deltaTime ?? simulationRater.getTimestep() / 1000;
       // engine.update(timestep);
       // time.tick();
-      updateLoop.step(deltaTime);
+      time.step();
+
+      console.log("[UpdateLoop] Stepped");
     };
 
     const api = {
@@ -220,7 +247,7 @@ export const updateLoopResource = defineResource({
       resume,
       step,
       isRunning: () => updateLoop.isRunning(),
-      isPaused: () => updateLoop.isPaused(),
+      isPaused: () => time.getState().isPaused,
       getMetrics: () => ({
         simulation: simulationRater.getMetrics(),
         lifecycle: lifecycleRater.getMetrics(),

@@ -368,3 +368,13 @@ export const simulationKeywords = {
     obstaclesCleared: "simulation:obstaclesCleared",
   },
 } as const;
+
+export const lifecycleKeywords = {
+  events: {
+    death: "lifecycle:death",
+    reproduction: "lifecycle:reproduction",
+    energyLow: "lifecycle:energyLow",
+    healthLow: "lifecycle:healthLow",
+    foodConsumed: "lifecycle:foodConsumed",
+  },
+} as const;

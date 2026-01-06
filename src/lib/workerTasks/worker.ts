@@ -5,10 +5,10 @@
 import { defineResource, StartedResource } from "braided";
 import type { EffectExecutorMap, EventHandlerMap } from "emergent";
 import { emergentSystem } from "emergent";
-import { ClientEvent, hasProgress, TaskRegistry, WorkerEvent } from "./core";
-import { effectKeywords, eventKeywords } from "./vocabulary";
+import { ClientEvent, hasProgress, TaskRegistry, WorkerEvent } from "@/lib/workerTasks/core";
+import { effectKeywords, eventKeywords } from "@/lib/workerTasks/vocabulary";
 import { ZodSafeParseSuccess } from "zod";
-import { createSubscription } from "../state";
+import { createSubscription } from "@/lib/state";
 
 /**
  * Worker effect types

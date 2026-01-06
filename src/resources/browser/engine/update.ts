@@ -1,5 +1,5 @@
 import { getMaxCrowdTolerance } from "@/boids/affinity";
-import { ForceCollector } from "@/boids/collectors";
+import { ForceCollector, LifecycleCollector } from "@/boids/collectors";
 import {
   BoidUpdateContext,
   ConfigContext,
@@ -11,7 +11,6 @@ import { FOOD_CONSTANTS } from "@/boids/food";
 import { updateBoidAge } from "@/boids/lifecycle/aging";
 import { updateBoidCooldowns } from "@/boids/lifecycle/cooldowns";
 import { updateBoidEnergy } from "@/boids/lifecycle/energy";
-import { CollectLifecycleEvent } from "@/boids/lifecycle/events";
 import {
   getDeathCause,
   isDead,
@@ -22,7 +21,7 @@ import { getNearbyBoidsByRole } from "@/boids/mappings";
 import { applyMatingResult } from "@/boids/mating";
 import { isReadyToMate } from "@/boids/predicates";
 import { SpatialHash } from "@/boids/spatialHash";
-import { profilerKeywords } from "@/boids/vocabulary/keywords";
+import { lifecycleKeywords, profilerKeywords } from "@/boids/vocabulary/keywords";
 import {
   Boid,
   DeathMarker,
@@ -159,7 +158,7 @@ type EnvironmentHandlers = {
     boid: Boid,
     context: BoidUpdateContext,
     staggerRate: number,
-    collectEvent: CollectLifecycleEvent,
+    collectEvent: LifecycleCollector["collect"],
     matedBoidsThisFrame: Set<string>
   ) => void;
 };
@@ -194,7 +193,7 @@ export const checkBoidLifecycle = (
   boid: Boid,
   context: BoidUpdateContext,
   staggerRate: number,
-  collectEvent: CollectLifecycleEvent,
+  collectEvent: LifecycleCollector["collect"],
   matedBoidsThisFrame: Set<string>
 ) => {
   const speciesConfig = context.config.species[boid.typeId];
@@ -257,7 +256,7 @@ export const checkBoidLifecycle = (
 
       // Collect food consumption event (will update food store later)
       collectEvent({
-        type: "lifecycle:food-consumed",
+        type: lifecycleKeywords.events.foodConsumed,
         foodId: food.id,
         energyConsumed: energyGain,
       });
@@ -333,7 +332,7 @@ export const checkBoidLifecycle = (
   // Optional: Collect low energy/health warnings (for UI/analytics)
   if (boid.energy < boid.phenotype.maxEnergy * 0.2) {
     collectEvent({
-      type: "lifecycle:energy-low",
+      type: lifecycleKeywords.events.energyLow,
       boidId: boid.id,
       energy: boid.energy,
     });
@@ -341,7 +340,7 @@ export const checkBoidLifecycle = (
 
   if (boid.health < boid.phenotype.maxHealth * 0.3) {
     collectEvent({
-      type: "lifecycle:health-low",
+      type: lifecycleKeywords.events.healthLow,
       boidId: boid.id,
       health: boid.health,
     });
@@ -505,6 +504,7 @@ export const createBaseFrameUpdateContext = ({
   boidsStore,
   deltaSeconds,
   forcesCollector,
+  lifecycleCollector,
   boidSpatialHash,
   obstacleSpatialHash,
   foodSourceSpatialHash,
@@ -518,6 +518,7 @@ export const createBaseFrameUpdateContext = ({
   boidsStore: LocalBoidStore;
   deltaSeconds: number;
   forcesCollector: ForceCollector;
+  lifecycleCollector: LifecycleCollector;
   boidSpatialHash: SpatialHash<Boid>;
   obstacleSpatialHash: SpatialHash<Obstacle>;
   foodSourceSpatialHash: SpatialHash<FoodSource>;
@@ -556,6 +557,7 @@ export const createBaseFrameUpdateContext = ({
     currentFrame: frame,
     boidsCount,
     forcesCollector,
+    lifecycleCollector,
     boidSpatialHash,
     foodSourceSpatialHash,
     obstacleSpatialHash,

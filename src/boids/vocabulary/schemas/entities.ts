@@ -78,6 +78,15 @@ export type PhysicalBoid = Pick<Boid, "position" | "velocity" | "acceleration">;
 export const boidsById = z.record(z.string(), boidSchema);
 export type BoidsById = z.infer<typeof boidsById>;
 
+
+export const offspringDataSchema = z.object({
+  parent1Id: z.string(),
+  parent2Id: z.string().optional(),
+  typeId: z.string(),
+  position: vectorSchema,
+});
+export type OffspringData = z.infer<typeof offspringDataSchema>;
+
 // ============================================
 // Food Source Schema
 // ============================================

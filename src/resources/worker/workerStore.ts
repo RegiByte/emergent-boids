@@ -93,6 +93,7 @@ const createBoidsStore = (sharedMemoryManager: SharedMemoryManager) => {
       syncBoidsToSharedMemory(bufferViews, boids);
     },
     count: () => localStore.count(),
+    nextIndex: () => localStore.nextIndex(),
   };
 
   return api;

@@ -3,13 +3,12 @@ import {
   calculateOffspringPosition,
   calculateReproductionEnergyCost,
 } from "./calculations";
-import { isEligibleMate } from "./predicates";
-import type { Boid, BoidsById } from "./vocabulary/schemas/entities";
-import type { Vector2 } from "./vocabulary/schemas/primitives";
-import { SimulationParameters } from "./vocabulary/schemas/world";
-import { SpeciesConfig } from "./vocabulary/schemas/species";
 import { lookupBoid } from "./conversions";
 import { iterateBoids } from "./iterators";
+import { isEligibleMate } from "./predicates";
+import type { Boid, BoidsById, OffspringData } from "./vocabulary/schemas/entities";
+import { SpeciesConfig } from "./vocabulary/schemas/species";
+import { SimulationParameters } from "./vocabulary/schemas/world";
 
 /**
  * Pure mating state machine
@@ -20,12 +19,7 @@ import { iterateBoids } from "./iterators";
 // Types
 // ============================================================================
 
-export type OffspringData = {
-  parent1Id: string;
-  parent2Id?: string;
-  typeId: string;
-  position: Vector2;
-};
+
 
 export type BoidUpdates = {
   energy: number;

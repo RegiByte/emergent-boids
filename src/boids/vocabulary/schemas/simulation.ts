@@ -1,7 +1,6 @@
 import { simulationKeywords } from "../keywords";
 import z from "zod";
 import { boidSchema, foodSourceSchema, obstacleSchema } from "./entities";
-import { genomeSchema } from "./genetics";
 import {
   renderModeSchema,
   roleSchema,
@@ -10,6 +9,23 @@ import {
 } from "./primitives";
 
 export const simulationCommandSchema = z.discriminatedUnion("type", [
+  // Simulation commands
+  z.object({
+    type: z.literal(simulationKeywords.commands.start),
+  }),
+  z.object({
+    type: z.literal(simulationKeywords.commands.pause),
+  }),
+  z.object({
+    type: z.literal(simulationKeywords.commands.resume),
+  }),
+  z.object({
+    type: z.literal(simulationKeywords.commands.step),
+  }),
+  z.object({
+    type: z.literal(simulationKeywords.commands.setTimeScale),
+    timeScale: z.number(),
+  }),
   // Boid commands
   z.object({
     type: z.literal(simulationKeywords.commands.addBoid),
@@ -38,23 +54,6 @@ export const simulationCommandSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal(simulationKeywords.commands.clearAllObstacles),
-  }),
-  // Simulation commands
-  z.object({
-    type: z.literal(simulationKeywords.commands.start),
-  }),
-  z.object({
-    type: z.literal(simulationKeywords.commands.pause),
-  }),
-  z.object({
-    type: z.literal(simulationKeywords.commands.resume),
-  }),
-  z.object({
-    type: z.literal(simulationKeywords.commands.step),
-  }),
-  z.object({
-    type: z.literal(simulationKeywords.commands.setTimeScale),
-    timeScale: z.number(),
   }),
   // UI/UX commands
   z.object({
@@ -97,7 +96,7 @@ export const simulationCommandSchema = z.discriminatedUnion("type", [
 
 export type SimulationCommand = z.infer<typeof simulationCommandSchema>;
 
-const simulationEventSchema = z.discriminatedUnion("type", [
+export const simulationEventSchema = z.discriminatedUnion("type", [
   // Simulation events
   z.object({
     type: z.literal(simulationKeywords.events.initialized),
@@ -125,15 +124,7 @@ const simulationEventSchema = z.discriminatedUnion("type", [
     type: z.literal(simulationKeywords.events.boidsCaught),
     boidIds: z.array(z.string()),
   }),
-  z.object({
-    type: z.literal(simulationKeywords.events.boidsEvolved),
-    boids: z.array(
-      z.object({
-        id: z.string,
-        newGenome: genomeSchema.partial(),
-      })
-    ),
-  }),
+
   z.object({
     type: z.literal(simulationKeywords.events.boidsReproduced),
     boids: z.array(

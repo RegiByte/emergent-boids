@@ -1,8 +1,8 @@
+import { Atom, AtomState, createAtom, useAtomState } from "@/lib/state.ts";
+import { rateLimit } from "@tanstack/pacer";
 import { defineResource } from "braided";
 import type { CanvasAPI } from "./canvas.ts";
 import type { RuntimeStoreResource } from "./runtimeStore.ts";
-import { Atom, AtomState, createAtom, useAtomState } from "@/lib/state.ts";
-import { rateLimit } from "@tanstack/pacer";
 
 export type CameraMode =
   | { type: "free" }
@@ -38,7 +38,7 @@ export type CameraAPI = {
   enterPickerMode: () => void;
   updatePickerTarget: (
     boidId: string | null,
-    mouseWorldPos: { x: number; y: number },
+    mouseWorldPos: { x: number; y: number }
   ) => void;
   setMouseInCanvas: (inCanvas: boolean) => void;
   exitPickerMode: () => void;
@@ -56,11 +56,11 @@ export const camera = defineResource({
     canvas: CanvasAPI;
     runtimeStore: RuntimeStoreResource;
   }) => {
-    const { config } = runtimeStore.store.getState();
+    const { config: runtimeConfig } = runtimeStore.store.getState();
 
     // Start centered in world
-    let x = config.world.width / 2;
-    let y = config.world.height / 2;
+    let x = runtimeConfig.world.width / 2;
+    let y = runtimeConfig.world.height / 2;
     let zoom = 1.0; // 1.0 = see full viewport width in world units
 
     const cameraAtom = createAtom({
@@ -119,8 +119,8 @@ export const camera = defineResource({
       const halfHeight = canvas.height / zoom / 2;
 
       // Clamp camera position to keep viewport within world bounds
-      const worldWidth = config.world.width;
-      const worldHeight = config.world.height;
+      const worldWidth = runtimeConfig.world.width;
+      const worldHeight = runtimeConfig.world.height;
 
       x = Math.max(halfWidth, Math.min(worldWidth - halfWidth, newX));
       y = Math.max(halfHeight, Math.min(worldHeight - halfHeight, newY));
@@ -134,7 +134,7 @@ export const camera = defineResource({
         limit: 4,
         window: 100,
         windowType: "sliding",
-      },
+      }
     );
 
     const setZoom = (newZoom: number) => {
@@ -143,8 +143,8 @@ export const camera = defineResource({
       // viewport shows: canvas.width / zoom world units horizontally
       // We want to stop zooming out when EITHER width OR height fits entirely
       // Therefore: use the LARGER of the two constraints (stops zooming out earlier)
-      const worldWidth = config.world.width;
-      const worldHeight = config.world.height;
+      const worldWidth = runtimeConfig.world.width;
+      const worldHeight = runtimeConfig.world.height;
       const maxZoomForWidth = canvas.width / worldWidth;
       const maxZoomForHeight = canvas.height / worldHeight;
       const minZoom = Math.max(maxZoomForWidth, maxZoomForHeight); // Stop when either dimension fits
@@ -283,7 +283,7 @@ export const camera = defineResource({
 
     const updatePickerTarget = (
       boidId: string | null,
-      mouseWorldPos: { x: number; y: number },
+      mouseWorldPos: { x: number; y: number }
     ) => {
       const state = cameraAtom.get();
       if (state.type === "picker") {

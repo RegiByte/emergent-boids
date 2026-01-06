@@ -28,13 +28,13 @@ import { createSystemHooks, createSystemManager } from "braided-react";
 // NEW: Parallel simulation resources
 import { localBoidStore } from "@/resources/browser/localBoidStore";
 import { sharedEngine } from "@/resources/browser/sharedEngine.ts";
-import { engineTasksResource } from "@/resources/browser/sharedEngineTasks";
+import { sharedSimulation } from "@/resources/browser/sharedSimulation";
 import { sharedUpdateLoop } from "@/resources/browser/sharedUpdateLoop";
+import { shortcuts } from "@/resources/browser/shortcuts";
+import { workerTasksResource } from "@/resources/browser/workerTasks";
+import { createSystemConfigResource } from "@/resources/shared/config.ts";
 import { frameRater } from "@/resources/shared/frameRater";
 import { sharedMemoryManager } from "@/resources/shared/sharedMemoryManager";
-import { createSystemConfigResource } from "@/resources/shared/config.ts";
-import { shortcuts } from "@/resources/browser/shortcuts";
-import { browserSimulation } from "@/resources/browser/simulation";
 
 /**
  * Parallel system configuration
@@ -61,7 +61,7 @@ export const parallelSystemConfig = {
   randomness,
   frameRater,
   updateLoop: sharedUpdateLoop,
-  simulation: browserSimulation,
+  simulation: sharedSimulation,
   profileStore,
   runtimeStore,
   webglRenderer,
@@ -70,7 +70,7 @@ export const parallelSystemConfig = {
   // lifecycleManager,
   runtimeController,
   sharedMemoryManager,
-  engineTasks: engineTasksResource,
+  workerTasks: workerTasksResource,
 };
 
 export const parallelManager = createSystemManager(parallelSystemConfig);

@@ -17,6 +17,7 @@ import { RuntimeStoreResource } from "./runtimeStore";
 import { UpdateLoopResource } from "./updateLoop";
 import { CanvasAPI } from "./canvas";
 import { WebGLRendererResource } from "./webglRenderer";
+import { RandomnessResource } from "../shared/randomness";
 
 export const browserSimulation = defineResource({
   dependencies: [
@@ -28,6 +29,7 @@ export const browserSimulation = defineResource({
     "runtimeStore",
     "canvas",
     "webglRenderer",
+    "randomness",
   ],
   start: ({
     engine,
@@ -38,6 +40,7 @@ export const browserSimulation = defineResource({
     runtimeStore,
     canvas,
     webglRenderer,
+    randomness,
   }: {
     engine: BoidEngine;
     time: TimeAPI;
@@ -47,52 +50,53 @@ export const browserSimulation = defineResource({
     runtimeStore: RuntimeStoreResource;
     canvas: CanvasAPI;
     webglRenderer: WebGLRendererResource;
+    randomness: RandomnessResource;
   }) => {
     const channel = createChannel<SimulationCommand, SimulationEvent>();
 
     const commandHandlers = {
       [simulationKeywords.commands.addBoid]: (command) => {
-        console.log("[simulationWorker] Adding boid:", command.boid);
+        console.log("[BrowserSimulation] Adding boid:", command.boid);
         engine.addBoid(command.boid);
       },
       [simulationKeywords.commands.removeBoid]: (command) => {
-        console.log("[simulationWorker] Removing boid:", command.boidId);
+        console.log("[BrowserSimulation] Removing boid:", command.boidId);
         engine.removeBoid(command.boidId);
       },
       [simulationKeywords.commands.followBoid]: (command) => {
-        console.log("[simulationWorker] Following boid:", command.boidId);
+        console.log("[BrowserSimulation] Following boid:", command.boidId);
         camera.startFollowing(command.boidId);
       },
       [simulationKeywords.commands.stopFollowingBoid]: (_command) => {
-        console.log("[simulationWorker] Stopping following");
+        console.log("[BrowserSimulation] Stopping following");
         camera.stopFollowing();
       },
       [simulationKeywords.commands.addObstacle]: (command) => {
-        console.log("[simulationWorker] Adding obstacle:", command.obstacle);
+        console.log("[BrowserSimulation] Adding obstacle:", command.obstacle);
         // engine.addObstacle(command.obstacle);
       },
       [simulationKeywords.commands.clearObstacle]: (command) => {
         console.log(
-          "[simulationWorker] Clearing obstacle:",
+          "[BrowserSimulation] Clearing obstacle:",
           command.obstacleId
         );
         // engine.clearObstacle(command.obstacleId);
       },
       [simulationKeywords.commands.clearAllObstacles]: (_command) => {
-        console.log("[simulationWorker] Clearing all obstacles");
+        console.log("[BrowserSimulation] Clearing all obstacles");
         // engine.clearAllObstacles();
       },
       [simulationKeywords.commands.pause]: (_command) => {
-        console.log("[simulationWorker] Pausing");
+        console.log("[BrowserSimulation] Pausing");
         updateLoop.pause();
       },
       [simulationKeywords.commands.resume]: (_command) => {
-        console.log("[simulationWorker] Resuming");
+        console.log("[BrowserSimulation] Resuming");
         updateLoop.resume();
       },
       [simulationKeywords.commands.start]: (_command) => {
         if (!updateLoop.isRunning()) {
-          console.log("[simulationWorker] Starting update loop");
+          console.log("[BrowserSimulation] Starting update loop");
           updateLoop.start(
             30,
             (update) => {
@@ -103,23 +107,23 @@ export const browserSimulation = defineResource({
               });
             },
             (lifecycle) => {
-              console.log("[simulationWorker] Lifecycle:", lifecycle);
+              console.log("[BrowserSimulation] Lifecycle:", lifecycle);
             }
           );
         }
 
         if (!renderer.isRunning()) {
-          console.log("[simulationWorker] Starting renderer");
+          console.log("[BrowserSimulation] Starting renderer");
           renderer.start();
         }
       },
       [simulationKeywords.commands.step]: (_command) => {
-        console.log("[simulationWorker] Stepping");
+        console.log("[BrowserSimulation] Stepping");
         updateLoop.step();
       },
       [simulationKeywords.commands.setTimeScale]: (command) => {
         console.log(
-          "[simulationWorker] Setting time scale:",
+          "[BrowserSimulation] Setting time scale:",
           command.timeScale
         );
         time.setTimeScale(command.timeScale);
@@ -130,7 +134,7 @@ export const browserSimulation = defineResource({
         // updateLoop.setTimeScale(command.timeScale);
       },
       [simulationKeywords.commands.toggleTrails]: (_command) => {
-        console.log("[simulationWorker] Toggling trails");
+        console.log("[BrowserSimulation] Toggling trails");
         // renderer.toggleTrails();
         runtimeStore.store.setState((current) => ({
           ...current,
@@ -144,7 +148,7 @@ export const browserSimulation = defineResource({
         }));
       },
       [simulationKeywords.commands.toggleEnergyBar]: (_command) => {
-        console.log("[simulationWorker] Toggling energy bar");
+        console.log("[BrowserSimulation] Toggling energy bar");
         runtimeStore.store.setState((current) => ({
           ...current,
           ui: {
@@ -157,7 +161,7 @@ export const browserSimulation = defineResource({
         }));
       },
       [simulationKeywords.commands.toggleMatingHearts]: (_command) => {
-        console.log("[simulationWorker] Toggling mating hearts");
+        console.log("[BrowserSimulation] Toggling mating hearts");
         runtimeStore.store.setState((current) => ({
           ...current,
           ui: {
@@ -171,7 +175,7 @@ export const browserSimulation = defineResource({
         }));
       },
       [simulationKeywords.commands.toggleStanceSymbols]: (_command) => {
-        console.log("[simulationWorker] Toggling stance symbols");
+        console.log("[BrowserSimulation] Toggling stance symbols");
         runtimeStore.store.setState((current) => ({
           ...current,
           ui: {
@@ -186,7 +190,7 @@ export const browserSimulation = defineResource({
       },
       [simulationKeywords.commands.setRendererMode]: (command) => {
         console.log(
-          "[simulationWorker] Setting renderer mode:",
+          "[BrowserSimulation] Setting renderer mode:",
           command.rendererMode
         );
         runtimeStore.store.setState((current) => ({
@@ -206,32 +210,52 @@ export const browserSimulation = defineResource({
         // renderer.setRendererMode(command.rendererMode);
       },
       [simulationKeywords.commands.spawnFood]: (command) => {
-        console.log("[simulationWorker] Spawning food:", command.position);
+        console.log("[BrowserSimulation] Spawning food:", command.position);
         // engine.spawnFood(command.position);
       },
       [simulationKeywords.commands.clearFood]: (_command) => {
-        console.log("[simulationWorker] Clearing food");
+        console.log("[BrowserSimulation] Clearing food");
         // engine.clearFood();
       },
       [simulationKeywords.commands.spawnObstacle]: (command) => {
-        console.log("[simulationWorker] Spawning obstacle:", command.position);
+        console.log("[BrowserSimulation] Spawning obstacle:", command.position);
         // engine.spawnObstacle(command.position);
       },
       [simulationKeywords.commands.spawnPredator]: (command) => {
-        console.log("[simulationWorker] Spawning predator:", command.position);
+        console.log("[BrowserSimulation] Spawning predator:", command.position);
         // engine.spawnPredator(command.position);
       },
       [simulationKeywords.commands.clearDeathMarkers]: (_command) => {
-        console.log("[simulationWorker] Clearing death markers");
+        console.log("[BrowserSimulation] Clearing death markers");
         // engine.clearDeathMarkers();
       },
     } satisfies CommandHandlers;
+
+    const unsubscribeCallbacks = new Set<(...args: any[]) => void>();
+
+    const wireChannels = () => {
+      unsubscribeCallbacks.add(
+        randomness.watch((event) => {
+          console.log("[BrowserSimulation] Randomness event:", event);
+          runtimeStore.store.setState(currentState => ({
+            ...currentState,
+            config: {
+                ...currentState.config,
+                randomSeed: String(event.newSeed),
+              },
+            })
+          );
+        }
+      ));
+    };
 
     const simulation = createSimulation(
       { simulationChannel: channel },
       {
         onInitialize: () => {
           console.log("[BrowserSimulation] Initialized");
+          engine.initialize(channel);
+          wireChannels();
         },
         onCommand: (command, resolve) => {
           const handler = commandHandlers[command.type];
@@ -246,29 +270,16 @@ export const browserSimulation = defineResource({
           try {
             handler(command as never);
           } catch (error) {
-            if (
-              error &&
-              typeof error === "object" &&
-              error !== null &&
-              "message" in error &&
-              typeof error.message === "string"
-            ) {
-              resolve({
-                type: simulationKeywords.events.error,
-                error: error.message,
-                meta: error,
-              });
-            } else {
-              resolve({
-                type: simulationKeywords.events.error,
-                error: "Unknown error",
-                meta: error,
-              });
-            }
+            resolve({
+              type: simulationKeywords.events.error,
+              error: error instanceof Error ? error.message : "Unknown error",
+              meta: error,
+            });
           }
         },
         onCleanup: () => {
-          console.log("[simulationWorker] Cleaned up");
+          console.log("[BrowserSimulation] Cleaned up");
+          unsubscribeCallbacks.forEach((unsubscribe) => unsubscribe());
         },
       }
     );
@@ -277,7 +288,7 @@ export const browserSimulation = defineResource({
 
     const commands = {
       start: () => {
-        console.log("[simulationWorker] Starting");
+        console.log("[BrowserSimulation] Starting");
         simulation.dispatch({ type: simulationKeywords.commands.start });
       },
       pause: () => {

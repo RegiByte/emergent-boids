@@ -1,10 +1,10 @@
 import type { LifecycleUpdateContext } from "../context";
 import { lookupBoid } from "../conversions";
 import { iterateBoids } from "../iterators";
-import type { MatingContext, OffspringData } from "../mating";
+import type { MatingContext } from "../mating";
 import { applyMatingResult, unpairBoids } from "../mating";
 import { isReadyToMate } from "../predicates";
-import type { BoidsById } from "../vocabulary/schemas/entities";
+import type { BoidsById, OffspringData } from "../vocabulary/schemas/entities";
 import { updateBoidAge } from "./aging";
 import { updateBoidCooldowns } from "./cooldowns";
 import { updateBoidEnergy } from "./energy";

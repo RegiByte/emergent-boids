@@ -5,7 +5,6 @@ import z from "zod";
 import { TimeAPI } from "../shared/time";
 import { FrameRaterAPI } from "../shared/frameRater";
 import { WorkerEngineResource } from "./workerEngine";
-import { WorkerLifecycleManagerResource } from "./workerLifecycleManager";
 import { createUpdateLoop } from "@/lib/updateLoop";
 
 export const workerLoopUpdateSchema = z.discriminatedUnion("type", [
@@ -45,18 +44,15 @@ export const workerUpdateLoop = defineResource({
   dependencies: [
     "workerEngine",
     "workerTime",
-    "workerLifecycleManager",
     "workerFrameRater",
   ],
   start: ({
     workerEngine,
     workerTime,
-    workerLifecycleManager,
     workerFrameRater,
   }: {
     workerEngine: WorkerEngineResource;
     workerTime: TimeAPI;
-    workerLifecycleManager: WorkerLifecycleManagerResource;
     workerFrameRater: FrameRaterAPI;
   }) => {
     // let animationId: number | null = null;
@@ -89,6 +85,9 @@ export const workerUpdateLoop = defineResource({
       },
       getTimeScale: () => {
         return workerTime.getState().timeScale;
+      },
+      onStep: (_deltaTime, _scaledDeltaMs) => {
+        console.log("[WorkerUpdateLoop] Stepping", _deltaTime, _scaledDeltaMs);
       },
     });
 
@@ -135,14 +134,9 @@ export const workerUpdateLoop = defineResource({
       simulationRater.recordExecution(updates, droppedFrames);
 
       // Throttled lifecycle updates (1 Hz)
+      // Note: Lifecycle events are now dispatched through workerEngine.eventSubscription
+      // This happens automatically during workerEngine.update() (staggered per-boid checks)
       if (lifecycleRater.shouldExecute(scaledDeltaMs)) {
-        const events = workerLifecycleManager.update(1.0); // 1 second per tick
-        events.forEach((event) => {
-          lifecycleSubscription.notify({
-            type: "event",
-            event,
-          });
-        });
         lifecycleRater.recordExecution();
       }
 

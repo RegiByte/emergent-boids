@@ -1,10 +1,13 @@
 import { getMaxCrowdTolerance } from "@/boids/affinity";
-import { updateBoid } from "@/boids/boid";
-import { createForceCollector } from "@/boids/collectors";
+import { createBoidOfType, updateBoid } from "@/boids/boid";
+import { createEventCollector, createForceCollector } from "@/boids/collectors";
 import { BoidUpdateContext, EngineUpdateContext } from "@/boids/context";
+import { defaultWorldPhysics } from "@/boids/defaultPhysics";
 import { getBoidsByRole } from "@/boids/filters";
 import { FOOD_CONSTANTS } from "@/boids/food";
+import { LifecycleEvent } from "@/boids/vocabulary/schemas/events";
 import { createSpatialHash } from "@/boids/spatialHash";
+import { eventKeywords, lifecycleKeywords, simulationKeywords } from "@/boids/vocabulary/keywords";
 import {
   Boid,
   DeathMarker,
@@ -21,6 +24,7 @@ import { createSubscription } from "@/lib/state";
 import { defineResource, StartedResource } from "braided";
 import { BoidEngine } from "../browser/engine";
 import {
+  checkBoidLifecycle,
   computeOpsLayout,
   updateBoids,
   updateBoidSpatialHash,
@@ -31,9 +35,14 @@ import {
 } from "../browser/engine/update";
 import { initializeBoidsStats } from "../browser/localBoidStore";
 import { Profiler } from "../shared/profiler";
+import { RandomnessResource } from "../shared/randomness";
 import { TimeAPI } from "../shared/time";
 import { WorkerStoreResource } from "./workerStore";
-import { CollectLifecycleEvent } from "@/boids/lifecycle/events";
+import {
+  SimulationCommand,
+  SimulationEvent,
+} from "@/boids/vocabulary/schemas/simulation";
+import { Channel } from "@/lib/channels";
 
 /**
  * Worker Engine Resource
@@ -44,18 +53,27 @@ import { CollectLifecycleEvent } from "@/boids/lifecycle/events";
  * Philosophy: Reuse existing boid behavior code, don't reimplement physics!
  */
 export const workerEngine = defineResource({
-  dependencies: ["workerStore", "workerProfiler", "workerTime"],
+  dependencies: [
+    "workerStore",
+    "workerProfiler",
+    "workerTime",
+    "workerRandomness",
+  ],
   start: ({
     workerStore,
     workerProfiler,
     workerTime,
+    workerRandomness,
   }: {
     workerStore: WorkerStoreResource;
     workerProfiler: Profiler;
     workerTime: TimeAPI;
+    workerRandomness: RandomnessResource;
   }) => {
     const boidsStore = workerStore.boids;
 
+    let simulationChannel: Channel<SimulationCommand, SimulationEvent> | null =
+      null;
     const engineEventSubscription = createSubscription<AllEvents>();
 
     // Spatial hashes for efficient neighbor queries
@@ -72,9 +90,9 @@ export const workerEngine = defineResource({
     const forcesCollector = createForceCollector();
 
     /**
-     * Initialize engine with boids and SharedArrayBuffer
+     * Attach shared memory buffer and initial boids to the engine
      */
-    const initialize = (input: {
+    const attach = (input: {
       buffer: SharedArrayBuffer;
       layout: SharedBoidBufferLayout;
       initialBoids: Boid[];
@@ -126,11 +144,19 @@ export const workerEngine = defineResource({
       );
     };
 
+    const initialize = (
+      channel: Channel<SimulationCommand, SimulationEvent>
+    ) => {
+      // Bind simulation channel so we can send events to it
+      simulationChannel = channel;
+    };
+
     /**
      * Update physics using existing boid behavior code
      * This is the main update loop - mirrors engine.ts with single-pass approach
      *
      * Session 116: Full feature parity with main engine
+     * Session 119: Added lifecycle integration
      */
     const update = (deltaSeconds: number) => {
       const bufferViews = boidsStore.getBufferViews();
@@ -154,6 +180,10 @@ export const workerEngine = defineResource({
       const config = state.config;
       const boids = boidsStore.getBoids();
       const simulation = state.simulation;
+
+      // Create lifecycle collector for this frame (Session 119)
+      const lifecycleCollector = createEventCollector<LifecycleEvent>();
+      const matedBoidsThisFrame = new Set<string>();
 
       // Compute operations layout for single-pass update (Session 116: Parity with main engine)
       const opsLayout = computeOpsLayout({
@@ -200,6 +230,9 @@ export const workerEngine = defineResource({
         constraints: {
           maxNeighborsLookup,
         },
+        // Add lifecycle tracking to context (Session 119)
+        lifecycleCollector,
+        matedBoidsThisFrame,
       };
 
       // Clear all spatial hashes before single-pass update
@@ -240,19 +273,89 @@ export const workerEngine = defineResource({
             // For now, skip behavior evaluation in worker
             // This will be added in a future session
           },
-          checkBoidLifecycle: (
-            _boid: Boid,
-            _context: BoidUpdateContext,
-            _staggerRate: number,
-            _collectEvent: CollectLifecycleEvent,
-            _matedBoidsThisFrame: Set<string>
-          ) => {
-            // TODO: Port lifecycle check from main engine
-            // For now, skip lifecycle check in worker
-            // This will be added in a future session
-          },
+          // Session 119: Enable lifecycle checks (matches browser engine pattern)
+          checkBoidLifecycle: checkBoidLifecycle,
         }
       );
+
+      // Apply lifecycle events collected during the frame (Session 119)
+      workerProfiler.start("lifecycle.apply");
+      if (lifecycleCollector.items.length > 0) {
+        // Process deaths FIRST (remove boids from worker)
+        for (const event of lifecycleCollector.items) {
+          if (event.type === lifecycleKeywords.events.death) {
+            // Remove boid from worker store
+            boidsStore.removeBoid(event.boidId);
+
+            // Notify browser
+            console.log("[WorkerEngine] Notifying browser of boid death:", event.boidId);
+            simulationChannel?.out.notify({
+              type: simulationKeywords.events.boidsDied,
+              boidIds: [event.boidId],
+            });
+          }
+        }
+
+        // Process reproductions (spawn boids in worker)
+        for (const event of lifecycleCollector.items) {
+          if (event.type === lifecycleKeywords.events.reproduction) {
+            const offspring = event.offspring;
+            const speciesConfig = config.species[offspring.typeId];
+
+            if (speciesConfig) {
+              // Spawn offspring in worker (this will add to SharedArrayBuffer)
+              const physics = config.physics || defaultWorldPhysics;
+              const parent = boidsStore.getBoidById(offspring.parent1Id);
+
+              if (parent) {
+                // Create offspring using existing helper
+                const creationContext = {
+                  world: {
+                    width: config.world.width,
+                    height: config.world.height,
+                  },
+                  species: config.species,
+                  rng: workerRandomness.domain("reproduction"),
+                  physics,
+                };
+
+                const parentGenomes = parent.genome
+                  ? {
+                      parent1: parent.genome,
+                    }
+                  : undefined;
+
+                const result = createBoidOfType(
+                  offspring.position,
+                  offspring.typeId,
+                  creationContext,
+                  speciesConfig.reproduction.offspringEnergyBonus || 0,
+                  boidsStore.nextIndex(), // Get proper unique index
+                  parentGenomes
+                );
+
+                // Add to worker's boid store (will sync to SharedArrayBuffer)
+                boidsStore.addBoid(result.boid);
+
+                // Notify browser with the actual spawned boid
+                simulationChannel?.out.notify({
+                  type: simulationKeywords.events.boidsReproduced,
+                  boids: [
+                    {
+                      parentId1: offspring.parent1Id,
+                      parentId2: offspring.parent2Id,
+                      offspring: [result.boid],
+                    },
+                  ],
+                });
+              }
+            }
+          }
+        }
+
+        lifecycleCollector.reset();
+      }
+      workerProfiler.end("lifecycle.apply");
 
       // Sync updated positions/velocities to SharedArrayBuffer
       workerProfiler.start("sync.toSharedMemory");
@@ -293,9 +396,12 @@ export const workerEngine = defineResource({
         // TODO: Implement predator-prey catch detection
         return [];
       },
-      eventSubscription: engineEventSubscription,
+      cleanup: () => {
+        simulationChannel?.clear();
+      },
+      attach,
     } satisfies BoidEngine & {
-      initialize: typeof initialize;
+      attach: typeof attach;
     };
 
     return api;

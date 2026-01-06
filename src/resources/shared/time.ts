@@ -91,7 +91,7 @@ export type TimeResource = TimeAPI;
 export const time = defineResource({
   start: () => {
     const realWorldStartMs = performance.now(); // Use performance.now() for precision
-    const FIXED_TIMESTEP = 16.67;
+    const FIXED_TIMESTEP = 33.334; // 30 FPS
 
     const initialState: TimeState = {
       simulationFrame: 0,
@@ -195,17 +195,17 @@ export const time = defineResource({
         });
       },
 
-      tick: () => {
+      tick: (timestep = FIXED_TIMESTEP) => {
         // Called when a fixed timestep update occurs (one frame)
         stateAtom.update((draft) => {
           // Also advance simulation time by one fixed timestep (16.67ms)
           // This ensures lifecycle ticks work correctly in step mode
+          const elapsedMs = draft.simulationElapsedMs + timestep * draft.timeScale;
           return {
             ...draft,
             // simulationFrame: draft.simulationFrame + 1,
-            simulationElapsedMs:
-              draft.simulationElapsedMs + FIXED_TIMESTEP * draft.timeScale,
-            simulationElapsedSeconds: draft.simulationElapsedMs / 1000,
+            simulationElapsedMs: elapsedMs,
+            simulationElapsedSeconds: elapsedMs / 1000,
           };
         });
       },

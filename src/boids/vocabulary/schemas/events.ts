@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { eventKeywords } from "../keywords.ts";
+import { eventKeywords, lifecycleKeywords } from "../keywords.ts";
+import { boidSchema, foodSourceSchema, offspringDataSchema } from "./entities";
 import { deathCauseSchema } from "./primitives";
-import { boidSchema, foodSourceSchema } from "./entities";
+import { simulationEventSchema } from "./simulation.ts";
 
 /**
  * Event Schemas - Messages that trigger state changes
@@ -202,6 +203,42 @@ export const atmosphereEventSchema = z.discriminatedUnion("type", [
   atmosphereEventSchemas.eventEnded,
 ]);
 
+export const lifecycleEventSchemas = {
+  death: z.object({
+    type: z.literal(lifecycleKeywords.events.death),
+    boidId: z.string(),
+    typeId: z.string(),
+    reason: deathCauseSchema,
+  }),
+  reproduction: z.object({
+    type: z.literal(lifecycleKeywords.events.reproduction),
+    offspring: offspringDataSchema,
+  }),
+  energyLow: z.object({
+    type: z.literal(lifecycleKeywords.events.energyLow),
+    boidId: z.string(),
+    energy: z.number(),
+  }),
+  healthLow: z.object({
+    type: z.literal(lifecycleKeywords.events.healthLow),
+    boidId: z.string(),
+    health: z.number(),
+  }),
+  foodConsumed: z.object({
+    type: z.literal(lifecycleKeywords.events.foodConsumed),
+    foodId: z.string(),
+    energyConsumed: z.number(),
+  }),
+};
+
+export const lifecycleEventSchema = z.discriminatedUnion("type", [
+  lifecycleEventSchemas.death,
+  lifecycleEventSchemas.reproduction,
+  lifecycleEventSchemas.energyLow,
+  lifecycleEventSchemas.healthLow,
+  lifecycleEventSchemas.foodConsumed,
+]);
+
 // ============================================
 // Analytics Events - Event tracking configuration
 // ============================================
@@ -257,7 +294,6 @@ export const boidEventSchema = z.discriminatedUnion("type", [
   boidEventSchemas.foodSourceCreated,
   boidEventSchemas.workerStateUpdated,
 ]);
-
 // Union of all events (for runtime controller)
 export const allEventSchema = z.union([
   controlEventSchema,
@@ -268,11 +304,8 @@ export const allEventSchema = z.union([
   profileEventSchema,
   atmosphereEventSchema,
   analyticsEventSchema,
+  simulationEventSchema,
 ]);
-
-// ============================================
-// Type Exports
-// ============================================
 
 export type ControlEvent = z.infer<typeof controlEventSchema>;
 export type ObstacleEvent = z.infer<typeof obstacleEventSchema>;
@@ -283,3 +316,4 @@ export type AtmosphereEvent = z.infer<typeof atmosphereEventSchema>;
 export type AnalyticsEvent = z.infer<typeof analyticsEventSchema>;
 export type AllEvents = z.infer<typeof allEventSchema>;
 export type CatchEvent = z.infer<typeof catchEventSchema>;
+export type LifecycleEvent = z.infer<typeof lifecycleEventSchema>;

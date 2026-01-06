@@ -1,37 +1,42 @@
+import { createBoidOfType } from "@/boids/boid.ts";
 import {
   createForceCollector,
-  createEventCollector,
+  createLifecycleCollector,
 } from "@/boids/collectors.ts";
+import { fadeDeathMarkers } from "@/boids/deathMarkers.ts";
+import { countBoidsByRole } from "@/boids/filters.ts";
+import {
+  canCreatePredatorFood,
+  createPredatorFood,
+  generatePreyFood,
+} from "@/boids/foodManager.ts";
+import { filterBoidsWhere } from "@/boids/iterators.ts";
+import { canSpawnOffspring } from "@/boids/lifecycle/population.ts";
 import type {
   AllEvents,
   CatchEvent,
 } from "@/boids/vocabulary/schemas/events.ts";
+import { LifecycleEvent } from "@/boids/vocabulary/schemas/events.ts";
 import { Vector2 } from "@/boids/vocabulary/schemas/primitives.ts";
+import {
+  SimulationCommand,
+  SimulationEvent,
+} from "@/boids/vocabulary/schemas/simulation.ts";
 import { SpeciesConfig } from "@/boids/vocabulary/schemas/species.ts";
 import type {
   WorldConfig,
   WorldPhysics,
 } from "@/boids/vocabulary/schemas/world.ts";
+import { Channel } from "@/lib/channels.ts";
 import { DomainRNG } from "@/lib/seededRandom.ts";
 import {
   bufferViewIndexes,
   setActiveBufferIndex,
   SharedBoidViews,
 } from "@/lib/sharedMemory.ts";
+import { createSubscription } from "@/lib/state.ts";
 import { sharedMemoryKeywords } from "@/lib/workerTasks/vocabulary.ts";
 import { defineResource } from "braided";
-import { LifecycleEvent } from "@/boids/lifecycle/events.ts";
-import { checkBoidLifecycle } from "./engine/update.ts";
-import { canSpawnOffspring } from "@/boids/lifecycle/population.ts";
-import { createBoidOfType } from "@/boids/boid.ts";
-import { filterBoidsWhere } from "@/boids/iterators.ts";
-import { countBoidsByRole } from "@/boids/filters.ts";
-import {
-  generatePreyFood,
-  createPredatorFood,
-  canCreatePredatorFood,
-} from "@/boids/foodManager.ts";
-import { fadeDeathMarkers } from "@/boids/deathMarkers.ts";
 import {
   applyBehaviorDecision,
   buildBehaviorContext,
@@ -55,6 +60,7 @@ import {
 import * as vec from "../../boids/vector.ts";
 import {
   eventKeywords,
+  lifecycleKeywords,
   profilerKeywords,
   roleKeywords,
 } from "../../boids/vocabulary/keywords.ts";
@@ -69,14 +75,14 @@ import { RandomnessResource } from "../shared/randomness.ts";
 import { SharedMemoryManager } from "../shared/sharedMemoryManager.ts";
 import type { TimeResource } from "../shared/time.ts";
 import {
-  computeOpsLayout,
+  checkBoidLifecycle, computeOpsLayout,
   createBaseFrameUpdateContext,
   updateBoids,
   updateBoidSpatialHash,
   updateDeathMarkers,
   updateEngine,
   updateFoodSources,
-  updateObstacles,
+  updateObstacles
 } from "./engine/update.ts";
 import {
   initializeBoidsStats,
@@ -85,18 +91,17 @@ import {
   syncBoidsToSharedMemory,
 } from "./localBoidStore.ts";
 import type { RuntimeStoreResource } from "./runtimeStore.ts";
-import { createSubscription, Subscription } from "@/lib/state.ts";
 
 export type BoidEngine = {
-  // boids: Boid[];
+  initialize: (channel: Channel<SimulationCommand, SimulationEvent>) => void;
   update: (deltaSeconds: number) => void;
   reset: () => void;
   addBoid: (boid: Boid) => void;
   removeBoid: (boidId: string) => void;
   getBoidById: (boidId: string) => Boid | undefined;
-  checkCatches: () => CatchEvent[]; // Returns list of catches, doesn't dispatch
+  checkCatches: () => CatchEvent[];
   getBufferViews: () => SharedBoidViews;
-  eventSubscription: Subscription<AllEvents>;
+  cleanup: () => void;
 };
 
 /**
@@ -177,6 +182,9 @@ export const engine = defineResource({
     const { world: initialWorld, species: initialSpecies } = initialConfig;
 
     const boidsStore = localBoidStore.store;
+    // TODO: make the engine propagate events to the simulation channel
+    // let simulationChannel: Channel<SimulationCommand, SimulationEvent> | null =
+    //   null;
 
     const engineEventSubscription = createSubscription<AllEvents>();
 
@@ -243,6 +251,7 @@ export const engine = defineResource({
     // Create behavior ruleset for stance evaluation (Session 76)
     const behaviorRuleset = createBehaviorRuleset();
     const forcesCollector = createForceCollector();
+    const lifecycleCollector = createLifecycleCollector()
 
     // Create throttled executors for periodic tasks (Session 117)
     const foodSpawnExecutor = frameRater.throttled("foodSpawning", {
@@ -254,6 +263,11 @@ export const engine = defineResource({
 
     // Tick counter for food source IDs
     let tickCounter = 0;
+
+    const initialize = (_channel: Channel<SimulationCommand, SimulationEvent>) => {
+      // Bind simulation channel so we can send events to it
+      // simulationChannel = channel;
+    };
 
     /**
      * Apply lifecycle events collected during the frame
@@ -292,7 +306,7 @@ export const engine = defineResource({
       profiler.start("lifecycle.processFoodConsumption");
       const foodConsumptionMap = new Map<string, number>();
       for (const event of events) {
-        if (event.type === "lifecycle:food-consumed") {
+        if (event.type === lifecycleKeywords.events.foodConsumed) {
           const current = foodConsumptionMap.get(event.foodId) || 0;
           foodConsumptionMap.set(event.foodId, current + event.energyConsumed);
         }
@@ -437,7 +451,6 @@ export const engine = defineResource({
       time.incrementFrame();
 
       // Create lifecycle collector for this frame
-      const lifecycleCollector = createEventCollector<LifecycleEvent>();
       const matedBoidsThisFrame = new Set<string>();
 
       const opsLayout = computeOpsLayout({
@@ -459,6 +472,7 @@ export const engine = defineResource({
         deathMarkerSpatialHash,
         foodSourceSpatialHash,
         forcesCollector,
+        lifecycleCollector,
         obstacleSpatialHash,
       });
 
@@ -913,18 +927,23 @@ export const engine = defineResource({
       return boidsStore.getBoidById(boidId);
     };
 
-    return {
+    const api = {
+      initialize,
       update: update,
+      cleanup: () => {
+        engineEventSubscription.clear();
+      },
       reset,
       addBoid,
       removeBoid,
       getBoidById,
       checkCatches,
       getBufferViews: () => boidsPhysicsMemory.views,
-      eventSubscription: engineEventSubscription,
     } satisfies BoidEngine;
+
+    return api;
   },
-  halt: () => {
-    // No cleanup needed
+  halt: ({ cleanup }) => {
+    cleanup();
   },
 });

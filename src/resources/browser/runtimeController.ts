@@ -11,6 +11,7 @@ import type { RandomnessResource } from "../shared/randomness.ts";
 import {
   eventKeywords,
   effectKeywords,
+  simulationKeywords,
 } from "../../boids/vocabulary/keywords.ts";
 import { produce } from "immer";
 import type { TimerManager } from "../shared/timer.ts";
@@ -176,8 +177,9 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.boids.reproduced]: () => {
+  [eventKeywords.boids.reproduced]: (_state, event) => {
     // Handled in lifecycleManager - just pass through
+    // console.log("[RuntimeController] Boid reproduced:", event);
     return [];
   },
 
@@ -295,6 +297,100 @@ const handlers = {
       {
         type: effectKeywords.analytics.clearFilter,
       },
+    ];
+  },
+  // Simulation events
+  [simulationKeywords.events.boidsCaught]: (_state, event) => {
+    console.log("[RuntimeController] Boids caught:", event.boidIds);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.boidsDied]: (_state, event) => {
+    console.log("[RuntimeController] Boids died:", event.boidIds);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.boidsReproduced]: (_state, event) => {
+    console.log("[RuntimeController] Boids reproduced:", event.boids);
+    const addBoidEffects = event.boids.flatMap(boid => boid.offspring.map(b => ({
+      type: effectKeywords.engine.addBoid,
+      boid: b,
+    })));
+    // TODO: plug this in analytics
+    return addBoidEffects;
+  },
+  [simulationKeywords.events.boidsStanceChanged]: (_state, event) => {
+    console.log("[RuntimeController] Boids stance changed:", event.boids);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.foodSourcesCreated]: (_state, event) => {
+    console.log("[RuntimeController] Food sources created:", event.foodSources);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.foodSourcesUpdated]: (_state, event) => {
+    console.log("[RuntimeController] Food sources updated:", event.foodSources);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.foodSourceConsumed]: (_state, event) => {
+    console.log("[RuntimeController] Food source consumed:", event);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.obstaclesAdded]: (_state, event) => {
+    console.log("[RuntimeController] Obstacles added:", event.obstacles);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.obstaclesUpdated]: (_state, event) => {
+    console.log("[RuntimeController] Obstacles updated:", event.obstacles);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.obstaclesRemoved]: (_state, event) => {
+    console.log("[RuntimeController] Obstacles removed:", event.obstacleIds);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.obstaclesCleared]: (_state, event) => {
+    console.log("[RuntimeController] Obstacles cleared:", event);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.timeScaleChanged]: (_state, event) => {
+    console.log("[RuntimeController] Time scale changed:", event.timeScale);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.initialized]: (_state, event) => {
+    console.log("[RuntimeController] Simulation initialized:", event);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.updated]: (_state, _event) => {
+    // console.log("[RuntimeController] Simulation updated:", event);
+    return [
+      // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.error]: (_state, event) => {
+    console.error("[RuntimeController] Simulation error:", event);
+    return [
+      // TODO: plug this in analytics
     ];
   },
 } satisfies EventHandlerMap<
@@ -520,7 +616,6 @@ export const runtimeController = defineResource({
     engine: BoidEngine;
     localBoidStore: LocalBoidStoreResource;
   }) => {
-    console.log("Starting runtime controller");
     const controller = createRuntimeController(
       runtimeStore.store,
       analyticsStore,
@@ -530,10 +625,6 @@ export const runtimeController = defineResource({
       engine,
       localBoidStore
     );
-
-    engine.eventSubscription.subscribe((event) => {
-      controller.dispatch(event);
-    });
 
     // Note: time.passed events are now dispatched by the renderer
     // based on simulation time (respects pause/scale)

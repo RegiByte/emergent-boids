@@ -24,8 +24,13 @@
  */
 
 import { defineResource } from "braided";
-import type { RuntimeStoreResource } from "../browser/runtimeStore.ts";
 import { createSeededRNG, type DomainRNG } from "@/lib/seededRandom.ts";
+import { createSubscription } from "@/lib/state.ts";
+
+type RandomnessEvent = {
+  type: "seedUpdated";
+  newSeed: string | number;
+};
 
 export interface RandomnessResource {
   /** Get the current master seed */
@@ -42,6 +47,9 @@ export interface RandomnessResource {
 
   /** Reset RNG with new seed (triggers re-initialization) */
   setSeed(_newSeed: string | number): void;
+
+  /** Watch for seed updates */
+  watch: (callback: (event: RandomnessEvent) => void) => () => void;
 }
 
 /**
@@ -51,46 +59,35 @@ export interface RandomnessResource {
  * Used by: All systems that need randomness
  */
 export const randomness = defineResource({
-  dependencies: ["runtimeStore"],
-  start: ({
-    runtimeStore,
-  }: {
-    runtimeStore: RuntimeStoreResource;
-  }): RandomnessResource => {
+  dependencies: [],
+  start: (): RandomnessResource => {
     // Get seed from store, or use default
-    const seed =
-      runtimeStore.store.getState().config.randomSeed || "simulation-42";
+    const seed = "simulation-42";
 
     // Create hierarchical RNG
     let rng = createSeededRNG(seed);
 
+    const outptutSubscription = createSubscription<RandomnessEvent>();
+
     console.log(
-      `[randomness] Initialized with seed: "${seed}" (${rng.getMasterSeedNumber()})`,
+      `[randomness] Initialized with seed: "${seed}" (${rng.getMasterSeedNumber()})`
     );
 
-    return {
+    const api = {
       getMasterSeed: () => rng.getMasterSeed(),
       getMasterSeedNumber: () => rng.getMasterSeedNumber(),
       domain: (name: string) => rng.domain(name),
       getDomains: () => rng.getDomains(),
 
       setSeed: (newSeed: string | number) => {
-        // Update store with new seed
-        const currentState = runtimeStore.store.getState();
-        runtimeStore.store.setState({
-          ...currentState,
-          config: {
-            ...currentState.config,
-            randomSeed: String(newSeed),
-          },
-        });
-        // Re-initialize RNG with new seed
+        // Notify subscribers and re-initialize RNG with new seed
         rng = createSeededRNG(newSeed);
-        console.log(
-          `[randomness] Reset-initialized with seed: "${newSeed}" (${rng.getMasterSeedNumber()})`,
-        );
+        outptutSubscription.notify({ type: "seedUpdated", newSeed: newSeed });
       },
+      watch: outptutSubscription.subscribe,
     };
+
+    return api;
   },
   halt: () => {
     // No cleanup needed - RNG is stateless

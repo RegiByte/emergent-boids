@@ -20,7 +20,7 @@ import type { TimeResource } from "../shared/time.ts";
 import type { AtlasesResult } from "./atlases.ts";
 import { CameraAPI } from "./camera.ts";
 import { CanvasAPI } from "./canvas.ts";
-import { LocalBoidStoreResource } from "./localBoidStore.ts";
+import { getBoidPhysics, LocalBoidStoreResource } from "./localBoidStore.ts";
 import type { RuntimeStoreResource } from "./runtimeStore.ts";
 
 export type Renderer = {
@@ -203,6 +203,9 @@ export const renderer = defineResource({
       getTimeScale: () => {
         return time.getState().timeScale;
       },
+      onStep: (_deltaTime, _scaledDeltaMs) => {
+        console.log("[Renderer] Stepping", _deltaTime, _scaledDeltaMs);
+      },
     });
 
     const boidsPhysicsMemory = sharedMemoryManager.get(
@@ -223,6 +226,7 @@ export const renderer = defineResource({
     const cameraFollowExecutor = frameRater.throttled("cameraFollow", {
       intervalMs: 1000 / 50, // 30Hz
     });
+    const usesSharedMemory = config.getConfig().usesSharedMemory;
 
     //     // Keyboard shortcuts for visual toggles
     //     const handleKeyPress = (e: KeyboardEvent) => {
@@ -516,10 +520,31 @@ export const renderer = defineResource({
           }
         }
         if (cachedFollowedBoid) {
-          camera.updateFollowPosition(
-            cachedFollowedBoid.boid.position.x,
-            cachedFollowedBoid.boid.position.y
-          );
+          const position = {
+            x: cachedFollowedBoid.boid.position.x,
+            y: cachedFollowedBoid.boid.position.y,
+          };
+          const velocity = {
+            x: cachedFollowedBoid.boid.velocity.x,
+            y: cachedFollowedBoid.boid.velocity.y,
+          };
+          if (usesSharedMemory) {
+            const boidPhysics = getBoidPhysics(
+              cachedFollowedBoid.boid.index,
+              boidsPhysicsMemory.views
+            );
+            if (boidPhysics) {
+              position.x = boidPhysics.position.x;
+              position.y = boidPhysics.position.y;
+              velocity.x = boidPhysics.velocity.x;
+              velocity.y = boidPhysics.velocity.y;
+              cachedFollowedBoid.boid.position.x = boidPhysics.position.x;
+              cachedFollowedBoid.boid.position.y = boidPhysics.position.y;
+              cachedFollowedBoid.boid.velocity.x = boidPhysics.velocity.x;
+              cachedFollowedBoid.boid.velocity.y = boidPhysics.velocity.y;
+            }
+          }
+          camera.updateFollowPosition(position.x, position.y);
         } else {
           // Boid died or disappeared - exit follow mode
           camera.stopFollowing();

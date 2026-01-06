@@ -1,4 +1,5 @@
 import { simulationKeywords } from "@/boids/vocabulary/keywords";
+import { throttle } from "@tanstack/pacer";
 import { defineResource } from "braided";
 import { RuntimeStoreResource } from "./runtimeStore";
 import { SimulationResource } from "./simulation";
@@ -20,6 +21,14 @@ type Shortcut = {
   handler: (event: KeyboardEvent) => void;
 };
 
+const isSpace = (key: string) => {
+  return key === " " || key === "Space";
+};
+
+const spaceOrKey = (key: string) => {
+  return isSpace(key) ? "space" : key;
+};
+
 const evaluateKeymap = (keymap: string) => {
   const tokens = keymap.split("+");
   const modifiers = tokens.filter(
@@ -37,7 +46,7 @@ const evaluateKeymap = (keymap: string) => {
     return null;
   }
   return {
-    key: keys[0],
+    key: spaceOrKey(keys[0]),
     shift: modifiers.includes("shift"),
     ctrl: modifiers.includes("ctrl"),
     meta: modifiers.includes("meta"),
@@ -89,38 +98,79 @@ export const shortcuts = defineResource({
           rendererMode: newMode,
         });
       },
-      pause: () => {
-        console.log("[Shortcuts] Pausing simulation");
+      togglePause: () => {
+        if (simulation.isPaused()) {
+          console.log("[Shortcuts] Resuming simulation");
+          simulation.dispatch({
+            type: simulationKeywords.commands.resume,
+          });
+        } else {
+          console.log("[Shortcuts] Pausing simulation");
+          simulation.dispatch({
+            type: simulationKeywords.commands.pause,
+          });
+        }
+      },
+      step: () => {
+        console.log("[Shortcuts] Stepping simulation");
         simulation.dispatch({
-          type: simulationKeywords.commands.pause,
+          type: simulationKeywords.commands.step,
         });
       },
+    };
+
+    const throttledCommands = {
+      toggleTrails: throttle(commands.toggleTrails, {
+        wait: 100,
+      }),
+      toggleEnergyBar: throttle(commands.toggleEnergyBar, {
+        wait: 100,
+      }),
+      toggleMatingHearts: throttle(commands.toggleMatingHearts, {
+        wait: 100,
+      }),
+      toggleStanceSymbols: throttle(commands.toggleStanceSymbols, {
+        wait: 100,
+      }),
+      toggleRenderMode: throttle(commands.toggleRenderMode, {
+        wait: 100,
+      }),
+      togglePause: throttle(commands.togglePause, {
+        wait: 100,
+      }),
+      step: throttle(commands.step, {
+        wait: 100,
+      }),
     };
 
     const shortcuts: Shortcut[] = [
       {
         keymaps: ["shift+t"],
-        handler: commands.toggleTrails,
+        handler: () => throttledCommands.toggleTrails(),
       },
       {
         keymaps: ["shift+e"],
-        handler: commands.toggleEnergyBar,
+        handler: () => throttledCommands.toggleEnergyBar(),
       },
       {
         keymaps: ["shift+m"],
-        handler: commands.toggleMatingHearts,
+        handler: () => throttledCommands.toggleMatingHearts(),
       },
       {
         keymaps: ["shift+s"],
-        handler: commands.toggleStanceSymbols,
+        handler: () => throttledCommands.toggleStanceSymbols(),
       },
       {
         keymaps: ["shift+r"],
-        handler: commands.toggleRenderMode,
+        handler: () => throttledCommands.toggleRenderMode(),
       },
       {
         keymaps: ["space"],
-        handler: commands.pause,
+        handler: () => throttledCommands.togglePause(),
+      },
+      {
+        keymaps: ["ArrowRight"],
+        handler: () => throttledCommands.step(),
       },
     ];
 
@@ -132,8 +182,11 @@ export const shortcuts = defineResource({
       cleanup: () => {
         document.removeEventListener("keydown", api.handleKeyPress);
       },
-      handleKeyPress: (e: KeyboardEvent) => {
-        console.log(`[Shortcuts] Handling key press ${e.key ?? "[unknown]"}`);
+      handleKeyPress: (event: KeyboardEvent) => {
+        const length = event.key.length;
+        console.log(
+          `[Shortcuts] Handling key press ${spaceOrKey(event.key)} (${length})`
+        );
         const shortcut = shortcuts.find((shortcut) => {
           return shortcut.keymaps.some((option) => {
             const result = evaluateKeymap(option);
@@ -142,15 +195,17 @@ export const shortcuts = defineResource({
             }
             const { key, shift, ctrl, meta } = result;
             return (
-              key.toLowerCase() === e.key.toLowerCase() &&
-              shift === e.shiftKey &&
-              ctrl === e.ctrlKey &&
-              meta === e.metaKey
+              key.toLowerCase() === spaceOrKey(event.key).toLowerCase() &&
+              shift === event.shiftKey &&
+              ctrl === event.ctrlKey &&
+              meta === event.metaKey
             );
           });
         });
         if (shortcut) {
-          shortcut.handler(e);
+          event.preventDefault();
+          event.stopPropagation();
+          shortcut.handler(event);
         }
       },
     };
