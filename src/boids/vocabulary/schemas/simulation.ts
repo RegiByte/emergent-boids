@@ -2,6 +2,7 @@ import { simulationKeywords } from "../keywords";
 import z from "zod";
 import { boidSchema, foodSourceSchema, obstacleSchema } from "./entities";
 import {
+  deathCauseSchema,
   renderModeSchema,
   roleSchema,
   stanceSchema,
@@ -118,11 +119,25 @@ export const simulationEventSchema = z.discriminatedUnion("type", [
   // Boid events
   z.object({
     type: z.literal(simulationKeywords.events.boidsDied),
-    boidIds: z.array(z.string()),
+    boids: z.array(
+      z.object({
+        id: z.string(),
+        typeId: z.string(), // Species ID for analytics
+        reason: deathCauseSchema, // old_age | starvation | predation
+        position: vectorSchema, // For death marker placement
+      })
+    ),
   }),
   z.object({
     type: z.literal(simulationKeywords.events.boidsCaught),
-    boidIds: z.array(z.string()),
+    catches: z.array(
+      z.object({
+        predatorId: z.string(), // Who caught
+        preyId: z.string(), // Who was caught
+        preyTypeId: z.string(), // Species of prey for analytics
+        position: vectorSchema, // Where catch happened (for food spawning)
+      })
+    ),
   }),
 
   z.object({
@@ -144,6 +159,10 @@ export const simulationEventSchema = z.discriminatedUnion("type", [
         newStance: stanceSchema,
       })
     ),
+  }),
+  z.object({
+    type: z.literal(simulationKeywords.events.workerStateUpdated),
+    updates: z.array(boidSchema.partial()),
   }),
   // Environment events
   z.object({

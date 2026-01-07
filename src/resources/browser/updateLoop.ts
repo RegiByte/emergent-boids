@@ -5,7 +5,7 @@ import { BoidEngine } from "./engine";
 import { TimeAPI } from "../shared/time";
 import z from "zod";
 import { allEventSchema } from "@/boids/vocabulary/schemas/events";
-import { RuntimeController } from "./runtimeController";
+import { SimulationGateway } from "./simulationController";
 import { eventKeywords } from "@/boids/vocabulary/keywords";
 import { createUpdateLoop } from "@/lib/updateLoop";
 
@@ -43,7 +43,7 @@ export const updateLoopResource = defineResource({
     frameRater: FrameRaterAPI;
     engine: BoidEngine;
     time: TimeAPI;
-    runtimeController: RuntimeController;
+    runtimeController: SimulationGateway;
   }) => {
     // let animationId: number | null = null;
     // let isRunning = false;

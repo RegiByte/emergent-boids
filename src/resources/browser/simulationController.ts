@@ -177,7 +177,7 @@ const handlers = {
     ];
   },
 
-  [eventKeywords.boids.reproduced]: (_state, event) => {
+  [eventKeywords.boids.reproduced]: (_state, _event) => {
     // Handled in lifecycleManager - just pass through
     // console.log("[RuntimeController] Boid reproduced:", event);
     return [];
@@ -301,13 +301,13 @@ const handlers = {
   },
   // Simulation events
   [simulationKeywords.events.boidsCaught]: (_state, event) => {
-    console.log("[RuntimeController] Boids caught:", event.boidIds);
+    console.log("[RuntimeController] Boids caught:", event.catches);
     return [
       // TODO: plug this in analytics
     ];
   },
   [simulationKeywords.events.boidsDied]: (_state, event) => {
-    console.log("[RuntimeController] Boids died:", event.boidIds);
+    console.log("[RuntimeController] Boids died:", event.boids);
     return [
       // TODO: plug this in analytics
     ];
@@ -325,6 +325,15 @@ const handlers = {
     console.log("[RuntimeController] Boids stance changed:", event.boids);
     return [
       // TODO: plug this in analytics
+    ];
+  },
+  [simulationKeywords.events.workerStateUpdated]: (_state, event) => {
+    console.log("[RuntimeController] Worker state updated:", event.updates.length);
+    return [
+      {
+        type: effectKeywords.localBoidStore.syncWorkerState,
+        updates: event.updates,
+      },
     ];
   },
   [simulationKeywords.events.foodSourcesCreated]: (_state, event) => {
@@ -538,9 +547,9 @@ const executors = {
 // Runtime Controller Resource
 // ============================================
 
-export type RuntimeController = ReturnType<typeof createRuntimeController>;
+export type SimulationGateway = ReturnType<typeof createSimulationGateway>;
 
-function createRuntimeController(
+function createSimulationGateway(
   store: RuntimeStoreApi,
   analyticsStore: AnalyticsStoreResource,
   profileStore: ProfileStoreResource,
@@ -589,7 +598,7 @@ function createRuntimeController(
   return runtime;
 }
 
-export const runtimeController = defineResource({
+export const simulationGateway = defineResource({
   dependencies: [
     "runtimeStore",
     "analyticsStore",
@@ -616,7 +625,7 @@ export const runtimeController = defineResource({
     engine: BoidEngine;
     localBoidStore: LocalBoidStoreResource;
   }) => {
-    const controller = createRuntimeController(
+    const controller = createSimulationGateway(
       runtimeStore.store,
       analyticsStore,
       profileStore,

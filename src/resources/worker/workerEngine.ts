@@ -5,22 +5,20 @@ import { BoidUpdateContext, EngineUpdateContext } from "@/boids/context";
 import { defaultWorldPhysics } from "@/boids/defaultPhysics";
 import { getBoidsByRole } from "@/boids/filters";
 import { FOOD_CONSTANTS } from "@/boids/food";
-import { LifecycleEvent } from "@/boids/vocabulary/schemas/events";
 import { createSpatialHash } from "@/boids/spatialHash";
-import { eventKeywords, lifecycleKeywords, simulationKeywords } from "@/boids/vocabulary/keywords";
+import { lifecycleKeywords, simulationKeywords } from "@/boids/vocabulary/keywords";
 import {
   Boid,
   DeathMarker,
   FoodSource,
   Obstacle,
 } from "@/boids/vocabulary/schemas/entities";
-import { AllEvents, CatchEvent } from "@/boids/vocabulary/schemas/events";
+import { CatchEvent, LifecycleEvent } from "@/boids/vocabulary/schemas/events";
 import {
   SharedBoidBufferLayout,
   StatsIndex,
   swapBuffers,
 } from "@/lib/sharedMemory";
-import { createSubscription } from "@/lib/state";
 import { defineResource, StartedResource } from "braided";
 import { BoidEngine } from "../browser/engine";
 import {
@@ -74,7 +72,6 @@ export const workerEngine = defineResource({
 
     let simulationChannel: Channel<SimulationCommand, SimulationEvent> | null =
       null;
-    const engineEventSubscription = createSubscription<AllEvents>();
 
     // Spatial hashes for efficient neighbor queries
     let spatialHash: ReturnType<typeof createSpatialHash<Boid>> | null = null;
@@ -281,19 +278,40 @@ export const workerEngine = defineResource({
       // Apply lifecycle events collected during the frame (Session 119)
       workerProfiler.start("lifecycle.apply");
       if (lifecycleCollector.items.length > 0) {
+        // Collect all death data BEFORE removing boids (need position for enriched events)
+        const deathData: Array<{
+          id: string;
+          typeId: string;
+          reason: "old_age" | "starvation" | "predation";
+          position: { x: number; y: number };
+        }> = [];
+
         // Process deaths FIRST (remove boids from worker)
         for (const event of lifecycleCollector.items) {
           if (event.type === lifecycleKeywords.events.death) {
+            // Get boid data BEFORE removal
+            const boid = boidsStore.getBoidById(event.boidId);
+            if (boid) {
+              deathData.push({
+                id: event.boidId,
+                typeId: event.typeId,
+                reason: event.reason,
+                position: { x: boid.position.x, y: boid.position.y },
+              });
+            }
+
             // Remove boid from worker store
             boidsStore.removeBoid(event.boidId);
-
-            // Notify browser
-            console.log("[WorkerEngine] Notifying browser of boid death:", event.boidId);
-            simulationChannel?.out.notify({
-              type: simulationKeywords.events.boidsDied,
-              boidIds: [event.boidId],
-            });
           }
+        }
+
+        // Notify browser with batched death event
+        if (deathData.length > 0) {
+          console.log("[WorkerEngine] Notifying browser of boid deaths:", deathData.length);
+          simulationChannel?.out.notify({
+            type: simulationKeywords.events.boidsDied,
+            boids: deathData,
+          });
         }
 
         // Process reproductions (spawn boids in worker)

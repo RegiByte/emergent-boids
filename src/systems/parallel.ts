@@ -16,7 +16,7 @@ import { camera } from "@/resources/browser/camera.ts";
 import { canvas } from "@/resources/browser/canvas.ts";
 import { profileStore } from "@/resources/browser/profileStore.ts";
 import { renderer } from "@/resources/browser/renderer.ts";
-import { runtimeController } from "@/resources/browser/runtimeController.ts";
+import { simulationGateway } from "@/resources/browser/simulationController";
 import { runtimeStore } from "@/resources/browser/runtimeStore.ts";
 import { webglRenderer } from "@/resources/browser/webglRenderer.ts";
 import { profiler } from "@/resources/shared/profiler.ts";
@@ -68,7 +68,7 @@ export const parallelSystemConfig = {
   analyticsStore,
   localBoidStore,
   // lifecycleManager,
-  runtimeController,
+  runtimeController: simulationGateway,
   sharedMemoryManager,
   workerTasks: workerTasksResource,
 };

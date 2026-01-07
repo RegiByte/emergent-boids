@@ -1,9 +1,9 @@
 import { defineResource } from "braided";
-import type { RuntimeController } from "./runtimeController.ts";
+import type { SimulationGateway } from "./simulationController.ts";
 import type { RuntimeStoreResource } from "./runtimeStore.ts";
 import type { AnalyticsStoreResource } from "./analyticsStore.ts";
 import type { TimeResource } from "../shared/time.ts";
-import { eventKeywords } from "../../boids/vocabulary/keywords.ts";
+import { eventKeywords, simulationKeywords } from "../../boids/vocabulary/keywords.ts";
 import { produce } from "immer";
 
 /**
@@ -27,7 +27,7 @@ export const atmosphere = defineResource({
     analyticsStore,
     time,
   }: {
-    runtimeController: RuntimeController;
+    runtimeController: SimulationGateway;
     runtimeStore: RuntimeStoreResource;
     analyticsStore: AnalyticsStoreResource;
     time: TimeResource;
@@ -45,12 +45,19 @@ export const atmosphere = defineResource({
 
     // Subscribe to events
     const unsubscribe = runtimeController.subscribe((event) => {
-      // Track births/deaths for rate calculation
-      if (event.type === eventKeywords.boids.reproduced) {
-        const offspringCount = event.offspringCount || 1;
-        recordBirth(event.typeId, offspringCount);
-      } else if (event.type === eventKeywords.boids.died) {
-        recordDeath(event.typeId);
+      // Track births/deaths for rate calculation (Session 119: Updated to use simulation events)
+      if (event.type === simulationKeywords.events.boidsReproduced) {
+        // Handle batched reproduction events
+        for (const reproduction of event.boids) {
+          for (const offspring of reproduction.offspring) {
+            recordBirth(offspring.typeId, 1);
+          }
+        }
+      } else if (event.type === simulationKeywords.events.boidsDied) {
+        // Handle batched death events
+        for (const death of event.boids) {
+          recordDeath(death.typeId);
+        }
       } else if (event.type === eventKeywords.time.passed) {
         tickCounter++;
         if (tickCounter % CHECK_INTERVAL === 0) {

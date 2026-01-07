@@ -1,10 +1,9 @@
-import { findBoidWhere } from "@/boids/iterators.ts";
 import { defineResource } from "braided";
-import { eventKeywords } from "../../boids/vocabulary/keywords.ts";
+import { eventKeywords, simulationKeywords } from "../../boids/vocabulary/keywords.ts";
 import type { AnalyticsStoreResource } from "./analyticsStore.ts";
 import type { BoidEngine } from "./engine.ts";
 import { LocalBoidStoreResource } from "./localBoidStore.ts";
-import type { RuntimeController } from "./runtimeController.ts";
+import type { SimulationGateway } from "./simulationController.ts";
 
 /**
  * Analytics Resource
@@ -40,15 +39,13 @@ export const analytics = defineResource({
     runtimeController,
     // runtimeStore,
     analyticsStore,
-    localBoidStore,
   }: {
     engine: BoidEngine;
-    runtimeController: RuntimeController;
+    runtimeController: SimulationGateway;
     // runtimeStore: RuntimeStoreResource;
     analyticsStore: AnalyticsStoreResource;
     localBoidStore: LocalBoidStoreResource;
   }) => {
-    const boidStore = localBoidStore.store;
     let tickCounter = 0;
     console.log("[Analytics] Starting", runtimeController);
     // let lastSnapshotTime = Date.now();
@@ -76,37 +73,40 @@ export const analytics = defineResource({
       // Track event using analyticsStore helper (handles filtering)
       analyticsStore.trackEvent(event, tickCounter);
 
-      // Track lifecycle events
-      if (event.type === eventKeywords.boids.reproduced) {
-        const typeId = event.typeId;
-        // Count actual offspring spawned (handles twins: offspringCount = 2)
-        const offspringCount = event.offspringCount || 1;
-        eventCounters.births[typeId] =
-          (eventCounters.births[typeId] || 0) + offspringCount;
-      } else if (event.type === eventKeywords.boids.died) {
-        const typeId = event.typeId;
-        const reason = event.reason; // Event schema uses 'reason', not 'cause'
-
-        // Track total deaths
-        eventCounters.deaths[typeId] = (eventCounters.deaths[typeId] || 0) + 1;
-
-        // Track deaths by cause
-        if (!eventCounters.deathsByCause[typeId]) {
-          eventCounters.deathsByCause[typeId] = {
-            old_age: 0,
-            starvation: 0,
-            predation: 0,
-          };
+      // Track lifecycle events (Session 119: Updated to use simulation events)
+      if (event.type === simulationKeywords.events.boidsReproduced) {
+        // Handle batched reproduction events
+        for (const reproduction of event.boids) {
+          // Each reproduction has offspring array
+          for (const offspring of reproduction.offspring) {
+            const typeId = offspring.typeId;
+            eventCounters.births[typeId] =
+              (eventCounters.births[typeId] || 0) + 1;
+          }
         }
-        eventCounters.deathsByCause[typeId][reason]++;
-      } else if (event.type === eventKeywords.boids.caught) {
-        // Find prey type from boid list
-        const prey = findBoidWhere(
-          boidStore.boids,
-          (b) => b.id === event.preyId
-        );
-        if (prey) {
-          const typeId = prey.typeId;
+      } else if (event.type === simulationKeywords.events.boidsDied) {
+        // Handle batched death events
+        for (const death of event.boids) {
+          const typeId = death.typeId;
+          const reason = death.reason;
+
+          // Track total deaths
+          eventCounters.deaths[typeId] = (eventCounters.deaths[typeId] || 0) + 1;
+
+          // Track deaths by cause
+          if (!eventCounters.deathsByCause[typeId]) {
+            eventCounters.deathsByCause[typeId] = {
+              old_age: 0,
+              starvation: 0,
+              predation: 0,
+            };
+          }
+          eventCounters.deathsByCause[typeId][reason]++;
+        }
+      } else if (event.type === simulationKeywords.events.boidsCaught) {
+        // Handle batched catch events
+        for (const catchEvent of event.catches) {
+          const typeId = catchEvent.preyTypeId;
           eventCounters.catches[typeId] =
             (eventCounters.catches[typeId] || 0) + 1;
         }

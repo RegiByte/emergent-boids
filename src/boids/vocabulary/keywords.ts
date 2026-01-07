@@ -358,6 +358,7 @@ export const simulationKeywords = {
     boidsEvolved: "simulation:boidsEvolved",
     boidsReproduced: "simulation:boidsReproduced",
     boidsStanceChanged: "simulation:boidsStanceChanged",
+    workerStateUpdated: "simulation:workerStateUpdated",
     // Environment events
     foodSourcesCreated: "simulation:foodSourcesCreated",
     foodSourcesUpdated: "simulation:foodSourcesUpdated",
