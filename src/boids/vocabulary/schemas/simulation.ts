@@ -1,4 +1,4 @@
-import { simulationKeywords } from "../keywords";
+import { eventKeywords, simulationKeywords } from "../keywords";
 import z from "zod";
 import { boidSchema, foodSourceSchema, obstacleSchema } from "./entities";
 import {
@@ -116,6 +116,10 @@ export const simulationEventSchema = z.discriminatedUnion("type", [
     type: z.literal(simulationKeywords.events.timeScaleChanged),
     timeScale: z.number(),
   }),
+  z.object({
+    type: z.literal(eventKeywords.time.passed),
+    deltaMs: z.number(),
+  }),
   // Boid events
   z.object({
     type: z.literal(simulationKeywords.events.boidsDied),
@@ -147,6 +151,12 @@ export const simulationEventSchema = z.discriminatedUnion("type", [
         parentId1: z.string(),
         parentId2: z.string().optional(), // may be asexual reproduction
         offspring: z.array(boidSchema),
+        // Session 124: Include mutation metadata for analytics tracking
+        mutations: z.object({
+          traitMutations: z.number(),
+          colorMutations: z.number(),
+          bodyPartMutations: z.number(),
+        }).optional(),
       })
     ),
   }),

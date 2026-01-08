@@ -11,7 +11,7 @@ import { defineResource, StartedResource } from "braided";
 type BufferLayout = Record<string, number>;
 
 type BufferViews = {
-  [key: string]: Uint32Array | Float32Array | Int32Array;
+  [key: string]: Uint32Array | Float32Array | Int32Array | Uint8Array;
 };
 
 type SharedMemoryInstance<TLayout, TViews> = {

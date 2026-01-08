@@ -210,7 +210,14 @@ export function buildBehaviorContext(
     closestPreyDistance = Math.sqrt(dx * dx + dy * dy);
   }
 
-  const closestFood = context.nearbyFood.reduce(
+  // Session 123: Filter food by role! Predators eat predator food, prey eat prey food.
+  // Without this filter, boids might enter eating stance for food they can't consume!
+  const boidRole = speciesConfig.role;
+  const compatibleFood = context.nearbyFood.filter(
+    (f) => f.item.sourceType === boidRole && f.item.energy > 0
+  );
+  
+  const closestFood = compatibleFood.reduce(
     (closest, current) => {
       return current.distance < (closest?.distance ?? Infinity)
         ? current
@@ -226,9 +233,11 @@ export function buildBehaviorContext(
   }
 
   // Count available mates (Session 75: Seeking mates that are ready)
-  // Only count flock members that are seeking mates or ready to mate
+  // Session 123: Also exclude already-paired boids (mateId !== null)!
   const nearbyAvailableMatesCount = context.nearbyFlock.filter(
-    (b) => b.item.seekingMate || b.item.stance === stanceKeywords.seeking_mate,
+    (b) => 
+      (b.item.seekingMate || b.item.stance === stanceKeywords.seeking_mate) &&
+      b.item.mateId === null // Session 123: Must NOT already have a mate!
   ).length;
 
   // Calculate environment pressure from population ratio
@@ -248,7 +257,7 @@ export function buildBehaviorContext(
     healthRatio: boid.health / boid.phenotype.maxHealth,
     nearbyPredatorCount: context.nearbyPredators.length,
     nearbyPreyCount: context.nearbyPrey.length,
-    nearbyFoodCount: context.nearbyFood.length,
+    nearbyFoodCount: compatibleFood.length, // Session 123: Use filtered food count!
     nearbyFlockCount: context.nearbyFlock.length,
     nearbyAvailableMatesCount, // NEW - Session 75
     closestPredatorDistance,

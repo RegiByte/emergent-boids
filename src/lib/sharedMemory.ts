@@ -71,6 +71,8 @@ export function getSharedArrayBufferStatus(): {
  * - Worker writes to inactive buffer
  * - Main reads from active buffer
  * - Atomic swap on completion
+ *
+ * Session 125: Extended with observer state (energy, health, stance, seekingMate)
  */
 export type SharedBoidBufferLayout = {
   /** Total size of the buffer in bytes */
@@ -94,6 +96,24 @@ export type SharedBoidBufferLayout = {
   /** Offset to velocities buffer 1 (Float32, boidCount * 2 elements) */
   velocities1Offset: number;
 
+  /** Offset to energy buffer 0 (Float32, boidCount elements) - Session 125 */
+  energy0Offset: number;
+
+  /** Offset to energy buffer 1 (Float32, boidCount elements) - Session 125 */
+  energy1Offset: number;
+
+  /** Offset to health buffer 0 (Float32, boidCount elements) - Session 125 */
+  health0Offset: number;
+
+  /** Offset to health buffer 1 (Float32, boidCount elements) - Session 125 */
+  health1Offset: number;
+
+  /** Offset to stance flags buffer 0 (Uint8, boidCount elements) - Session 125 */
+  stanceFlags0Offset: number;
+
+  /** Offset to stance flags buffer 1 (Uint8, boidCount elements) - Session 125 */
+  stanceFlags1Offset: number;
+
   /** Offset to statistics (Uint32, 8 elements) */
   statsOffset: number;
 };
@@ -101,12 +121,18 @@ export type SharedBoidBufferLayout = {
 /**
  * Calculate memory layout for a given number of boids.
  *
- * Memory layout:
+ * Memory layout (Session 125: Extended with observer state):
  * - [0-4): Buffer index (Uint32, 1 element = 4 bytes)
  * - [4-...): Positions buffer 0 (Float32, boidCount * 2 elements)
  * - [...-...): Positions buffer 1 (Float32, boidCount * 2 elements)
  * - [...-...): Velocities buffer 0 (Float32, boidCount * 2 elements)
  * - [...-...): Velocities buffer 1 (Float32, boidCount * 2 elements)
+ * - [...-...): Energy buffer 0 (Float32, boidCount elements)
+ * - [...-...): Energy buffer 1 (Float32, boidCount elements)
+ * - [...-...): Health buffer 0 (Float32, boidCount elements)
+ * - [...-...): Health buffer 1 (Float32, boidCount elements)
+ * - [...-...): Stance flags buffer 0 (Uint8, boidCount elements)
+ * - [...-...): Stance flags buffer 1 (Uint8, boidCount elements)
  * - [...-...): Statistics (Uint32, 8 elements = 32 bytes)
  */
 export function calculateBufferLayout(
@@ -134,6 +160,30 @@ export function calculateBufferLayout(
   const velocities1Offset = offset;
   offset += boidCount * 2 * 4;
 
+  // Session 125: Energy buffer 0 (per-boid energy values)
+  const energy0Offset = offset;
+  offset += boidCount * 4; // boidCount Float32s = boidCount * 4 bytes
+
+  // Energy buffer 1
+  const energy1Offset = offset;
+  offset += boidCount * 4;
+
+  // Session 125: Health buffer 0 (per-boid health values)
+  const health0Offset = offset;
+  offset += boidCount * 4;
+
+  // Health buffer 1
+  const health1Offset = offset;
+  offset += boidCount * 4;
+
+  // Session 125: Stance flags buffer 0 (packed: stance in bits 0-3, seekingMate in bit 7)
+  const stanceFlags0Offset = offset;
+  offset += boidCount * 1; // boidCount Uint8s = boidCount bytes
+
+  // Stance flags buffer 1
+  const stanceFlags1Offset = offset;
+  offset += boidCount * 1;
+
   // Statistics: [aliveCount, deadCount, bornCount, ...]
   const statsOffset = offset;
   offset += 8 * 4; // 8 Uint32s = 32 bytes
@@ -148,6 +198,12 @@ export function calculateBufferLayout(
     positions1Offset,
     velocities0Offset,
     velocities1Offset,
+    energy0Offset,
+    energy1Offset,
+    health0Offset,
+    health1Offset,
+    stanceFlags0Offset,
+    stanceFlags1Offset,
     statsOffset,
   };
 }
@@ -167,6 +223,8 @@ export function createSharedBoidBuffer(boidCount: number): {
 
 /**
  * Typed array views for accessing shared boid data
+ * 
+ * Session 125: Extended with observer state arrays
  */
 export type SharedBoidViews = {
   /** Buffer index: which buffer is currently active (0 or 1) */
@@ -184,12 +242,32 @@ export type SharedBoidViews = {
   /** Velocities buffer 1: [vx, vy] pairs */
   velocities1: Float32Array;
 
+  /** Energy buffer 0: per-boid energy values - Session 125 */
+  energy0: Float32Array;
+
+  /** Energy buffer 1: per-boid energy values - Session 125 */
+  energy1: Float32Array;
+
+  /** Health buffer 0: per-boid health values - Session 125 */
+  health0: Float32Array;
+
+  /** Health buffer 1: per-boid health values - Session 125 */
+  health1: Float32Array;
+
+  /** Stance flags buffer 0: packed stance + seekingMate - Session 125 */
+  stanceFlags0: Uint8Array;
+
+  /** Stance flags buffer 1: packed stance + seekingMate - Session 125 */
+  stanceFlags1: Uint8Array;
+
   /** Statistics counters */
   stats: Uint32Array;
 };
 
 /**
  * Create typed array views for a shared boid buffer
+ * 
+ * Session 125: Extended with observer state views
  */
 export function createSharedBoidViews(
   buffer: SharedArrayBuffer,
@@ -217,6 +295,36 @@ export function createSharedBoidViews(
       layout.velocities1Offset,
       layout.boidCount * 2,
     ),
+    energy0: new Float32Array(
+      buffer,
+      layout.energy0Offset,
+      layout.boidCount,
+    ),
+    energy1: new Float32Array(
+      buffer,
+      layout.energy1Offset,
+      layout.boidCount,
+    ),
+    health0: new Float32Array(
+      buffer,
+      layout.health0Offset,
+      layout.boidCount,
+    ),
+    health1: new Float32Array(
+      buffer,
+      layout.health1Offset,
+      layout.boidCount,
+    ),
+    stanceFlags0: new Uint8Array(
+      buffer,
+      layout.stanceFlags0Offset,
+      layout.boidCount,
+    ),
+    stanceFlags1: new Uint8Array(
+      buffer,
+      layout.stanceFlags1Offset,
+      layout.boidCount,
+    ),
     stats: new Uint32Array(buffer, layout.statsOffset, 8),
   };
 }
@@ -238,6 +346,30 @@ export function getActiveVelocities(views: SharedBoidViews): Float32Array {
 }
 
 /**
+ * Get the currently active energy buffer based on buffer index - Session 125
+ */
+export function getActiveEnergy(views: SharedBoidViews): Float32Array {
+  const activeIndex = Atomics.load(views.bufferIndex, 0);
+  return activeIndex === 0 ? views.energy0 : views.energy1;
+}
+
+/**
+ * Get the currently active health buffer based on buffer index - Session 125
+ */
+export function getActiveHealth(views: SharedBoidViews): Float32Array {
+  const activeIndex = Atomics.load(views.bufferIndex, 0);
+  return activeIndex === 0 ? views.health0 : views.health1;
+}
+
+/**
+ * Get the currently active stance flags buffer based on buffer index - Session 125
+ */
+export function getActiveStanceFlags(views: SharedBoidViews): Uint8Array {
+  const activeIndex = Atomics.load(views.bufferIndex, 0);
+  return activeIndex === 0 ? views.stanceFlags0 : views.stanceFlags1;
+}
+
+/**
  * Get the currently inactive positions buffer (for worker to write to)
  */
 export function getInactivePositions(views: SharedBoidViews): Float32Array {
@@ -251,6 +383,30 @@ export function getInactivePositions(views: SharedBoidViews): Float32Array {
 export function getInactiveVelocities(views: SharedBoidViews): Float32Array {
   const activeIndex = Atomics.load(views.bufferIndex, 0);
   return activeIndex === 0 ? views.velocities1 : views.velocities0;
+}
+
+/**
+ * Get the currently inactive energy buffer (for worker to write to) - Session 125
+ */
+export function getInactiveEnergy(views: SharedBoidViews): Float32Array {
+  const activeIndex = Atomics.load(views.bufferIndex, 0);
+  return activeIndex === 0 ? views.energy1 : views.energy0;
+}
+
+/**
+ * Get the currently inactive health buffer (for worker to write to) - Session 125
+ */
+export function getInactiveHealth(views: SharedBoidViews): Float32Array {
+  const activeIndex = Atomics.load(views.bufferIndex, 0);
+  return activeIndex === 0 ? views.health1 : views.health0;
+}
+
+/**
+ * Get the currently inactive stance flags buffer (for worker to write to) - Session 125
+ */
+export function getInactiveStanceFlags(views: SharedBoidViews): Uint8Array {
+  const activeIndex = Atomics.load(views.bufferIndex, 0);
+  return activeIndex === 0 ? views.stanceFlags1 : views.stanceFlags0;
 }
 
 /**
@@ -297,3 +453,31 @@ export const StatsIndex = {
   RESERVED_2: 6,
   RESERVED_3: 7,
 } as const;
+
+/**
+ * Pack stance and seekingMate into a single byte (Session 125)
+ * 
+ * Layout:
+ * - Bits 0-3: stance value (0-4)
+ * - Bit 7: seekingMate flag
+ * 
+ * @param stance - Boid stance (0=wandering, 1=fleeing, 2=pursuing, 3=eating, 4=mating)
+ * @param seekingMate - Whether boid is seeking a mate
+ * @returns Packed byte value
+ */
+export function packStanceFlags(stance: number, seekingMate: boolean): number {
+  return (stance & 0x0F) | (seekingMate ? 0x80 : 0);
+}
+
+/**
+ * Unpack stance and seekingMate from a single byte (Session 125)
+ * 
+ * @param flags - Packed byte value
+ * @returns Object with stance and seekingMate
+ */
+export function unpackStanceFlags(flags: number): { stance: number; seekingMate: boolean } {
+  return {
+    stance: flags & 0x0F,
+    seekingMate: (flags & 0x80) !== 0,
+  };
+}

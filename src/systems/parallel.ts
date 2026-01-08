@@ -67,7 +67,6 @@ export const parallelSystemConfig = {
   webglRenderer,
   analyticsStore,
   localBoidStore,
-  // lifecycleManager,
   runtimeController: simulationGateway,
   sharedMemoryManager,
   workerTasks: workerTasksResource,

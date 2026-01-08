@@ -25,7 +25,7 @@ import {
 } from "@/boids/vocabulary/schemas/simulation.ts";
 import type { WorldPhysics } from "@/boids/vocabulary/schemas/world.ts";
 import { Channel, createChannel } from "@/lib/channels.ts";
-import { StatsIndex } from "@/lib/sharedMemory.ts";
+import { SharedBoidViews, StatsIndex } from "@/lib/sharedMemory.ts";
 import { sharedMemoryKeywords } from "@/lib/workerTasks/vocabulary.ts";
 import { defineResource, StartedResource } from "braided";
 import z from "zod";
@@ -37,6 +37,8 @@ import type { SharedMemoryManager } from "../shared/sharedMemoryManager.ts";
 import { LocalBoidStoreResource } from "./localBoidStore.ts";
 import type { RuntimeStoreResource } from "./runtimeStore.ts";
 import type { WorkerTasksResource } from "./workerTasks.ts";
+import { simulationKeywords } from "@/boids/vocabulary/keywords.ts";
+import { TimeAPI } from "../shared/time.ts";
 
 /**
  * Logical boid state (everything except position/velocity/acceleration)
@@ -80,6 +82,7 @@ export const sharedEngine = defineResource({
     "localBoidStore",
     "sharedMemoryManager",
     "frameRater",
+    "time"
   ],
   start: ({
     workerTasks,
@@ -88,6 +91,7 @@ export const sharedEngine = defineResource({
     randomness,
     localBoidStore,
     sharedMemoryManager,
+    time,
   }: {
     workerTasks: WorkerTasksResource;
     runtimeStore: RuntimeStoreResource;
@@ -96,6 +100,7 @@ export const sharedEngine = defineResource({
     localBoidStore: LocalBoidStoreResource;
     sharedMemoryManager: SharedMemoryManager;
     frameRater: FrameRaterAPI;
+    time: TimeAPI;
   }) => {
     console.log("[sharedEngine] Resource starting (synchronous)...");
     const { config: initialConfig } = runtimeStore.store.getState();
@@ -161,6 +166,7 @@ export const sharedEngine = defineResource({
       sharedMemoryKeywords.boidsPhysics,
       maxBoids
     );
+    const memoryViews = memory.views as unknown as SharedBoidViews;
 
     console.log("[sharedEngine] Created SharedArrayBuffer via manager:", {
       maxBoids,
@@ -212,6 +218,13 @@ export const sharedEngine = defineResource({
             switch (progress.channel) {
               case 'simulation': {
                 simulationChannel.out.notify(progress.event);
+                if (progress.event.type === simulationKeywords.events.updated) {
+                  const stats = getWorkerStats();
+                  time.syncFromWorker({
+                    frame: stats.frame,
+                    simulationTimeMs: stats.simulationTime,
+                  });
+                }
                 break;
               }
             }
@@ -244,12 +257,12 @@ export const sharedEngine = defineResource({
      */
     function getWorkerStats() {
       return {
-        frame: Atomics.load(memory.views.stats, StatsIndex.FRAME_COUNT),
+        frame: Atomics.load(memoryViews.stats as Uint32Array, StatsIndex.FRAME_COUNT),
         simulationTime: Atomics.load(
-          memory.views.stats,
+          memoryViews.stats as Uint32Array,
           StatsIndex.SIMULATION_TIME_MS
         ),
-        aliveCount: Atomics.load(memory.views.stats, StatsIndex.ALIVE_COUNT),
+        aliveCount: Atomics.load(memoryViews.stats as Uint32Array, StatsIndex.ALIVE_COUNT),
       };
     }
 
@@ -368,11 +381,11 @@ export const sharedEngine = defineResource({
       if (boidsStore.removeBoid(boidId)) {
         // Update alive count
         const currentCount = Atomics.load(
-          memory.views.stats,
+          memoryViews.stats as Uint32Array,
           StatsIndex.ALIVE_COUNT
         );
         Atomics.store(
-          memory.views.stats,
+          memoryViews.stats as Uint32Array,
           StatsIndex.ALIVE_COUNT,
           currentCount - 1
         );

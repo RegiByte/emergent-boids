@@ -1,7 +1,9 @@
+import { syncBoidIdCounter } from "@/boids/boid";
 import { Boid } from "@/boids/vocabulary/schemas/entities";
 import { RuntimeStore } from "@/boids/vocabulary/schemas/state";
 import {
   SharedBoidBufferLayout,
+  SharedBoidViews,
   StatsIndex
 } from "@/lib/sharedMemory";
 import { createAtom } from "@/lib/state";
@@ -31,7 +33,7 @@ const createBoidsStore = (sharedMemoryManager: SharedMemoryManager) => {
       const bufferViews = api.getBufferViews();
       if (bufferViews) {
         Atomics.store(
-          bufferViews.stats,
+          bufferViews.stats as Uint32Array,
           StatsIndex.ALIVE_COUNT,
           localStore.count()
         );
@@ -42,7 +44,7 @@ const createBoidsStore = (sharedMemoryManager: SharedMemoryManager) => {
         const bufferViews = api.getBufferViews();
         if (bufferViews) {
           Atomics.store(
-            bufferViews.stats,
+            bufferViews.stats as Uint32Array,
             StatsIndex.ALIVE_COUNT,
             localStore.count()
           );
@@ -55,6 +57,10 @@ const createBoidsStore = (sharedMemoryManager: SharedMemoryManager) => {
       for (const boid of newBoids) {
         localStore.addBoid(boid);
       }
+      // Session 124: CRITICAL - Sync boid ID counter to prevent duplicate IDs!
+      // The worker has its own copy of the boidIdCounter module variable,
+      // so we need to sync it with the highest ID we received from the browser.
+      syncBoidIdCounter(newBoids);
     },
 
     // SharedArrayBuffer access (mutable, shared reference)
@@ -73,15 +79,15 @@ const createBoidsStore = (sharedMemoryManager: SharedMemoryManager) => {
     getBufferLayout: () =>
       sharedMemoryManager.get(sharedMemoryKeywords.boidsPhysics).layout,
     getBufferViews: () =>
-      sharedMemoryManager.get(sharedMemoryKeywords.boidsPhysics).views,
+      sharedMemoryManager.get(sharedMemoryKeywords.boidsPhysics).views as unknown as SharedBoidViews,
     reset: () => {
       localStore.clear();
       const bufferViews = sharedMemoryManager.get(
         sharedMemoryKeywords.boidsPhysics
-      ).views;
+      ).views as unknown as SharedBoidViews;
       if (bufferViews) {
-        Atomics.store(bufferViews.stats, StatsIndex.ALIVE_COUNT, 0);
-        Atomics.store(bufferViews.stats, StatsIndex.FRAME_COUNT, 0);
+        Atomics.store(bufferViews.stats as Uint32Array, StatsIndex.ALIVE_COUNT, 0);
+        Atomics.store(bufferViews.stats as Uint32Array, StatsIndex.FRAME_COUNT, 0);
       }
     },
 
@@ -94,6 +100,9 @@ const createBoidsStore = (sharedMemoryManager: SharedMemoryManager) => {
     },
     count: () => localStore.count(),
     nextIndex: () => localStore.nextIndex(),
+    
+    // Session 121: Memory stats for monitoring
+    getMemoryStats: () => localStore.getMemoryStats(),
   };
 
   return api;

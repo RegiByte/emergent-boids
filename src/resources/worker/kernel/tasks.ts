@@ -47,6 +47,12 @@ export const initializeWorker = defineTask({
       positions1Offset: z.number(),
       velocities0Offset: z.number(),
       velocities1Offset: z.number(),
+      energy0Offset: z.number(),
+      energy1Offset: z.number(),
+      health0Offset: z.number(),
+      health1Offset: z.number(),
+      stanceFlags0Offset: z.number(),
+      stanceFlags1Offset: z.number(),
       statsOffset: z.number(),
     }),
     initialBoids: z.array(boidSchema), // Full Boid objects (can't parse complex objects with Zod)

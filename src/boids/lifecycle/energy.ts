@@ -31,8 +31,10 @@ export function updateBoidEnergy(
       // No passive change, only from food sources
       return boid.energy;
     } else {
-      // No energy loss while flocking/seeking mate (only when fleeing)
-      return boid.energy;
+      // Session 122: Prey MUST lose some energy even when safe
+      // Otherwise they never drop below 50% and never seek food!
+      // Lose normal energy rate (same as predators when active)
+      return boid.energy - energyLossRate * deltaSeconds;
     }
   }
 }

@@ -35,6 +35,29 @@ import type {
 
 let boidIdCounter = 0;
 
+/**
+ * Session 124: Sync boid ID counter based on existing boids
+ * This is CRITICAL when loading boids from another source (e.g., worker receiving from browser)
+ * Without this, new boids would get duplicate IDs!
+ */
+export function syncBoidIdCounter(boids: { id: string }[]) {
+  let maxId = 0;
+  for (const boid of boids) {
+    // Extract number from "boid-123" format
+    const match = boid.id.match(/^boid-(\d+)$/);
+    if (match) {
+      const id = parseInt(match[1], 10);
+      if (id >= maxId) {
+        maxId = id + 1;
+      }
+    }
+  }
+  if (maxId > boidIdCounter) {
+    console.log(`[syncBoidIdCounter] Updating counter from ${boidIdCounter} to ${maxId}`);
+    boidIdCounter = maxId;
+  }
+}
+
 export type Force = {
   force: Vector2;
   weight: number;
@@ -304,8 +327,10 @@ const stanceRules = {
     ruleKeywords.alignment,
     ruleKeywords.cohesion,
     ruleKeywords.avoidObstacles,
+    ruleKeywords.seekFood
   ],
   [stanceKeywords.hunting]: [
+    ruleKeywords.seekFood,
     ruleKeywords.chase,
     ruleKeywords.separation,
     ruleKeywords.avoidObstacles,
@@ -367,14 +392,23 @@ function updatePredator(boid: Boid, context: BoidUpdateContext): void {
   for (const rule of activeRules) {
     switch (rule) {
       case ruleKeywords.seekFood: {
-        // Seek food to recover energy
-        const foodSeek = rules.seekFood(boid, context);
-        if (foodSeek.targetFoodId) {
-          const foodSeekingForce = foodSeek.force;
-          forcesCollector.collect({
-            force: foodSeekingForce,
-            weight: 2.5,
-          });
+        // Session 121: Seek food to recover energy (only if hungry)
+        // While hunting: seek food if energy < 70% (opportunistic)
+        // While idle: always seek food (dedicated foraging)
+        const shouldSeekFood = stance === stanceKeywords.idle || 
+          (boid.energy / boid.phenotype.maxEnergy) < 0.7;
+        
+        if (shouldSeekFood) {
+          const foodSeek = rules.seekFood(boid, context);
+          if (foodSeek.targetFoodId) {
+            const foodSeekingForce = foodSeek.force;
+            // Higher weight when idle (dedicated foraging), lower when hunting (opportunistic)
+            const weight = stance === stanceKeywords.idle ? 2.5 : 1.5;
+            forcesCollector.collect({
+              force: foodSeekingForce,
+              weight,
+            });
+          }
         }
         break;
       }
@@ -390,10 +424,11 @@ function updatePredator(boid: Boid, context: BoidUpdateContext): void {
         });
 
         if (targetFood) {
+          // Session 123: Use CONSUMPTION radius so boids get close enough to actually eat!
           const orbitForce = rules.orbitFood(
             boid,
             targetFood.position,
-            FOOD_CONSTANTS.FOOD_EATING_RADIUS,
+            FOOD_CONSTANTS.FOOD_CONSUMPTION_RADIUS, // Was FOOD_EATING_RADIUS (30px), now 20px
             context
           );
           forcesCollector.collect({
@@ -588,10 +623,11 @@ function updatePrey(boid: Boid, context: BoidUpdateContext): void {
         });
 
         if (targetFood) {
+          // Session 123: Use CONSUMPTION radius so boids get close enough to actually eat!
           const orbitForce = rules.orbitFood(
             boid,
             targetFood.position,
-            FOOD_CONSTANTS.FOOD_EATING_RADIUS,
+            FOOD_CONSTANTS.FOOD_CONSUMPTION_RADIUS, // Was FOOD_EATING_RADIUS (30px), now 20px
             context
           );
           forcesCollector.collect({

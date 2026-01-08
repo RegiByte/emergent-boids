@@ -217,7 +217,7 @@ export const stableEcosystemProfile: SimulationProfile = {
     reproductionEnergyThreshold: 0.4, // Need 40% energy to seek mates (was 0.5)
     reproductionCooldownFrames: 90, // 3 time passages (~3 seconds) cooldown (was 5)
     matingBuildupFrames: 60, // Must stay close to mate for 2 seconds before reproducing
-    eatingCooldownFrames: 60, // Predators must wait 2 seconds after eating
+    eatingCooldownFrames: 15, // Session 123: Reduced from 60 to 15 (~0.5 seconds between bites)
     attackCooldownFrames: 90, // Predators must wait 3 seconds between attacks
   },
 
@@ -316,7 +316,7 @@ export const stableEcosystemProfile: SimulationProfile = {
       baseGenome: {
         traits: {
           speed: 0.4, // 40% of maxSpeed (4.0)
-          force: 0.4, // 40% of maxForce (0.2)
+          force: 0.41, // 40% of maxForce (0.2)
           vision: 0.5,
           size: 0.5, // Average
           aggression: 0.3,
@@ -382,7 +382,7 @@ export const stableEcosystemProfile: SimulationProfile = {
       // longevity = (80 - 100) / 200 = -0.1 → clamp to 0.0
       baseGenome: {
         traits: {
-          speed: 0.5, // 50% of maxSpeed (5.0) - fast solo
+          speed: 0.42, // 50% of maxSpeed (5.0) - fast solo
           force: 0.3, // 30% of maxForce (0.15)
           vision: 0.5,
           size: 1.1, // Slightly larger
@@ -420,7 +420,7 @@ export const stableEcosystemProfile: SimulationProfile = {
         type: "asexual", // Solo reproduction
         offspringCount: 1,
         offspringEnergyBonus: 0,
-        cooldownFrames: 150, // 150 frames = 5 seconds (longer cooldown for asexual)
+        cooldownFrames: 2000,
       },
 
       limits: {
@@ -449,7 +449,7 @@ export const stableEcosystemProfile: SimulationProfile = {
       // longevity = (100 - 100) / 200 = 0.0
       baseGenome: {
         traits: {
-          speed: 0.39, // 39% of maxSpeed (3.9) - slower, defensive
+          speed: 0.40, // 39% of maxSpeed (3.9) - slower, defensive
           force: 0.24, // 24% of maxForce (0.12)
           vision: 0.5,
           size: 0.95, // Slightly smaller, defensive
@@ -523,7 +523,7 @@ export const stableEcosystemProfile: SimulationProfile = {
       // longevity = (100 - 100) / 200 = 0.0
       baseGenome: {
         traits: {
-          speed: 0.4, // 40% of maxSpeed (4) - CRITICAL for catch rate
+          speed: 0.48, // 40% of maxSpeed (4) - CRITICAL for catch rate
           force: 0.4, // 40% of maxForce (0.2) - high turning
           vision: 0.5,
           size: 1.3, // Larger and menacing

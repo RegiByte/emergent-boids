@@ -217,13 +217,14 @@ export const engine = defineResource({
       sharedMemoryKeywords.boidsPhysics,
       initialConfig.parameters.maxBoids
     );
-    syncBoidsToSharedMemory(boidsPhysicsMemory.views, boidsStore.boids);
-    initializeBoidsStats(boidsPhysicsMemory.views, {
+    const physicsViews = boidsPhysicsMemory.views as unknown as SharedBoidViews;
+    syncBoidsToSharedMemory(physicsViews, boidsStore.boids);
+    initializeBoidsStats(physicsViews, {
       aliveCount: boidsStore.count(),
       frameCount: 0,
       simulationTimeMs: 0,
     });
-    setActiveBufferIndex(boidsPhysicsMemory.views, bufferViewIndexes.front);
+    setActiveBufferIndex(physicsViews, bufferViewIndexes.front);
 
     // Create spatial hash (cell size = perception radius for optimal performance)
     const boidSpatialHash = createSpatialHash<Boid>(
@@ -235,7 +236,7 @@ export const engine = defineResource({
     const foodSourceSpatialHash = createSpatialHash<FoodSource>(
       initialWorld.width,
       initialWorld.height,
-      FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5
+      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS // Session 123: Use detection radius for proper food sensing!
     );
     const obstacleSpatialHash = createSpatialHash<Obstacle>(
       initialWorld.width,
@@ -676,9 +677,10 @@ export const engine = defineResource({
             )
           : [];
 
+      // Session 121: Fixed flock detection - use context boids, not filtered ones
       const nearbyFlock: ItemWithDistance<Boid>[] = [];
       const boidsToCheck =
-        role === roleKeywords.predator ? nearbyPredators : nearbyPrey;
+        role === roleKeywords.predator ? predators : prey; // Use context boids!
 
       for (const nearbyBoid of boidsToCheck) {
         if (
@@ -938,7 +940,7 @@ export const engine = defineResource({
       removeBoid,
       getBoidById,
       checkCatches,
-      getBufferViews: () => boidsPhysicsMemory.views,
+      getBufferViews: () => boidsPhysicsMemory.views as unknown as SharedBoidViews,
     } satisfies BoidEngine;
 
     return api;

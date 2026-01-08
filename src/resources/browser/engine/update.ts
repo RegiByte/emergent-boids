@@ -9,7 +9,7 @@ import {
 import { getBoidsByRole } from "@/boids/filters";
 import { FOOD_CONSTANTS } from "@/boids/food";
 import { updateBoidAge } from "@/boids/lifecycle/aging";
-import { updateBoidCooldowns } from "@/boids/lifecycle/cooldowns";
+// Session 122: Removed updateBoidCooldowns import - cooldowns now handled per-frame, not staggered
 import { updateBoidEnergy } from "@/boids/lifecycle/energy";
 import {
   getDeathCause,
@@ -21,7 +21,10 @@ import { getNearbyBoidsByRole } from "@/boids/mappings";
 import { applyMatingResult } from "@/boids/mating";
 import { isReadyToMate } from "@/boids/predicates";
 import { SpatialHash } from "@/boids/spatialHash";
-import { lifecycleKeywords, profilerKeywords } from "@/boids/vocabulary/keywords";
+import {
+  lifecycleKeywords,
+  profilerKeywords,
+} from "@/boids/vocabulary/keywords";
 import {
   Boid,
   DeathMarker,
@@ -91,7 +94,7 @@ export const computeOpsLayout = ({
 
   // Then update obstacles
   layout.obstaclesToUpdate = obstaclesCount;
-  layout.opsRanges.obstacles = [totalOps, totalOps + layout.obstaclesToUpdate];
+  layout.opsRanges.obstacles = [totalOps, totalOps + layout.obstaclesToUpdate - 1];
   totalOps += layout.obstaclesToUpdate;
 
   // Then update food sources
@@ -136,7 +139,9 @@ export const getActiveOperation = (
     const range = opsRanges[key as keyof FrameUpdateOpsLayout["opsRanges"]];
     // Skip inactive ops
     if (range[0] <= 0 && range[1] <= 0) continue;
-    if (index >= range[0] && index < range[1]) {
+    // Session 122: CRITICAL FIX - ranges are INCLUSIVE [start, end]
+    // Must use <= not < to include the last item!
+    if (index >= range[0] && index <= range[1]) {
       const operation =
         rangeToOperationMap[key as keyof typeof rangeToOperationMap];
       if (operation) {
@@ -210,6 +215,7 @@ export const checkBoidLifecycle = (
   if (isDead(boid)) {
     const maxAge = boid.phenotype.maxAge;
     const deathReason = getDeathCause(boid, maxAge);
+    // Death detected (Session 124)
     collectEvent({
       type: "lifecycle:death",
       boidId: boid.id,
@@ -237,8 +243,9 @@ export const checkBoidLifecycle = (
         continue;
 
       // Check distance
-      if (nearbyFood.distance >= FOOD_CONSTANTS.FOOD_CONSUMPTION_RADIUS)
+      if (nearbyFood.distance >= FOOD_CONSTANTS.FOOD_CONSUMPTION_RADIUS) {
         continue;
+      }
 
       // Calculate consumption
       const consumptionRate =
@@ -248,7 +255,7 @@ export const checkBoidLifecycle = (
 
       const energyGain = Math.min(consumptionRate, food.energy);
 
-      // Apply energy to boid immediately
+      // Apply energy to boid immediately (Session 124)
       boid.energy = Math.min(
         boid.energy + energyGain,
         boid.phenotype.maxEnergy
@@ -272,11 +279,14 @@ export const checkBoidLifecycle = (
   // 4. Regenerate health (cheap, passive)
   boid.health = regenerateHealth(boid).health;
 
-  // 5. Update cooldowns (cheap)
-  const cooldowns = updateBoidCooldowns(boid);
-  boid.reproductionCooldown = cooldowns.reproductionCooldown;
-  boid.eatingCooldownFrames = cooldowns.eatingCooldown;
-  boid.attackCooldownFrames = cooldowns.attackCooldown;
+  // 5. Session 122: REMOVED cooldown updates from here
+  // Cooldowns are now ONLY updated in the per-frame handler (every frame)
+  // This staggered function should only handle SLOW lifecycle events:
+  // - Age progression
+  // - Energy drain
+  // - Death checks
+  // - Reproduction attempts
+  // NOT fast-ticking counters like cooldowns!
 
   // 6. Update seeking state (cheap)
   boid.seekingMate = isReadyToMate(boid, parameters, speciesConfig);
@@ -359,7 +369,10 @@ export const updateEngine = (
       const key = op[0];
       const range = op[1];
       const index = i - range[0];
-      if (index >= 0 && index < range[1] - range[0]) {
+      // Session 121: Fixed off-by-one error - should be <= not <
+      // Range is [start, end] inclusive, so range[1] - range[0] is the count-1
+      // We need to process all indices from 0 to count-1, so use <=
+      if (index >= 0 && index <= range[1] - range[0]) {
         const operationHandler =
           operations[key as keyof OperationsMapWithHandlers];
         if (operationHandler) {
@@ -427,7 +440,7 @@ export const updateBoids = (
       boid.position,
       context.config.world,
       maxNeighborsLookup,
-      FOOD_CONSTANTS.FOOD_EATING_RADIUS * 2
+      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS // Session 123: Use detection radius, not eating radius!
     );
     const nearbyObstacles = context.obstacleSpatialHash.getNearbyItems(
       boid.position,
@@ -442,7 +455,8 @@ export const updateBoids = (
     );
     const { nearbyPrey, nearbyPredators } = getNearbyBoidsByRole(
       boid,
-      nearbyBoids
+      nearbyBoids,
+      context.config.species // Session 123: Pass species config for proper role detection!
     );
     // Buildup local context for boid update
     const localContext = {
@@ -456,6 +470,8 @@ export const updateBoids = (
     } satisfies BoidUpdateContext;
     // Update boid
     handlers.updateBoid(boid, localContext);
+
+   
 
     // Update trail
     const shouldUpdateTrail =
@@ -477,9 +493,8 @@ export const updateBoids = (
     const shouldUpdateLifecycle =
       boid.index % context.staggerFrames.lifecycle ===
       context.currentFrame % context.staggerFrames.lifecycle;
+
     if (shouldUpdateLifecycle) {
-      // Note: matedBoidsThisFrame and collectEvent are passed from engine context
-      // These will be wired up in engine.ts
       handlers.checkBoidLifecycle(
         boid,
         localContext,
@@ -565,7 +580,7 @@ export const createBaseFrameUpdateContext = ({
     staggerFrames: {
       tail: 3,
       behavior: 20,
-      lifecycle: 60, // Check each boid once every 60 frames
+      lifecycle: 25, // Session 121: Faster lifecycle checks for eating/energy
     },
     constraints: {
       maxNeighborsLookup,

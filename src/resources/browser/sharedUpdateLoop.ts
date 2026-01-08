@@ -34,7 +34,7 @@ export const sharedUpdateLoop = defineResource({
   dependencies: ["frameRater", "engine", "time"],
   start: ({
     frameRater,
-    engine,
+    engine: _engine,
     time,
   }: {
     frameRater: FrameRaterAPI;
@@ -98,24 +98,7 @@ export const sharedUpdateLoop = defineResource({
     // );
 
     const animate = (_timestamp: number) => {
-      // if (!isRunning) return;
-
-      // const currentTime = timestamp;
-      // const realDeltaMs = currentTime - lastFrameTime;
-      // lastFrameTime = currentTime;
-
-      if (!time.getState().isPaused) {
-
-        const stats = engine.getWorkerStats();
-        updateSubscription.notify({
-          type: "frame",
-          frame: stats.frame,
-          fps: 30,
-          simulationTime: stats.simulationTime,
-        });
-      }
-
-      // animationId = requestAnimationFrame(animate);
+       // No-op for this update loop
     };
 
     const start = (

@@ -358,7 +358,6 @@ export function applyMatingResult(
     }
 
     case "building_up": {
-      console.log("building up", result.updates);
       applyBoidUpdates(boid, result.updates);
       break;
     }

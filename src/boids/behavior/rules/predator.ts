@@ -24,10 +24,9 @@ const { predator, substates, reasons } = behaviorKeywords;
  * Eating Rule (Highest Priority)
  *
  * Maps: Priority 1 from updatePredatorStance
- * Eat when food is nearby or on cooldown.
+ * Eat when food is within eating range (30px).
  *
- * FIXED (Session 75): Use actual eating radius, not detection radius.
- * Old code used 1.5x which caused eating stance to trigger too far away.
+ * Session 123: Score boosted to 950 to ensure it beats opportunisticEatingRule (880 max)
  */
 export const eatingRule: BehaviorRule = {
   metadata: {
@@ -39,14 +38,14 @@ export const eatingRule: BehaviorRule = {
   evaluate: (ctx) => {
     if (ctx.nearbyFoodCount === 0) return null;
     if (ctx.closestFoodDistance === null) return null;
-    // Use actual eating radius (30px), not detection radius (45px)
+    // Use actual eating radius (30px)
     if (ctx.closestFoodDistance > FOOD_CONSTANTS.FOOD_EATING_RADIUS)
       return null; // Too far to eat
 
     return {
       stance: predator.eating,
       substate: null,
-      score: 900,
+      score: 950, // Session 123: Boosted to beat opportunisticEatingRule
       reason: reasons.food_nearby,
       urgent: false,
       ruleName: eatingRule.metadata.name,
@@ -57,8 +56,11 @@ export const eatingRule: BehaviorRule = {
 /**
  * Chase Commitment Rule (NEW - Target Tracking)
  *
- * Continue chasing locked target with high priority.
+ * Continue chasing locked target with moderate priority.
  * Lock strength increases score (commitment bonus).
+ * 
+ * Session 123: Reduced max score from 1000 to 800 so food can interrupt!
+ * Predators should abandon chase when food is available.
  */
 export const chaseCommitmentRule: BehaviorRule = {
   metadata: {
@@ -70,14 +72,14 @@ export const chaseCommitmentRule: BehaviorRule = {
   evaluate: (ctx) => {
     if (!ctx.hasLockedTarget) return null;
 
-    // Strong preference for continuing chase
-    // Lock strength 1.0 = +300 score (very high priority)
-    const commitmentBonus = ctx.targetLockStrength * 300;
+    // Moderate preference for continuing chase
+    // Session 123: Reduced from 300 to 150 so food (850-1000) can interrupt
+    const commitmentBonus = ctx.targetLockStrength * 150;
 
     return {
       stance: predator.hunting,
       substate: substates.chasing,
-      score: 700 + commitmentBonus,
+      score: 600 + commitmentBonus, // Max 750, beaten by food (850+)
       reason: reasons.locked_on_target,
       urgent: false,
       ruleName: chaseCommitmentRule.metadata.name,
@@ -198,20 +200,74 @@ export const seekingMateRule: BehaviorRule = {
 };
 
 /**
+ * Opportunistic Eating Rule (Session 123 - CRITICAL FIX)
+ *
+ * Predators should ALWAYS prefer nearby food over hunting!
+ * This restores the old behavior: even mid-hunt, if food appears nearby,
+ * the predator will cancel the hunt and go eat.
+ *
+ * This rule activates when:
+ * - Food is within detection range (150px) but NOT eating range (30px)
+ * - Energy is not full (< 90%)
+ *
+ * When food is within eating range, eatingRule (score 950) takes over.
+ */
+export const opportunisticEatingRule: BehaviorRule = {
+  metadata: {
+    name: "opportunistic_eating",
+    role: roleKeywords.predator,
+    description: "Seek nearby food - interrupts hunting!",
+    enabled: true,
+  },
+  evaluate: (ctx) => {
+    // Must have food nearby
+    if (ctx.nearbyFoodCount === 0) return null;
+    
+    // If food is within eating range, let eatingRule handle it
+    if (ctx.closestFoodDistance !== null && 
+        ctx.closestFoodDistance <= FOOD_CONSTANTS.FOOD_EATING_RADIUS) {
+      return null; // Defer to eatingRule
+    }
+    
+    // Only seek if not at full energy (always eat if ANY hunger)
+    if (ctx.energyRatio > 0.9) return null;
+
+    // Calculate score based on hunger
+    // This ensures predators prioritize food over hunting
+    // Score range: 800-880 (always beats hunting 600, chase 750)
+    const hungerFactor = 1.0 - ctx.energyRatio; // 0.1 to 1.0
+    const baseScore = 800;
+    const hungerBonus = hungerFactor * 80; // 8-80 bonus
+    
+    return {
+      stance: predator.idle, // Use idle stance which has seekFood rule
+      substate: substates.wandering,
+      score: baseScore + hungerBonus, // Max 880, below eatingRule (950)
+      reason: reasons.food_nearby,
+      urgent: ctx.energyRatio < 0.3, // Urgent if very hungry
+      ruleName: opportunisticEatingRule.metadata.name,
+    };
+  },
+};
+
+/**
  * Idle Rule (with Hysteresis)
  *
  * Maps: Priority 4 from updatePredatorStance
- * Rest when energy is low, stay resting until recovered.
+ * Rest when energy is low AND no food available.
  * Hysteresis: enter at 30%, exit at 50%
  */
 export const idleRule: BehaviorRule = {
   metadata: {
     name: "idle",
     role: roleKeywords.predator,
-    description: "Conserve energy when low",
+    description: "Conserve energy when low and no food available",
     enabled: true,
   },
   evaluate: (ctx) => {
+    // Only rest if no food is available (otherwise use opportunisticEatingRule)
+    if (ctx.nearbyFoodCount > 0) return null;
+
     // Hysteresis: enter at 30%, exit at 50%
     if (ctx.currentStance === predator.idle) {
       // Already idle: stay until energy recovers to 50%
@@ -273,6 +329,7 @@ export const huntingRule: BehaviorRule = {
 // Export all predator rules
 export const predatorRules: BehaviorRule[] = [
   eatingRule,
+  opportunisticEatingRule, // Session 123: Interrupts hunting when food nearby!
   chaseCommitmentRule,
   newHuntRule,
   matingRule,

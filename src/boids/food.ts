@@ -7,11 +7,11 @@
 
 export const FOOD_CONSTANTS = {
   // Prey food sources (plant-based, spawns periodically)
-  PREY_FOOD_SPAWN_INTERVAL_TICKS: 3, // Spawn every 3 ticks (~3 seconds) - INCREASED from 5
+  PREY_FOOD_SPAWN_INTERVAL_TICKS: 2, // Spawn every 3 ticks (~3 seconds) - INCREASED from 5
   PREY_FOOD_SPAWN_COUNT: 5, // Spawn 5 sources per interval - INCREASED from 4
-  PREY_FOOD_INITIAL_ENERGY: 80, // Energy per prey food source - INCREASED from 50
-  PREY_FOOD_CONSUMPTION_RATE: 10, // Energy consumed per tick per boid - INCREASED from 5
-  MAX_PREY_FOOD_SOURCES: 15, // Maximum 12 on map at once - INCREASED from 8
+  PREY_FOOD_INITIAL_ENERGY: 160, // Energy per prey food source - INCREASED from 50
+  PREY_FOOD_CONSUMPTION_RATE: 25, // Energy consumed per tick per boid - INCREASED from 5
+  MAX_PREY_FOOD_SOURCES: 50, // Maximum 50 on map at once
 
   // Predator food sources (from catches)
   PREDATOR_FOOD_FROM_PREY_MULTIPLIER: 0.8, // 80% of prey's remaining energy

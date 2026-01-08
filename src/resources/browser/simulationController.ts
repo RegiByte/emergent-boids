@@ -23,7 +23,11 @@ import {
   ControlEffect,
 } from "../../boids/vocabulary/schemas/effects.ts";
 import { LocalBoidStoreResource } from "./localBoidStore.ts";
-import { Boid } from "@/boids/vocabulary/schemas/entities.ts";
+import {
+  Boid,
+  FoodSource,
+  Obstacle,
+} from "@/boids/vocabulary/schemas/entities.ts";
 
 // ============================================
 // Event Handlers (Pure Functions)
@@ -300,92 +304,161 @@ const handlers = {
     ];
   },
   // Simulation events
-  [simulationKeywords.events.boidsCaught]: (_state, event) => {
-    console.log("[RuntimeController] Boids caught:", event.catches);
+  [simulationKeywords.events.boidsCaught]: (_state, _event) => {
+    // Note: Prey removal is handled by boidsDied event
+    // This event is for analytics/statistics only
     return [
       // TODO: plug this in analytics
     ];
   },
   [simulationKeywords.events.boidsDied]: (_state, event) => {
-    console.log("[RuntimeController] Boids died:", event.boids);
-    return [
-      // TODO: plug this in analytics
-    ];
+
+    // Session 121: CRITICAL FIX - Remove dead boids from local store!
+    // Without this, dead boids become "ghosts" that keep rendering and reproducing
+    console.log('boids died!', event.boids.map(boid => `[${boid.typeId}] ${boid.id}: ${boid.reason}`))
+    const removeBoidEffects = event.boids.map((boid) => ({
+      type: effectKeywords.engine.removeBoid,
+      boidId: boid.id,
+    }));
+
+    return removeBoidEffects;
   },
   [simulationKeywords.events.boidsReproduced]: (_state, event) => {
-    console.log("[RuntimeController] Boids reproduced:", event.boids);
-    const addBoidEffects = event.boids.flatMap(boid => boid.offspring.map(b => ({
-      type: effectKeywords.engine.addBoid,
-      boid: b,
-    })));
+    const addBoidEffects = event.boids.flatMap((boid) =>
+      boid.offspring.map((b) => ({
+        type: effectKeywords.engine.addBoid,
+        boid: b,
+      }))
+    );
+    if (addBoidEffects.length > 0) {
+      console.log('addBoidEffects', addBoidEffects
+        .filter(effect => effect.boid.typeId !== 'independent')
+        .map(effect => `[${effect.boid.typeId}] ${effect.boid.id}`).join('\n'))
+    
+    }
     // TODO: plug this in analytics
     return addBoidEffects;
   },
-  [simulationKeywords.events.boidsStanceChanged]: (_state, event) => {
-    console.log("[RuntimeController] Boids stance changed:", event.boids);
+  [simulationKeywords.events.boidsStanceChanged]: (_state, _event) => {
     return [
       // TODO: plug this in analytics
     ];
   },
-  [simulationKeywords.events.workerStateUpdated]: (_state, event) => {
-    console.log("[RuntimeController] Worker state updated:", event.updates.length);
+  [simulationKeywords.events.workerStateUpdated]: (_state, _event) => {
+    // Worker sends partial boid updates (for sync)
+    // Currently not needed as we use SharedArrayBuffer for physics
+    return [];
+  },
+  [simulationKeywords.events.foodSourcesCreated]: (state, event, ctx) => {
+
+    // Session 121: Add food sources to runtime store!
+    // Without this, renderer can't see them
     return [
       {
-        type: effectKeywords.localBoidStore.syncWorkerState,
-        updates: event.updates,
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          draft.simulation.foodSources.push(...event.foodSources);
+        }),
       },
     ];
   },
-  [simulationKeywords.events.foodSourcesCreated]: (_state, event) => {
-    console.log("[RuntimeController] Food sources created:", event.foodSources);
+  [simulationKeywords.events.foodSourcesUpdated]: (state, event, ctx) => {
+    return [
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          for (const foodSource of event.foodSources) {
+            const existing = draft.simulation.foodSources.find(
+              (f) => f.id === foodSource.id
+            );
+            if (existing) {
+              for (const key in foodSource) {
+                if (key in existing) {
+                  (existing as any)[key] = foodSource[key as keyof FoodSource];
+                }
+              }
+            }
+          }
+        }),
+      },
+    ];
+  },
+  [simulationKeywords.events.foodSourceConsumed]: (state, event, ctx) => {
+    return [
+      // TODO: plug this in analytics
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          draft.simulation.foodSources = draft.simulation.foodSources.filter(
+            (f) => f.id !== event.foodSourceId
+          );
+        }),
+      },
+    ];
+  },
+  [simulationKeywords.events.obstaclesAdded]: (state, event, ctx) => {
+    return [
+      // TODO: plug this in analytics
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          draft.simulation.obstacles.push(...event.obstacles);
+        }),
+      },
+    ];
+  },
+  [simulationKeywords.events.obstaclesUpdated]: (state, event, ctx) => {
+    return [
+      // TODO: plug this in analytics
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          for (const obstacle of event.obstacles) {
+            const existing = draft.simulation.obstacles.find(
+              (o) => o.id === obstacle.id
+            );
+            if (existing) {
+              for (const key in obstacle) {
+                if (key in existing) {
+                  (existing as any)[key] = obstacle[key as keyof Obstacle];
+                }
+              }
+            }
+          }
+        }),
+      },
+    ];
+  },
+  [simulationKeywords.events.obstaclesRemoved]: (state, event, ctx) => {
+    return [
+      // TODO: plug this in analytics
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          draft.simulation.obstacles = draft.simulation.obstacles.filter(
+            (o) => !event.obstacleIds.includes(o.id)
+          );
+        }),
+      },
+    ];
+  },
+  [simulationKeywords.events.obstaclesCleared]: (state, _event, ctx) => {
+    return [
+      // TODO: plug this in analytics
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          draft.simulation.obstacles = [];
+        }),
+      },
+    ];
+  },
+  [simulationKeywords.events.timeScaleChanged]: (_state, _event) => {
     return [
       // TODO: plug this in analytics
     ];
   },
-  [simulationKeywords.events.foodSourcesUpdated]: (_state, event) => {
-    console.log("[RuntimeController] Food sources updated:", event.foodSources);
-    return [
-      // TODO: plug this in analytics
-    ];
-  },
-  [simulationKeywords.events.foodSourceConsumed]: (_state, event) => {
-    console.log("[RuntimeController] Food source consumed:", event);
-    return [
-      // TODO: plug this in analytics
-    ];
-  },
-  [simulationKeywords.events.obstaclesAdded]: (_state, event) => {
-    console.log("[RuntimeController] Obstacles added:", event.obstacles);
-    return [
-      // TODO: plug this in analytics
-    ];
-  },
-  [simulationKeywords.events.obstaclesUpdated]: (_state, event) => {
-    console.log("[RuntimeController] Obstacles updated:", event.obstacles);
-    return [
-      // TODO: plug this in analytics
-    ];
-  },
-  [simulationKeywords.events.obstaclesRemoved]: (_state, event) => {
-    console.log("[RuntimeController] Obstacles removed:", event.obstacleIds);
-    return [
-      // TODO: plug this in analytics
-    ];
-  },
-  [simulationKeywords.events.obstaclesCleared]: (_state, event) => {
-    console.log("[RuntimeController] Obstacles cleared:", event);
-    return [
-      // TODO: plug this in analytics
-    ];
-  },
-  [simulationKeywords.events.timeScaleChanged]: (_state, event) => {
-    console.log("[RuntimeController] Time scale changed:", event.timeScale);
-    return [
-      // TODO: plug this in analytics
-    ];
-  },
-  [simulationKeywords.events.initialized]: (_state, event) => {
-    console.log("[RuntimeController] Simulation initialized:", event);
+  [simulationKeywords.events.initialized]: (_state, _event) => {
     return [
       // TODO: plug this in analytics
     ];
@@ -443,6 +516,7 @@ const executors = {
   },
 
   [effectKeywords.engine.removeBoid]: (effect, ctx) => {
+    console.log("[RuntimeController] Removing boid:", effect.boidId);
     ctx.engine.removeBoid(effect.boidId);
   },
 
@@ -574,7 +648,7 @@ function createSimulationGateway(
     return `spawn-${now}-${id}`;
   };
 
-  const runtime = createControlLoop({
+  const gateway = createControlLoop({
     getState: () => store.getState(),
     handlers,
     executors: executors,
@@ -595,7 +669,7 @@ function createSimulationGateway(
     },
   });
 
-  return runtime;
+  return gateway;
 }
 
 export const simulationGateway = defineResource({
@@ -625,7 +699,7 @@ export const simulationGateway = defineResource({
     engine: BoidEngine;
     localBoidStore: LocalBoidStoreResource;
   }) => {
-    const controller = createSimulationGateway(
+    const gateway = createSimulationGateway(
       runtimeStore.store,
       analyticsStore,
       profileStore,
@@ -639,7 +713,7 @@ export const simulationGateway = defineResource({
     // based on simulation time (respects pause/scale)
     // No need to start a timer here
 
-    return controller;
+    return gateway;
   },
   halt: (controller) => {
     controller.dispose();

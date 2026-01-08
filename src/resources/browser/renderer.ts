@@ -1,6 +1,8 @@
 import { findBoidWhere, iterateBoids } from "@/boids/iterators.ts";
 import { Boid, BoidsById } from "@/boids/vocabulary/schemas/entities.ts";
-import { getActivePositions, getActiveVelocities } from "@/lib/sharedMemory.ts";
+import { stanceKeywords } from "@/boids/vocabulary/keywords.ts";
+import { BoidStance } from "@/boids/vocabulary/schemas/primitives.ts";
+import { getActivePositions, getActiveVelocities, getActiveEnergy, getActiveHealth, getActiveStanceFlags, unpackStanceFlags, SharedBoidViews } from "@/lib/sharedMemory.ts";
 import { createUpdateLoop } from "@/lib/updateLoop.ts";
 import { sharedMemoryKeywords } from "@/lib/workerTasks/vocabulary.ts";
 import {
@@ -59,7 +61,7 @@ const createRenderFrameContext = ({
   const atmosphereSettings = activeEvent?.settings || base;
 
   const frameBoids = {} as BoidsById;
-  const framePhysics = boidsPhysicsMemory.views;
+  const framePhysics = boidsPhysicsMemory.views as unknown as SharedBoidViews;
   const physicsToIndex = {} as Record<string, number>;
   const activePositions = usesSharedMemory
     ? getActivePositions(framePhysics)
@@ -67,6 +69,27 @@ const createRenderFrameContext = ({
   const activeVelocities = usesSharedMemory
     ? getActiveVelocities(framePhysics)
     : null;
+  // Session 125: Read observer state from SharedArrayBuffer
+  const activeEnergy = usesSharedMemory
+    ? getActiveEnergy(framePhysics)
+    : null;
+  const activeHealth = usesSharedMemory
+    ? getActiveHealth(framePhysics)
+    : null;
+  const activeStanceFlags = usesSharedMemory
+    ? getActiveStanceFlags(framePhysics)
+    : null;
+
+  // Stance number to string mapping (Session 125)
+  const numberToStance: Record<number, BoidStance> = {
+    0: stanceKeywords.flocking,
+    1: stanceKeywords.fleeing,
+    2: stanceKeywords.hunting,
+    3: stanceKeywords.eating,
+    4: stanceKeywords.mating,
+    5: stanceKeywords.seeking_mate,
+    6: stanceKeywords.idle,
+  };
 
   for (const boid of iterateBoids(boids)) {
     const index = boid.index;
@@ -86,12 +109,41 @@ const createRenderFrameContext = ({
       velocity.x = activeVelocities[index * 2 + 0];
       velocity.y = activeVelocities[index * 2 + 1];
     }
+    
+    // Session 125: Read observer state (energy, health, stance, seekingMate)
+    let energy = boid.energy;
+    let health = boid.health;
+    let stance = boid.stance;
+    let seekingMate = boid.seekingMate;
+    
+    if (usesSharedMemory && activeEnergy && activeHealth && activeStanceFlags) {
+      energy = activeEnergy[index];
+      health = activeHealth[index];
+      const flags = unpackStanceFlags(activeStanceFlags[index]);
+      stance = numberToStance[flags.stance] ?? boid.stance;
+      seekingMate = flags.seekingMate;
+    }
+    
+    // Session 125: Update stanceEnteredAtFrame when stance changes (for visual fade timer)
+    // The browser's local boid store never gets stance updates from worker, so we need to
+    // track stance changes here and update the frame counter so symbols don't fade prematurely
+    let stanceEnteredAtFrame = boid.stanceEnteredAtFrame;
+    if (stance !== boid.stance) {
+      // Stance changed! Update the frame counter to current simulation frame
+      stanceEnteredAtFrame = timeState.simulationFrame;
+    }
+    
     // Merge fresh physics from SharedArrayBuffer
     if (camera.isInViewport(position.x, position.y, 100)) {
       frameBoids[boid.id] = {
         ...boid,
         position,
         velocity,
+        energy,
+        health,
+        stance,
+        seekingMate,
+        stanceEnteredAtFrame, // Session 125: Update frame counter for stance fade timer
       };
       physicsToIndex[boid.id] = boid.index;
     }
@@ -531,7 +583,7 @@ export const renderer = defineResource({
           if (usesSharedMemory) {
             const boidPhysics = getBoidPhysics(
               cachedFollowedBoid.boid.index,
-              boidsPhysicsMemory.views
+              boidsPhysicsMemory.views as unknown as SharedBoidViews
             );
             if (boidPhysics) {
               position.x = boidPhysics.position.x;

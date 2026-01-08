@@ -49,7 +49,6 @@ export const systemConfig = {
   webglRenderer,
   analyticsStore,
   localBoidStore,
-  // lifecycleManager,
   runtimeController: simulationGateway,
   sharedMemoryManager,
 };

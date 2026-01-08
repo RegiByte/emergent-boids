@@ -464,11 +464,13 @@ function selectBestMate(
 
   for (const { item: candidate } of potentialMates) {
     // Eligibility checks (must pass all)
+    // Session 123: Added mateId check - already-paired boids are NOT available!
     if (
       candidate.id === boid.id ||
       candidate.typeId !== boid.typeId ||
       !candidate.seekingMate ||
-      candidate.reproductionCooldown !== 0
+      candidate.reproductionCooldown !== 0 ||
+      candidate.mateId !== null // Session 123: Skip already-paired boids!
     ) {
       continue;
     }
@@ -632,10 +634,15 @@ function selectBestFood(
   boid: Boid,
   context: BoidUpdateContext,
 ): ItemWithDistance<FoodSource> | null {
-  // const profileConfig = context.config.species[boid.typeId];
-  // Filter compatible food sources
+  const speciesConfig = context.config.species[boid.typeId];
+  if (!speciesConfig) return null;
+  
+  const boidRole = speciesConfig.role; // "prey" or "predator"
+  
+  // Filter compatible food sources (Session 121: Fixed to use role, not typeId)
+  // Food sourceType is "prey" or "predator", not species ID
   const compatibleFood = context.nearbyFoodSources.filter((food) => {
-    return food.item.sourceType === boid.typeId && food.item.energy > 0;
+    return food.item.sourceType === boidRole && food.item.energy > 0;
   });
   const detectionRadius = FOOD_CONSTANTS.FOOD_DETECTION_RADIUS;
 

@@ -73,7 +73,11 @@ export type TimeAPI = {
   incrementFrame: () => void;
 
   // Tick (called when a fixed timestep update occurs)
-  tick: () => void;
+  tick: (timestep?: number) => void;
+  
+  // Session 124: Sync time from worker stats (for parallel architecture)
+  // This allows the frontend time to mirror the worker's authoritative time
+  syncFromWorker: (workerStats: { frame: number; simulationTimeMs: number }) => void;
 
   // Reset
   reset: () => void;
@@ -206,6 +210,19 @@ export const time = defineResource({
             // simulationFrame: draft.simulationFrame + 1,
             simulationElapsedMs: elapsedMs,
             simulationElapsedSeconds: elapsedMs / 1000,
+          };
+        });
+      },
+
+      // Session 124: Sync time state from worker (for parallel architecture)
+      // The worker is the authoritative source of time in parallel mode
+      syncFromWorker: (workerStats: { frame: number; simulationTimeMs: number }) => {
+        stateAtom.update((draft) => {
+          return {
+            ...draft,
+            simulationFrame: workerStats.frame,
+            simulationElapsedMs: workerStats.simulationTimeMs,
+            simulationElapsedSeconds: workerStats.simulationTimeMs / 1000,
           };
         });
       },

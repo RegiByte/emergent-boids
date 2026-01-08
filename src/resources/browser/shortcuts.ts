@@ -183,10 +183,6 @@ export const shortcuts = defineResource({
         document.removeEventListener("keydown", api.handleKeyPress);
       },
       handleKeyPress: (event: KeyboardEvent) => {
-        const length = event.key.length;
-        console.log(
-          `[Shortcuts] Handling key press ${spaceOrKey(event.key)} (${length})`
-        );
         const shortcut = shortcuts.find((shortcut) => {
           return shortcut.keymaps.some((option) => {
             const result = evaluateKeymap(option);

@@ -88,6 +88,7 @@ export const workerUpdateLoop = defineResource({
       },
       onStep: (_deltaTime, _scaledDeltaMs) => {
         console.log("[WorkerUpdateLoop] Stepping", _deltaTime, _scaledDeltaMs);
+        workerTime.step()
       },
     });
 

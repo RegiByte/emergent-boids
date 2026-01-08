@@ -4,6 +4,7 @@
 
 import { ItemWithDistance } from "./spatialHash";
 import { Boid } from "./vocabulary/schemas/entities";
+import { SpeciesConfig } from "./vocabulary/schemas/species";
 
 export function boidsBySpecies(boids: Boid[]) {
   return boids.reduce(
@@ -30,9 +31,16 @@ export function boidsToStance(boids: Boid[]) {
   return boids.map((boid) => boid.stance);
 }
 
+/**
+ * Session 123: CRITICAL FIX - Categorize nearby boids by their ACTUAL ROLE, not species ID!
+ * 
+ * Previously this function used typeId matching which caused predators to attack each other.
+ * Now it properly uses the species config to determine if a boid is prey or predator.
+ */
 export function getNearbyBoidsByRole(
   boid: Boid,
   nearbyBoids: ItemWithDistance<Boid>[],
+  speciesConfig?: Record<string, SpeciesConfig>,
 ) {
   const result = {
     nearbyPrey: [] as ItemWithDistance<Boid>[],
@@ -40,6 +48,23 @@ export function getNearbyBoidsByRole(
   };
 
   for (const { item: nearbyBoid, distance } of nearbyBoids) {
+    // Skip self
+    if (nearbyBoid.id === boid.id) continue;
+    
+    // If we have species config, use actual roles
+    if (speciesConfig) {
+      const nearbyConfig = speciesConfig[nearbyBoid.typeId];
+      if (nearbyConfig) {
+        if (nearbyConfig.role === "prey") {
+          result.nearbyPrey.push({ item: nearbyBoid, distance });
+        } else if (nearbyConfig.role === "predator") {
+          result.nearbyPredators.push({ item: nearbyBoid, distance });
+        }
+        continue;
+      }
+    }
+    
+    // Fallback to old behavior if no species config (backwards compatibility)
     if (nearbyBoid.typeId === boid.typeId) {
       result.nearbyPrey.push({ item: nearbyBoid, distance });
     } else {
