@@ -66,7 +66,6 @@ import {
   createDebugCollisionCirclesDrawCommand,
   prepareDebugCollisionCirclesData,
   // Event Handlers
-  attachEventHandlers,
 } from "./webgl";
 import { LocalBoidStoreResource } from "./localBoidStore.ts";
 import { iterateBoids } from "@/boids/iterators.ts";
@@ -122,12 +121,20 @@ export const webglRenderer = defineResource({
     );
     webglCanvas.style.display = "none"; // Hidden by default (Canvas renderer is default)
 
-    // Attach all event handlers (zoom, picker, click, etc.) using modular component
-    const eventHandlerCleanup = attachEventHandlers(
-      webglCanvas,
-      camera,
-      boidsStore.boids,
-    );
+    // Session 130: Event handlers now managed by SimulationView.tsx
+    // This prevents duplicate click handlers (spawn mode conflict with picker mode)
+    // Only keep wheel handler for zoom (not managed by SimulationView)
+    const wheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY;
+      const zoomFactor = delta > 0 ? 0.9 : 1.1;
+      camera.setZoom(zoomFactor);
+    };
+    webglCanvas.addEventListener("wheel", wheelHandler, { passive: false });
+    
+    const eventHandlerCleanup = () => {
+      webglCanvas.removeEventListener("wheel", wheelHandler);
+    };
 
     // Initialize regl
     // Session 101: Disable premultipliedAlpha for proper color rendering

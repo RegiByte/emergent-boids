@@ -196,15 +196,18 @@ function SimulationView() {
         const screenY = e.clientY - rect.top;
 
         // Handle picker mode - start following target boid
-        const targetBoidId = (
-          camera.mode as Extract<CameraMode, { type: "picker" }>
-        ).targetBoidId;
-        if (camera.mode.type === "picker" && targetBoidId) {
-          camera.startFollowing(targetBoidId);
-          toast.success("Following boid", {
-            description: `ID: ${targetBoidId.slice(0, 8)}...`,
-          });
-          return;
+        // Session 130: Return early if in picker mode (even without target) to prevent spawning
+        if (camera.mode.type === "picker") {
+          const targetBoidId = (
+            camera.mode as Extract<CameraMode, { type: "picker" }>
+          ).targetBoidId;
+          if (targetBoidId) {
+            camera.startFollowing(targetBoidId);
+            toast.success("Following boid", {
+              description: `ID: ${targetBoidId.slice(0, 8)}...`,
+            });
+          }
+          return; // Don't spawn obstacles/predators when in picker mode
         }
 
         // Convert screen coordinates to world coordinates using camera
