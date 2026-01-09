@@ -11,14 +11,15 @@ import {
   getWoundedTint,
   shouldShowHealthBar,
 } from "@/boids/lifecycle/health.ts";
+import { cameraKeywords } from "@/boids/vocabulary/keywords.ts";
 import { adjustColorBrightness, hexToRgba, toRgb } from "@/lib/colors.ts";
 import { shapeSizeParamFromBaseSize } from "@/lib/shapeSizing.ts";
+import { SharedBoidViews } from "@/lib/sharedMemory.ts";
 import type {
-  Boid,
   BoidsById,
   DeathMarker,
   FoodSource,
-  Obstacle,
+  Obstacle
 } from "../../../boids/vocabulary/schemas/entities.ts";
 import type { SpeciesConfig } from "../../../boids/vocabulary/schemas/species.ts";
 import type { Profiler } from "../../shared/profiler.ts";
@@ -26,8 +27,6 @@ import type { TimeState } from "../../shared/time.ts";
 import type { AtlasesResult } from "../atlases.ts";
 import type { CameraAPI, CameraMode } from "../camera.ts";
 import { getBodyPartRenderer, getShapeRenderer } from "./shapes.ts";
-import { SharedBoidViews } from "@/lib/sharedMemory.ts";
-import { cameraKeywords } from "@/boids/vocabulary/keywords.ts";
 
 /**
  * Render Context - All data needed for rendering

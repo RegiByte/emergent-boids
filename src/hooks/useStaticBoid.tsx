@@ -161,18 +161,7 @@ export function useStaticBoid(
     renderBoidCanvas2D(ctx, boid, scale, speciesConfig, atlases);
 
     ctx.restore();
-  }, [
-    genome,
-    typeId,
-    mode,
-    rotation,
-    scale,
-    width,
-    height,
-    camera,
-    backgroundColor,
-    speciesConfig,
-  ]);
+  }, [genome, typeId, mode, rotation, scale, width, height, camera, backgroundColor, speciesConfig, atlases]);
 
   // Render WebGL
   useEffect(() => {

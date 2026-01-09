@@ -1,8 +1,10 @@
+/* eslint-disable no-unused-vars */
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
+
 
 // Store root reference globally to prevent HMR from creating multiple roots
 declare global {

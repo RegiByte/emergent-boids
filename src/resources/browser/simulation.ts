@@ -11,13 +11,11 @@ import {
 } from "@/resources/shared/simulation/core";
 import { TimeAPI } from "@/resources/shared/time";
 import { defineResource, StartedResource } from "braided";
+import { RandomnessResource } from "../shared/randomness";
 import { CameraAPI } from "./camera";
 import { BoidEngine } from "./engine";
 import { RuntimeStoreResource } from "./runtimeStore";
 import { UpdateLoopResource } from "./updateLoop";
-import { CanvasAPI } from "./canvas";
-import { WebGLRendererResource } from "./webglRenderer";
-import { RandomnessResource } from "../shared/randomness";
 
 export const browserSimulation = defineResource({
   dependencies: [
@@ -27,8 +25,6 @@ export const browserSimulation = defineResource({
     "renderer",
     "camera",
     "runtimeStore",
-    "canvas",
-    "webglRenderer",
     "randomness",
   ],
   start: ({
@@ -38,8 +34,6 @@ export const browserSimulation = defineResource({
     renderer,
     camera,
     runtimeStore,
-    canvas,
-    webglRenderer,
     randomness,
   }: {
     engine: BoidEngine;
@@ -48,8 +42,6 @@ export const browserSimulation = defineResource({
     renderer: RendererResource;
     camera: CameraAPI;
     runtimeStore: RuntimeStoreResource;
-    canvas: CanvasAPI;
-    webglRenderer: WebGLRendererResource;
     randomness: RandomnessResource;
   }) => {
     const channel = createChannel<SimulationCommand, SimulationEvent>();
@@ -236,7 +228,7 @@ export const browserSimulation = defineResource({
           },
         }));
       },
-    } satisfies CommandHandlers;
+    } satisfies Partial<CommandHandlers>;
 
     const unsubscribeCallbacks = new Set<(...args: any[]) => void>();
 
@@ -265,7 +257,7 @@ export const browserSimulation = defineResource({
           wireChannels();
         },
         onCommand: (command, resolve) => {
-          const handler = commandHandlers[command.type];
+          const handler = commandHandlers[command.type as keyof typeof commandHandlers];
           if (!handler) {
             resolve({
               type: simulationKeywords.events.error,

@@ -2,8 +2,7 @@ import { Profiler } from "@/resources/shared/profiler";
 import { ItemWithDistance } from "../spatialHash";
 import {
   profilerKeywords,
-  roleKeywords,
-  stanceKeywords,
+  roleKeywords
 } from "../vocabulary/keywords";
 import type {
   BehaviorContext,
