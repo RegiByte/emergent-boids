@@ -127,7 +127,8 @@ export const workerSimulation = defineResource({
       },
       [simulationKeywords.commands.clearDeathMarkers]: (_command) => {
         console.log("[WorkerSimulation] Clearing death markers");
-        // engine.clearDeathMarkers();
+        // Session 128: Clear all death markers
+        workerEngine.clearDeathMarkers();
       },
     } satisfies Partial<CommandHandlers>;
 

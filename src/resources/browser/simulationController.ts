@@ -315,7 +315,6 @@ const handlers = {
 
     // Session 121: CRITICAL FIX - Remove dead boids from local store!
     // Without this, dead boids become "ghosts" that keep rendering and reproducing
-    console.log('boids died!', event.boids.map(boid => `[${boid.typeId}] ${boid.id}: ${boid.reason}`))
     const removeBoidEffects = event.boids.map((boid) => ({
       type: effectKeywords.engine.removeBoid,
       boidId: boid.id,
@@ -330,13 +329,6 @@ const handlers = {
         boid: b,
       }))
     );
-    if (addBoidEffects.length > 0) {
-      console.log('addBoidEffects', addBoidEffects
-        .filter(effect => effect.boid.typeId !== 'independent')
-        .map(effect => `[${effect.boid.typeId}] ${effect.boid.id}`).join('\n'))
-    
-    }
-    // TODO: plug this in analytics
     return addBoidEffects;
   },
   [simulationKeywords.events.boidsSpawned]: (_state, event) => {
@@ -461,6 +453,29 @@ const handlers = {
       },
     ];
   },
+  [simulationKeywords.events.deathMarkersAdded]: (state, event, ctx) => {
+    // Session 128: Worker created death markers, add them to runtime store
+    return [
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          draft.simulation.deathMarkers.push(...event.markers);
+        }),
+      },
+    ];
+  },
+  [simulationKeywords.events.deathMarkersUpdated]: (state, event, ctx) => {
+    // Session 128: Worker updated death markers (decay), sync to runtime store
+    return [
+      {
+        type: effectKeywords.state.update,
+        state: ctx.nextState(state, (draft) => {
+          // Replace entire array with updated markers from worker
+          draft.simulation.deathMarkers = event.markers;
+        }),
+      },
+    ];
+  },
   [simulationKeywords.events.timeScaleChanged]: (_state, _event) => {
     return [
       // TODO: plug this in analytics
@@ -524,7 +539,6 @@ const executors = {
   },
 
   [effectKeywords.engine.removeBoid]: (effect, ctx) => {
-    console.log("[RuntimeController] Removing boid:", effect.boidId);
     ctx.engine.removeBoid(effect.boidId);
   },
 

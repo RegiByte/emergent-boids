@@ -31,12 +31,25 @@ export const stanceSymbols: StanceSymbols = {
 };
 
 /**
+ * Food source emoji configuration (Session 130)
+ */
+export const foodEmojis = {
+  prey: "🌿",     // Plant food for prey
+  predator: "🥩", // Meat food for predators
+} as const;
+
+/**
  * Create emoji texture atlas
+ * Session 130: Extended to include food emojis (🌿, 🥩)
  */
 export const createEmojiAtlas = (): AtlasResult | null => {
   const emojiSize = 64; // Size of each emoji in pixels
+  
+  // Combine stance symbols and food emojis
+  const stanceEmojis = Object.values(stanceSymbols).map((s) => s.emoji);
+  const foodEmojiList = Object.values(foodEmojis);
   const uniqueEmojis = Array.from(
-    new Set(Object.values(stanceSymbols).map((s) => s.emoji)),
+    new Set([...stanceEmojis, ...foodEmojiList]),
   );
 
   // Calculate atlas dimensions (square grid)

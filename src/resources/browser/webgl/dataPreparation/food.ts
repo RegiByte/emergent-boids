@@ -2,10 +2,13 @@
  * WebGL Data Preparation - Food Sources
  *
  * Prepares instance data for food source rendering.
+ * Session 130: Extended to include emoji overlays
  */
 
 import type { FoodSource } from "../../../../boids/vocabulary/schemas/entities.ts";
 import { toRgb } from "../../../../lib/colors.ts";
+import type { AtlasResult } from "../atlases/types.ts";
+import { foodEmojis } from "../atlases/emojiAtlas.ts";
 
 /**
  * Instance data for food source rendering
@@ -73,4 +76,63 @@ export const prepareFoodData = (
   }
 
   return { positions, colors, radii, alphas, count };
+};
+
+/**
+ * Instance data for food emoji overlays (Session 130)
+ */
+export type FoodEmojiInstanceData = {
+  foodPositions: Float32Array;
+  uvOffsets: Float32Array;
+  alphas: Float32Array;
+  count: number;
+};
+
+/**
+ * Prepares food emoji instance data for GPU rendering (Session 130)
+ * Renders emoji symbols (🌿 for prey, 🥩 for predator) on top of food circles
+ *
+ * @param foodSources - Array of food sources to render
+ * @param emojiAtlas - Emoji atlas containing UV coordinates
+ * @returns Instance data ready for GPU upload, or null if no emojis to display
+ */
+export const prepareFoodEmojiData = (
+  foodSources: FoodSource[],
+  emojiAtlas: AtlasResult,
+): FoodEmojiInstanceData | null => {
+  if (foodSources.length === 0) {
+    return null;
+  }
+
+  const count = foodSources.length;
+  const foodPositions = new Float32Array(count * 2);
+  const uvOffsets = new Float32Array(count * 2);
+  const alphas = new Float32Array(count);
+
+  for (let i = 0; i < count; i++) {
+    const food = foodSources[i];
+
+    // Position (same as food circle)
+    foodPositions[i * 2] = food.position.x;
+    foodPositions[i * 2 + 1] = food.position.y;
+
+    // Get emoji for this food type
+    const emoji = food.sourceType === "prey" ? foodEmojis.prey : foodEmojis.predator;
+    const uvCoords = emojiAtlas.uvMap.get(emoji);
+
+    if (uvCoords) {
+      uvOffsets[i * 2] = uvCoords.u;
+      uvOffsets[i * 2 + 1] = uvCoords.v;
+    } else {
+      // Fallback to 0,0 if emoji not found
+      uvOffsets[i * 2] = 0;
+      uvOffsets[i * 2 + 1] = 0;
+    }
+
+    // Alpha scales with energy (same as circle)
+    const energyRatio = food.energy / food.maxEnergy;
+    alphas[i] = Math.max(FOOD_CONFIG.minAlpha, energyRatio);
+  }
+
+  return { foodPositions, uvOffsets, alphas, count };
 };

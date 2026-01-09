@@ -32,6 +32,7 @@ export {
   createEmojiAtlas,
   createEmojiTexture,
   stanceSymbols,
+  foodEmojis,
   type EmojiAtlasResult,
 } from "./atlases/emojiAtlas.ts";
 
@@ -41,6 +42,12 @@ export {
   DEFAULT_FONT_CHARS,
   type FontAtlasResult,
 } from "./atlases/fontAtlas.ts";
+
+export {
+  createObstacleAtlas,
+  createObstacleTexture,
+  OBSTACLE_CONFIG,
+} from "./atlases/obstacleAtlas.ts";
 
 export {
   createShapeAtlas,
@@ -78,7 +85,9 @@ export {
 
 export {
   prepareFoodData,
+  prepareFoodEmojiData,
   type FoodInstanceData,
+  type FoodEmojiInstanceData,
 } from "./dataPreparation/food.ts";
 
 export {
@@ -111,6 +120,11 @@ export {
 
 export { layoutText, type TextInstanceData } from "./dataPreparation/text.ts";
 
+export {
+  prepareObstacleData,
+  type ObstacleInstanceData,
+} from "./dataPreparation/obstacles.ts";
+
 // ============================================
 // DRAW COMMANDS
 // ============================================
@@ -118,6 +132,7 @@ export { createShapeBoidsDrawCommand } from "./drawCommands/shapeBoids.ts";
 export { createBodyPartsDrawCommand } from "./drawCommands/bodyParts.ts";
 export { createTriangleBoidsDrawCommand } from "./drawCommands/triangleBoids.ts";
 export { createFoodDrawCommand } from "./drawCommands/food.ts";
+export { createFoodEmojiDrawCommand } from "./drawCommands/foodEmojis.ts";
 export { createTrailsDrawCommand } from "./drawCommands/trails.ts";
 export {
   createEnergyBarsDrawCommand,
@@ -137,6 +152,7 @@ export {
   createDebugCollisionCirclesDrawCommand,
   prepareDebugCollisionCirclesData,
 } from "./drawCommands/debugCollisionCircles.ts";
+export { createObstacleDrawCommand } from "./drawCommands/obstacles.ts";
 
 // ============================================
 // UTILITIES

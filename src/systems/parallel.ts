@@ -44,7 +44,7 @@ import { sharedMemoryManager } from "@/resources/shared/sharedMemoryManager";
  */
 export const parallelSystemConfig = {
   config: createSystemConfigResource({
-    renderMode: "canvas",
+    renderMode: "webgl",
     usesSharedMemory: true,
   }),
   time,

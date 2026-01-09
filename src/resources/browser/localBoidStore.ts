@@ -13,12 +13,14 @@ import {
   getInactiveEnergy,
   getInactiveHealth,
   getInactiveStanceFlags,
+  getInactiveStanceEnteredAtFrame,
   SharedBoidViews,
   StatsIndex,
   packStanceFlags,
   getActiveEnergy,
   getActiveHealth,
   getActiveStanceFlags,
+  getActiveStanceEnteredAtFrame,
 } from "@/lib/sharedMemory";
 import { defineResource, StartedResource } from "braided";
 import { stanceKeywords } from "@/boids/vocabulary/keywords";
@@ -253,6 +255,7 @@ const numberToStance: Record<number, string> = {
  * Writes the updated boids physical properties to the shared memory.
  * 
  * Session 125: Extended to write energy, health, stance, and seekingMate
+ * Session 130: Extended to write stanceEnteredAtFrame
  */
 export function syncBoidsToSharedMemory(
   bufferViews: SharedBoidViews,
@@ -263,6 +266,7 @@ export function syncBoidsToSharedMemory(
   const writeEnergy = getInactiveEnergy(bufferViews);
   const writeHealth = getInactiveHealth(bufferViews);
   const writeStanceFlags = getInactiveStanceFlags(bufferViews);
+  const writeStanceEnteredAtFrame = getInactiveStanceEnteredAtFrame(bufferViews);
 
   for (const boid of iterateBoids(boids)) {
     const index = boid.index;
@@ -273,12 +277,15 @@ export function syncBoidsToSharedMemory(
     writeVelocities[index * 2 + 0] = boid.velocity.x;
     writeVelocities[index * 2 + 1] = boid.velocity.y;
     
-    // Observer state (new - Session 125)
+    // Observer state (Session 125)
     writeEnergy[index] = boid.energy;
     writeHealth[index] = boid.health;
     
     const stanceNum = stanceToNumber[boid.stance] ?? 0;
     writeStanceFlags[index] = packStanceFlags(stanceNum, boid.seekingMate);
+    
+    // Stance timing (Session 130)
+    writeStanceEnteredAtFrame[index] = boid.stanceEnteredAtFrame;
   }
 }
 
@@ -286,6 +293,7 @@ export function syncBoidsToSharedMemory(
  * Reads the updated boids physical properties FROM shared memory and updates local store.
  * 
  * Session 127: Periodic sync to keep localBoidStore fresh for camera follow and minimap.
+ * Session 130: Extended to read stanceEnteredAtFrame
  * This is the inverse of syncBoidsToSharedMemory - reads from worker, writes to browser.
  * 
  * @param bufferViews - SharedArrayBuffer views (reads from active buffer)
@@ -300,6 +308,7 @@ export function syncBoidsFromSharedMemory(
   const readEnergy = getActiveEnergy(bufferViews);
   const readHealth = getActiveHealth(bufferViews);
   const readStanceFlags = getActiveStanceFlags(bufferViews);
+  const readStanceEnteredAtFrame = getActiveStanceEnteredAtFrame(bufferViews);
 
   for (const boid of iterateBoids(boids)) {
     const index = boid.index;
@@ -321,6 +330,9 @@ export function syncBoidsFromSharedMemory(
     
     boid.stance = numberToStance[stanceNum] as BoidStance ?? boid.stance;
     boid.seekingMate = seekingMate;
+    
+    // Stance timing (Session 130)
+    boid.stanceEnteredAtFrame = readStanceEnteredAtFrame[index];
   }
 }
 

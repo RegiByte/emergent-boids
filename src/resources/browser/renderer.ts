@@ -2,7 +2,7 @@ import { findBoidWhere, iterateBoids } from "@/boids/iterators.ts";
 import { Boid, BoidsById } from "@/boids/vocabulary/schemas/entities.ts";
 import { stanceKeywords } from "@/boids/vocabulary/keywords.ts";
 import { BoidStance } from "@/boids/vocabulary/schemas/primitives.ts";
-import { getActivePositions, getActiveVelocities, getActiveEnergy, getActiveHealth, getActiveStanceFlags, unpackStanceFlags, SharedBoidViews } from "@/lib/sharedMemory.ts";
+import { getActivePositions, getActiveVelocities, getActiveEnergy, getActiveHealth, getActiveStanceFlags, getActiveStanceEnteredAtFrame, unpackStanceFlags, SharedBoidViews } from "@/lib/sharedMemory.ts";
 import { createUpdateLoop } from "@/lib/updateLoop.ts";
 import { sharedMemoryKeywords } from "@/lib/workerTasks/vocabulary.ts";
 import {
@@ -61,6 +61,7 @@ const createRenderFrameContext = ({
   const atmosphereSettings = activeEvent?.settings || base;
 
   const frameBoids = {} as BoidsById;
+  const allBoidsWithFreshData = {} as BoidsById;  // Session 129: Track all boids for stance symbols
   const framePhysics = boidsPhysicsMemory.views as unknown as SharedBoidViews;
   const physicsToIndex = {} as Record<string, number>;
   const activePositions = usesSharedMemory
@@ -78,6 +79,10 @@ const createRenderFrameContext = ({
     : null;
   const activeStanceFlags = usesSharedMemory
     ? getActiveStanceFlags(framePhysics)
+    : null;
+  // Session 130: Read stanceEnteredAtFrame from SharedArrayBuffer
+  const activeStanceEnteredAtFrame = usesSharedMemory
+    ? getActiveStanceEnteredAtFrame(framePhysics)
     : null;
 
   // Stance number to string mapping (Session 125)
@@ -115,36 +120,36 @@ const createRenderFrameContext = ({
     let health = boid.health;
     let stance = boid.stance;
     let seekingMate = boid.seekingMate;
+    let stanceEnteredAtFrame = boid.stanceEnteredAtFrame;
     
-    if (usesSharedMemory && activeEnergy && activeHealth && activeStanceFlags) {
+    if (usesSharedMemory && activeEnergy && activeHealth && activeStanceFlags && activeStanceEnteredAtFrame) {
       energy = activeEnergy[index];
       health = activeHealth[index];
       const flags = unpackStanceFlags(activeStanceFlags[index]);
       stance = numberToStance[flags.stance] ?? boid.stance;
       seekingMate = flags.seekingMate;
+      
+      // Session 130: Read stanceEnteredAtFrame directly from SharedArrayBuffer
+      // Worker sets this value when stance changes in applyBehaviorDecision()
+      // No more unreliable comparison logic - single source of truth!
+      stanceEnteredAtFrame = activeStanceEnteredAtFrame[index];
     }
     
-    // Session 125: Update stanceEnteredAtFrame when stance changes (for visual fade timer)
-    // The browser's local boid store never gets stance updates from worker, so we need to
-    // track stance changes here and update the frame counter so symbols don't fade prematurely
-    let stanceEnteredAtFrame = boid.stanceEnteredAtFrame;
-    if (stance !== boid.stance) {
-      // Stance changed! Update the frame counter to current simulation frame
-      stanceEnteredAtFrame = timeState.simulationFrame;
-    }
+    // Session 129: Store ALL boids with updated stance data (for WebGL stance symbols)
+    allBoidsWithFreshData[boid.id] = {
+      ...boid,
+      position,
+      velocity,
+      energy,
+      health,
+      stance,
+      seekingMate,
+      stanceEnteredAtFrame,
+    };
     
-    // Merge fresh physics from SharedArrayBuffer
+    // Only store visible boids in frameBoids (for rendering)
     if (camera.isInViewport(position.x, position.y, 100)) {
-      frameBoids[boid.id] = {
-        ...boid,
-        position,
-        velocity,
-        energy,
-        health,
-        stance,
-        seekingMate,
-        stanceEnteredAtFrame, // Session 125: Update frame counter for stance fade timer
-      };
+      frameBoids[boid.id] = allBoidsWithFreshData[boid.id];
       physicsToIndex[boid.id] = boid.index;
     }
   }
@@ -155,7 +160,7 @@ const createRenderFrameContext = ({
     height,
     backgroundColor: config.world.backgroundColor,
     boids: frameBoids,
-    allBoids: boids,
+    allBoids: allBoidsWithFreshData,  // Session 129: Use boids with updated stanceEnteredAtFrame
     obstacles: simulation.obstacles,
     deathMarkers: simulation.deathMarkers,
     foodSources: simulation.foodSources,
@@ -216,7 +221,7 @@ export const renderer = defineResource({
     camera: CameraAPI;
     runtimeStore: RuntimeStoreResource;
     time: TimeResource;
-    webglRenderer: { render: () => void; canvas: HTMLCanvasElement };
+    webglRenderer: { render: (context?: RenderContext) => void; canvas: HTMLCanvasElement };
     profiler: Profiler | undefined;
     atlases: AtlasesResult; // Session 105: Pre-generated atlases
     localBoidStore: LocalBoidStoreResource;
@@ -521,7 +526,8 @@ export const renderer = defineResource({
       const { ui } = runtimeStore.store.getState();
       // Choose renderer based on UI setting
       if (ui.rendererMode === "webgl") {
-        webglRenderer.render();
+        // Session 129: Pass render context to WebGL (contains fresh SharedArrayBuffer data)
+        webglRenderer.render(renderContext);
       } else {
         // TODO: pass fps from updateLoop
         renderFrame(renderContext, fps);
@@ -760,12 +766,23 @@ export const renderer = defineResource({
       // document.removeEventListener("keydown", handleKeyPress);
     };
 
+    const setRendererMode = (mode: "canvas" | "webgl") => {
+      if (mode === "webgl") {
+        canvas.canvas.style.display = "none";
+        webglRenderer.canvas.style.display = "block";
+      } else {
+        canvas.canvas.style.display = "block";
+        webglRenderer.canvas.style.display = "none";
+      }
+    };
+
     const api = {
       start: () => updateLoop.start(),
       stop: () => updateLoop.stop(),
       isRunning: () => updateLoop.isRunning(),
       drawFrame,
       cleanup,
+      setRendererMode,
     };
 
     return api;

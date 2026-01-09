@@ -5,12 +5,8 @@
  * Shows circles for picker mode and followed boid.
  */
 
-import { findBoidWhere } from "@/boids/iterators.ts";
 import { cameraKeywords } from "@/boids/vocabulary/keywords.ts";
-import type {
-  Boid,
-  BoidsById,
-} from "../../../../boids/vocabulary/schemas/entities.ts";
+import type { BoidsById } from "../../../../boids/vocabulary/schemas/entities.ts";
 import type { CameraAPI } from "../../camera.ts";
 
 /**
@@ -48,8 +44,6 @@ const SELECTION_CONFIG = {
     alphaMax: 0.8,
   },
 } as const;
-
-let cachedFollowedBoid: { id: string; boid: Boid } | null = null;
 
 /**
  * Prepares selection overlay instance data for GPU rendering
@@ -95,7 +89,7 @@ export const prepareSelectionData = (
 
     // Target boid highlight
     if (targetBoidId) {
-      const targetBoid = findBoidWhere(boids, (b) => b.id === targetBoidId);
+      const targetBoid = boids[targetBoidId];
       if (targetBoid) {
         circles.push({
           centerX: targetBoid.position.x,
@@ -116,22 +110,11 @@ export const prepareSelectionData = (
       camera.mode as { type: "following"; boidId: string }
     ).boidId;
 
-    // Only search if cache is invalid
-    if (
-      !cachedFollowedBoid ||
-      cachedFollowedBoid.id !== followedBoidId ||
-      !boids[cachedFollowedBoid.id]
-    ) {
-      const followedBoid = findBoidWhere(
-        boids,
-        (boid) => boid.id === followedBoidId,
-      );
-      cachedFollowedBoid = followedBoid
-        ? { id: followedBoidId, boid: followedBoid }
-        : null;
-    }
+    // Session 129: Always read fresh position from boids parameter (has SharedArrayBuffer data)
+    // Don't cache the boid object - it gets stale as positions update every frame
+    const followedBoid = boids[followedBoidId];
 
-    if (cachedFollowedBoid) {
+    if (followedBoid) {
       // Pulsing effect based on time
       // Use performance.now() for animation (not simulation time, so it doesn't pause)
       const time = performance.now() / 1000;
@@ -152,16 +135,14 @@ export const prepareSelectionData = (
             SELECTION_CONFIG.following.alphaMin);
 
       circles.push({
-        centerX: cachedFollowedBoid.boid.position.x,
-        centerY: cachedFollowedBoid.boid.position.y,
+        centerX: followedBoid.position.x,
+        centerY: followedBoid.position.y,
         radius,
         r: SELECTION_CONFIG.following.color.r,
         g: SELECTION_CONFIG.following.color.g,
         b: SELECTION_CONFIG.following.color.b,
         alpha,
       });
-    } else {
-      cachedFollowedBoid = null;
     }
   }
 

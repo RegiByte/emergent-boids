@@ -22,10 +22,11 @@ export type StanceSymbolInstanceData = {
 
 /**
  * Stance symbol display configuration
+ * Session 129: Match Canvas 2D duration (120 frames = 4 seconds)
  */
 const STANCE_SYMBOL_CONFIG = {
-  displayDuration: 90, // Show for 90 frames (~3 seconds at 30 FPS)
-  fadeStart: 60, // Start fading at 60 frames (~2 seconds)
+  displayDuration: 600, // Show for 120 frames (~4 seconds at 30 FPS)
+  fadeStart: 300, // Start fading at 60 frames (~2 seconds)
 } as const;
 
 /**

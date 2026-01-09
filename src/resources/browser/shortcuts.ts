@@ -98,6 +98,13 @@ export const shortcuts = defineResource({
           rendererMode: newMode,
         });
       },
+      toggleDebugMode: () => {
+        const debugMode = runtimeStore.store.getState().ui.debugMode;
+        console.log(`[Shortcuts] Toggling debug mode: ${debugMode} -> ${!debugMode}`);
+        simulation.dispatch({
+          type: simulationKeywords.commands.toggleDebugMode,
+        });
+      },
       togglePause: () => {
         if (simulation.isPaused()) {
           console.log("[Shortcuts] Resuming simulation");
@@ -135,6 +142,9 @@ export const shortcuts = defineResource({
       toggleRenderMode: throttle(commands.toggleRenderMode, {
         wait: 100,
       }),
+      toggleDebugMode: throttle(commands.toggleDebugMode, {
+        wait: 100,
+      }),
       togglePause: throttle(commands.togglePause, {
         wait: 100,
       }),
@@ -163,6 +173,10 @@ export const shortcuts = defineResource({
       {
         keymaps: ["shift+r"],
         handler: () => throttledCommands.toggleRenderMode(),
+      },
+      {
+        keymaps: ["b"],
+        handler: () => throttledCommands.toggleDebugMode(),
       },
       {
         keymaps: ["space"],

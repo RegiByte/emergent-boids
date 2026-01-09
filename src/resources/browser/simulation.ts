@@ -200,14 +200,8 @@ export const browserSimulation = defineResource({
             rendererMode: command.rendererMode,
           },
         }));
-        if (command.rendererMode === "webgl") {
-          canvas.canvas.style.display = "none";
-          webglRenderer.canvas.style.display = "block";
-        } else {
-          canvas.canvas.style.display = "block";
-          webglRenderer.canvas.style.display = "none";
-        }
-        // renderer.setRendererMode(command.rendererMode);
+        // Session 129: Use renderer's method to manage canvas visibility
+        renderer.setRendererMode(command.rendererMode);
       },
       [simulationKeywords.commands.spawnFood]: (command) => {
         console.log("[BrowserSimulation] Spawning food:", command.position);

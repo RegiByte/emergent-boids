@@ -1,6 +1,6 @@
 import { eventKeywords, simulationKeywords } from "../keywords";
 import z from "zod";
-import { boidSchema, foodSourceSchema, obstacleSchema } from "./entities";
+import { boidSchema, deathMarkerSchema, foodSourceSchema, obstacleSchema } from "./entities";
 import {
   deathCauseSchema,
   renderModeSchema,
@@ -77,6 +77,9 @@ export const simulationCommandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal(simulationKeywords.commands.setRendererMode),
     rendererMode: renderModeSchema,
+  }),
+  z.object({
+    type: z.literal(simulationKeywords.commands.toggleDebugMode),
   }),
   z.object({
     type: z.literal(simulationKeywords.commands.spawnFood),
@@ -212,6 +215,15 @@ export const simulationEventSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal(simulationKeywords.events.obstaclesCleared),
+  }),
+  // Death marker events (Session 128)
+  z.object({
+    type: z.literal(simulationKeywords.events.deathMarkersAdded),
+    markers: z.array(deathMarkerSchema),
+  }),
+  z.object({
+    type: z.literal(simulationKeywords.events.deathMarkersUpdated),
+    markers: z.array(deathMarkerSchema),
   }),
 ]);
 

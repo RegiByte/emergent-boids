@@ -24,6 +24,7 @@ import type { CanvasAPI } from "./canvas.ts";
 import type { RuntimeStoreResource } from "./runtimeStore.ts";
 import type { AtlasesResult } from "./atlases.ts";
 import { toRgb } from "../../lib/colors.ts";
+import type { RenderContext } from "./rendering/pipeline.ts";
 
 // Import modular WebGL components
 import {
@@ -31,6 +32,7 @@ import {
   createEmojiTexture,
   createFontTexture,
   createShapeTexture,
+  createObstacleTexture,
   logShapeAtlasDebugInfo,
   createBodyPartsTexture,
   logBodyPartsAtlasDebugInfo,
@@ -39,6 +41,8 @@ import {
   prepareBodyPartsData as prepareBodyPartsDataModular,
   prepareTriangleBoidData,
   prepareFoodData,
+  prepareFoodEmojiData,
+  prepareObstacleData,
   prepareTrailData,
   collectTrailBatches,
   prepareEnergyBarData,
@@ -51,6 +55,8 @@ import {
   createBodyPartsDrawCommand,
   createTriangleBoidsDrawCommand,
   createFoodDrawCommand,
+  createFoodEmojiDrawCommand,
+  createObstacleDrawCommand,
   createTrailsDrawCommand,
   createEnergyBarsDrawCommand,
   createHealthBarsDrawCommand,
@@ -62,7 +68,6 @@ import {
   // Event Handlers
   attachEventHandlers,
 } from "./webgl";
-import { boidsById } from "@/boids/conversions.ts";
 import { LocalBoidStoreResource } from "./localBoidStore.ts";
 import { iterateBoids } from "@/boids/iterators.ts";
 import { countBoidsByRole } from "@/boids/filters.ts";
@@ -70,7 +75,7 @@ import { countBoidsByRole } from "@/boids/filters.ts";
 // Shaders are now imported in the modular draw command modules
 
 export type WebGLRenderer = {
-  render: () => void;
+  render: (context?: RenderContext) => void;
   resize: (width: number, height: number) => void;
 };
 
@@ -176,6 +181,14 @@ export const webglRenderer = defineResource({
       ? createBodyPartsTexture(regl, bodyPartsAtlas)
       : null;
 
+    const obstacleAtlas = atlases.obstacle;
+    if (!obstacleAtlas) {
+      console.error("Failed to get obstacle atlas from resource");
+    }
+    const obstacleTexture = obstacleAtlas
+      ? createObstacleTexture(regl, obstacleAtlas)
+      : null;
+
     // ============================================
     // DRAW COMMANDS (using modular components)
     // ============================================
@@ -197,6 +210,22 @@ export const webglRenderer = defineResource({
 
     // Create draw command for food sources
     const drawFood = createFoodDrawCommand(regl);
+    
+    // Create draw command for food emoji overlays (Session 130)
+    const drawFoodEmojis =
+      emojiTexture && emojiAtlas
+        ? createFoodEmojiDrawCommand(
+            regl,
+            emojiTexture,
+            emojiAtlas.cellSize,
+          )
+        : null;
+
+    // Create draw command for obstacles (Session 130)
+    const drawObstacles =
+      obstacleTexture
+        ? createObstacleDrawCommand(regl, obstacleTexture)
+        : null;
 
     // Prepare triangle boid data for GPU (using modular component)
     const prepareBoidData = prepareTriangleBoidData;
@@ -245,7 +274,7 @@ export const webglRenderer = defineResource({
     const drawDebugCollisionCircles =
       createDebugCollisionCirclesDrawCommand(regl);
 
-    const render = () => {
+    const render = (renderContext?: RenderContext) => {
       // CRITICAL: Tell regl to update its internal state (canvas size, viewport, etc.)
       // This ensures WebGL viewport matches canvas dimensions
       regl.poll();
@@ -253,6 +282,14 @@ export const webglRenderer = defineResource({
       // Get runtime state
       const { ui, simulation, config } = runtimeStore.store.getState();
       const { visualSettings } = ui;
+      
+      // Session 129: Use render context if provided (has fresh SharedArrayBuffer data)
+      // Otherwise fall back to localBoidStore (backward compatibility)
+      // Note: renderContext.boids = only visible boids, renderContext.allBoids = all boids
+      const boidsToRender = renderContext?.boids ?? boidsStore.boids;
+      const allBoidsToCount = renderContext?.allBoids ?? boidsStore.boids;
+      const foodToRender = renderContext?.foodSources ?? simulation.foodSources;
+      // const deathMarkersToRender = renderContext?.deathMarkers ?? simulation.deathMarkers; // TODO: Implement death markers in WebGL
 
       // Clear screen with atmosphere background color
       const bgColor = toRgb(config.world.backgroundColor);
@@ -274,18 +311,46 @@ export const webglRenderer = defineResource({
       // (This is the standard WebGL behavior with alpha blending and no depth testing)
 
       // Layer 1: Food sources (render first, behind everything)
+      // Session 130: Now includes emoji overlays
       if (
         visualSettings.foodSourcesEnabled &&
-        simulation.foodSources.length > 0
+        foodToRender.length > 0
       ) {
-        const visibleFood = simulation.foodSources.filter((food: FoodSource) =>
+        const visibleFood = foodToRender.filter((food: FoodSource) =>
           camera.isInViewport(food.position.x, food.position.y, 50),
         );
 
         if (visibleFood.length > 0) {
+          // 1a. Food circles (outline)
           const foodData = prepareFoodData(visibleFood);
           drawFood({
             ...foodData,
+            transform,
+          });
+          
+          // 1b. Food emoji overlays (🌿 for prey, 🥩 for predator)
+          if (drawFoodEmojis && emojiAtlas) {
+            const foodEmojiData = prepareFoodEmojiData(visibleFood, emojiAtlas);
+            if (foodEmojiData && foodEmojiData.count > 0) {
+              drawFoodEmojis({
+                ...foodEmojiData,
+                transform,
+              });
+            }
+          }
+        }
+      }
+
+      // Layer 1.5: Obstacles (Session 130 - render after food, before trails)
+      if (drawObstacles && simulation.obstacles.length > 0) {
+        const visibleObstacles = simulation.obstacles.filter((obstacle) =>
+          camera.isInViewport(obstacle.position.x, obstacle.position.y, obstacle.radius + 50),
+        );
+
+        if (visibleObstacles.length > 0) {
+          const obstacleData = prepareObstacleData(visibleObstacles);
+          drawObstacles({
+            ...obstacleData,
             transform,
           });
         }
@@ -293,7 +358,7 @@ export const webglRenderer = defineResource({
 
       // Get visible boids (used by both trails and boid rendering)
       const visibleBoids: Boid[] = [];
-      for (const boid of iterateBoids(boidsStore.boids)) {
+      for (const boid of iterateBoids(boidsToRender)) {
         if (camera.isInViewport(boid.position.x, boid.position.y, 100)) {
           visibleBoids.push(boid);
         }
@@ -353,8 +418,9 @@ export const webglRenderer = defineResource({
       }
 
       // DEBUG Layer: Collision radius circles (Session 96)
+      // Session 129: Only render when debug mode is enabled
       // Visual verification that rendered size matches physics collision
-      if (visibleBoids.length > 0) {
+      if (ui.debugMode && visibleBoids.length > 0) {
         const collisionData = prepareDebugCollisionCirclesData(visibleBoids);
         drawDebugCollisionCircles({
           ...collisionData,
@@ -397,11 +463,12 @@ export const webglRenderer = defineResource({
 
       // Layer 6: Stance Symbols (render sixth, above health bars)
       // Shows emoji indicators for recent stance changes
+      // Session 129: Use allBoidsToCount which has ALL boids with updated stanceEnteredAtFrame
       if (drawStanceSymbols && emojiAtlas) {
         const { ui } = runtimeStore.store.getState();
         const timeState = time.getState();
         const stanceSymbolData = prepareStanceSymbolData(
-          boidsStore.boids,
+          allBoidsToCount,  // All boids with fresh stance data (not just visible)
           emojiAtlas,
           timeState.simulationFrame,
           ui.visualSettings.stanceSymbolsEnabled,
@@ -416,7 +483,8 @@ export const webglRenderer = defineResource({
 
       // Layer 7: Selection Overlay (render last, on top of everything)
       // Shows picker circle, target highlight, and followed boid ring
-      const selectionData = prepareSelectionData(camera, boidsStore.boids);
+      // Session 129: Use allBoidsToCount for selection (need fresh positions for all boids, not just visible)
+      const selectionData = prepareSelectionData(camera, allBoidsToCount);
       if (selectionData.count > 0) {
         drawSelectionCircles({
           ...selectionData,
@@ -428,10 +496,12 @@ export const webglRenderer = defineResource({
       // Render stats in top-left corner (matches Canvas 2D)
       if (drawText && fontAtlas) {
         const { config } = runtimeStore.store.getState();
-        const counts = countBoidsByRole(boidsStore.boids, config.species);
+        // Session 129: Use allBoidsToCount for accurate counts (includes ALL boids, not just visible)
+        const counts = countBoidsByRole(allBoidsToCount, config.species);
         // Calculate stats
         const predatorCount = counts.predator;
         const preyCount = counts.prey;
+        const totalCount = Object.keys(allBoidsToCount).length;
 
         // Get FPS from profiler or estimate
         const fps = 60; // TODO: Get actual FPS
@@ -450,7 +520,7 @@ export const webglRenderer = defineResource({
         const lines = [
           { text: `FPS: ${Math.round(fps)}`, color: greenColor },
           {
-            text: `Total: ${Object.keys(boidsById).length}`,
+            text: `Total: ${totalCount}`,
             color: greenColor,
           },
           { text: `Prey: ${preyCount}`, color: greenColor },

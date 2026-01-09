@@ -7,12 +7,13 @@ import { devtools } from "zustand/middleware";
 
 import { RuntimeStore } from "../../boids/vocabulary/schemas/state.ts";
 import { defaultWorldPhysics } from "@/boids/defaultPhysics.ts";
+import { SystemConfigResource } from "../shared/config.ts";
 
 export type RuntimeStoreApi = StoreApi<RuntimeStore>;
 
 export const runtimeStore = defineResource({
-  dependencies: [],
-  start: () => {
+  dependencies: ['config'],
+  start: ({ config }: { config: SystemConfigResource }) => {
     // Load default profile
     const profile = getProfile(defaultProfileId);
 
@@ -69,7 +70,8 @@ export const runtimeStore = defineResource({
           },
           sidebarOpen: true,
           headerCollapsed: false, // Start with header expanded
-          rendererMode: "canvas", // Start with Canvas renderer (WebGL is experimental)
+          rendererMode: config.getConfig().renderMode, // Start with Canvas renderer (WebGL is experimental)
+          debugMode: false, // Session 129: Start with debug mode off
         },
       })),
     );

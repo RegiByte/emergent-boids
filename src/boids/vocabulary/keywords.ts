@@ -332,6 +332,7 @@ export const simulationKeywords = {
     toggleMatingHearts: "simulation:toggleMatingHearts", // Toggle mating hearts on/off
     toggleStanceSymbols: "simulation:toggleStanceSymbols", // Toggle stance symbols on/off
     setRendererMode: "simulation:setRendererMode", // Set renderer mode (canvas/webgl)
+    toggleDebugMode: "simulation:toggleDebugMode", // Session 129: Toggle debug visualizations
     spawnFood: "simulation:spawnFood", // Spawn food at cursor position
     spawnObstacle: "simulation:spawnObstacle", // Spawn obstacle at cursor position
     spawnPredator: "simulation:spawnPredator", // Spawn predator at cursor position
@@ -369,6 +370,9 @@ export const simulationKeywords = {
     obstaclesUpdated: "simulation:obstaclesUpdated",
     obstaclesRemoved: "simulation:obstaclesRemoved",
     obstaclesCleared: "simulation:obstaclesCleared",
+    // Death marker events
+    deathMarkersAdded: "simulation:deathMarkersAdded",
+    deathMarkersUpdated: "simulation:deathMarkersUpdated",
   },
 } as const;
 

@@ -341,6 +341,7 @@ const stanceRules = {
   ],
   [stanceKeywords.seeking_mate]: [
     ruleKeywords.seekMate,
+    ruleKeywords.cohesion,
     ruleKeywords.separation,
     ruleKeywords.avoidObstacles,
   ],

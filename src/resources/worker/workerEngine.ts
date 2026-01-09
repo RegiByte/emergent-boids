@@ -249,8 +249,8 @@ export const workerEngine = defineResource({
         deathMarkerSpatialHash,
         staggerFrames: {
           tail: 3,
-          behavior: 5, // Session 122: Much faster (was 20) - check every 5 frames for responsive eating/fleeing
-          lifecycle: 10, // Session 122: Faster (was 25) - check every 10 frames for energy/reproduction
+          behavior: 20, // Session 122: Behavior checks every 20 frames
+          lifecycle: 2, // Session 128: Lifecycle checks every 25 frames (restored after finding real bug)
         },
         constraints: {
           maxNeighborsLookup,
@@ -292,6 +292,15 @@ export const workerEngine = defineResource({
             }
             if (boid.reproductionCooldown > 0) {
               boid.reproductionCooldown--;
+              
+              // Session 128: CRITICAL - Update seekingMate flag when cooldown reaches 0
+              // Without this, boids reproduce once then never again!
+              if (boid.reproductionCooldown === 0) {
+                const speciesConfig = config.species[boid.typeId];
+                if (speciesConfig) {
+                  boid.seekingMate = isReadyToMate(boid, config.parameters, speciesConfig);
+                }
+              }
             }
             if (boid.knockbackFramesRemaining > 0) {
               boid.knockbackFramesRemaining--;
@@ -390,7 +399,7 @@ export const workerEngine = defineResource({
                     const nx = knockbackDirection.x / pushDist;
                     const ny = knockbackDirection.y / pushDist;
                     const sizeRatio = boid.phenotype.baseSize / potentialPrey.phenotype.baseSize;
-                    const baseKnockback = boid.phenotype.maxSpeed * 1.5;
+                    const baseKnockback = boid.phenotype.maxSpeed * 2.2;
                     const damageMultiplier = 1 + (damage / potentialPrey.phenotype.maxHealth) * 3;
                     const knockbackStrength = baseKnockback * damageMultiplier * sizeRatio;
 
@@ -495,6 +504,65 @@ export const workerEngine = defineResource({
             type: simulationKeywords.events.boidsDied,
             boids: deathData,
           });
+
+          // Session 128: Create death markers for non-predation deaths
+          // Death markers are only created for starvation and old age (not predation)
+          // This creates "danger zones" that prey learn to avoid
+          const newMarkers: DeathMarker[] = [];
+          const CONSOLIDATION_RADIUS = 100; // Merge deaths within this radius
+          const MAX_LIFETIME_FRAMES = 600; // 20 seconds at 30 UPS
+
+          for (const death of deathData) {
+            // Skip predation deaths (no marker)
+            if (death.reason === "predation") continue;
+
+            // Check for nearby existing markers to consolidate
+            const existingMarkers = simulation.deathMarkers;
+            let consolidated = false;
+
+            for (const marker of existingMarkers) {
+              const dx = death.position.x - marker.position.x;
+              const dy = death.position.y - marker.position.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+
+              if (distance < CONSOLIDATION_RADIUS && marker.typeId === death.typeId) {
+                // Strengthen existing marker instead of creating new one
+                marker.strength = Math.min(5.0, marker.strength + 0.5);
+                marker.remainingFrames = MAX_LIFETIME_FRAMES; // Reset lifetime
+                consolidated = true;
+                break;
+              }
+            }
+
+            // Create new marker if no consolidation happened
+            if (!consolidated) {
+              newMarkers.push({
+                id: `death-${currentFrame}-${death.id}`,
+                position: { x: death.position.x, y: death.position.y },
+                remainingFrames: MAX_LIFETIME_FRAMES,
+                strength: 1.0, // Initial strength
+                maxLifetimeFrames: MAX_LIFETIME_FRAMES,
+                typeId: death.typeId,
+              });
+            }
+          }
+
+          // Add new markers to worker store
+          if (newMarkers.length > 0) {
+            workerStore.updateState((state) => ({
+              ...state,
+              simulation: {
+                ...state.simulation,
+                deathMarkers: [...state.simulation.deathMarkers, ...newMarkers],
+              },
+            }));
+
+            // Notify browser
+            simulationChannel?.out.notify({
+              type: simulationKeywords.events.deathMarkersAdded,
+              markers: newMarkers,
+            });
+          }
         }
 
         // Notify browser with batched catch event (Session 120)
@@ -786,6 +854,46 @@ export const workerEngine = defineResource({
       
       workerProfiler.end("lifecycle.foodManagement");
 
+      // Session 128: Death marker decay (fade over time)
+      // Markers lose 1 frame per update and are removed when depleted
+      workerProfiler.start("lifecycle.deathMarkerDecay");
+      const currentSimulation = workerStore.getState().simulation;
+      const updatedMarkers: DeathMarker[] = [];
+      const expiredMarkerIds: string[] = [];
+      
+      for (const marker of currentSimulation.deathMarkers) {
+        const remainingFrames = marker.remainingFrames - 1;
+        
+        if (remainingFrames <= 0) {
+          expiredMarkerIds.push(marker.id);
+        } else {
+          updatedMarkers.push({
+            ...marker,
+            remainingFrames,
+          });
+        }
+      }
+      
+      // Update worker store with decayed markers
+      if (expiredMarkerIds.length > 0 || updatedMarkers.length !== currentSimulation.deathMarkers.length) {
+        workerStore.updateState((state) => ({
+          ...state,
+          simulation: {
+            ...state.simulation,
+            deathMarkers: updatedMarkers,
+          },
+        }));
+        
+        // Notify browser with updated markers
+        if (updatedMarkers.length > 0) {
+          simulationChannel?.out.notify({
+            type: simulationKeywords.events.deathMarkersUpdated,
+            markers: updatedMarkers,
+          });
+        }
+      }
+      workerProfiler.end("lifecycle.deathMarkerDecay");
+
       // Sync updated positions/velocities to SharedArrayBuffer
       workerProfiler.start("sync.toSharedMemory");
       boidsStore.syncToSharedMemory();
@@ -926,6 +1034,25 @@ export const workerEngine = defineResource({
       },
       spawnObstacle, // Session 127: New method
       spawnPredator, // Session 127: New method
+      clearDeathMarkers: () => {
+        // Session 128: Clear all death markers from worker store
+        const currentState = workerStore.getState();
+        workerStore.setState({
+          ...currentState,
+          simulation: {
+            ...currentState.simulation,
+            deathMarkers: [],
+          },
+        });
+        
+        console.log("[WorkerEngine] Cleared all death markers");
+        
+        // Notify browser
+        simulationChannel?.out.notify({
+          type: simulationKeywords.events.deathMarkersUpdated,
+          markers: [],
+        });
+      },
       cleanup: () => {
         simulationChannel?.clear();
       },
@@ -934,6 +1061,7 @@ export const workerEngine = defineResource({
       attach: typeof attach;
       spawnObstacle: (position: { x: number; y: number }, radius: number) => void;
       spawnPredator: (position: { x: number; y: number }) => void;
+      clearDeathMarkers: () => void;
     };
 
     return api;

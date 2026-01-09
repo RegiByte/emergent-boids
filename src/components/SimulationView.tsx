@@ -189,7 +189,9 @@ function SimulationView() {
           return;
         }
 
-        const rect = canvas.canvas.getBoundingClientRect();
+        // Session 129: Use event target to get correct canvas (Canvas 2D or WebGL)
+        const targetCanvas = e.currentTarget as HTMLCanvasElement;
+        const rect = targetCanvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
 
@@ -245,7 +247,9 @@ function SimulationView() {
         if (now - lastPickerUpdate < PICKER_UPDATE_INTERVAL) return;
         lastPickerUpdate = now;
 
-        const rect = canvas.canvas.getBoundingClientRect();
+        // Session 129: Use event target to get correct canvas (Canvas 2D or WebGL)
+        const targetCanvas = e.currentTarget as HTMLCanvasElement;
+        const rect = targetCanvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
         const worldPos = camera.screenToWorld(screenX, screenY);
@@ -269,6 +273,12 @@ function SimulationView() {
       canvas.canvas.addEventListener("mousemove", handleCanvasMouseMove);
       canvas.canvas.addEventListener("mouseenter", handleCanvasMouseEnter);
       canvas.canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
+
+      // Session 129: Also attach handlers to WebGL canvas for spawn mode
+      webglRenderer.canvas.addEventListener("click", handleCanvasClick);
+      webglRenderer.canvas.addEventListener("mousemove", handleCanvasMouseMove);
+      webglRenderer.canvas.addEventListener("mouseenter", handleCanvasMouseEnter);
+      webglRenderer.canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
 
       // Start the renderer
       // if (updateLoop && !updateLoop.isPaused()) {
@@ -298,6 +308,12 @@ function SimulationView() {
         canvas.canvas.removeEventListener("mousemove", handleCanvasMouseMove);
         canvas.canvas.removeEventListener("mouseenter", handleCanvasMouseEnter);
         canvas.canvas.removeEventListener("mouseleave", handleCanvasMouseLeave);
+
+        // Session 129: Also remove WebGL canvas handlers
+        webglRenderer.canvas.removeEventListener("click", handleCanvasClick);
+        webglRenderer.canvas.removeEventListener("mousemove", handleCanvasMouseMove);
+        webglRenderer.canvas.removeEventListener("mouseenter", handleCanvasMouseEnter);
+        webglRenderer.canvas.removeEventListener("mouseleave", handleCanvasMouseLeave);
       };
     }
   }, [

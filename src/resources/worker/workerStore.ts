@@ -130,6 +130,7 @@ export const createWorkerStore = (initialState: WorkerStoreState) =>
         store: storeApi,
         setState: storeApi.setState,
         getState: storeApi.getState,
+        updateState: storeApi.updateState,
         boids: boidStore,
       };
 

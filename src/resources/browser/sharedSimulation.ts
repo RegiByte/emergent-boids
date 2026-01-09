@@ -154,6 +154,26 @@ export const sharedSimulation = defineResource({
         }
         // Worker loop is already started in sharedEngine
       },
+      [simulationKeywords.commands.setRendererMode]: (command) => {
+        runtimeStore.store.setState((current) => ({
+          ...current,
+          ui: {
+            ...current.ui,
+            rendererMode: command.rendererMode,
+          },
+        }));
+        // Session 129: Update canvas visibility when renderer mode changes
+        renderer.setRendererMode(command.rendererMode);
+      },
+      [simulationKeywords.commands.toggleDebugMode]: (_command) => {
+        runtimeStore.store.setState((current) => ({
+          ...current,
+          ui: {
+            ...current.ui,
+            debugMode: !current.ui.debugMode,
+          },
+        }));
+      },
     } satisfies Partial<CommandHandlers>;
 
     const simulation = createSimulation(

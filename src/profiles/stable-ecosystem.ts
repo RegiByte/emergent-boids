@@ -189,11 +189,11 @@ export const stableEcosystemProfile: SimulationProfile = {
   description: "Balanced multi-species coexistence with predator-prey dynamics",
 
   world: {
-    width: 2500,
-    height: 2500,
+    width: 3000,
+    height: 3000,
     backgroundColor: "#0369a1", // Deep space blue-black
     initialPreyCount: 100, // Start small for performance
-    initialPredatorCount: 20, // Balanced ratio (~1:5)
+    initialPredatorCount: 13, // Balanced ratio (~1:5)
   },
 
   parameters: {
@@ -209,16 +209,16 @@ export const stableEcosystemProfile: SimulationProfile = {
 
     // Population limits (FAST EVOLUTION: Lower caps for performance)
     maxBoids: 2000, // Global safety limit (60 FPS target)
-    maxPreyBoids: 1500, // Per-role cap for prey
-    maxPredatorBoids: 500, // Per-role cap for predators
+    maxPreyBoids: 1800, // Per-role cap for prey
+    maxPredatorBoids: 200, // Per-role cap for predators
 
     // Lifecycle parameters (FAST EVOLUTION: Accelerated reproduction)
-    minReproductionAge: 2, // Can start reproducing at 2 seconds old (was 5)
+    minReproductionAge: 2,
     reproductionEnergyThreshold: 0.4, // Need 40% energy to seek mates (was 0.5)
-    reproductionCooldownFrames: 90, // 3 time passages (~3 seconds) cooldown (was 5)
-    matingBuildupFrames: 60, // Must stay close to mate for 2 seconds before reproducing
+    reproductionCooldownFrames: 15, 
+    matingBuildupFrames: 7, // Must stay close to mate for 7 checked frames, accounting for staggered frames
     eatingCooldownFrames: 15, // Session 123: Reduced from 60 to 15 (~0.5 seconds between bites)
-    attackCooldownFrames: 90, // Predators must wait 3 seconds between attacks
+    attackCooldownFrames: 60, // Predators must wait 3 seconds between attacks
   },
 
   species: {
@@ -354,10 +354,11 @@ export const stableEcosystemProfile: SimulationProfile = {
         type: "sexual",
         offspringCount: 1,
         offspringEnergyBonus: 0,
+        cooldownFrames: 10
       },
 
       limits: {
-        maxPopulation: 400,
+        maxPopulation: 800,
       },
 
       affinities: {

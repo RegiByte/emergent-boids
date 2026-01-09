@@ -35,12 +35,17 @@ import {
   DEFAULT_FONT_CHARS,
   type FontAtlasResult,
 } from "@/resources/browser/webgl/atlases/fontAtlas.ts";
+import {
+  createObstacleAtlas,
+  type AtlasResult as ObstacleAtlasResult,
+} from "@/resources/browser/webgl/atlases/obstacleAtlas.ts";
 
 export interface AtlasesResult {
   shapes: ShapeAtlasResult | null;
   bodyParts: BodyPartsAtlasResult | null;
   emoji: EmojiAtlasResult | null;
   font: FontAtlasResult | null;
+  obstacle: ObstacleAtlasResult | null; // Session 130
 }
 
 /**
@@ -61,6 +66,7 @@ export const atlases = defineResource({
     const bodyParts = createBodyPartsAtlas();
     const emoji = createEmojiAtlas();
     const font = createFontAtlas("monospace", 16, DEFAULT_FONT_CHARS);
+    const obstacle = createObstacleAtlas(); // Session 130
 
     const endTime = performance.now();
     const duration = (endTime - startTime).toFixed(2);
@@ -73,6 +79,7 @@ export const atlases = defineResource({
     console.log(`  - Body Parts: ${bodyParts ? "✅" : "❌"}`);
     console.log(`  - Emoji: ${emoji ? "✅" : "❌"}`);
     console.log(`  - Font: ${font ? "✅" : "❌"}`);
+    console.log(`  - Obstacle: ${obstacle ? "✅" : "❌"}`);
 
     // Return the atlases for consumers to use
     return {
@@ -80,6 +87,7 @@ export const atlases = defineResource({
       bodyParts,
       emoji,
       font,
+      obstacle, // Session 130
     };
   },
   halt: () => {

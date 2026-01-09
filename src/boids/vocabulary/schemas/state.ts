@@ -119,6 +119,7 @@ export const runtimeStoreSchema = z.object({
     sidebarOpen: z.boolean(), // Whether the sidebar is open
     headerCollapsed: z.boolean(), // Whether the header navbar is collapsed
     rendererMode: renderModeSchema.default(renderModeKeywords.canvas), // Which renderer to use
+    debugMode: z.boolean().default(false), // Session 129: Debug visualizations (collision circles, spatial grids, etc.)
   }),
 });
 export type RuntimeStore = z.infer<typeof runtimeStoreSchema>;

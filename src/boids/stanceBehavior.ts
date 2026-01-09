@@ -29,8 +29,16 @@ const defaultSeparation = {
 
 const boidStanceEffectiveForces = {
   [stanceKeywords.flocking]: [defaultSeparation],
-  [stanceKeywords.seeking_mate]: [defaultSeparation],
-  [stanceKeywords.mating]: [defaultSeparation],
+  [stanceKeywords.seeking_mate]: [
+    defaultSeparation,
+    // Session 128: CRITICAL - Must include seekMate rule to move towards mate!
+    { rule: ruleKeywords.seekMate, importance: 3.0 }, // High importance to reach mate
+  ],
+  [stanceKeywords.mating]: [
+    defaultSeparation,
+    // Session 128: Keep close to mate during mating buildup
+    { rule: ruleKeywords.seekMate, importance: 2.5 }, // Stay close but allow some movement
+  ],
   [stanceKeywords.hunting]: [defaultSeparation],
   [stanceKeywords.eating]: [defaultSeparation],
   [stanceKeywords.idle]: [defaultSeparation],

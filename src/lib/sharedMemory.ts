@@ -114,6 +114,12 @@ export type SharedBoidBufferLayout = {
   /** Offset to stance flags buffer 1 (Uint8, boidCount elements) - Session 125 */
   stanceFlags1Offset: number;
 
+  /** Offset to stanceEnteredAtFrame buffer 0 (Uint32, boidCount elements) - Session 130 */
+  stanceEnteredAtFrame0Offset: number;
+
+  /** Offset to stanceEnteredAtFrame buffer 1 (Uint32, boidCount elements) - Session 130 */
+  stanceEnteredAtFrame1Offset: number;
+
   /** Offset to statistics (Uint32, 8 elements) */
   statsOffset: number;
 };
@@ -133,6 +139,8 @@ export type SharedBoidBufferLayout = {
  * - [...-...): Health buffer 1 (Float32, boidCount elements)
  * - [...-...): Stance flags buffer 0 (Uint8, boidCount elements)
  * - [...-...): Stance flags buffer 1 (Uint8, boidCount elements)
+ * - [...-...): StanceEnteredAtFrame buffer 0 (Uint32, boidCount elements) - Session 130
+ * - [...-...): StanceEnteredAtFrame buffer 1 (Uint32, boidCount elements) - Session 130
  * - [...-...): Statistics (Uint32, 8 elements = 32 bytes)
  */
 export function calculateBufferLayout(
@@ -184,6 +192,14 @@ export function calculateBufferLayout(
   const stanceFlags1Offset = offset;
   offset += boidCount * 1;
 
+  // Session 130: StanceEnteredAtFrame buffer 0 (frame number when stance was entered)
+  const stanceEnteredAtFrame0Offset = offset;
+  offset += boidCount * 4; // boidCount Uint32s = boidCount * 4 bytes
+
+  // StanceEnteredAtFrame buffer 1
+  const stanceEnteredAtFrame1Offset = offset;
+  offset += boidCount * 4;
+
   // Statistics: [aliveCount, deadCount, bornCount, ...]
   const statsOffset = offset;
   offset += 8 * 4; // 8 Uint32s = 32 bytes
@@ -204,6 +220,8 @@ export function calculateBufferLayout(
     health1Offset,
     stanceFlags0Offset,
     stanceFlags1Offset,
+    stanceEnteredAtFrame0Offset,
+    stanceEnteredAtFrame1Offset,
     statsOffset,
   };
 }
@@ -259,6 +277,12 @@ export type SharedBoidViews = {
 
   /** Stance flags buffer 1: packed stance + seekingMate - Session 125 */
   stanceFlags1: Uint8Array;
+
+  /** StanceEnteredAtFrame buffer 0: frame when stance was entered - Session 130 */
+  stanceEnteredAtFrame0: Uint32Array;
+
+  /** StanceEnteredAtFrame buffer 1: frame when stance was entered - Session 130 */
+  stanceEnteredAtFrame1: Uint32Array;
 
   /** Statistics counters */
   stats: Uint32Array;
@@ -323,6 +347,16 @@ export function createSharedBoidViews(
     stanceFlags1: new Uint8Array(
       buffer,
       layout.stanceFlags1Offset,
+      layout.boidCount,
+    ),
+    stanceEnteredAtFrame0: new Uint32Array(
+      buffer,
+      layout.stanceEnteredAtFrame0Offset,
+      layout.boidCount,
+    ),
+    stanceEnteredAtFrame1: new Uint32Array(
+      buffer,
+      layout.stanceEnteredAtFrame1Offset,
       layout.boidCount,
     ),
     stats: new Uint32Array(buffer, layout.statsOffset, 8),
@@ -407,6 +441,22 @@ export function getInactiveHealth(views: SharedBoidViews): Float32Array {
 export function getInactiveStanceFlags(views: SharedBoidViews): Uint8Array {
   const activeIndex = Atomics.load(views.bufferIndex, 0);
   return activeIndex === 0 ? views.stanceFlags1 : views.stanceFlags0;
+}
+
+/**
+ * Get the currently active stanceEnteredAtFrame buffer based on buffer index - Session 130
+ */
+export function getActiveStanceEnteredAtFrame(views: SharedBoidViews): Uint32Array {
+  const activeIndex = Atomics.load(views.bufferIndex, 0);
+  return activeIndex === 0 ? views.stanceEnteredAtFrame0 : views.stanceEnteredAtFrame1;
+}
+
+/**
+ * Get the currently inactive stanceEnteredAtFrame buffer (for worker to write to) - Session 130
+ */
+export function getInactiveStanceEnteredAtFrame(views: SharedBoidViews): Uint32Array {
+  const activeIndex = Atomics.load(views.bufferIndex, 0);
+  return activeIndex === 0 ? views.stanceEnteredAtFrame1 : views.stanceEnteredAtFrame0;
 }
 
 /**

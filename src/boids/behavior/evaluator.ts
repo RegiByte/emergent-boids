@@ -234,11 +234,18 @@ export function buildBehaviorContext(
 
   // Count available mates (Session 75: Seeking mates that are ready)
   // Session 123: Also exclude already-paired boids (mateId !== null)!
+  // Session 128: CRITICAL FIX - Only check seekingMate flag, not stance
+  // Checking stance creates circular dependency: won't seek unless others are seeking!
   const nearbyAvailableMatesCount = context.nearbyFlock.filter(
     (b) => 
-      (b.item.seekingMate || b.item.stance === stanceKeywords.seeking_mate) &&
-      b.item.mateId === null // Session 123: Must NOT already have a mate!
+      b.item.seekingMate && // Flag set by lifecycle when ready (age/energy/cooldown)
+      b.item.mateId === null && // Not already paired
+      b.item.reproductionCooldown === 0 // Not on cooldown (redundant but explicit)
   ).length;
+
+  // if (nearbyAvailableMatesCount > 0) {
+  //   console.log('Boid', boid.id, 'found', nearbyAvailableMatesCount, 'mates. Current stance:', boid.stance, 'seekingMate flag:', boid.seekingMate, 'mateId:', boid.mateId);
+  // }
 
   // Calculate environment pressure from population ratio
   // 0.0-0.7 = no pressure, 0.7-0.9 = moderate, 0.9-1.0 = extreme
