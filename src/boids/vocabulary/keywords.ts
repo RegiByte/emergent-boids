@@ -325,6 +325,7 @@ export const simulationKeywords = {
     resume: "simulation:resume",
     step: "simulation:step", // Step the simulation forward by one frame
     setTimeScale: "simulation:setTimeScale", // Change speed (0.25x - 4x)
+    updateParameters: "simulation:updateParameters", // Update simulation parameters (perceptionRadius, etc.)
     // UI/UX commands
     toggleTrails: "simulation:toggleTrails", // Toggle trails on/off
     toggleEnergyBar: "simulation:toggleEnergyBar", // Toggle energy bar on/off
@@ -357,6 +358,7 @@ export const simulationKeywords = {
     boidsCaught: "simulation:boidsCaught",
     boidsEvolved: "simulation:boidsEvolved",
     boidsReproduced: "simulation:boidsReproduced",
+    boidsSpawned: "simulation:boidsSpawned", // Session 127: User-triggered spawning
     boidsStanceChanged: "simulation:boidsStanceChanged",
     workerStateUpdated: "simulation:workerStateUpdated",
     // Environment events

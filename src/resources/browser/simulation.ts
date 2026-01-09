@@ -229,6 +229,19 @@ export const browserSimulation = defineResource({
         console.log("[BrowserSimulation] Clearing death markers");
         // engine.clearDeathMarkers();
       },
+      [simulationKeywords.commands.updateParameters]: (command) => {
+        console.log("[BrowserSimulation] Updating parameters:", command.parameters);
+        runtimeStore.store.setState((current) => ({
+          ...current,
+          config: {
+            ...current.config,
+            parameters: {
+              ...current.config.parameters,
+              ...command.parameters,
+            },
+          },
+        }));
+      },
     } satisfies CommandHandlers;
 
     const unsubscribeCallbacks = new Set<(...args: any[]) => void>();

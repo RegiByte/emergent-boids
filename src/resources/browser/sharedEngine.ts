@@ -34,7 +34,7 @@ import { FrameRaterAPI } from "../shared/frameRater.ts";
 import type { Profiler } from "../shared/profiler.ts";
 import type { RandomnessResource } from "../shared/randomness.ts";
 import type { SharedMemoryManager } from "../shared/sharedMemoryManager.ts";
-import { LocalBoidStoreResource } from "./localBoidStore.ts";
+import { LocalBoidStoreResource, syncBoidsFromSharedMemory } from "./localBoidStore.ts";
 import type { RuntimeStoreResource } from "./runtimeStore.ts";
 import type { WorkerTasksResource } from "./workerTasks.ts";
 import { simulationKeywords } from "@/boids/vocabulary/keywords.ts";
@@ -212,6 +212,10 @@ export const sharedEngine = defineResource({
 
         console.log("[sharedEngine] Loop task dispatched");
 
+        // Session 127: Periodic sync counter for localBoidStore refresh
+        let syncCounter = 0;
+        const SYNC_INTERVAL = 3; // Sync every 30 frames (~1 second at 30 UPS)
+
         // Listen to progress updates
         loopTask.onProgress((progress) => {
           if (simulationChannel) {
@@ -224,6 +228,14 @@ export const sharedEngine = defineResource({
                     frame: stats.frame,
                     simulationTimeMs: stats.simulationTime,
                   });
+
+                  // Session 127: Periodically sync localBoidStore from SharedArrayBuffer
+                  // This keeps camera follow and minimap working with fresh positions
+                  if (++syncCounter % SYNC_INTERVAL === 0) {
+                    profiler?.start("sharedEngine.syncLocalBoidStore");
+                    syncBoidsFromSharedMemory(memoryViews, boidsStore.boids);
+                    profiler?.end("sharedEngine.syncLocalBoidStore");
+                  }
                 }
                 break;
               }

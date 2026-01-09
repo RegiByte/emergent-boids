@@ -823,6 +823,83 @@ export const workerEngine = defineResource({
       workerProfiler.end(profilerKeywords.engine.update);
     };
 
+    /**
+     * Spawn an obstacle at the specified position
+     * Session 127: User-triggered obstacle spawning
+     */
+    const spawnObstacle = (position: { x: number; y: number }, radius: number) => {
+      const currentState = workerStore.getState();
+      const newObstacle = {
+        id: `obstacle-${workerTime.now()}-${Math.floor(Math.random() * 1000000)}`,
+        position,
+        radius,
+      };
+      
+      workerStore.setState({
+        ...currentState,
+        simulation: {
+          ...currentState.simulation,
+          obstacles: [...currentState.simulation.obstacles, newObstacle],
+        },
+      });
+      
+      console.log("[WorkerEngine] Spawned obstacle:", newObstacle);
+      
+      // Notify browser so it can update its local store
+      simulationChannel?.out.notify({
+        type: simulationKeywords.events.obstaclesAdded,
+        obstacles: [newObstacle],
+      });
+    };
+
+    /**
+     * Spawn a predator at the specified position
+     * Session 127: User-triggered predator spawning
+     */
+    const spawnPredator = (position: { x: number; y: number }) => {
+      const currentState = workerStore.getState();
+      const { config } = currentState;
+      const { species } = config;
+      
+      // Find predator type IDs
+      const predatorTypeIds = Object.keys(species).filter(
+        (id) => species[id].role === "predator"
+      );
+      
+      if (predatorTypeIds.length === 0) {
+        console.warn("[WorkerEngine] No predator species configured!");
+        return;
+      }
+      
+      // Create predator boid
+      const physics = config.physics || defaultWorldPhysics;
+      const creationContext = {
+        world: { width: config.world.width, height: config.world.height },
+        species,
+        rng: workerRandomness.domain("spawning"),
+        physics,
+      };
+      
+      const result = createBoidOfType(
+        position,
+        predatorTypeIds[0], // Use first predator type
+        creationContext,
+        0, // No energy bonus
+        boidsStore.nextIndex(),
+        undefined // No parents
+      );
+      
+      boidsStore.addBoid(result.boid);
+      
+      console.log("[WorkerEngine] Spawned predator:", result.boid.id);
+      
+      // Notify browser (so it can update its local store too)
+      simulationChannel?.out.notify({
+        type: simulationKeywords.events.boidsSpawned,
+        boids: [result.boid],
+      });
+    };
+
     const api = {
       getBufferViews: () => {
         const bufferViews = boidsStore.getBufferViews();
@@ -847,12 +924,16 @@ export const workerEngine = defineResource({
         // TODO: Implement predator-prey catch detection
         return [];
       },
+      spawnObstacle, // Session 127: New method
+      spawnPredator, // Session 127: New method
       cleanup: () => {
         simulationChannel?.clear();
       },
       attach,
     } satisfies BoidEngine & {
       attach: typeof attach;
+      spawnObstacle: (position: { x: number; y: number }, radius: number) => void;
+      spawnPredator: (position: { x: number; y: number }) => void;
     };
 
     return api;

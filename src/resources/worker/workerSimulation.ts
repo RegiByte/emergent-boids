@@ -25,6 +25,7 @@ export const workerSimulation = defineResource({
     workerEngine,
     workerTime,
     workerUpdateLoop,
+    workerStore,
   }: {
     workerEngine: WorkerEngineResource;
     workerTime: TimeAPI;
@@ -87,21 +88,42 @@ export const workerSimulation = defineResource({
           timeScale: command.timeScale,
         });
       },
+      [simulationKeywords.commands.updateParameters]: (command) => {
+        console.log(
+          "[WorkerSimulation] Updating parameters:",
+          command.parameters
+        );
+        // Update workerStore config with new parameters
+        const currentState = workerStore.getState();
+        workerStore.setState({
+          ...currentState,
+          config: {
+            ...currentState.config,
+            parameters: {
+              ...currentState.config.parameters,
+              ...command.parameters,
+            },
+          },
+        });
+        console.log("[WorkerSimulation] Parameters updated successfully");
+      },
       [simulationKeywords.commands.spawnFood]: (command) => {
         console.log("[WorkerSimulation] Spawning food:", command.position);
-        // engine.spawnFood(command.position);
+        // TODO: engine.spawnFood(command.position);
       },
       [simulationKeywords.commands.clearFood]: (_command) => {
         console.log("[WorkerSimulation] Clearing food");
-        // engine.clearFood();
+        // TODO: engine.clearFood();
       },
       [simulationKeywords.commands.spawnObstacle]: (command) => {
         console.log("[WorkerSimulation] Spawning obstacle:", command.position);
-        // engine.spawnObstacle(command.position);
+        // Session 127: Call worker engine method
+        workerEngine.spawnObstacle(command.position, command.radius);
       },
       [simulationKeywords.commands.spawnPredator]: (command) => {
         console.log("[WorkerSimulation] Spawning predator:", command.position);
-        // engine.spawnPredator(command.position);
+        // Session 127: Call worker engine method
+        workerEngine.spawnPredator(command.position);
       },
       [simulationKeywords.commands.clearDeathMarkers]: (_command) => {
         console.log("[WorkerSimulation] Clearing death markers");

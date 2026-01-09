@@ -6,7 +6,7 @@
  */
 
 import { countBoidsByRole } from "@/boids/filters.ts";
-import { findBoidWhere, iterateBoids } from "@/boids/iterators.ts";
+import { iterateBoids } from "@/boids/iterators.ts";
 import {
   getWoundedTint,
   shouldShowHealthBar,
@@ -771,7 +771,7 @@ export const renderMatingHearts = (rc: RenderContext): void => {
       drawnMatingPairs.add(pairId);
 
       // Find the mate
-      const mate = findBoidWhere(rc.boids, (b) => b.id === boid.mateId);
+      const mate = rc.boids[boid.mateId];
       if (!mate) continue;
 
       // Calculate midpoint with toroidal wrapping in mind
@@ -949,10 +949,7 @@ export const renderPickerMode = (rc: RenderContext): void => {
 
   // Highlight target boid if one is selected
   if (targetBoidId) {
-    const targetBoid = findBoidWhere(
-      rc.allBoids,
-      (boid) => boid.id === targetBoidId
-    );
+    const targetBoid = rc.allBoids[targetBoidId];
     if (targetBoid) {
       const boidScreenPos = rc.camera.worldToScreen(
         targetBoid.position.x,
@@ -970,14 +967,12 @@ export const renderPickerMode = (rc: RenderContext): void => {
   }
 };
 
-let cachedFollowedBoidForRender: { id: string; boid: Boid } | null = null;
-
 /**
  * Render pulsing ring around followed boid
+ * Session 127: Removed boid object caching - always read fresh position from rc.allBoids
  */
 export const renderFollowedBoid = (rc: RenderContext): void => {
   if (rc.camera.mode.type !== cameraKeywords.mode.following) {
-    cachedFollowedBoidForRender = null;
     return;
   }
 
@@ -985,27 +980,17 @@ export const renderFollowedBoid = (rc: RenderContext): void => {
     rc.camera.mode as Extract<CameraMode, { type: "following" }>
   ).boidId;
 
-  // Only search if cache is invalid
-  if (
-    !cachedFollowedBoidForRender ||
-    cachedFollowedBoidForRender.id !== followedBoidId ||
-    !rc.allBoids[cachedFollowedBoidForRender.id]
-  ) {
-    const followedBoid = findBoidWhere(
-      rc.allBoids,
-      (boid) => boid.id === followedBoidId
-    );
-    if (!followedBoid) {
-      cachedFollowedBoidForRender = null;
-      return;
-    }
-    cachedFollowedBoidForRender = { id: followedBoidId, boid: followedBoid };
+  // Get fresh boid from render context (has up-to-date position from SharedArrayBuffer)
+  const followedBoid = rc.allBoids[followedBoidId];
+  if (!followedBoid) {
+    // Boid not in viewport or doesn't exist
+    return;
   }
 
   const ctx = rc.ctx;
   const screenPos = rc.camera.worldToScreen(
-    cachedFollowedBoidForRender.boid.position.x,
-    cachedFollowedBoidForRender.boid.position.y
+    followedBoid.position.x,
+    followedBoid.position.y
   );
 
   // Pulsing effect based on time

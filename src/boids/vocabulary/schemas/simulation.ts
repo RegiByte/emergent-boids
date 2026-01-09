@@ -8,6 +8,7 @@ import {
   stanceSchema,
   vectorSchema,
 } from "./primitives";
+import { simulationParametersSchema } from "./world";
 
 export const simulationCommandSchema = z.discriminatedUnion("type", [
   // Simulation commands
@@ -26,6 +27,10 @@ export const simulationCommandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal(simulationKeywords.commands.setTimeScale),
     timeScale: z.number(),
+  }),
+  z.object({
+    type: z.literal(simulationKeywords.commands.updateParameters),
+    parameters: simulationParametersSchema.partial(), // Partial parameters update
   }),
   // Boid commands
   z.object({
@@ -85,6 +90,7 @@ export const simulationCommandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal(simulationKeywords.commands.spawnObstacle),
     position: vectorSchema,
+    radius: z.number(), // Session 127: Obstacle radius
   }),
   z.object({
     type: z.literal(simulationKeywords.commands.spawnPredator),
@@ -159,6 +165,10 @@ export const simulationEventSchema = z.discriminatedUnion("type", [
         }).optional(),
       })
     ),
+  }),
+  z.object({
+    type: z.literal(simulationKeywords.events.boidsSpawned),
+    boids: z.array(boidSchema), // Session 127: User-triggered spawning
   }),
   z.object({
     type: z.literal(simulationKeywords.events.boidsStanceChanged),

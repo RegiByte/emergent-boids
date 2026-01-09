@@ -1,4 +1,4 @@
-import { eventKeywords } from "@/boids/vocabulary/keywords";
+import { eventKeywords, simulationKeywords } from "@/boids/vocabulary/keywords";
 import { CameraControls } from "@/components/CameraControls";
 import { CanvasFrame } from "@/components/CanvasFrame";
 import { ControlsSidebar, type SpawnMode } from "@/components/ControlsSidebar";
@@ -211,22 +211,20 @@ function SimulationView() {
         const y = worldPos.y;
 
         if (spawnMode === "obstacle") {
-          // Dispatch obstacle added event
-          runtimeController.dispatch({
-            type: eventKeywords.obstacles.added,
-            x,
-            y,
+          // Session 127: Use simulation command to spawn obstacle in worker
+          simulation.dispatch({
+            type: simulationKeywords.commands.spawnObstacle,
+            position: { x, y },
             radius: 30, // Default radius
           });
           toast.success("Obstacle placed", {
             description: `Position: (${Math.round(x)}, ${Math.round(y)})`,
           });
         } else {
-          // Dispatch spawn predator event
-          runtimeController.dispatch({
-            type: eventKeywords.boids.spawnPredator,
-            x,
-            y,
+          // Session 127: Use simulation command to spawn predator in worker
+          simulation.dispatch({
+            type: simulationKeywords.commands.spawnPredator,
+            position: { x, y },
           });
           toast.success("Predator spawned", {
             description: `Position: (${Math.round(x)}, ${Math.round(y)})`,

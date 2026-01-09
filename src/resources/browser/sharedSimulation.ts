@@ -78,10 +78,52 @@ export const sharedSimulation = defineResource({
         });
       },
       [simulationKeywords.commands.setTimeScale]: (command) => {
+        time.setTimeScale(command.timeScale);
         workerTasks.dispatch("command", {
           command: {
             type: simulationKeywords.commands.setTimeScale,
             timeScale: command.timeScale,
+          },
+        });
+      },
+      [simulationKeywords.commands.updateParameters]: (command) => {
+        // Update browser store first
+        runtimeStore.store.setState((current) => ({
+          ...current,
+          config: {
+            ...current.config,
+            parameters: {
+              ...current.config.parameters,
+              ...command.parameters,
+            },
+          },
+        }));
+        // Forward to worker
+        workerTasks.dispatch("command", {
+          command: {
+            type: simulationKeywords.commands.updateParameters,
+            parameters: command.parameters,
+          },
+        });
+      },
+
+      // Spawn commands → Forward to worker (Session 127)
+      [simulationKeywords.commands.spawnObstacle]: (command) => {
+        console.log("[SharedSimulation] Forwarding spawnObstacle to worker");
+        workerTasks.dispatch("command", {
+          command: {
+            type: simulationKeywords.commands.spawnObstacle,
+            position: command.position,
+            radius: command.radius,
+          },
+        });
+      },
+      [simulationKeywords.commands.spawnPredator]: (command) => {
+        console.log("[SharedSimulation] Forwarding spawnPredator to worker");
+        workerTasks.dispatch("command", {
+          command: {
+            type: simulationKeywords.commands.spawnPredator,
+            position: command.position,
           },
         });
       },
@@ -153,7 +195,7 @@ export const sharedSimulation = defineResource({
     // Event Bridge: Watch simulation channel and forward events to runtimeController
     // This enables analytics and atmosphere to observe events from the worker
     // Worker is the source of truth - browser just mirrors the state
-    channel.watch((event: any) => {
+    channel.watch((event) => {
       // console.log("[SharedSimulation] Channel event:", event.type);
 
       // Forward all events to runtimeController for analytics/atmosphere
@@ -173,6 +215,9 @@ export const sharedSimulation = defineResource({
         },
         step: () => {
           simulation.dispatch({ type: simulationKeywords.commands.step });
+        },
+        setTimeScale: (timeScale: number) => {
+          simulation.dispatch({ type: simulationKeywords.commands.setTimeScale, timeScale });
         },
       };
       

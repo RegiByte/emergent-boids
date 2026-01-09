@@ -313,7 +313,9 @@ export const camera = defineResource({
     };
 
     const startFollowing = (boidId: string) => {
-      cameraAtom.set({ type: "following", boidId, lerpFactor: 0.1 });
+      // Session 127: Increased lerp factor from 0.1 to 0.3 for more responsive following
+      // Lower values = smoother but more lag, Higher values = snappier but less smooth
+      cameraAtom.set({ type: "following", boidId, lerpFactor: 0.3 });
     };
 
     const stopFollowing = () => {

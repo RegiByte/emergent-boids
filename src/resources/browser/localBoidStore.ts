@@ -4,7 +4,7 @@ import {
   BoidsById,
   PhysicalBoid,
 } from "@/boids/vocabulary/schemas/entities";
-import { Vector2 } from "@/boids/vocabulary/schemas/primitives";
+import { BoidStance, Vector2 } from "@/boids/vocabulary/schemas/primitives";
 import {
   getActivePositions,
   getActiveVelocities,
@@ -16,6 +16,9 @@ import {
   SharedBoidViews,
   StatsIndex,
   packStanceFlags,
+  getActiveEnergy,
+  getActiveHealth,
+  getActiveStanceFlags,
 } from "@/lib/sharedMemory";
 import { defineResource, StartedResource } from "braided";
 import { stanceKeywords } from "@/boids/vocabulary/keywords";
@@ -233,6 +236,20 @@ const stanceToNumber: Record<string, number> = {
 };
 
 /**
+ * Map numeric stance values back to strings for unpacking
+ * Session 127: Used for reading from SharedArrayBuffer
+ */
+const numberToStance: Record<number, string> = {
+  0: stanceKeywords.flocking,
+  1: stanceKeywords.fleeing,
+  2: stanceKeywords.hunting,
+  3: stanceKeywords.eating,
+  4: stanceKeywords.mating,
+  5: stanceKeywords.seeking_mate,
+  6: stanceKeywords.idle,
+};
+
+/**
  * Writes the updated boids physical properties to the shared memory.
  * 
  * Session 125: Extended to write energy, health, stance, and seekingMate
@@ -262,6 +279,48 @@ export function syncBoidsToSharedMemory(
     
     const stanceNum = stanceToNumber[boid.stance] ?? 0;
     writeStanceFlags[index] = packStanceFlags(stanceNum, boid.seekingMate);
+  }
+}
+
+/**
+ * Reads the updated boids physical properties FROM shared memory and updates local store.
+ * 
+ * Session 127: Periodic sync to keep localBoidStore fresh for camera follow and minimap.
+ * This is the inverse of syncBoidsToSharedMemory - reads from worker, writes to browser.
+ * 
+ * @param bufferViews - SharedArrayBuffer views (reads from active buffer)
+ * @param boids - Local boid store to update (mutates in place)
+ */
+export function syncBoidsFromSharedMemory(
+  bufferViews: SharedBoidViews,
+  boids: BoidsById,
+) {
+  const readPositions = getActivePositions(bufferViews);
+  const readVelocities = getActiveVelocities(bufferViews);
+  const readEnergy = getActiveEnergy(bufferViews);
+  const readHealth = getActiveHealth(bufferViews);
+  const readStanceFlags = getActiveStanceFlags(bufferViews);
+
+  for (const boid of iterateBoids(boids)) {
+    const index = boid.index;
+    
+    // Physics - read from SharedArrayBuffer
+    boid.position.x = readPositions[index * 2 + 0];
+    boid.position.y = readPositions[index * 2 + 1];
+    boid.velocity.x = readVelocities[index * 2 + 0];
+    boid.velocity.y = readVelocities[index * 2 + 1];
+    
+    // Observer state - read from SharedArrayBuffer
+    boid.energy = readEnergy[index];
+    boid.health = readHealth[index];
+    
+    // Unpack stance flags
+    const packedFlags = readStanceFlags[index];
+    const stanceNum = packedFlags & 0x7F; // Lower 7 bits
+    const seekingMate = (packedFlags & 0x80) !== 0; // High bit
+    
+    boid.stance = numberToStance[stanceNum] as BoidStance ?? boid.stance;
+    boid.seekingMate = seekingMate;
   }
 }
 

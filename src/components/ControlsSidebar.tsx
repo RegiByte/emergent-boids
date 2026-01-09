@@ -1,4 +1,4 @@
-import { eventKeywords } from "@/boids/vocabulary/keywords";
+import { eventKeywords, simulationKeywords } from "@/boids/vocabulary/keywords";
 import {
   Accordion,
   AccordionContent,
@@ -65,8 +65,9 @@ export function ControlsSidebar({
   const { useStore: useRuntimeStore } = useResource("runtimeStore");
   const { useStore: useAnalyticsStore } = useResource("analyticsStore");
   const { store: boidStore } = useResource("localBoidStore");
+  const simulation = useResource("simulation")
   const runtimeStore = useRuntimeStore((state) => state);
-  const { config, simulation } = runtimeStore;
+  const { config, simulation: simulationState } = runtimeStore;
   const analytics = useAnalyticsStore((state) => state.evolution.data);
   const runtimeController = useResource("runtimeController");
   // const lifecycleManager = useResource("lifecycleManager");
@@ -170,9 +171,9 @@ export function ControlsSidebar({
                     value={[config.parameters.perceptionRadius]}
                     onValueChange={(values) => {
                       const value = Array.isArray(values) ? values[0] : values;
-                      runtimeController.dispatch({
-                        type: eventKeywords.controls.perceptionRadiusChanged,
-                        value,
+                      simulation.dispatch({
+                        type: simulationKeywords.commands.updateParameters,
+                        parameters: { perceptionRadius: value },
                       });
                     }}
                     min={10}
@@ -192,9 +193,9 @@ export function ControlsSidebar({
                     value={[config.parameters.obstacleAvoidanceWeight]}
                     onValueChange={(values) => {
                       const value = Array.isArray(values) ? values[0] : values;
-                      runtimeController.dispatch({
-                        type: eventKeywords.controls.obstacleAvoidanceChanged,
-                        value,
+                      simulation.dispatch({
+                        type: simulationKeywords.commands.updateParameters,
+                        parameters: { obstacleAvoidanceWeight: value },
                       });
                     }}
                     min={0}
@@ -216,9 +217,13 @@ export function ControlsSidebar({
                   variant={timeState.isPaused ? "default" : "destructive"}
                   size="sm"
                   className="w-full"
-                  onClick={() =>
-                    timeState.isPaused ? time.resume() : time.pause()
-                  }
+                  onClick={() => {
+                    simulation.dispatch({
+                      type: timeState.isPaused
+                        ? simulationKeywords.commands.resume
+                        : simulationKeywords.commands.pause,
+                    });
+                  }}
                 >
                   {timeState.isPaused ? "▶️ Resume" : "⏸️ Pause"}
                 </Button>
@@ -233,7 +238,12 @@ export function ControlsSidebar({
                       }
                       size="sm"
                       className="flex-1 text-xs px-1"
-                      onClick={() => time.setTimeScale(scale)}
+                      onClick={() => {
+                        simulation.dispatch({
+                          type: simulationKeywords.commands.setTimeScale,
+                          timeScale: scale,
+                        });
+                      }}
                     >
                       {scale}x
                     </Button>
@@ -246,7 +256,11 @@ export function ControlsSidebar({
                     variant="secondary"
                     size="sm"
                     className="w-full"
-                    onClick={() => time.step()}
+                    onClick={() => {
+                      simulation.dispatch({
+                        type: simulationKeywords.commands.step,
+                      });
+                    }}
                   >
                     ⏭️ Step (1 Tick)
                   </Button>
@@ -335,7 +349,7 @@ export function ControlsSidebar({
                     <CardTitle className="text-xs flex items-center justify-between">
                       <span>Obstacles</span>
                       <Badge variant="secondary">
-                        {simulation.obstacles.length}
+                        {simulationState.obstacles.length}
                       </Badge>
                     </CardTitle>
                   </CardHeader>

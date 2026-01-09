@@ -560,6 +560,8 @@ export const renderer = defineResource({
     const updateCamera = () => {
       if (camera.mode.type === "following") {
         const followedBoidId = camera.mode.boidId;
+        
+        // Refresh cache if following a different boid
         if (!cachedFollowedBoid || cachedFollowedBoid.id !== followedBoidId) {
           const followedBoid = findBoidWhere(
             boidStore.boids,
@@ -571,31 +573,22 @@ export const renderer = defineResource({
             cachedFollowedBoid = null;
           }
         }
+        
         if (cachedFollowedBoid) {
-          const position = {
-            x: cachedFollowedBoid.boid.position.x,
-            y: cachedFollowedBoid.boid.position.y,
-          };
-          const velocity = {
-            x: cachedFollowedBoid.boid.velocity.x,
-            y: cachedFollowedBoid.boid.velocity.y,
-          };
+          // Session 127: localBoidStore is now synced periodically (every 30 frames)
+          // For sub-frame accuracy at 60 FPS, read fresh position from SharedArrayBuffer
+          let position = cachedFollowedBoid.boid.position;
+          
           if (usesSharedMemory) {
             const boidPhysics = getBoidPhysics(
               cachedFollowedBoid.boid.index,
               boidsPhysicsMemory.views as unknown as SharedBoidViews
             );
             if (boidPhysics) {
-              position.x = boidPhysics.position.x;
-              position.y = boidPhysics.position.y;
-              velocity.x = boidPhysics.velocity.x;
-              velocity.y = boidPhysics.velocity.y;
-              cachedFollowedBoid.boid.position.x = boidPhysics.position.x;
-              cachedFollowedBoid.boid.position.y = boidPhysics.position.y;
-              cachedFollowedBoid.boid.velocity.x = boidPhysics.velocity.x;
-              cachedFollowedBoid.boid.velocity.y = boidPhysics.velocity.y;
+              position = boidPhysics.position;
             }
           }
+          
           camera.updateFollowPosition(position.x, position.y);
         } else {
           // Boid died or disappeared - exit follow mode

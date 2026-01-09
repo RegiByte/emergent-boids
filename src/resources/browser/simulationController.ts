@@ -339,6 +339,14 @@ const handlers = {
     // TODO: plug this in analytics
     return addBoidEffects;
   },
+  [simulationKeywords.events.boidsSpawned]: (_state, event) => {
+    // Session 127: User-triggered spawning
+    const addBoidEffects = event.boids.map((boid) => ({
+      type: effectKeywords.engine.addBoid,
+      boid,
+    }));
+    return addBoidEffects;
+  },
   [simulationKeywords.events.boidsStanceChanged]: (_state, _event) => {
     return [
       // TODO: plug this in analytics
