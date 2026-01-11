@@ -22,80 +22,72 @@
  * const lifecycle = frameRater.throttled("lifecycle", { intervalMs: 1000 });
  */
 
-import { createAtom } from "@/lib/state.ts";
-import { defineResource } from "braided";
+import { createAtom } from '@/lib/state.ts'
+import { defineResource } from 'braided'
 
-const ONE_SECOND_MS = 1000;
+const ONE_SECOND_MS = 1000
 
-// ============================================
-// Core Types
-// ============================================
-
-export type ExecutionStrategy = "fixed" | "variable" | "throttled";
+export type ExecutionStrategy = 'fixed' | 'variable' | 'throttled'
 
 export type FixedTimestepConfig = {
-  targetFPS: number; // e.g., 60
-  maxUpdatesPerFrame: number; // Max catch-up (prevents spiral)
-  maxAccumulatedTime: number; // Cap accumulator (prevents spiral)
-};
+  targetFPS: number // e.g., 60
+  maxUpdatesPerFrame: number // Max catch-up (prevents spiral)
+  maxAccumulatedTime: number // Cap accumulator (prevents spiral)
+}
 
 export type VariableTimestepConfig = {
-  targetFPS: number; // Ideal FPS (for display)
-  smoothingWindow: number; // Frames to smooth over
-  maxDeltaMs: number; // Cap delta to prevent huge jumps
-};
+  targetFPS: number // Ideal FPS (for display)
+  smoothingWindow: number // Frames to smooth over
+  maxDeltaMs: number // Cap delta to prevent huge jumps
+}
 
 export type ThrottledConfig = {
-  intervalMs: number; // How often to execute (e.g., 1000 for 1Hz)
-};
+  intervalMs: number // How often to execute (e.g., 1000 for 1Hz)
+}
 
 export type ExecutorMetrics = {
-  fps: number; // Current FPS
-  avgFrameTime: number; // Average frame time
-  frameCount: number; // Total frames
-  droppedFrames: number; // Dropped (fixed only)
-  accumulatedTime: number; // Time accumulated (for debugging)
-};
-
-// ============================================
-// Fixed Timestep Executor
-// ============================================
+  fps: number // Current FPS
+  avgFrameTime: number // Average frame time
+  frameCount: number // Total frames
+  droppedFrames: number // Dropped (fixed only)
+  accumulatedTime: number // Time accumulated (for debugging)
+}
 
 type FixedTimestepState = {
-  config: FixedTimestepConfig;
-  accumulator: number;
-  metrics: ExecutorMetrics;
-  smoothingWindow: number[];
-};
+  config: FixedTimestepConfig
+  accumulator: number
+  metrics: ExecutorMetrics
+  smoothingWindow: number[]
+}
 
 export type FixedTimestepExecutor = {
   /** Get current configuration */
-  getConfig: () => FixedTimestepConfig;
-  getTimestep: () => number;
+  getConfig: () => FixedTimestepConfig
+  getTimestep: () => number
 
   /** Update config */
-  setConfig: (config: Partial<FixedTimestepConfig>) => void;
+  setConfig: (config: Partial<FixedTimestepConfig>) => void
 
   /** Calculate how many updates should run this frame */
   shouldUpdate: (deltaMs: number) => {
-    updates: number; // How many fixed timestep updates to run
-    timestep: number; // The fixed timestep duration (in seconds)
-    droppedFrames: number; // Frames dropped to prevent spiral
-  };
+    updates: number // How many fixed timestep updates to run
+    timestep: number // The fixed timestep duration (in seconds)
+    droppedFrames: number // Frames dropped to prevent spiral
+  }
 
   /** Record that updates were executed */
-  recordExecution: (updates: number, droppedFrames: number) => void;
+  recordExecution: (updates: number, droppedFrames: number) => void
 
   /** Get current metrics */
-  getMetrics: () => ExecutorMetrics;
+  getMetrics: () => ExecutorMetrics
 
   /** Reset state */
-  reset: () => void;
-};
+  reset: () => void
+}
 
 function createFixedExecutor(
   name: string,
-  config: FixedTimestepConfig,
+  config: FixedTimestepConfig
 ): FixedTimestepExecutor {
   const stateAtom = createAtom<FixedTimestepState>({
     config,
@@ -108,7 +100,7 @@ function createFixedExecutor(
       accumulatedTime: 0,
     },
     smoothingWindow: [],
-  });
+  })
 
   return {
     getConfig: () => stateAtom.get().config,
@@ -118,62 +110,57 @@ function createFixedExecutor(
       stateAtom.update((state) => ({
         ...state,
         config: { ...state.config, ...newConfig },
-      }));
+      }))
     },
 
     shouldUpdate: (deltaMs: number) => {
-      const state = stateAtom.get();
-      const timestep = ONE_SECOND_MS / state.config.targetFPS;
-      let acc = state.accumulator + deltaMs;
-      let updates = 0;
-      let droppedFrames = 0;
+      const state = stateAtom.get()
+      const timestep = ONE_SECOND_MS / state.config.targetFPS
+      let acc = state.accumulator + deltaMs
+      let updates = 0
+      let droppedFrames = 0
 
-      // Clamp accumulator to prevent death spiral
       if (acc > state.config.maxAccumulatedTime) {
         droppedFrames = Math.floor(
-          (acc - state.config.maxAccumulatedTime) / timestep,
-        );
-        acc = state.config.maxAccumulatedTime;
+          (acc - state.config.maxAccumulatedTime) / timestep
+        )
+        acc = state.config.maxAccumulatedTime
       }
 
-      // Calculate updates (capped)
       while (acc >= timestep && updates < state.config.maxUpdatesPerFrame) {
-        updates++;
-        acc -= timestep;
+        updates++
+        acc -= timestep
       }
 
-      // Drop excess if we hit the cap
       if (updates >= state.config.maxUpdatesPerFrame && acc >= timestep) {
-        const extraUpdates = Math.floor(acc / timestep);
-        droppedFrames += extraUpdates;
-        acc = acc % timestep;
+        const extraUpdates = Math.floor(acc / timestep)
+        droppedFrames += extraUpdates
+        acc = acc % timestep
       }
 
-      // Update accumulator
-      stateAtom.update((state) => ({ ...state, accumulator: acc }));
+      stateAtom.update((state) => ({ ...state, accumulator: acc }))
 
       if (droppedFrames > 0) {
         console.warn(
-          `[frameRater:${name}] Dropped ${droppedFrames} frame(s) to prevent spiral`,
-        );
+          `[frameRater:${name}] Dropped ${droppedFrames} frame(s) to prevent spiral`
+        )
       }
 
-      return { updates, timestep: timestep / 1000, droppedFrames }; // Return timestep in seconds
+      return { updates, timestep: timestep / 1000, droppedFrames } // Return timestep in seconds
     },
 
     recordExecution: (updates: number, droppedFrames: number) => {
       stateAtom.update((state) => {
-        const newFrameCount = state.metrics.frameCount + updates;
-        const newDroppedFrames = state.metrics.droppedFrames + droppedFrames;
-        const frameTime = ONE_SECOND_MS / state.config.targetFPS;
+        const newFrameCount = state.metrics.frameCount + updates
+        const newDroppedFrames = state.metrics.droppedFrames + droppedFrames
+        const frameTime = ONE_SECOND_MS / state.config.targetFPS
 
-        // Update smoothing window
-        const newWindow = [...state.smoothingWindow, frameTime];
-        if (newWindow.length > 10) newWindow.shift();
+        const newWindow = [...state.smoothingWindow, frameTime]
+        if (newWindow.length > 10) newWindow.shift()
 
         const avgFrameTime =
-          newWindow.reduce((sum, t) => sum + t, 0) / newWindow.length;
-        const fps = avgFrameTime > 0 ? ONE_SECOND_MS / avgFrameTime : 0;
+          newWindow.reduce((sum, t) => sum + t, 0) / newWindow.length
+        const fps = avgFrameTime > 0 ? ONE_SECOND_MS / avgFrameTime : 0
 
         return {
           ...state,
@@ -185,8 +172,8 @@ function createFixedExecutor(
             accumulatedTime: state.accumulator,
           },
           smoothingWindow: newWindow,
-        };
-      });
+        }
+      })
     },
 
     getMetrics: () => stateAtom.get().metrics,
@@ -203,50 +190,46 @@ function createFixedExecutor(
           accumulatedTime: 0,
         },
         smoothingWindow: [],
-      }));
+      }))
     },
-  };
+  }
 }
 
-// ============================================
-// Variable Timestep Executor
-// ============================================
-
 type VariableTimestepState = {
-  config: VariableTimestepConfig;
-  metrics: ExecutorMetrics;
-  smoothingWindow: number[];
-};
+  config: VariableTimestepConfig
+  metrics: ExecutorMetrics
+  smoothingWindow: number[]
+}
 
 export type VariableTimestepExecutor = {
   /** Get current configuration */
-  getConfig: () => VariableTimestepConfig;
+  getConfig: () => VariableTimestepConfig
 
   /** Update config */
-  setConfig: (config: Partial<VariableTimestepConfig>) => void;
+  setConfig: (config: Partial<VariableTimestepConfig>) => void
 
   /** Calculate delta time for this frame (capped and smoothed) */
   getDelta: (deltaMs: number) => {
-    deltaSeconds: number; // Time to use for update (in seconds)
-    cappedMs: number; // Actual capped delta in ms
-  };
+    deltaSeconds: number // Time to use for update (in seconds)
+    cappedMs: number // Actual capped delta in ms
+  }
 
   /** Record frame execution */
-  recordFrame: (deltaMs: number) => void;
+  recordFrame: (deltaMs: number) => void
 
   /** Get current metrics (smoothed FPS) */
-  getMetrics: () => ExecutorMetrics;
+  getMetrics: () => ExecutorMetrics
 
   /** Get smoothed FPS */
-  getFPS: () => number;
+  getFPS: () => number
 
   /** Reset state */
-  reset: () => void;
-};
+  reset: () => void
+}
 
 function createVariableExecutor(
   name: string,
-  config: VariableTimestepConfig,
+  config: VariableTimestepConfig
 ): VariableTimestepExecutor {
   const stateAtom = createAtom<VariableTimestepState>({
     config,
@@ -258,12 +241,12 @@ function createVariableExecutor(
       accumulatedTime: 0,
     },
     smoothingWindow: [],
-  });
+  })
 
   console.log(
     `[frameRater:${name}] Variable timestep executor: target ${config.targetFPS} FPS, ` +
-      `smoothing window: ${config.smoothingWindow} frames, max delta: ${config.maxDeltaMs}ms`,
-  );
+      `smoothing window: ${config.smoothingWindow} frames, max delta: ${config.maxDeltaMs}ms`
+  )
 
   return {
     getConfig: () => stateAtom.get().config,
@@ -272,31 +255,29 @@ function createVariableExecutor(
       stateAtom.update((state) => ({
         ...state,
         config: { ...state.config, ...newConfig },
-      }));
+      }))
     },
 
     getDelta: (deltaMs: number) => {
-      const state = stateAtom.get();
-      // Cap delta to prevent huge jumps (e.g., when tab is backgrounded)
-      const cappedMs = Math.min(deltaMs, state.config.maxDeltaMs);
-      const deltaSeconds = cappedMs / ONE_SECOND_MS;
+      const state = stateAtom.get()
+      const cappedMs = Math.min(deltaMs, state.config.maxDeltaMs)
+      const deltaSeconds = cappedMs / ONE_SECOND_MS
 
-      return { deltaSeconds, cappedMs };
+      return { deltaSeconds, cappedMs }
     },
 
     recordFrame: (deltaMs: number) => {
       stateAtom.update((state) => {
-        const cappedMs = Math.min(deltaMs, state.config.maxDeltaMs);
+        const cappedMs = Math.min(deltaMs, state.config.maxDeltaMs)
 
-        // Update smoothing window
-        const newWindow = [...state.smoothingWindow, cappedMs];
+        const newWindow = [...state.smoothingWindow, cappedMs]
         if (newWindow.length > state.config.smoothingWindow) {
-          newWindow.shift();
+          newWindow.shift()
         }
 
         const avgFrameTime =
-          newWindow.reduce((sum, t) => sum + t, 0) / newWindow.length;
-        const fps = avgFrameTime > 0 ? ONE_SECOND_MS / avgFrameTime : 0;
+          newWindow.reduce((sum, t) => sum + t, 0) / newWindow.length
+        const fps = avgFrameTime > 0 ? ONE_SECOND_MS / avgFrameTime : 0
 
         return {
           ...state,
@@ -308,8 +289,8 @@ function createVariableExecutor(
             accumulatedTime: 0,
           },
           smoothingWindow: newWindow,
-        };
-      });
+        }
+      })
     },
 
     getMetrics: () => stateAtom.get().metrics,
@@ -327,47 +308,43 @@ function createVariableExecutor(
           accumulatedTime: 0,
         },
         smoothingWindow: [],
-      }));
+      }))
     },
-  };
+  }
 }
 
-// ============================================
-// Throttled Executor (Fixed Interval)
-// ============================================
-
 type ThrottledState = {
-  config: ThrottledConfig;
-  metrics: ExecutorMetrics;
-  accumulator: number; // Time accumulated since last execution
-};
+  config: ThrottledConfig
+  metrics: ExecutorMetrics
+  accumulator: number // Time accumulated since last execution
+}
 
 export type ThrottledExecutor = {
   /** Get current configuration */
-  getConfig: () => ThrottledConfig;
+  getConfig: () => ThrottledConfig
 
   /** Update config */
-  setConfig: (config: Partial<ThrottledConfig>) => void;
+  setConfig: (config: Partial<ThrottledConfig>) => void
 
   /**
    * Check if enough time has passed to execute
    * Uses simulation time (deltaMs) rather than real-world time
    */
-  shouldExecute: (deltaMs: number) => boolean;
+  shouldExecute: (deltaMs: number) => boolean
 
   /** Record execution */
-  recordExecution: () => void;
+  recordExecution: () => void
 
   /** Get current metrics */
-  getMetrics: () => ExecutorMetrics;
+  getMetrics: () => ExecutorMetrics
 
   /** Reset state */
-  reset: () => void;
-};
+  reset: () => void
+}
 
 function createThrottledExecutor(
   name: string,
-  config: ThrottledConfig,
+  config: ThrottledConfig
 ): ThrottledExecutor {
   const stateAtom = createAtom<ThrottledState>({
     config,
@@ -379,12 +356,12 @@ function createThrottledExecutor(
       accumulatedTime: 0,
     },
     accumulator: 0,
-  });
+  })
 
   console.log(
     `[frameRater:${name}] Throttled executor: ${config.intervalMs}ms interval ` +
-      `(${(ONE_SECOND_MS / config.intervalMs).toFixed(2)} Hz)`,
-  );
+      `(${(ONE_SECOND_MS / config.intervalMs).toFixed(2)} Hz)`
+  )
 
   return {
     getConfig: () => stateAtom.get().config,
@@ -393,30 +370,30 @@ function createThrottledExecutor(
       stateAtom.update((state) => ({
         ...state,
         config: { ...state.config, ...newConfig },
-      }));
+      }))
     },
 
     shouldExecute: (deltaMs: number) => {
-      let shouldExecute = false;
+      let shouldExecute = false
 
       stateAtom.update((state) => {
-        const newAccumulator = state.accumulator + deltaMs;
+        const newAccumulator = state.accumulator + deltaMs
 
         if (newAccumulator >= state.config.intervalMs) {
-          shouldExecute = true;
+          shouldExecute = true
           return {
             ...state,
             accumulator: newAccumulator - state.config.intervalMs,
-          };
+          }
         }
 
         return {
           ...state,
           accumulator: newAccumulator,
-        };
-      });
+        }
+      })
 
-      return shouldExecute;
+      return shouldExecute
     },
 
     recordExecution: () => {
@@ -429,7 +406,7 @@ function createThrottledExecutor(
           droppedFrames: 0,
           accumulatedTime: state.accumulator,
         },
-      }));
+      }))
     },
 
     getMetrics: () => stateAtom.get().metrics,
@@ -445,37 +422,33 @@ function createThrottledExecutor(
           accumulatedTime: 0,
         },
         accumulator: 0,
-      }));
+      }))
     },
-  };
+  }
 }
-
-// ============================================
-// Frame Rater Resource (Factory)
-// ============================================
 
 export type FrameRaterAPI = {
   /** Create a fixed timestep executor (for deterministic physics) */
-  fixed: (name: string, config: FixedTimestepConfig) => FixedTimestepExecutor;
+  fixed: (name: string, config: FixedTimestepConfig) => FixedTimestepExecutor
 
   /** Create a variable timestep executor (for rendering) */
   variable: (
     name: string,
-    config: VariableTimestepConfig,
-  ) => VariableTimestepExecutor;
+    config: VariableTimestepConfig
+  ) => VariableTimestepExecutor
 
   /** Create a throttled executor (for periodic tasks) */
-  throttled: (name: string, config: ThrottledConfig) => ThrottledExecutor;
+  throttled: (name: string, config: ThrottledConfig) => ThrottledExecutor
 
   /** Get all active executor names */
-  getExecutors: () => string[];
+  getExecutors: () => string[]
 
   /** Remove an executor */
-  remove: (name: string) => void;
+  remove: (name: string) => void
 
   /** Cleanup all executors */
-  cleanup: () => void;
-};
+  cleanup: () => void
+}
 
 export const frameRater = defineResource({
   dependencies: [],
@@ -483,74 +456,73 @@ export const frameRater = defineResource({
     const executors = new Map<
       string,
       {
-        type: ExecutionStrategy;
+        type: ExecutionStrategy
         instance:
           | FixedTimestepExecutor
           | VariableTimestepExecutor
-          | ThrottledExecutor;
+          | ThrottledExecutor
       }
-    >();
+    >()
 
-    console.log("[frameRater] Factory initialized");
+    console.log('[frameRater] Factory initialized')
 
     const api = {
       fixed: (name: string, config: FixedTimestepConfig) => {
         if (executors.has(name)) {
           console.warn(
-            `[frameRater] Executor "${name}" already exists, returning existing`,
-          );
-          return executors.get(name)!.instance as FixedTimestepExecutor;
+            `[frameRater] Executor "${name}" already exists, returning existing`
+          )
+          return executors.get(name)!.instance as FixedTimestepExecutor
         }
 
-        const executor = createFixedExecutor(name, config);
-        executors.set(name, { type: "fixed", instance: executor });
-        return executor;
+        const executor = createFixedExecutor(name, config)
+        executors.set(name, { type: 'fixed', instance: executor })
+        return executor
       },
 
       variable: (name: string, config: VariableTimestepConfig) => {
         if (executors.has(name)) {
           console.warn(
-            `[frameRater] Executor "${name}" already exists, returning existing`,
-          );
-          return executors.get(name)!.instance as VariableTimestepExecutor;
+            `[frameRater] Executor "${name}" already exists, returning existing`
+          )
+          return executors.get(name)!.instance as VariableTimestepExecutor
         }
 
-        const executor = createVariableExecutor(name, config);
-        executors.set(name, { type: "variable", instance: executor });
-        return executor;
+        const executor = createVariableExecutor(name, config)
+        executors.set(name, { type: 'variable', instance: executor })
+        return executor
       },
 
       throttled: (name: string, config: ThrottledConfig) => {
         if (executors.has(name)) {
           console.warn(
-            `[frameRater] Executor "${name}" already exists, returning existing`,
-          );
-          return executors.get(name)!.instance as ThrottledExecutor;
+            `[frameRater] Executor "${name}" already exists, returning existing`
+          )
+          return executors.get(name)!.instance as ThrottledExecutor
         }
 
-        const executor = createThrottledExecutor(name, config);
-        executors.set(name, { type: "throttled", instance: executor });
-        return executor;
+        const executor = createThrottledExecutor(name, config)
+        executors.set(name, { type: 'throttled', instance: executor })
+        return executor
       },
 
       getExecutors: () => Array.from(executors.keys()),
 
       remove: (name: string) => {
         if (executors.has(name)) {
-          executors.delete(name);
-          console.log(`[frameRater] Removed executor "${name}"`);
+          executors.delete(name)
         }
       },
       cleanup: () => {
-        executors.clear();
-        console.log("[frameRater] Factory cleaned up");
+        executors.clear()
+        console.log('[frameRater] Factory cleaned up')
       },
-    } satisfies FrameRaterAPI;
+    } satisfies FrameRaterAPI
 
-    return api;
+    return api
   },
   halt: (api) => {
-    console.log("[frameRater] Factory halted");
-    api.cleanup();
+    console.log('[frameRater] Factory halted')
+    api.cleanup()
   },
-});
+})

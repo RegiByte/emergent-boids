@@ -1,9 +1,9 @@
 import {
   SimulationCommand,
   SimulationEvent,
-} from "@/boids/vocabulary/schemas/simulation";
-import { Channel } from "@/lib/channels.ts";
-import { SubscriptionCallback } from "@/lib/state";
+} from '@/boids/vocabulary/schemas/simulation'
+import { Channel } from '@/lib/channels.ts'
+import { SubscriptionCallback } from '@/lib/state'
 
 /**
  * Higher-order simulation factory that creates a simulation instance from a set of dependencies and handlers.
@@ -11,56 +11,51 @@ import { SubscriptionCallback } from "@/lib/state";
  */
 
 type SimulationDeps = {
-  simulationChannel: Channel<SimulationCommand, SimulationEvent>;
-};
+  simulationChannel: Channel<SimulationCommand, SimulationEvent>
+}
 
 type SimulationHandlers = {
-  // basic function, called when initializing the simulation
-  onInitialize: () => void;
-  // called when a command is dispatched to the simulation
+  onInitialize: () => void
   onCommand: (
     command: SimulationCommand,
     resolve: (output: SimulationEvent | undefined) => void
-  ) => SimulationEvent | undefined | void;
-  // called when the simulation is cleaned up (termination)
-  onCleanup: () => void;
-};
+  ) => SimulationEvent | undefined | void
+  onCleanup: () => void
+}
 
 export function createSimulation(
   deps: SimulationDeps,
   handlers: SimulationHandlers
 ) {
-  const { simulationChannel: channel } = deps;
-  const { onInitialize, onCommand } = handlers;
-  let attachedWorkHandler: ReturnType<typeof channel.work> | null = null;
+  const { simulationChannel: channel } = deps
+  const { onInitialize, onCommand } = handlers
+  let attachedWorkHandler: ReturnType<typeof channel.work> | null = null
 
   const initialize = () => {
-    onInitialize();
-    attachedWorkHandler = channel.work(onCommand);
-  };
+    onInitialize()
+    attachedWorkHandler = channel.work(onCommand)
+  }
 
   const dispatchImmediate = (command: SimulationCommand) => {
-    channel.put(command);
-  };
+    channel.put(command)
+  }
 
   const dispatch = (command: SimulationCommand) => {
-    // Put the command into the channel asynchronously to avoid blocking the main thread
-    // this job will be handled when the current frame is finished
     setTimeout(() => {
-      dispatchImmediate(command);
-    }, 0);
-  };
+      dispatchImmediate(command)
+    }, 0)
+  }
 
   const cleanup = () => {
-    channel.clear();
+    channel.clear()
     if (attachedWorkHandler) {
-      attachedWorkHandler();
+      attachedWorkHandler()
     }
-  };
+  }
 
-  const watch = (callback: SubscriptionCallback<(typeof channel)["out"]>) => {
-    return channel.watch(callback);
-  };
+  const watch = (callback: SubscriptionCallback<(typeof channel)['out']>) => {
+    return channel.watch(callback)
+  }
 
   const api = {
     watch,
@@ -68,17 +63,17 @@ export function createSimulation(
     dispatch,
     initialize,
     dispatchImmediate,
-  };
+  }
 
-  return api;
+  return api
 }
 
 export type CommandHandler<TCommand> = (
   command: Extract<SimulationCommand, { type: TCommand }>
-) => void;
+) => void
 
 export type CommandHandlers = {
-  [Key in SimulationCommand["type"]]: CommandHandler<Key>;
-};
+  [Key in SimulationCommand['type']]: CommandHandler<Key>
+}
 
-export type SimulationAPI = ReturnType<typeof createSimulation>;
+export type SimulationAPI = ReturnType<typeof createSimulation>

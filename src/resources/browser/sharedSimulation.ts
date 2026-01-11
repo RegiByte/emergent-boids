@@ -1,20 +1,20 @@
-import { simulationKeywords } from "@/boids/vocabulary/keywords";
+import { simulationKeywords } from '@/boids/vocabulary/keywords'
 import {
-    SimulationCommand,
-    SimulationEvent,
-} from "@/boids/vocabulary/schemas/simulation";
-import { createChannel } from "@/lib/channels";
+  SimulationCommand,
+  SimulationEvent,
+} from '@/boids/vocabulary/schemas/simulation'
+import { createChannel } from '@/lib/channels'
 import {
-    CommandHandlers,
-    createSimulation,
-} from "@/resources/shared/simulation/core";
-import { defineResource } from "braided";
-import { TimeAPI } from "../shared/time";
-import { CameraAPI } from "./camera";
-import { RendererResource } from "./renderer";
-import { RuntimeStoreResource } from "./runtimeStore";
-import { SharedEngineResource } from "./sharedEngine";
-import { WorkerTasksResource } from "./workerTasks";
+  CommandHandlers,
+  createSimulation,
+} from '@/resources/shared/simulation/core'
+import { defineResource } from 'braided'
+import { TimeAPI } from '../shared/time'
+import { CameraAPI } from './camera'
+import { RendererResource } from './renderer'
+import { RuntimeStoreResource } from './runtimeStore'
+import { SharedEngineResource } from './sharedEngine'
+import { WorkerTasksResource } from './workerTasks'
 
 /**
  * Shared Simulation Resource
@@ -24,13 +24,13 @@ import { WorkerTasksResource } from "./workerTasks";
  */
 export const sharedSimulation = defineResource({
   dependencies: [
-    "engine", // sharedEngine
-    "workerTasks",
-    "camera",
-    "runtimeStore",
-    "runtimeController",
-    "renderer",
-    "time",
+    'engine', // sharedEngine
+    'workerTasks',
+    'camera',
+    'runtimeStore',
+    'runtimeController',
+    'renderer',
+    'time',
   ],
   start: ({
     engine,
@@ -41,53 +41,50 @@ export const sharedSimulation = defineResource({
     renderer,
     time,
   }: {
-    engine: SharedEngineResource;
-    workerTasks: WorkerTasksResource;
-    camera: CameraAPI;
-    runtimeStore: RuntimeStoreResource;
-    runtimeController: any; // RuntimeController type
-    renderer: RendererResource;
-    time: TimeAPI;
+    engine: SharedEngineResource
+    workerTasks: WorkerTasksResource
+    camera: CameraAPI
+    runtimeStore: RuntimeStoreResource
+    runtimeController: any // RuntimeController type
+    renderer: RendererResource
+    time: TimeAPI
   }) => {
-    const channel = createChannel<SimulationCommand, SimulationEvent>();
-
+    const channel = createChannel<SimulationCommand, SimulationEvent>()
 
     const commandHandlers = {
-      // Physics commands → Forward to worker
       [simulationKeywords.commands.addBoid]: (command) => {
-        engine.addBoid(command.boid);
+        engine.addBoid(command.boid)
       },
       [simulationKeywords.commands.removeBoid]: (command) => {
-        engine.removeBoid(command.boidId);
+        engine.removeBoid(command.boidId)
       },
       [simulationKeywords.commands.pause]: (_command) => {
-        workerTasks.dispatch("command", {
+        workerTasks.dispatch('command', {
           command: { type: simulationKeywords.commands.pause },
-        });
-        time.pause();
+        })
+        time.pause()
       },
       [simulationKeywords.commands.resume]: (_command) => {
-        workerTasks.dispatch("command", {
+        workerTasks.dispatch('command', {
           command: { type: simulationKeywords.commands.resume },
-        });
-        time.resume();
+        })
+        time.resume()
       },
       [simulationKeywords.commands.step]: (_command) => {
-        workerTasks.dispatch("command", {
+        workerTasks.dispatch('command', {
           command: { type: simulationKeywords.commands.step },
-        });
+        })
       },
       [simulationKeywords.commands.setTimeScale]: (command) => {
-        time.setTimeScale(command.timeScale);
-        workerTasks.dispatch("command", {
+        time.setTimeScale(command.timeScale)
+        workerTasks.dispatch('command', {
           command: {
             type: simulationKeywords.commands.setTimeScale,
             timeScale: command.timeScale,
           },
-        });
+        })
       },
       [simulationKeywords.commands.updateParameters]: (command) => {
-        // Update browser store first
         runtimeStore.store.setState((current) => ({
           ...current,
           config: {
@@ -97,43 +94,40 @@ export const sharedSimulation = defineResource({
               ...command.parameters,
             },
           },
-        }));
-        // Forward to worker
-        workerTasks.dispatch("command", {
+        }))
+        workerTasks.dispatch('command', {
           command: {
             type: simulationKeywords.commands.updateParameters,
             parameters: command.parameters,
           },
-        });
+        })
       },
 
-      // Spawn commands → Forward to worker (Session 127)
       [simulationKeywords.commands.spawnObstacle]: (command) => {
-        console.log("[SharedSimulation] Forwarding spawnObstacle to worker");
-        workerTasks.dispatch("command", {
+        console.log('[SharedSimulation] Forwarding spawnObstacle to worker')
+        workerTasks.dispatch('command', {
           command: {
             type: simulationKeywords.commands.spawnObstacle,
             position: command.position,
             radius: command.radius,
           },
-        });
+        })
       },
       [simulationKeywords.commands.spawnPredator]: (command) => {
-        console.log("[SharedSimulation] Forwarding spawnPredator to worker");
-        workerTasks.dispatch("command", {
+        console.log('[SharedSimulation] Forwarding spawnPredator to worker')
+        workerTasks.dispatch('command', {
           command: {
             type: simulationKeywords.commands.spawnPredator,
             position: command.position,
           },
-        });
+        })
       },
 
-      // UI commands → Handle locally
       [simulationKeywords.commands.followBoid]: (command) => {
-        camera.startFollowing(command.boidId);
+        camera.startFollowing(command.boidId)
       },
       [simulationKeywords.commands.stopFollowingBoid]: (_command) => {
-        camera.stopFollowing();
+        camera.stopFollowing()
       },
       [simulationKeywords.commands.toggleTrails]: (_command) => {
         runtimeStore.store.setState((current) => ({
@@ -145,14 +139,13 @@ export const sharedSimulation = defineResource({
               trailsEnabled: !current.ui.visualSettings.trailsEnabled,
             },
           },
-        }));
+        }))
       },
 
       [simulationKeywords.commands.start]: (_command) => {
         if (!renderer.isRunning()) {
-          renderer.start();
+          renderer.start()
         }
-        // Worker loop is already started in sharedEngine
       },
       [simulationKeywords.commands.setRendererMode]: (command) => {
         runtimeStore.store.setState((current) => ({
@@ -161,9 +154,9 @@ export const sharedSimulation = defineResource({
             ...current.ui,
             rendererMode: command.rendererMode,
           },
-        }));
-        // Session 129: Update canvas visibility when renderer mode changes
-        renderer.setRendererMode(command.rendererMode);
+        }))
+
+        renderer.setRendererMode(command.rendererMode)
       },
       [simulationKeywords.commands.toggleDebugMode]: (_command) => {
         runtimeStore.store.setState((current) => ({
@@ -172,90 +165,88 @@ export const sharedSimulation = defineResource({
             ...current.ui,
             debugMode: !current.ui.debugMode,
           },
-        }));
+        }))
       },
-    } satisfies Partial<CommandHandlers>;
+    } satisfies Partial<CommandHandlers>
 
     const simulation = createSimulation(
       { simulationChannel: channel },
       {
         onInitialize: () => {
-          console.log("[SharedSimulation] Initialized");
-          engine.initialize(channel);
+          engine.initialize(channel)
         },
         onCommand: (command, resolve) => {
           const handler =
-            commandHandlers[command.type as keyof typeof commandHandlers];
+            commandHandlers[command.type as keyof typeof commandHandlers]
           if (!handler) {
             resolve({
               type: simulationKeywords.events.error,
               error: `No handler found for command: ${command.type}`,
               meta: command,
-            });
-            return;
+            })
+            return
           }
           try {
-            handler(command as never);
+            handler(command as never)
           } catch (error) {
             resolve({
               type: simulationKeywords.events.error,
-              error: error instanceof Error ? error.message : "Unknown error",
+              error: error instanceof Error ? error.message : 'Unknown error',
               meta: error,
-            });
+            })
           }
         },
         onCleanup: () => {
-          console.log("[SharedSimulation] Cleaned up");
+          console.log('[SharedSimulation] Cleaned up')
         },
       }
-    );
+    )
 
-    simulation.initialize();
+    simulation.initialize()
 
-    // Event Bridge: Watch simulation channel and forward events to runtimeController
-    // This enables analytics and atmosphere to observe events from the worker
-    // Worker is the source of truth - browser just mirrors the state
     channel.watch((event) => {
-      // console.log("[SharedSimulation] Channel event:", event.type);
-
-      // Forward all events to runtimeController for analytics/atmosphere
-      runtimeController.dispatch(event);
-    });
+      runtimeController.dispatch(event)
+    })
 
     const commands = {
-        start: () => {
-          console.log("[BrowserSimulation] Starting");
-          simulation.dispatch({ type: simulationKeywords.commands.start });
-        },
-        pause: () => {
-          simulation.dispatch({ type: simulationKeywords.commands.pause });
-        },
-        resume: () => {
-          simulation.dispatch({ type: simulationKeywords.commands.resume });
-        },
-        step: () => {
-          simulation.dispatch({ type: simulationKeywords.commands.step });
-        },
-        setTimeScale: (timeScale: number) => {
-          simulation.dispatch({ type: simulationKeywords.commands.setTimeScale, timeScale });
-        },
-      };
-      
-      const api = {
-        commands,
-        initialize: simulation.initialize,
-        cleanup: simulation.cleanup,
-        dispatchImmediate: simulation.dispatchImmediate,
-        dispatch: simulation.dispatch,
-        watch: channel.watch,
-        isPaused: () => {
-          return time.getState().isPaused;
-        },
-      }
+      start: () => {
+        console.log('[BrowserSimulation] Starting')
+        simulation.dispatch({ type: simulationKeywords.commands.start })
+      },
+      pause: () => {
+        simulation.dispatch({ type: simulationKeywords.commands.pause })
+      },
+      resume: () => {
+        simulation.dispatch({
+          type: simulationKeywords.commands.resume,
+        })
+      },
+      step: () => {
+        simulation.dispatch({ type: simulationKeywords.commands.step })
+      },
+      setTimeScale: (timeScale: number) => {
+        simulation.dispatch({
+          type: simulationKeywords.commands.setTimeScale,
+          timeScale,
+        })
+      },
+    }
 
-      return api;
+    const api = {
+      commands,
+      initialize: simulation.initialize,
+      cleanup: simulation.cleanup,
+      dispatchImmediate: simulation.dispatchImmediate,
+      dispatch: simulation.dispatch,
+      watch: channel.watch,
+      isPaused: () => {
+        return time.getState().isPaused
+      },
+    }
+
+    return api
   },
   halt: ({ cleanup }) => {
-    cleanup();
+    cleanup()
   },
-});
+})

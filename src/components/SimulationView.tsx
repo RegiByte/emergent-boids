@@ -1,54 +1,52 @@
-import { eventKeywords, simulationKeywords } from "@/boids/vocabulary/keywords";
-import { CameraControls } from "@/components/CameraControls";
-import { CanvasFrame } from "@/components/CanvasFrame";
-import { ControlsSidebar, type SpawnMode } from "@/components/ControlsSidebar";
-import { MissionControlHeader } from "@/components/MissionControlHeader";
-import { Minimap } from "@/components/Minimap";
+import { eventKeywords, simulationKeywords } from '@/boids/vocabulary/keywords'
+import { CameraControls } from '@/components/CameraControls'
+import { CanvasFrame } from '@/components/CanvasFrame'
+import { ControlsSidebar, type SpawnMode } from '@/components/ControlsSidebar'
+import { MissionControlHeader } from '@/components/MissionControlHeader'
+import { Minimap } from '@/components/Minimap'
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { cn } from "@/lib/utils";
-import { CanvasAPI } from "@/resources/browser/canvas.ts";
+} from '@/components/ui/sidebar'
+import { cn } from '@/lib/utils'
+import { CanvasAPI } from '@/resources/browser/canvas.ts'
 import {
   StandardSystem,
   SystemProvider,
   useResource,
   useSystem,
-} from "@/systems/standard.ts";
-import { IconAdjustmentsHorizontal } from "@tabler/icons-react";
-import { useDebouncer } from "@tanstack/react-pacer";
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
-import { CameraMode } from "@/resources/browser/camera.ts";
-import { iterateBoids } from "@/boids/iterators";
+} from '@/systems/standard.ts'
+import { IconAdjustmentsHorizontal } from '@tabler/icons-react'
+import { useDebouncer } from '@tanstack/react-pacer'
+import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
+import { CameraMode } from '@/resources/browser/camera.ts'
+import { iterateBoids } from '@/boids/iterators'
 
 function SimulationView() {
-  const runtimeController = useResource("runtimeController");
-  const runtimeStore = useResource("runtimeStore");
-  const { store: boidStore } = useResource("localBoidStore");
-  const simulation = useResource("simulation");
-  const canvas = useResource("canvas");
-  const camera = useResource("camera");
-  const renderer = useResource("renderer");
-  const updateLoop = useResource("updateLoop");
-  const webglRenderer = useResource("webglRenderer");
-  const { useStore } = runtimeStore;
-  const sidebarOpen = useStore((state) => state.ui.sidebarOpen);
-  const headerCollapsed = useStore((state) => state.ui.headerCollapsed);
-  const config = useStore((state) => state.config);
+  const runtimeController = useResource('runtimeController')
+  const runtimeStore = useResource('runtimeStore')
+  const { store: boidStore } = useResource('localBoidStore')
+  const simulation = useResource('simulation')
+  const canvas = useResource('canvas')
+  const camera = useResource('camera')
+  const renderer = useResource('renderer')
+  const updateLoop = useResource('updateLoop')
+  const webglRenderer = useResource('webglRenderer')
+  const { useStore } = runtimeStore
+  const sidebarOpen = useStore((state) => state.ui.sidebarOpen)
+  const headerCollapsed = useStore((state) => state.ui.headerCollapsed)
+  const config = useStore((state) => state.config)
 
-  // Get atmosphere settings (select individual values to avoid creating new objects)
   const atmosphereBase = useStore(
     (state) => state.ui.visualSettings.atmosphere.base
-  );
+  )
   const atmosphereEvent = useStore(
     (state) => state.ui.visualSettings.atmosphere.activeEvent
-  );
+  )
 
-  // Compute final settings (memoized to prevent re-renders)
   const atmosphereSettings = useMemo(() => {
     if (atmosphereEvent) {
       return {
@@ -58,266 +56,233 @@ function SimulationView() {
           atmosphereEvent.settings.fogIntensity ?? atmosphereBase.fogIntensity,
         fogOpacity:
           atmosphereEvent.settings.fogOpacity ?? atmosphereBase.fogOpacity,
-      };
+      }
     }
-    return atmosphereBase;
-  }, [atmosphereBase, atmosphereEvent]);
-  const system = useSystem();
-  const canvasAreaRef = useRef<HTMLDivElement>(null); // The parent flex container
-  const canvasContainerRef = useRef<HTMLDivElement>(null); // The canvas wrapper
-  const canvasElementRef = useRef<HTMLCanvasElement | null>(null);
-  const [spawnMode, setSpawnMode] = useState<SpawnMode>("obstacle");
+    return atmosphereBase
+  }, [atmosphereBase, atmosphereEvent])
+  const system = useSystem()
+  const canvasAreaRef = useRef<HTMLDivElement>(null) // The parent flex container
+  const canvasContainerRef = useRef<HTMLDivElement>(null) // The canvas wrapper
+  const canvasElementRef = useRef<HTMLCanvasElement | null>(null)
+  const [spawnMode, setSpawnMode] = useState<SpawnMode>('obstacle')
   const getParentDimensions = () => {
     if (canvasAreaRef.current) {
-      const rect = canvasAreaRef.current.getBoundingClientRect();
+      const rect = canvasAreaRef.current.getBoundingClientRect()
       return {
         width: Math.floor(rect.width) - 4,
         height: Math.floor(rect.height) - 4,
-      };
+      }
     }
     return {
       width: 0,
       height: 0,
-    };
-  };
+    }
+  }
   const updateCanvasDebouncer = useDebouncer(
     (
       canvas: CanvasAPI,
       webglRenderer: { resize: (w: number, h: number) => void }
     ) => {
-      const { width, height } = getParentDimensions();
-      canvas.resize(width, height);
-      webglRenderer.resize(width, height);
+      const { width, height } = getParentDimensions()
+      canvas.resize(width, height)
+      webglRenderer.resize(width, height)
     },
     {
       wait: 200,
       leading: false,
       trailing: true,
     }
-  );
+  )
 
   useEffect(() => {
-    // Mount canvas when system is ready
     if (
       canvas &&
       webglRenderer &&
       canvasContainerRef.current &&
       canvasAreaRef.current
     ) {
-      const container = canvasContainerRef.current;
-      canvasElementRef.current = canvas.canvas;
+      const container = canvasContainerRef.current
+      canvasElementRef.current = canvas.canvas
 
-      // Find or create the canvas wrapper div
       let canvasWrapper = container.querySelector(
-        "[data-canvas-wrapper]"
-      ) as HTMLDivElement;
+        '[data-canvas-wrapper]'
+      ) as HTMLDivElement
       if (!canvasWrapper) {
-        canvasWrapper = document.createElement("div");
-        canvasWrapper.setAttribute("data-canvas-wrapper", "true");
-        canvasWrapper.style.position = "absolute";
-        canvasWrapper.style.inset = "0";
-        canvasWrapper.style.width = "100%";
-        canvasWrapper.style.height = "100%";
-        container.appendChild(canvasWrapper);
+        canvasWrapper = document.createElement('div')
+        canvasWrapper.setAttribute('data-canvas-wrapper', 'true')
+        canvasWrapper.style.position = 'absolute'
+        canvasWrapper.style.inset = '0'
+        canvasWrapper.style.width = '100%'
+        canvasWrapper.style.height = '100%'
+        container.appendChild(canvasWrapper)
       }
 
-      // Mount both Canvas 2D and WebGL canvases
-      // Only append if not already in the wrapper (prevents React StrictMode issues)
       if (!canvasWrapper.contains(canvas.canvas)) {
-        canvasWrapper.appendChild(canvas.canvas);
+        canvasWrapper.appendChild(canvas.canvas)
       }
       if (!canvasWrapper.contains(webglRenderer.canvas)) {
-        canvasWrapper.appendChild(webglRenderer.canvas);
+        canvasWrapper.appendChild(webglRenderer.canvas)
       }
 
-      // Calculate initial canvas size based on container
-      // Use requestAnimationFrame to ensure layout is complete
-      // This needs to run at least once to get the initial canvas size
       requestAnimationFrame(() => {
-        const { width, height } = getParentDimensions();
+        const { width, height } = getParentDimensions()
         if (width > 0 && height > 0) {
-          canvas.resize(width, height);
-          webglRenderer.resize(width, height);
+          canvas.resize(width, height)
+          webglRenderer.resize(width, height)
         }
-      });
+      })
 
-      // Helper function to find closest boid to screen position
-      // Optimized: Only search boids near cursor
       const findClosestBoidToScreen = (
         screenX: number,
         screenY: number,
         maxScreenDistance: number
       ): string | null => {
-        let closestBoid: string | null = null;
-        let closestDistance = maxScreenDistance;
+        let closestBoid: string | null = null
+        let closestDistance = maxScreenDistance
 
-        // Convert screen position to world position for early rejection
-        const worldPos = camera.screenToWorld(screenX, screenY);
-        const searchRadiusWorld = maxScreenDistance / camera.zoom;
+        const worldPos = camera.screenToWorld(screenX, screenY)
+        const searchRadiusWorld = maxScreenDistance / camera.zoom
 
         for (const boid of iterateBoids(boidStore.boids)) {
-          // Quick world-space distance check first (cheaper than screen transform)
-          const worldDx = boid.position.x - worldPos.x;
-          const worldDy = boid.position.y - worldPos.y;
-          const worldDistSq = worldDx * worldDx + worldDy * worldDy;
+          const worldDx = boid.position.x - worldPos.x
+          const worldDy = boid.position.y - worldPos.y
+          const worldDistSq = worldDx * worldDx + worldDy * worldDy
 
-          // Skip if too far in world space (early rejection)
-          if (worldDistSq > searchRadiusWorld * searchRadiusWorld * 4) continue;
+          if (worldDistSq > searchRadiusWorld * searchRadiusWorld * 4) continue
 
-          // Now do accurate screen-space distance check
           const boidScreen = camera.worldToScreen(
             boid.position.x,
             boid.position.y
-          );
-          const dx = boidScreen.x - screenX;
-          const dy = boidScreen.y - screenY;
-          const distance = Math.sqrt(dx * dx + dy * dy);
+          )
+          const dx = boidScreen.x - screenX
+          const dy = boidScreen.y - screenY
+          const distance = Math.sqrt(dx * dx + dy * dy)
 
           if (distance < closestDistance) {
-            closestDistance = distance;
-            closestBoid = boid.id;
+            closestDistance = distance
+            closestBoid = boid.id
           }
         }
 
-        return closestBoid;
-      };
+        return closestBoid
+      }
 
-      // Add click handler for placing obstacles, spawning predators, or following boids
       const handleCanvasClick = (e: MouseEvent) => {
-        // Don't process clicks while panning - click just releases pan mode
         if (camera.isDragging) {
-          return;
+          return
         }
 
-        // Session 129: Use event target to get correct canvas (Canvas 2D or WebGL)
-        const targetCanvas = e.currentTarget as HTMLCanvasElement;
-        const rect = targetCanvas.getBoundingClientRect();
-        const screenX = e.clientX - rect.left;
-        const screenY = e.clientY - rect.top;
+        const targetCanvas = e.currentTarget as HTMLCanvasElement
+        const rect = targetCanvas.getBoundingClientRect()
+        const screenX = e.clientX - rect.left
+        const screenY = e.clientY - rect.top
 
-        // Handle picker mode - start following target boid
-        // Session 130: Return early if in picker mode (even without target) to prevent spawning
-        if (camera.mode.type === "picker") {
+        if (camera.mode.type === 'picker') {
           const targetBoidId = (
-            camera.mode as Extract<CameraMode, { type: "picker" }>
-          ).targetBoidId;
+            camera.mode as Extract<CameraMode, { type: 'picker' }>
+          ).targetBoidId
           if (targetBoidId) {
-            camera.startFollowing(targetBoidId);
-            toast.success("Following boid", {
+            camera.startFollowing(targetBoidId)
+            toast.success('Following boid', {
               description: `ID: ${targetBoidId.slice(0, 8)}...`,
-            });
+            })
           }
-          return; // Don't spawn obstacles/predators when in picker mode
+          return // Don't spawn obstacles/predators when in picker mode
         }
 
-        // Convert screen coordinates to world coordinates using camera
-        const worldPos = camera.screenToWorld(screenX, screenY);
-        const x = worldPos.x;
-        const y = worldPos.y;
+        const worldPos = camera.screenToWorld(screenX, screenY)
+        const x = worldPos.x
+        const y = worldPos.y
 
-        if (spawnMode === "obstacle") {
-          // Session 127: Use simulation command to spawn obstacle in worker
+        if (spawnMode === 'obstacle') {
           simulation.dispatch({
             type: simulationKeywords.commands.spawnObstacle,
             position: { x, y },
             radius: 30, // Default radius
-          });
-          toast.success("Obstacle placed", {
+          })
+          toast.success('Obstacle placed', {
             description: `Position: (${Math.round(x)}, ${Math.round(y)})`,
-          });
+          })
         } else {
-          // Session 127: Use simulation command to spawn predator in worker
           simulation.dispatch({
             type: simulationKeywords.commands.spawnPredator,
             position: { x, y },
-          });
-          toast.success("Predator spawned", {
+          })
+          toast.success('Predator spawned', {
             description: `Position: (${Math.round(x)}, ${Math.round(y)})`,
-          });
+          })
         }
-      };
+      }
 
-      // Throttle picker updates to avoid performance issues
-      let lastPickerUpdate = 0;
-      const PICKER_UPDATE_INTERVAL = 16; // ~60 FPS (16ms)
+      let lastPickerUpdate = 0
+      const PICKER_UPDATE_INTERVAL = 16 // ~60 FPS (16ms)
 
-      // Add mouse move handler for picker mode
       const handleCanvasMouseMove = (e: MouseEvent) => {
-        if (camera.mode.type !== "picker") return;
+        if (camera.mode.type !== 'picker') return
 
-        // Throttle updates to avoid excessive computation
-        const now = performance.now();
-        if (now - lastPickerUpdate < PICKER_UPDATE_INTERVAL) return;
-        lastPickerUpdate = now;
+        const now = performance.now()
+        if (now - lastPickerUpdate < PICKER_UPDATE_INTERVAL) return
+        lastPickerUpdate = now
 
-        // Session 129: Use event target to get correct canvas (Canvas 2D or WebGL)
-        const targetCanvas = e.currentTarget as HTMLCanvasElement;
-        const rect = targetCanvas.getBoundingClientRect();
-        const screenX = e.clientX - rect.left;
-        const screenY = e.clientY - rect.top;
-        const worldPos = camera.screenToWorld(screenX, screenY);
+        const targetCanvas = e.currentTarget as HTMLCanvasElement
+        const rect = targetCanvas.getBoundingClientRect()
+        const screenX = e.clientX - rect.left
+        const screenY = e.clientY - rect.top
+        const worldPos = camera.screenToWorld(screenX, screenY)
 
-        // Find closest boid within picker radius (80px screen space)
-        const closestBoidId = findClosestBoidToScreen(screenX, screenY, 80);
+        const closestBoidId = findClosestBoidToScreen(screenX, screenY, 80)
 
-        camera.updatePickerTarget(closestBoidId, worldPos);
-      };
+        camera.updatePickerTarget(closestBoidId, worldPos)
+      }
 
-      // Track mouse enter/leave canvas for picker mode
       const handleCanvasMouseEnter = () => {
-        camera.setMouseInCanvas(true);
-      };
+        camera.setMouseInCanvas(true)
+      }
 
       const handleCanvasMouseLeave = () => {
-        camera.setMouseInCanvas(false);
-      };
+        camera.setMouseInCanvas(false)
+      }
 
-      canvas.canvas.addEventListener("click", handleCanvasClick);
-      canvas.canvas.addEventListener("mousemove", handleCanvasMouseMove);
-      canvas.canvas.addEventListener("mouseenter", handleCanvasMouseEnter);
-      canvas.canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
+      canvas.canvas.addEventListener('click', handleCanvasClick)
+      canvas.canvas.addEventListener('mousemove', handleCanvasMouseMove)
+      canvas.canvas.addEventListener('mouseenter', handleCanvasMouseEnter)
+      canvas.canvas.addEventListener('mouseleave', handleCanvasMouseLeave)
 
-      // Session 129: Also attach handlers to WebGL canvas for spawn mode
-      webglRenderer.canvas.addEventListener("click", handleCanvasClick);
-      webglRenderer.canvas.addEventListener("mousemove", handleCanvasMouseMove);
-      webglRenderer.canvas.addEventListener("mouseenter", handleCanvasMouseEnter);
-      webglRenderer.canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
+      webglRenderer.canvas.addEventListener('click', handleCanvasClick)
+      webglRenderer.canvas.addEventListener('mousemove', handleCanvasMouseMove)
+      webglRenderer.canvas.addEventListener(
+        'mouseenter',
+        handleCanvasMouseEnter
+      )
+      webglRenderer.canvas.addEventListener(
+        'mouseleave',
+        handleCanvasMouseLeave
+      )
 
-      // Start the renderer
-      // if (updateLoop && !updateLoop.isPaused()) {
-      //   updateLoop.start(
-      //     30,
-      //     (updates) => {
-      //       // console.log("updates", updates);
-      //     },
-      //     (events) => {
-      //       // console.log("events", events);
-      //     }
-      //   );
-
-      //   if (renderer) {
-      //     renderer.start();
-      //   }
-      // }
-
-      // Start the simulation
       if (simulation && !simulation.isPaused()) {
-        simulation.commands.start();
+        simulation.commands.start()
       }
 
       return () => {
-        // Stop renderer on cleanup
-        canvas.canvas.removeEventListener("click", handleCanvasClick);
-        canvas.canvas.removeEventListener("mousemove", handleCanvasMouseMove);
-        canvas.canvas.removeEventListener("mouseenter", handleCanvasMouseEnter);
-        canvas.canvas.removeEventListener("mouseleave", handleCanvasMouseLeave);
+        canvas.canvas.removeEventListener('click', handleCanvasClick)
+        canvas.canvas.removeEventListener('mousemove', handleCanvasMouseMove)
+        canvas.canvas.removeEventListener('mouseenter', handleCanvasMouseEnter)
+        canvas.canvas.removeEventListener('mouseleave', handleCanvasMouseLeave)
 
-        // Session 129: Also remove WebGL canvas handlers
-        webglRenderer.canvas.removeEventListener("click", handleCanvasClick);
-        webglRenderer.canvas.removeEventListener("mousemove", handleCanvasMouseMove);
-        webglRenderer.canvas.removeEventListener("mouseenter", handleCanvasMouseEnter);
-        webglRenderer.canvas.removeEventListener("mouseleave", handleCanvasMouseLeave);
-      };
+        webglRenderer.canvas.removeEventListener('click', handleCanvasClick)
+        webglRenderer.canvas.removeEventListener(
+          'mousemove',
+          handleCanvasMouseMove
+        )
+        webglRenderer.canvas.removeEventListener(
+          'mouseenter',
+          handleCanvasMouseEnter
+        )
+        webglRenderer.canvas.removeEventListener(
+          'mouseleave',
+          handleCanvasMouseLeave
+        )
+      }
     }
   }, [
     spawnMode,
@@ -329,69 +294,63 @@ function SimulationView() {
     updateLoop,
     renderer,
     simulation,
-  ]);
+  ])
 
-  // Use reactive camera mode for cursor updates
-  const cameraMode = camera.useMode();
+  const cameraMode = camera.useMode()
 
-  // Update cursor based on spawn mode and camera mode
   useEffect(() => {
     if (canvasElementRef.current) {
-      if (cameraMode.type === "picker") {
-        canvasElementRef.current.style.cursor = "crosshair";
-      } else if (spawnMode === "obstacle") {
-        canvasElementRef.current.style.cursor = "crosshair";
+      if (cameraMode.type === 'picker') {
+        canvasElementRef.current.style.cursor = 'crosshair'
+      } else if (spawnMode === 'obstacle') {
+        canvasElementRef.current.style.cursor = 'crosshair'
       } else {
-        canvasElementRef.current.style.cursor = "pointer";
+        canvasElementRef.current.style.cursor = 'pointer'
       }
     }
-  }, [spawnMode, cameraMode]);
+  }, [spawnMode, cameraMode])
 
-  // Handle canvas area resize (tracks both window resize and sidebar toggle)
   useEffect(() => {
-    if (!canvas || !canvasAreaRef.current) return;
+    if (!canvas || !canvasAreaRef.current) return
 
     const resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
+      const entry = entries[0]
 
       if (entry) {
-        const areaWidth = entry.contentRect.width;
-        const areaHeight = entry.contentRect.height;
+        const areaWidth = entry.contentRect.width
+        const areaHeight = entry.contentRect.height
 
-        const canvasWidth = Math.floor(areaWidth);
-        const canvasHeight = Math.floor(areaHeight);
+        const canvasWidth = Math.floor(areaWidth)
+        const canvasHeight = Math.floor(areaHeight)
 
         if (canvasWidth > 0 && canvasHeight > 0) {
-          updateCanvasDebouncer.maybeExecute(canvas, webglRenderer);
+          updateCanvasDebouncer.maybeExecute(canvas, webglRenderer)
         }
       }
-    });
+    })
 
-    // Observe the canvas AREA (parent), not the container that holds the canvas
-    // This prevents feedback loops from canvas size changes
-    resizeObserver.observe(canvasAreaRef.current);
+    resizeObserver.observe(canvasAreaRef.current)
 
     return () => {
-      resizeObserver.disconnect();
-    };
-  }, [canvas, webglRenderer, updateCanvasDebouncer]);
+      resizeObserver.disconnect()
+    }
+  }, [canvas, webglRenderer, updateCanvasDebouncer])
 
   return (
     <SidebarProvider
       open={sidebarOpen}
       onOpenChange={(open) => {
-        console.log("sidebar open changed", open);
+        console.log('sidebar open changed', open)
         runtimeController.dispatch({
           type: eventKeywords.ui.sidebarToggled,
           open,
-        });
-        // ResizeObserver will handle the canvas resize automatically
+        })
       }}
     >
       <div
         style={
           {
-            "--simulation-bg": config.world.backgroundColor,
+            '--simulation-bg': config.world.backgroundColor,
           } as React.CSSProperties
         }
         className="flex h-screen w-screen overflow-hidden bg-background"
@@ -407,20 +366,23 @@ function SimulationView() {
               <motion.div
                 key="header-expanded"
                 initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
+                animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.1, ease: "easeInOut" }}
+                transition={{
+                  duration: 0.1,
+                  ease: 'easeInOut',
+                }}
                 className="relative flex items-center gap-2 border-b bg-card px-4 py-3 w-full overflow-hidden"
               >
                 <div className="group">
                   <label
                     className={cn(
-                      "absolute left-2 top-2 px-1 py-1 inline-flex items-center justify-center gap-2",
-                      "rounded-md group-hover:bg-slate-100/30 z-50"
+                      'absolute left-2 top-2 px-1 py-1 inline-flex items-center justify-center gap-2',
+                      'rounded-md group-hover:bg-slate-100/30 z-50'
                     )}
                   >
                     <SidebarTrigger
-                      className={"p-2"}
+                      className={'p-2'}
                       icon={IconAdjustmentsHorizontal}
                     />
                     <span className="text-sm">Simulation Controls</span>
@@ -434,7 +396,7 @@ function SimulationView() {
                       runtimeController.dispatch({
                         type: eventKeywords.ui.headerToggled,
                         collapsed: true,
-                      });
+                      })
                     }}
                   />
                 )}
@@ -447,12 +409,11 @@ function SimulationView() {
             ref={canvasAreaRef}
             data-testid="canvas-area"
             className={cn(
-              "flex-1 flex items-center justify-center bg-(--simulation-bg) relative overflow-hidden"
+              'flex-1 flex items-center justify-center bg-(--simulation-bg) relative overflow-hidden'
             )}
             style={
               {
-                // Atmosphere settings driven by state (reactive!)
-                "--simulation-fog-color": atmosphereSettings.fogColor,
+                '--simulation-fog-color': atmosphereSettings.fogColor,
               } as React.CSSProperties
             }
           >
@@ -476,7 +437,7 @@ function SimulationView() {
                         runtimeController.dispatch({
                           type: eventKeywords.ui.headerToggled,
                           collapsed: false,
-                        });
+                        })
                       }}
                     />
                   </div>
@@ -484,12 +445,12 @@ function SimulationView() {
                   <div className="absolute left-2 top-2 pointer-events-auto group">
                     <label
                       className={cn(
-                        "px-1 py-1 inline-flex items-center justify-center gap-2",
-                        "rounded-md group-hover:bg-slate-100/30 bg-card/80 backdrop-blur-sm border border-primary/30"
+                        'px-1 py-1 inline-flex items-center justify-center gap-2',
+                        'rounded-md group-hover:bg-slate-100/30 bg-card/80 backdrop-blur-sm border border-primary/30'
                       )}
                     >
                       <SidebarTrigger
-                        className={"p-2"}
+                        className={'p-2'}
                         icon={IconAdjustmentsHorizontal}
                       />
                       <span className="text-sm">Simulation Controls</span>
@@ -506,7 +467,7 @@ function SimulationView() {
               ref={canvasContainerRef}
               data-testid="canvas-container"
               className={cn(
-                "relative w-full h-full border-2 border-(--simulation-fog-color) rounded-b-lg overflow-hidden"
+                'relative w-full h-full border-2 border-(--simulation-fog-color) rounded-b-lg overflow-hidden'
               )}
             >
               <CanvasFrame
@@ -525,7 +486,7 @@ function SimulationView() {
         </SidebarInset>
       </div>
     </SidebarProvider>
-  );
+  )
 }
 
 /**
@@ -539,7 +500,7 @@ export function SimulationWrapper({ system }: { system: StandardSystem }) {
     <SystemProvider system={system}>
       <SimulationView />
     </SystemProvider>
-  );
+  )
 }
 
-export default SimulationView;
+export default SimulationView

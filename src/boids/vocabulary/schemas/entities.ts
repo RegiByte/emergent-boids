@@ -1,6 +1,6 @@
-import { z } from "zod";
-import { vectorSchema, roleSchema, stanceSchema } from "./primitives";
-import { genomeSchema, phenotypeSchema } from "./genetics";
+import { z } from 'zod'
+import { vectorSchema, roleSchema, stanceSchema } from './primitives'
+import { genomeSchema, phenotypeSchema } from './genetics'
 
 /**
  * Entity Schemas - Core simulation entities
@@ -13,10 +13,6 @@ import { genomeSchema, phenotypeSchema } from "./genetics";
  *
  * Dependencies: primitives, genetics
  */
-
-// ============================================
-// Boid Schema
-// ============================================
 
 /**
  * Boid Schema - Defines the structure of a boid in the simulation
@@ -35,15 +31,12 @@ export const boidSchema = z.object({
   acceleration: vectorSchema,
   typeId: z.string(),
 
-  // Genetics (NEW)
   genome: genomeSchema, // Heritable traits
   phenotype: phenotypeSchema, // Computed effective values
 
-  // Resources (UPDATED)
   energy: z.number(), // Current energy (0 - phenotype.maxEnergy)
   health: z.number(), // Current health (0 - phenotype.maxHealth) [NEW]
 
-  // Lifecycle
   age: z.number(), // Age in seconds
   reproductionCooldown: z.number(), // Time passages until can reproduce again (0 = ready)
   seekingMate: z.boolean(), // Cached state: actively seeking mate (updated by lifecycleManager)
@@ -55,41 +48,33 @@ export const boidSchema = z.object({
   previousStance: stanceSchema.nullable(), // Previous stance (for returning from fleeing)
   positionHistory: z.array(vectorSchema), // Trail of recent positions for rendering motion trails
 
-  // Target tracking (NEW - Session 74: Behavior Scoring System)
   targetId: z.string().nullable().default(null), // ID of locked target (predators only)
   targetLockFrame: z.number().default(0), // Frames spent locked on current target
   targetLockStrength: z.number().min(0).max(1).default(0), // Lock strength (1.0 = full lock, decays when target escapes)
 
-  // Mate commitment tracking (NEW - Session 75: Mate Persistence)
   mateCommitmentFrames: z.number().default(0), // Frames spent with current mate (prevents switching)
 
-  // Stance transition tracking (Session 74: Behavior Scoring System)
   stanceEnteredAtFrame: z.number().default(0), // Frame when current stance was entered
   substate: z.string().nullable().default(null), // Rich substate (e.g., "searching", "chasing", "panic")
 
   knockbackVelocity: vectorSchema.nullable().default(null), // Velocity applied during knockback (for escape momentum)
   knockbackFramesRemaining: z.number().default(0), // Frames remaining for knockback effect
-});
+})
 
-export type Boid = z.infer<typeof boidSchema>;
-export type LogicalBoid = Omit<Boid, "position" | "velocity" | "acceleration">;
-export type PhysicalBoid = Pick<Boid, "position" | "velocity" | "acceleration">;
+export type Boid = z.infer<typeof boidSchema>
+export type LogicalBoid = Omit<Boid, 'position' | 'velocity' | 'acceleration'>
+export type PhysicalBoid = Pick<Boid, 'position' | 'velocity' | 'acceleration'>
 
-export const boidsById = z.record(z.string(), boidSchema);
-export type BoidsById = z.infer<typeof boidsById>;
-
+export const boidsById = z.record(z.string(), boidSchema)
+export type BoidsById = z.infer<typeof boidsById>
 
 export const offspringDataSchema = z.object({
   parent1Id: z.string(),
   parent2Id: z.string().optional(),
   typeId: z.string(),
   position: vectorSchema,
-});
-export type OffspringData = z.infer<typeof offspringDataSchema>;
-
-// ============================================
-// Food Source Schema
-// ============================================
+})
+export type OffspringData = z.infer<typeof offspringDataSchema>
 
 /**
  * Food Source - Energy available in the environment
@@ -107,13 +92,9 @@ export const foodSourceSchema = z.object({
   maxEnergy: z.number(), // Initial energy (used for visual scaling)
   sourceType: roleSchema, // Determines which boids can eat it
   createdFrame: z.number(), // Frame when created (for tracking age/decay)
-});
+})
 
-export type FoodSource = z.infer<typeof foodSourceSchema>;
-
-// ============================================
-// Obstacle Schema
-// ============================================
+export type FoodSource = z.infer<typeof foodSourceSchema>
 
 /**
  * Obstacle - Physical barrier in the environment
@@ -125,13 +106,9 @@ export const obstacleSchema = z.object({
   id: z.string(),
   position: z.object({ x: z.number(), y: z.number() }),
   radius: z.number(), // Obstacle radius in pixels
-});
+})
 
-export type Obstacle = z.infer<typeof obstacleSchema>;
-
-// ============================================
-// Death Marker Schema
-// ============================================
+export type Obstacle = z.infer<typeof obstacleSchema>
 
 /**
  * Death Marker - Marks dangerous locations where boids died
@@ -149,6 +126,6 @@ export const deathMarkerSchema = z.object({
   strength: z.number(), // Repulsive force strength (1.0-5.0, increases with consolidation)
   maxLifetimeFrames: z.number(), // Maximum lifetime (600 frames, prevents immortal markers)
   typeId: z.string(), // Species ID of boid that died (determines marker color)
-});
+})
 
-export type DeathMarker = z.infer<typeof deathMarkerSchema>;
+export type DeathMarker = z.infer<typeof deathMarkerSchema>

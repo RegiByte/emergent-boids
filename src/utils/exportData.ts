@@ -1,9 +1,9 @@
-import { RuntimeStore } from "../boids/vocabulary/schemas/state.ts";
-import { EvolutionSnapshot } from "@/boids/vocabulary/schemas/evolution.ts";
-import { computeGeneticsStatsBySpecies } from "@/boids/analytics/genetics";
-import JSZip from "jszip";
-import { iterateBoids } from "@/boids/iterators.ts";
-import { BoidsById } from "@/boids/vocabulary/schemas/entities.ts";
+import { RuntimeStore } from '../boids/vocabulary/schemas/state.ts'
+import { EvolutionSnapshot } from '@/boids/vocabulary/schemas/evolution.ts'
+import { computeGeneticsStatsBySpecies } from '@/boids/analytics/genetics'
+import JSZip from 'jszip'
+import { iterateBoids } from '@/boids/iterators.ts'
+import { BoidsById } from '@/boids/vocabulary/schemas/entities.ts'
 
 /**
  * Export Utilities
@@ -36,88 +36,80 @@ export function exportCurrentStats(
   mutationCounters?: Record<
     string,
     {
-      traitMutations: number;
-      colorMutations: number;
-      bodyPartMutations: number;
-      totalOffspring: number;
+      traitMutations: number
+      colorMutations: number
+      bodyPartMutations: number
+      totalOffspring: number
     }
-  >,
+  >
 ): string {
-  const { config, simulation } = runtimeStore;
+  const { config, simulation } = runtimeStore
 
-  // Calculate populations per type
-  const populations: Record<string, number> = {};
-  const populationsByRole: Record<string, number> = { prey: 0, predator: 0 };
+  const populations: Record<string, number> = {}
+  const populationsByRole: Record<string, number> = { prey: 0, predator: 0 }
 
   for (const boid of iterateBoids(boids)) {
-    const typeId = boid.typeId;
-    populations[typeId] = (populations[typeId] || 0) + 1;
+    const typeId = boid.typeId
+    populations[typeId] = (populations[typeId] || 0) + 1
 
-    const typeConfig = config.species[typeId];
+    const typeConfig = config.species[typeId]
     if (typeConfig) {
       populationsByRole[typeConfig.role] =
-        (populationsByRole[typeConfig.role] || 0) + 1;
+        (populationsByRole[typeConfig.role] || 0) + 1
     }
   }
 
-  // Calculate energy statistics per type
   const energyStats: Record<
     string,
     { avg: number; min: number; max: number; total: number }
-  > = {};
+  > = {}
 
   for (const boid of iterateBoids(boids)) {
-    const typeId = boid.typeId;
+    const typeId = boid.typeId
     if (!energyStats[typeId]) {
       energyStats[typeId] = {
         avg: 0,
         min: Infinity,
         max: -Infinity,
         total: 0,
-      };
+      }
     }
 
-    energyStats[typeId].total += boid.energy;
-    energyStats[typeId].min = Math.min(energyStats[typeId].min, boid.energy);
-    energyStats[typeId].max = Math.max(energyStats[typeId].max, boid.energy);
+    energyStats[typeId].total += boid.energy
+    energyStats[typeId].min = Math.min(energyStats[typeId].min, boid.energy)
+    energyStats[typeId].max = Math.max(energyStats[typeId].max, boid.energy)
   }
 
-  // Calculate averages
   Object.keys(energyStats).forEach((typeId) => {
-    const count = populations[typeId] || 1;
-    energyStats[typeId].avg = energyStats[typeId].total / count;
-    // Clean up total (not needed in output)
-    delete (energyStats[typeId] as Record<string, number>).total;
-  });
+    const count = populations[typeId] || 1
+    energyStats[typeId].avg = energyStats[typeId].total / count
+    delete (energyStats[typeId] as Record<string, number>).total
+  })
 
-  // Calculate stance distribution
-  const stancesByType: Record<string, Record<string, number>> = {};
+  const stancesByType: Record<string, Record<string, number>> = {}
 
   for (const boid of iterateBoids(boids)) {
-    const typeId = boid.typeId;
+    const typeId = boid.typeId
     if (!stancesByType[typeId]) {
-      stancesByType[typeId] = {};
+      stancesByType[typeId] = {}
     }
-    const stance = boid.stance;
-    stancesByType[typeId][stance] = (stancesByType[typeId][stance] || 0) + 1;
+    const stance = boid.stance
+    stancesByType[typeId][stance] = (stancesByType[typeId][stance] || 0) + 1
   }
 
-  // Count food sources
   const foodSources = {
-    prey: simulation.foodSources.filter((f) => f.sourceType === "prey").length,
-    predator: simulation.foodSources.filter((f) => f.sourceType === "predator")
+    prey: simulation.foodSources.filter((f) => f.sourceType === 'prey').length,
+    predator: simulation.foodSources.filter((f) => f.sourceType === 'predator')
       .length,
     total: simulation.foodSources.length,
-  };
+  }
 
-  // Compute genetics statistics
   const genetics = computeGeneticsStatsBySpecies(
     boids,
     config.species,
-    mutationCounters || {},
-  );
+    mutationCounters || {}
+  )
 
-  // Build export object
   const exportData = {
     timestamp: Date.now(),
     date: new Date().toISOString(),
@@ -128,7 +120,7 @@ export function exportCurrentStats(
       preyToPredatorRatio:
         populationsByRole.predator > 0
           ? (populationsByRole.prey / populationsByRole.predator).toFixed(2)
-          : "∞",
+          : '∞',
     },
     energy: energyStats,
     stances: stancesByType,
@@ -143,9 +135,9 @@ export function exportCurrentStats(
         height: config.world.height,
       },
     },
-  };
+  }
 
-  return JSON.stringify(exportData, null, 2);
+  return JSON.stringify(exportData, null, 2)
 }
 
 /**
@@ -173,25 +165,22 @@ export function exportCurrentStats(
  */
 export function exportEvolutionJSONL(snapshots: EvolutionSnapshot[]): string {
   if (snapshots.length === 0) {
-    return "# No evolution data available yet\n# Start the simulation and let it run for a few ticks to collect data";
+    return '# No evolution data available yet\n# Start the simulation and let it run for a few ticks to collect data'
   }
 
-  // Extract config from first snapshot (if present)
-  const config = snapshots[0].activeParameters;
-  const configJson = config ? JSON.stringify(config, null, 2) : "{}";
+  const config = snapshots[0].activeParameters
+  const configJson = config ? JSON.stringify(config, null, 2) : '{}'
 
-  // Calculate size savings
-  const avgSnapshotSize = JSON.stringify(snapshots[0]).length;
-  const configSize = configJson.length;
+  const avgSnapshotSize = JSON.stringify(snapshots[0]).length
+  const configSize = configJson.length
   const savingsPercent = (
     ((configSize * (snapshots.length - 1)) /
       (avgSnapshotSize * snapshots.length)) *
     100
-  ).toFixed(1);
+  ).toFixed(1)
 
-  // Add header comment with metadata and config
   const header = [
-    "# Emergent Boids - Evolution Data (JSONL Format)",
+    '# Emergent Boids - Evolution Data (JSONL Format)',
     `# Generated: ${new Date().toISOString()}`,
     `# Snapshots: ${snapshots.length}`,
     `# Time Range: ${new Date(snapshots[0].timestamp).toISOString()} to ${new Date(snapshots[snapshots.length - 1].timestamp).toISOString()}`,
@@ -200,14 +189,14 @@ export function exportEvolutionJSONL(snapshots: EvolutionSnapshot[]): string {
     `#`,
     `# Configuration (applies to all snapshots):`,
     `# CONFIG_START`,
-    ...configJson.split("\n").map((line) => `# ${line}`),
+    ...configJson.split('\n').map((line) => `# ${line}`),
     `# CONFIG_END`,
-    "#",
-  ].join("\n");
+    '#',
+  ].join('\n')
 
-  const data = snapshots.map((snap) => JSON.stringify(snap)).join("\n");
+  const data = snapshots.map((snap) => JSON.stringify(snap)).join('\n')
 
-  return `${header}\n${data}`;
+  return `${header}\n${data}`
 }
 
 /**
@@ -215,13 +204,13 @@ export function exportEvolutionJSONL(snapshots: EvolutionSnapshot[]): string {
  */
 export interface MultiRateExportConfig {
   /** Base filename (without extension) */
-  baseFilename?: string;
+  baseFilename?: string
   /** Sampling rates to export (e.g., [1, 3, 10, 50, 100]) */
-  samplingRates?: number[];
+  samplingRates?: number[]
   /** Include metadata.json file */
-  includeMetadata?: boolean;
+  includeMetadata?: boolean
   /** Include current stats snapshot */
-  includeCurrentStats?: boolean;
+  includeCurrentStats?: boolean
 }
 
 /**
@@ -257,21 +246,20 @@ export async function exportEvolutionMultiRate(
   snapshots: EvolutionSnapshot[],
   boids: BoidsById,
   runtimeStore: RuntimeStore,
-  config: MultiRateExportConfig = {},
+  config: MultiRateExportConfig = {}
 ): Promise<Blob> {
   const {
     samplingRates = [1, 3, 10, 50, 100],
     includeMetadata = true,
     includeCurrentStats = true,
-  } = config;
+  } = config
 
   if (snapshots.length === 0) {
-    throw new Error("No snapshots to export");
+    throw new Error('No snapshots to export')
   }
 
-  const zip = new JSZip();
+  const zip = new JSZip()
 
-  // Add metadata.json
   if (includeMetadata) {
     const metadata = {
       exportDate: new Date().toISOString(),
@@ -287,7 +275,7 @@ export async function exportEvolutionMultiRate(
           tick: snapshots[snapshots.length - 1].tick,
           timestamp: snapshots[snapshots.length - 1].timestamp,
           date: new Date(
-            snapshots[snapshots.length - 1].timestamp,
+            snapshots[snapshots.length - 1].timestamp
           ).toISOString(),
         },
       },
@@ -309,29 +297,26 @@ export async function exportEvolutionMultiRate(
       })),
       species: Object.keys(snapshots[0].populations || {}),
       config: snapshots[0].activeParameters || null,
-    };
+    }
 
-    zip.file("metadata.json", JSON.stringify(metadata, null, 2));
+    zip.file('metadata.json', JSON.stringify(metadata, null, 2))
   }
 
-  // Add current stats (if available)
   if (includeCurrentStats && runtimeStore) {
-    const currentStats = exportCurrentStats(boids, runtimeStore);
-    zip.file("stats_current.json", currentStats);
+    const currentStats = exportCurrentStats(boids, runtimeStore)
+    zip.file('stats_current.json', currentStats)
   }
 
-  // Generate JSONL files for each sampling rate
   for (const rate of samplingRates) {
-    const sampledSnapshots = snapshots.filter((_, index) => index % rate === 0);
+    const sampledSnapshots = snapshots.filter((_, index) => index % rate === 0)
 
     if (sampledSnapshots.length > 0) {
-      const jsonl = exportEvolutionJSONL(sampledSnapshots);
-      zip.file(`snapshots_${rate}x.jsonl`, jsonl);
+      const jsonl = exportEvolutionJSONL(sampledSnapshots)
+      zip.file(`snapshots_${rate}x.jsonl`, jsonl)
     }
   }
 
-  // Generate ZIP blob
-  return await zip.generateAsync({ type: "blob" });
+  return await zip.generateAsync({ type: 'blob' })
 }
 
 /**
@@ -341,14 +326,14 @@ export async function exportEvolutionMultiRate(
  * @param filename - Filename for download
  */
 export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 /**
@@ -365,38 +350,36 @@ export async function exportAndDownloadMultiRate(
   snapshots: EvolutionSnapshot[],
   boids: BoidsById,
   runtimeStore: RuntimeStore,
-  config: MultiRateExportConfig = {},
+  config: MultiRateExportConfig = {}
 ): Promise<void> {
   try {
     const blob = await exportEvolutionMultiRate(
       snapshots,
       boids,
       runtimeStore,
-      config,
-    );
-    const filename = `${config.baseFilename || `evolution_export_${Date.now()}`}.zip`;
-    downloadBlob(blob, filename);
-    console.log(`✅ Evolution data exported: ${filename}`);
+      config
+    )
+    const filename = `${config.baseFilename || `evolution_export_${Date.now()}`}.zip`
+    downloadBlob(blob, filename)
+    console.log(`✅ Evolution data exported: ${filename}`)
   } catch (error) {
-    console.error("❌ Failed to export evolution data:", error);
-    throw error;
+    console.error('❌ Failed to export evolution data:', error)
+    throw error
   }
 }
 
 /**
  * Copy text to clipboard and log to console
  */
-export function copyToClipboard(text: string, label: string = "Data"): void {
+export function copyToClipboard(text: string, label: string = 'Data'): void {
   navigator.clipboard
     .writeText(text)
     .then(() => {
-      console.log(`✅ ${label} copied to clipboard!`);
-      console.log(
-        `📊 Preview (first 500 chars):\n${text.substring(0, 500)}...`,
-      );
+      console.log(`✅ ${label} copied to clipboard!`)
+      console.log(`📊 Preview (first 500 chars):\n${text.substring(0, 500)}...`)
     })
     .catch((err) => {
-      console.error("❌ Failed to copy to clipboard:", err);
-      console.log("📋 Data output:\n", text);
-    });
+      console.error('❌ Failed to copy to clipboard:', err)
+      console.log('📋 Data output:\n', text)
+    })
 }

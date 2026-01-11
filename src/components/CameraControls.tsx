@@ -1,17 +1,16 @@
-import { useResource } from "../systems/standard.ts";
-import { Card } from "./ui/card";
+import { useResource } from '../systems/standard.ts'
+import { Card } from './ui/card'
 
 export function CameraControls() {
-  const camera = useResource("camera");
-  const runtimeStore = useResource("runtimeStore");
+  const camera = useResource('camera')
+  const runtimeStore = useResource('runtimeStore')
 
-  // Use reactive mode store for immediate UI updates
-  const cameraMode = camera.useMode();
+  const cameraMode = camera.useMode()
 
-  const worldWidth = runtimeStore.useStore((state) => state.config.world.width);
+  const worldWidth = runtimeStore.useStore((state) => state.config.world.width)
   const worldHeight = runtimeStore.useStore(
-    (state) => state.config.world.height,
-  );
+    (state) => state.config.world.height
+  )
 
   return (
     <div className="absolute bottom-4 left-4 z-40 hidden lg:block">
@@ -74,30 +73,29 @@ export function CameraControls() {
           {/* Follow Boid Button */}
           <button
             onClick={() => {
-              if (cameraMode.type === "picker") {
-                camera.exitPickerMode();
+              if (cameraMode.type === 'picker') {
+                camera.exitPickerMode()
               } else {
-                // From free OR following mode, enter picker mode
-                camera.enterPickerMode();
+                camera.enterPickerMode()
               }
             }}
             className={`w-full text-xs py-1 px-2 rounded transition-colors ${
-              cameraMode.type === "picker"
-                ? "bg-blue-500/40 hover:bg-blue-500/50 text-blue-200"
-                : cameraMode.type === "following"
-                  ? "bg-yellow-500/40 hover:bg-yellow-500/50 text-yellow-200"
-                  : "bg-primary/20 hover:bg-primary/30 text-primary"
+              cameraMode.type === 'picker'
+                ? 'bg-blue-500/40 hover:bg-blue-500/50 text-blue-200'
+                : cameraMode.type === 'following'
+                  ? 'bg-yellow-500/40 hover:bg-yellow-500/50 text-yellow-200'
+                  : 'bg-primary/20 hover:bg-primary/30 text-primary'
             }`}
           >
-            {cameraMode.type === "picker"
-              ? "Cancel Picker"
-              : cameraMode.type === "following"
-                ? "Follow Another"
-                : "Follow Boid"}
+            {cameraMode.type === 'picker'
+              ? 'Cancel Picker'
+              : cameraMode.type === 'following'
+                ? 'Follow Another'
+                : 'Follow Boid'}
           </button>
 
           {/* Show followed boid info with stop button */}
-          {cameraMode.type === "following" && (
+          {cameraMode.type === 'following' && (
             <div className="space-y-1">
               <div className="text-xs text-primary/70 font-mono">
                 Following: {cameraMode.boidId.slice(0, 8)}...
@@ -113,5 +111,5 @@ export function CameraControls() {
         </div>
       </Card>
     </div>
-  );
+  )
 }

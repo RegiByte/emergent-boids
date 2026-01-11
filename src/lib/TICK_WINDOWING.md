@@ -21,9 +21,9 @@ When simulation speed changes, wall-clock time becomes unreliable. Ticks represe
 Calculate which tick window a given tick belongs to.
 
 ```typescript
-getTickWindow(123, 10); // → { start: 120, end: 130 }
-getTickWindow(127, 10); // → { start: 120, end: 130 } // Same window!
-getTickWindow(130, 10); // → { start: 130, end: 140 } // New window
+getTickWindow(123, 10) // → { start: 120, end: 130 }
+getTickWindow(127, 10) // → { start: 120, end: 130 } // Same window!
+getTickWindow(130, 10) // → { start: 130, end: 140 } // New window
 ```
 
 ### `getTickWindowKey(category, tick, windowSize)`
@@ -31,8 +31,8 @@ getTickWindow(130, 10); // → { start: 130, end: 140 } // New window
 Generate a stable key for a tick window.
 
 ```typescript
-getTickWindowKey("reproduced", 123, 10); // → "reproduced-120-130"
-getTickWindowKey("caught", 127, 10); // → "caught-120-130"
+getTickWindowKey('reproduced', 123, 10) // → "reproduced-120-130"
+getTickWindowKey('caught', 127, 10) // → "caught-120-130"
 ```
 
 ### `areInSameWindow(tick1, tick2, windowSize)`
@@ -40,8 +40,8 @@ getTickWindowKey("caught", 127, 10); // → "caught-120-130"
 Check if two ticks are in the same window.
 
 ```typescript
-areInSameWindow(123, 127, 10); // → true
-areInSameWindow(123, 130, 10); // → false
+areInSameWindow(123, 127, 10) // → true
+areInSameWindow(123, 130, 10) // → false
 ```
 
 ---
@@ -79,9 +79,9 @@ Aggregate items by tick window with custom reducer.
 
 ```typescript
 const events = [
-  { tick: 123, type: "reproduced", offspring: 2 },
-  { tick: 125, type: "reproduced", offspring: 1 },
-];
+  { tick: 123, type: 'reproduced', offspring: 2 },
+  { tick: 125, type: 'reproduced', offspring: 1 },
+]
 
 const aggregated = aggregateByTickWindow(
   events,
@@ -92,8 +92,8 @@ const aggregated = aggregateByTickWindow(
     count: acc.count + 1,
     totalOffspring: acc.totalOffspring + event.offspring,
   }),
-  () => ({ count: 0, totalOffspring: 0 }),
-);
+  () => ({ count: 0, totalOffspring: 0 })
+)
 
 // Result:
 // Map {
@@ -110,7 +110,7 @@ const aggregated = aggregateByTickWindow(
 Get the current tick window for "now".
 
 ```typescript
-getCurrentTickWindow(127, 10); // → { start: 120, end: 130 }
+getCurrentTickWindow(127, 10) // → { start: 120, end: 130 }
 ```
 
 ### `ticksUntilNextWindow(currentTick, windowSize)`
@@ -118,9 +118,9 @@ getCurrentTickWindow(127, 10); // → { start: 120, end: 130 }
 Calculate how many ticks until the next window.
 
 ```typescript
-ticksUntilNextWindow(123, 10); // → 7  (130 - 123)
-ticksUntilNextWindow(129, 10); // → 1  (130 - 129)
-ticksUntilNextWindow(130, 10); // → 10 (140 - 130)
+ticksUntilNextWindow(123, 10) // → 7  (130 - 123)
+ticksUntilNextWindow(129, 10) // → 1  (130 - 129)
+ticksUntilNextWindow(130, 10) // → 10 (140 - 130)
 ```
 
 ### `getOverlappingWindows(startTick, endTick, windowSize)`
@@ -128,7 +128,7 @@ ticksUntilNextWindow(130, 10); // → 10 (140 - 130)
 Get all tick windows that overlap with a tick range.
 
 ```typescript
-getOverlappingWindows(123, 145, 10);
+getOverlappingWindows(123, 145, 10)
 // → [
 //     { start: 120, end: 130 },
 //     { start: 130, end: 140 },
@@ -141,8 +141,8 @@ getOverlappingWindows(123, 145, 10);
 Format a tick window for display.
 
 ```typescript
-formatTickWindow({ start: 120, end: 130 }); // → "T120-T130"
-formatTickWindow({ start: 120, end: 130 }, "compact"); // → "120-130"
+formatTickWindow({ start: 120, end: 130 }) // → "T120-T130"
+formatTickWindow({ start: 120, end: 130 }, 'compact') // → "120-130"
 ```
 
 ---
@@ -154,9 +154,9 @@ formatTickWindow({ start: 120, end: 130 }, "compact"); // → "120-130"
 Group events by type and time window for display:
 
 ```typescript
-import { getTickWindowKey } from "@/lib/tickWindowing";
+import { getTickWindowKey } from '@/lib/tickWindowing'
 
-const windowKey = `agg-${getTickWindowKey(eventType, event.tick, 10)}`;
+const windowKey = `agg-${getTickWindowKey(eventType, event.tick, 10)}`
 ```
 
 ### 2. Performance Metrics
@@ -166,15 +166,15 @@ Track FPS/performance over tick windows:
 ```typescript
 const perfMetrics = aggregateByTickWindow(
   frames,
-  () => "fps",
+  () => 'fps',
   (f) => f.tick,
   60, // 60-tick windows
   (acc, frame) => ({
     totalFrames: acc.totalFrames + 1,
     totalTime: acc.totalTime + frame.duration,
   }),
-  () => ({ totalFrames: 0, totalTime: 0 }),
-);
+  () => ({ totalFrames: 0, totalTime: 0 })
+)
 ```
 
 ### 3. Population Snapshots
@@ -186,8 +186,8 @@ const populationWindows = groupByTickWindow(
   snapshots,
   (s) => s.species,
   (s) => s.tick,
-  100, // 100-tick windows
-);
+  100 // 100-tick windows
+)
 ```
 
 ### 4. Event Rate Calculation
@@ -201,8 +201,8 @@ const birthRates = aggregateByTickWindow(
   (e) => e.tick,
   10,
   (acc) => acc + 1,
-  () => 0,
-);
+  () => 0
+)
 ```
 
 ### 5. Stable React Keys
@@ -210,7 +210,7 @@ const birthRates = aggregateByTickWindow(
 Generate stable keys for animated lists:
 
 ```typescript
-const key = getTickWindowKey(item.category, item.tick, windowSize);
+const key = getTickWindowKey(item.category, item.tick, windowSize)
 // Same key for all items in the same window
 // → Smooth animations, no layout thrashing
 ```
@@ -245,15 +245,15 @@ Map-based grouping ensures O(1) lookups and no duplicate keys.
 ## Testing
 
 ```typescript
-import { getTickWindow, areInSameWindow } from "@/lib/tickWindowing";
+import { getTickWindow, areInSameWindow } from '@/lib/tickWindowing'
 
 // Test window calculation
-expect(getTickWindow(123, 10)).toEqual({ start: 120, end: 130 });
-expect(getTickWindow(130, 10)).toEqual({ start: 130, end: 140 });
+expect(getTickWindow(123, 10)).toEqual({ start: 120, end: 130 })
+expect(getTickWindow(130, 10)).toEqual({ start: 130, end: 140 })
 
 // Test window membership
-expect(areInSameWindow(123, 127, 10)).toBe(true);
-expect(areInSameWindow(123, 130, 10)).toBe(false);
+expect(areInSameWindow(123, 127, 10)).toBe(true)
+expect(areInSameWindow(123, 130, 10)).toBe(false)
 ```
 
 ---

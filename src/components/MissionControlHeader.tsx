@@ -1,20 +1,20 @@
-import { cn } from "@/lib/utils";
-import { GraphBar } from "./GraphBar";
-import { ProfileSelector } from "./ProfileSelector";
+import { cn } from '@/lib/utils'
+import { GraphBar } from './GraphBar'
+import { ProfileSelector } from './ProfileSelector'
 import {
   IconChevronDown,
   IconChevronUp,
   IconPalette,
   IconFish,
-} from "@tabler/icons-react";
-import { motion } from "motion/react";
-import { Link } from "@tanstack/react-router";
+} from '@tabler/icons-react'
+import { motion } from 'motion/react'
+import { Link } from '@tanstack/react-router'
 
 type MissionControlHeaderProps = {
-  showGraphs?: boolean;
-  collapsed: boolean;
-  onToggleCollapse: () => void;
-};
+  showGraphs?: boolean
+  collapsed: boolean
+  onToggleCollapse: () => void
+}
 
 export function MissionControlHeader({
   showGraphs = true,
@@ -22,13 +22,12 @@ export function MissionControlHeader({
   onToggleCollapse,
 }: MissionControlHeaderProps) {
   if (collapsed) {
-    // Show only the expand button when collapsed
     return (
       <motion.div
         initial={{ y: 0, opacity: 1 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: -20, opacity: 0 }}
-        transition={{ duration: 0.1, ease: "easeOut" }}
+        transition={{ duration: 0.1, ease: 'easeOut' }}
         className="z-60"
       >
         <motion.button
@@ -44,7 +43,7 @@ export function MissionControlHeader({
           </span>
         </motion.button>
       </motion.div>
-    );
+    )
   }
 
   return (
@@ -95,13 +94,13 @@ export function MissionControlHeader({
         whileTap={{ scale: 0.9 }}
         transition={{ duration: 0.2 }}
         className={cn(
-          "absolute bottom-0 right-4 transform translate-y-1/2",
-          "bg-card border border-primary/30 rounded-full p-2 shadow-lg hover:bg-primary/10 transition-colors z-60",
+          'absolute bottom-0 right-4 transform translate-y-1/2',
+          'bg-card border border-primary/30 rounded-full p-2 shadow-lg hover:bg-primary/10 transition-colors z-60'
         )}
         title="Collapse Mission Control"
       >
         <IconChevronUp size={16} className="text-primary" />
       </motion.button>
     </header>
-  );
+  )
 }

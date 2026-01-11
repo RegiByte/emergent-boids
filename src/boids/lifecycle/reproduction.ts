@@ -1,8 +1,8 @@
-import { processMatingCycle, type MatingResult } from "../mating";
-import { isReadyToMate } from "../predicates";
-import type { Boid, BoidsById } from "../vocabulary/schemas/entities";
-import { SimulationParameters } from "../vocabulary/schemas/world";
-import { SpeciesConfig } from "../vocabulary/schemas/species";
+import { processMatingCycle, type MatingResult } from '../mating'
+import { isReadyToMate } from '../predicates'
+import type { Boid, BoidsById } from '../vocabulary/schemas/entities'
+import { SimulationParameters } from '../vocabulary/schemas/world'
+import { SpeciesConfig } from '../vocabulary/schemas/species'
 
 /**
  * Process reproduction for a single boid
@@ -16,7 +16,7 @@ export function processBoidReproduction(
   matedBoids: Set<string>,
   elapsedFrames: number
 ): MatingResult {
-  const ready = isReadyToMate(boid, parameters, speciesConfig);
+  const ready = isReadyToMate(boid, parameters, speciesConfig)
 
   if (ready && !matedBoids.has(boid.id)) {
     return processMatingCycle(
@@ -26,11 +26,10 @@ export function processBoidReproduction(
       speciesConfig,
       matedBoids,
       elapsedFrames
-    );
+    )
   } else if (boid.mateId && !ready) {
-    // No longer ready to mate
     return {
-      type: "mate_lost",
+      type: 'mate_lost',
       updates: {
         energy: boid.energy,
         reproductionCooldown: boid.reproductionCooldown,
@@ -38,8 +37,8 @@ export function processBoidReproduction(
         mateId: null,
         seekingMate: false,
       },
-    };
+    }
   }
 
-  return { type: "no_action" };
+  return { type: 'no_action' }
 }

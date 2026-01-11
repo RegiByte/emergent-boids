@@ -1,17 +1,21 @@
-import { eventKeywords, simulationKeywords } from "../keywords";
-import z from "zod";
-import { boidSchema, deathMarkerSchema, foodSourceSchema, obstacleSchema } from "./entities";
+import { eventKeywords, simulationKeywords } from '../keywords'
+import z from 'zod'
+import {
+  boidSchema,
+  deathMarkerSchema,
+  foodSourceSchema,
+  obstacleSchema,
+} from './entities'
 import {
   deathCauseSchema,
   renderModeSchema,
   roleSchema,
   stanceSchema,
   vectorSchema,
-} from "./primitives";
-import { simulationParametersSchema } from "./world";
+} from './primitives'
+import { simulationParametersSchema } from './world'
 
-export const simulationCommandSchema = z.discriminatedUnion("type", [
-  // Simulation commands
+export const simulationCommandSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal(simulationKeywords.commands.start),
   }),
@@ -32,7 +36,6 @@ export const simulationCommandSchema = z.discriminatedUnion("type", [
     type: z.literal(simulationKeywords.commands.updateParameters),
     parameters: simulationParametersSchema.partial(), // Partial parameters update
   }),
-  // Boid commands
   z.object({
     type: z.literal(simulationKeywords.commands.addBoid),
     boid: boidSchema,
@@ -49,7 +52,6 @@ export const simulationCommandSchema = z.discriminatedUnion("type", [
     type: z.literal(simulationKeywords.commands.stopFollowingBoid),
     boidId: z.string(),
   }),
-  // Environment commands
   z.object({
     type: z.literal(simulationKeywords.commands.addObstacle),
     obstacle: obstacleSchema,
@@ -61,7 +63,6 @@ export const simulationCommandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal(simulationKeywords.commands.clearAllObstacles),
   }),
-  // UI/UX commands
   z.object({
     type: z.literal(simulationKeywords.commands.toggleTrails),
   }),
@@ -93,7 +94,7 @@ export const simulationCommandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal(simulationKeywords.commands.spawnObstacle),
     position: vectorSchema,
-    radius: z.number(), // Session 127: Obstacle radius
+    radius: z.number(),
   }),
   z.object({
     type: z.literal(simulationKeywords.commands.spawnPredator),
@@ -102,12 +103,11 @@ export const simulationCommandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal(simulationKeywords.commands.clearDeathMarkers),
   }),
-]);
+])
 
-export type SimulationCommand = z.infer<typeof simulationCommandSchema>;
+export type SimulationCommand = z.infer<typeof simulationCommandSchema>
 
-export const simulationEventSchema = z.discriminatedUnion("type", [
-  // Simulation events
+export const simulationEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal(simulationKeywords.events.initialized),
   }),
@@ -129,7 +129,6 @@ export const simulationEventSchema = z.discriminatedUnion("type", [
     type: z.literal(eventKeywords.time.passed),
     deltaMs: z.number(),
   }),
-  // Boid events
   z.object({
     type: z.literal(simulationKeywords.events.boidsDied),
     boids: z.array(
@@ -160,18 +159,20 @@ export const simulationEventSchema = z.discriminatedUnion("type", [
         parentId1: z.string(),
         parentId2: z.string().optional(), // may be asexual reproduction
         offspring: z.array(boidSchema),
-        // Session 124: Include mutation metadata for analytics tracking
-        mutations: z.object({
-          traitMutations: z.number(),
-          colorMutations: z.number(),
-          bodyPartMutations: z.number(),
-        }).optional(),
+
+        mutations: z
+          .object({
+            traitMutations: z.number(),
+            colorMutations: z.number(),
+            bodyPartMutations: z.number(),
+          })
+          .optional(),
       })
     ),
   }),
   z.object({
     type: z.literal(simulationKeywords.events.boidsSpawned),
-    boids: z.array(boidSchema), // Session 127: User-triggered spawning
+    boids: z.array(boidSchema),
   }),
   z.object({
     type: z.literal(simulationKeywords.events.boidsStanceChanged),
@@ -187,7 +188,6 @@ export const simulationEventSchema = z.discriminatedUnion("type", [
     type: z.literal(simulationKeywords.events.workerStateUpdated),
     updates: z.array(boidSchema.partial()),
   }),
-  // Environment events
   z.object({
     type: z.literal(simulationKeywords.events.foodSourcesCreated),
     foodSources: z.array(foodSourceSchema),
@@ -216,7 +216,6 @@ export const simulationEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal(simulationKeywords.events.obstaclesCleared),
   }),
-  // Death marker events (Session 128)
   z.object({
     type: z.literal(simulationKeywords.events.deathMarkersAdded),
     markers: z.array(deathMarkerSchema),
@@ -225,6 +224,6 @@ export const simulationEventSchema = z.discriminatedUnion("type", [
     type: z.literal(simulationKeywords.events.deathMarkersUpdated),
     markers: z.array(deathMarkerSchema),
   }),
-]);
+])
 
-export type SimulationEvent = z.infer<typeof simulationEventSchema>;
+export type SimulationEvent = z.infer<typeof simulationEventSchema>

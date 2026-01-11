@@ -1,12 +1,12 @@
-import { useResource } from "../systems/standard.ts";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
-import { ScrollArea } from "./ui/scroll-area";
-import { Slider } from "./ui/slider";
-import { Label } from "./ui/label";
-import { motion, AnimatePresence } from "motion/react";
-import { toast } from "sonner";
+import { useResource } from '../systems/standard.ts'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import { ScrollArea } from './ui/scroll-area'
+import { Slider } from './ui/slider'
+import { Label } from './ui/label'
+import { motion, AnimatePresence } from 'motion/react'
+import { toast } from 'sonner'
 import {
   IconActivity,
   IconClock,
@@ -21,243 +21,217 @@ import {
   IconFilter,
   IconFilterOff,
   IconAdjustments,
-} from "@tabler/icons-react";
-import type { AllEvents } from "@/boids/vocabulary/schemas/events";
-import type { SpeciesRecord } from "@/boids/vocabulary/schemas/species";
-import { eventKeywords } from "@/boids/vocabulary/keywords";
-import { useMemo } from "react";
-import { getTickWindowKey, getCurrentTickWindow } from "@/lib/tickWindowing";
-import { createWeightedComparator } from "@/lib/weightedMath";
+} from '@tabler/icons-react'
+import type { AllEvents } from '@/boids/vocabulary/schemas/events'
+import type { SpeciesRecord } from '@/boids/vocabulary/schemas/species'
+import { eventKeywords } from '@/boids/vocabulary/keywords'
+import { useMemo } from 'react'
+import { getTickWindowKey, getCurrentTickWindow } from '@/lib/tickWindowing'
+import { createWeightedComparator } from '@/lib/weightedMath'
 
-// Event type to icon mapping
 const getEventIcon = (eventType: string) => {
-  if (eventType.includes("reproduced")) return IconHeart;
-  if (eventType.includes("died")) return IconSkull;
-  if (eventType.includes("caught")) return IconTarget;
-  if (eventType.includes("typeConfigChanged")) return IconDna;
-  if (eventType.includes("added")) return IconPlus;
-  if (eventType.includes("removed") || eventType.includes("cleared"))
-    return IconMinus;
-  if (eventType.includes("passed")) return IconClock;
-  if (eventType.includes("Changed")) return IconSettings;
-  return IconActivity;
-};
+  if (eventType.includes('reproduced')) return IconHeart
+  if (eventType.includes('died')) return IconSkull
+  if (eventType.includes('caught')) return IconTarget
+  if (eventType.includes('typeConfigChanged')) return IconDna
+  if (eventType.includes('added')) return IconPlus
+  if (eventType.includes('removed') || eventType.includes('cleared'))
+    return IconMinus
+  if (eventType.includes('passed')) return IconClock
+  if (eventType.includes('Changed')) return IconSettings
+  return IconActivity
+}
 
-// Event type to color mapping
 const getEventColor = (eventType: string) => {
-  if (eventType.includes("reproduced")) return "text-pink-500";
-  if (eventType.includes("died")) return "text-red-500";
-  if (eventType.includes("caught")) return "text-orange-500";
-  if (eventType.includes("typeConfigChanged")) return "text-blue-500";
-  if (eventType.includes("added")) return "text-green-500";
-  if (eventType.includes("removed") || eventType.includes("cleared"))
-    return "text-yellow-500";
-  if (eventType.includes("passed")) return "text-gray-500";
-  return "text-primary";
-};
+  if (eventType.includes('reproduced')) return 'text-pink-500'
+  if (eventType.includes('died')) return 'text-red-500'
+  if (eventType.includes('caught')) return 'text-orange-500'
+  if (eventType.includes('typeConfigChanged')) return 'text-blue-500'
+  if (eventType.includes('added')) return 'text-green-500'
+  if (eventType.includes('removed') || eventType.includes('cleared'))
+    return 'text-yellow-500'
+  if (eventType.includes('passed')) return 'text-gray-500'
+  return 'text-primary'
+}
 
-// Event type to background color mapping
 const getEventBgColor = (eventType: string) => {
-  if (eventType.includes("reproduced")) return "bg-pink-500/10";
-  if (eventType.includes("died")) return "bg-red-500/10";
-  if (eventType.includes("caught")) return "bg-orange-500/10";
-  if (eventType.includes("typeConfigChanged")) return "bg-blue-500/10";
-  if (eventType.includes("added")) return "bg-green-500/10";
-  if (eventType.includes("removed") || eventType.includes("cleared"))
-    return "bg-yellow-500/10";
-  if (eventType.includes("passed")) return "bg-gray-500/10";
-  return "bg-primary/10";
-};
+  if (eventType.includes('reproduced')) return 'bg-pink-500/10'
+  if (eventType.includes('died')) return 'bg-red-500/10'
+  if (eventType.includes('caught')) return 'bg-orange-500/10'
+  if (eventType.includes('typeConfigChanged')) return 'bg-blue-500/10'
+  if (eventType.includes('added')) return 'bg-green-500/10'
+  if (eventType.includes('removed') || eventType.includes('cleared'))
+    return 'bg-yellow-500/10'
+  if (eventType.includes('passed')) return 'bg-gray-500/10'
+  return 'bg-primary/10'
+}
 
-// Format event type for display
 const formatEventType = (eventType: string) => {
-  // Remove namespace prefix (e.g., "boids:" -> "")
-  const withoutNamespace = eventType.split("/").pop() || eventType;
-  // Convert camelCase to Title Case
+  const withoutNamespace = eventType.split('/').pop() || eventType
   return withoutNamespace
-    .replace(/([A-Z])/g, " $1")
+    .replace(/([A-Z])/g, ' $1')
     .replace(/^./, (str) => str.toUpperCase())
-    .trim();
-};
+    .trim()
+}
 
-// Get aggregated event summary
 const getAggregatedSummary = (
   aggregated: AggregatedEvent,
-  species: SpeciesRecord,
+  species: SpeciesRecord
 ) => {
-  const { eventType, count, events } = aggregated;
+  const { eventType, count, events } = aggregated
 
-  // For reproduced events
   if (eventType === eventKeywords.boids.reproduced) {
-    const speciesCount: Record<string, number> = {};
-    let totalOffspring = 0;
+    const speciesCount: Record<string, number> = {}
+    let totalOffspring = 0
 
     events.forEach(({ event }) => {
-      if ("typeId" in event && event.typeId) {
-        speciesCount[event.typeId] = (speciesCount[event.typeId] || 0) + 1;
+      if ('typeId' in event && event.typeId) {
+        speciesCount[event.typeId] = (speciesCount[event.typeId] || 0) + 1
       }
-      if ("offspringCount" in event && event.offspringCount) {
-        totalOffspring += event.offspringCount;
+      if ('offspringCount' in event && event.offspringCount) {
+        totalOffspring += event.offspringCount
       }
-    });
+    })
 
     const speciesParts = Object.entries(speciesCount).map(([typeId, count]) => {
-      const name = species[typeId]?.name || typeId;
-      return `${name}: ${count}`;
-    });
+      const name = species[typeId]?.name || typeId
+      return `${name}: ${count}`
+    })
 
-    return `${totalOffspring} offspring • ${speciesParts.join(", ")}`;
+    return `${totalOffspring} offspring • ${speciesParts.join(', ')}`
   }
 
-  // For caught events
   if (eventType === eventKeywords.boids.caught) {
-    const preyCount: Record<string, number> = {};
+    const preyCount: Record<string, number> = {}
 
     events.forEach(({ event }) => {
-      if ("preyTypeId" in event && event.preyTypeId) {
-        preyCount[event.preyTypeId] = (preyCount[event.preyTypeId] || 0) + 1;
+      if ('preyTypeId' in event && event.preyTypeId) {
+        preyCount[event.preyTypeId] = (preyCount[event.preyTypeId] || 0) + 1
       }
-    });
+    })
 
     const preyParts = Object.entries(preyCount).map(([typeId, count]) => {
-      const name = species[typeId]?.name || typeId;
-      return `${name}: ${count}`;
-    });
+      const name = species[typeId]?.name || typeId
+      return `${name}: ${count}`
+    })
 
-    return preyParts.join(", ");
+    return preyParts.join(', ')
   }
 
-  // For died events
   if (eventType === eventKeywords.boids.died) {
-    const speciesCount: Record<string, number> = {};
-    const causeCount: Record<string, number> = {};
+    const speciesCount: Record<string, number> = {}
+    const causeCount: Record<string, number> = {}
 
     events.forEach(({ event }) => {
-      if ("typeId" in event && event.typeId) {
-        speciesCount[event.typeId] = (speciesCount[event.typeId] || 0) + 1;
+      if ('typeId' in event && event.typeId) {
+        speciesCount[event.typeId] = (speciesCount[event.typeId] || 0) + 1
       }
-      if ("reason" in event && event.reason) {
-        causeCount[event.reason] = (causeCount[event.reason] || 0) + 1;
+      if ('reason' in event && event.reason) {
+        causeCount[event.reason] = (causeCount[event.reason] || 0) + 1
       }
-    });
+    })
 
     const speciesParts = Object.entries(speciesCount).map(([typeId, count]) => {
-      const name = species[typeId]?.name || typeId;
-      return `${name}: ${count}`;
-    });
+      const name = species[typeId]?.name || typeId
+      return `${name}: ${count}`
+    })
 
     const causeParts = Object.entries(causeCount).map(
-      ([cause, count]) => `${cause}: ${count}`,
-    );
+      ([cause, count]) => `${cause}: ${count}`
+    )
 
-    return `${speciesParts.join(", ")} • ${causeParts.join(", ")}`;
+    return `${speciesParts.join(', ')} • ${causeParts.join(', ')}`
   }
 
-  // Default: just show count
-  return `${count} events`;
-};
+  return `${count} events`
+}
 
 type EventCategory = {
-  id: AllEvents["type"];
-  label: string;
-  icon: React.ElementType;
-  color: string;
-};
+  id: AllEvents['type']
+  label: string
+  icon: React.ElementType
+  color: string
+}
 
-// Available event categories for filtering
 const EVENT_CATEGORIES = [
   {
     id: eventKeywords.boids.reproduced,
-    label: "Births",
+    label: 'Births',
     icon: IconHeart,
-    color: "pink",
+    color: 'pink',
   },
   {
     id: eventKeywords.boids.died,
-    label: "Deaths",
+    label: 'Deaths',
     icon: IconSkull,
-    color: "red",
+    color: 'red',
   },
   {
     id: eventKeywords.boids.caught,
-    label: "Catches",
+    label: 'Catches',
     icon: IconTarget,
-    color: "orange",
+    color: 'orange',
   },
   {
     id: eventKeywords.boids.spawnPredator,
-    label: "Spawns",
+    label: 'Spawns',
     icon: IconPlus,
-    color: "green",
+    color: 'green',
   },
   {
     id: eventKeywords.atmosphere.eventStarted,
-    label: "Atmosphere",
+    label: 'Atmosphere',
     icon: IconAdjustments,
-    color: "purple",
+    color: 'purple',
   },
-] as EventCategory[];
+] as EventCategory[]
 
 const config = {
   maxEventsToShow: 50,
-  ignoreEventTypes: [
-    // eventKeywords.time.passed,
-    // eventKeywords.boids.died,
-    // eventKeywords.boids.reproduced,
-    // eventKeywords.boids.caught,
-  ] as AllEvents["type"][],
+  ignoreEventTypes: [] as AllEvents['type'][],
   aggregationWindowTicks: 10, // 10 ticks (simulation time, not wall-clock)
-};
+}
 
 type AggregatedEventItem = {
-  id: string;
-  timestamp: number;
-  tick: number;
-  event: AllEvents;
-};
+  id: string
+  timestamp: number
+  tick: number
+  event: AllEvents
+}
 
-// Aggregated event entry
 type AggregatedEvent = {
-  id: string;
-  eventType: string;
-  count: number;
-  firstTimestamp: number;
-  lastTimestamp: number;
-  firstTick: number;
-  lastTick: number;
-  events: Array<AggregatedEventItem>;
-};
+  id: string
+  eventType: string
+  count: number
+  firstTimestamp: number
+  lastTimestamp: number
+  firstTick: number
+  lastTick: number
+  events: Array<AggregatedEventItem>
+}
 
-// Aggregate events by type within fixed tick windows
-// One card per (eventType, window) combination
 function aggregateEvents(
   events: Array<AggregatedEventItem>,
-  windowTicks: number,
+  windowTicks: number
 ): AggregatedEvent[] {
-  if (events.length === 0) return [];
+  if (events.length === 0) return []
 
-  // Group events by type and FIXED tick window
-  // Key: "eventType-windowStart-windowEnd" ensures one card per type per window
-  const windowMap = new Map<string, AggregatedEvent>();
+  const windowMap = new Map<string, AggregatedEvent>()
 
   for (const event of events) {
-    const eventType = event.event.type;
+    const eventType = event.event.type
 
-    // Use utility function for stable key generation based on FIXED windows
-    // This ensures all events in tick range [120-130) get the same key
     const windowKey = `agg-${getTickWindowKey(
       eventType,
       event.tick,
-      windowTicks,
-    )}`;
+      windowTicks
+    )}`
 
-    // Get or create window
-    let window = windowMap.get(windowKey);
+    let window = windowMap.get(windowKey)
 
     if (!window) {
-      // Create new window with fixed boundaries
-      const windowStart = Math.floor(event.tick / windowTicks) * windowTicks;
-      const windowEnd = windowStart + windowTicks;
+      const windowStart = Math.floor(event.tick / windowTicks) * windowTicks
+      const windowEnd = windowStart + windowTicks
 
       window = {
         id: windowKey,
@@ -268,157 +242,143 @@ function aggregateEvents(
         firstTick: windowEnd - 1, // Use window end for sorting
         lastTick: windowStart, // Use window start for reference
         events: [],
-      };
-      windowMap.set(windowKey, window);
+      }
+      windowMap.set(windowKey, window)
     }
 
-    // Add event to window
-    window.events.push(event);
-    window.count++;
+    window.events.push(event)
+    window.count++
 
-    // Update timestamps (keep earliest and latest)
     if (event.timestamp < window.lastTimestamp) {
-      window.lastTimestamp = event.timestamp;
+      window.lastTimestamp = event.timestamp
     }
     if (event.timestamp > window.firstTimestamp) {
-      window.firstTimestamp = event.timestamp;
+      window.firstTimestamp = event.timestamp
     }
   }
 
-  // Convert map to array
-  // Each entry represents ONE event type in ONE fixed window
-  return Array.from(windowMap.values());
+  return Array.from(windowMap.values())
 }
 
 export function EventsPanel() {
-  const { useStore: useRuntimeStore } = useResource("runtimeStore");
-  const { useStore: useAnalyticsStore } = useResource("analyticsStore");
-  const runtimeController = useResource("runtimeController");
+  const { useStore: useRuntimeStore } = useResource('runtimeStore')
+  const { useStore: useAnalyticsStore } = useResource('analyticsStore')
+  const runtimeController = useResource('runtimeController')
   const recentEvents = useAnalyticsStore((state) => {
-    return state.events.data.recentEvents;
-  });
-  // Get current tick window
+    return state.events.data.recentEvents
+  })
   const currentTick = useAnalyticsStore((state) => {
-    return state.evolution.data.currentSnapshot?.tick;
-  });
+    return state.evolution.data.currentSnapshot?.tick
+  })
 
   const currentWindow = useMemo(() => {
-    if (!currentTick) return null;
-    return getCurrentTickWindow(currentTick, config.aggregationWindowTicks);
-  }, [currentTick]);
+    if (!currentTick) return null
+    return getCurrentTickWindow(currentTick, config.aggregationWindowTicks)
+  }, [currentTick])
 
-  // Filter and aggregate events
   const aggregatedEvents = useMemo(() => {
-    // UI-level filter: Hide noisy events from display (but they're still stored)
     const filtered = recentEvents.filter(
-      (event) => !config.ignoreEventTypes.includes(event.event.type),
-    );
-    const aggregated = aggregateEvents(filtered, config.aggregationWindowTicks);
+      (event) => !config.ignoreEventTypes.includes(event.event.type)
+    )
+    const aggregated = aggregateEvents(filtered, config.aggregationWindowTicks)
 
-    // Create weighted comparator for stable sorting
-    // Primary: Window (most recent windows first)
-    // Secondary: Event count within window (more events = slightly higher)
     const comparator = createWeightedComparator<AggregatedEvent>([
-      { getValue: (item) => item.firstTick, weight: 1.0, order: "desc" },
-      { getValue: (item) => item.count, weight: 0.01, order: "desc" },
-    ]);
+      { getValue: (item) => item.firstTick, weight: 1.0, order: 'desc' },
+      { getValue: (item) => item.count, weight: 0.01, order: 'desc' },
+    ])
 
-    return aggregated.sort(comparator).slice(0, config.maxEventsToShow);
-  }, [recentEvents]);
+    return aggregated.sort(comparator).slice(0, config.maxEventsToShow)
+  }, [recentEvents])
 
-  const species = useRuntimeStore((state) => state.config.species);
+  const species = useRuntimeStore((state) => state.config.species)
   const maxEventsCaptured = useAnalyticsStore(
     (state) =>
       state.events.config.customFilter?.maxEvents ??
-      state.events.config.defaultFilter.maxEvents,
-  );
+      state.events.config.defaultFilter.maxEvents
+  )
   const allowedEventTypes = useAnalyticsStore(
     (state) =>
       state.events.config.customFilter?.allowedEventTypes ??
-      state.events.config.defaultFilter.allowedEventTypes,
-  );
+      state.events.config.defaultFilter.allowedEventTypes
+  )
   const isCustomFilterActive = useAnalyticsStore(
-    (state) => state.events.config.customFilter !== null,
-  );
+    (state) => state.events.config.customFilter !== null
+  )
 
-  // Event statistics
   const eventCounts = recentEvents.reduce(
     (acc, { event }) => {
-      const category = event.type.split("/")[0] || "other";
-      acc[category] = (acc[category] || 0) + 1;
-      return acc;
+      const category = event.type.split('/')[0] || 'other'
+      acc[category] = (acc[category] || 0) + 1
+      return acc
     },
-    {} as Record<string, number>,
-  );
+    {} as Record<string, number>
+  )
 
   const copyEventsToClipboard = () => {
     const eventsText = recentEvents
       .map(({ timestamp, event }) => {
-        const time = new Date(timestamp).toLocaleTimeString();
-        const eventData = JSON.stringify(event, null, 2);
-        return `[${time}] ${event.type}\n${eventData}`;
+        const time = new Date(timestamp).toLocaleTimeString()
+        const eventData = JSON.stringify(event, null, 2)
+        return `[${time}] ${event.type}\n${eventData}`
       })
-      .join("\n---\n\n");
+      .join('\n---\n\n')
 
     navigator.clipboard
       .writeText(eventsText)
       .then(() => {
-        toast.success(`Copied ${recentEvents.length} events to clipboard!`);
+        toast.success(`Copied ${recentEvents.length} events to clipboard!`)
       })
       .catch((err) => {
-        console.error("Failed to copy events:", err);
-        toast.error("Failed to copy events");
-      });
-  };
+        console.error('Failed to copy events:', err)
+        toast.error('Failed to copy events')
+      })
+  }
 
   const handleMaxEventsChange = (value: number | readonly number[]) => {
-    const maxEvents = Array.isArray(value) ? value[0] : value;
+    const maxEvents = Array.isArray(value) ? value[0] : value
     runtimeController.dispatch({
       type: eventKeywords.analytics.filterChanged,
       maxEvents,
       allowedEventTypes: allowedEventTypes ?? undefined,
-    });
-  };
+    })
+  }
 
   const toggleEventCategory = (categoryId: string) => {
-    const currentTypes = allowedEventTypes || [];
-    const isEnabled = currentTypes.includes(categoryId);
+    const currentTypes = allowedEventTypes || []
+    const isEnabled = currentTypes.includes(categoryId)
 
-    let newTypes: string[] | null;
+    let newTypes: string[] | null
     if (isEnabled) {
-      // Remove this category
-      newTypes = currentTypes.filter((t) => t !== categoryId);
-      // If empty, set to null (track nothing)
+      newTypes = currentTypes.filter((t) => t !== categoryId)
       if (newTypes.length === 0) {
-        newTypes = null;
+        newTypes = null
       }
     } else {
-      // Add this category
-      newTypes = [...currentTypes, categoryId];
+      newTypes = [...currentTypes, categoryId]
     }
 
     runtimeController.dispatch({
       type: eventKeywords.analytics.filterChanged,
       maxEvents: maxEventsCaptured,
       allowedEventTypes: newTypes ?? undefined,
-    });
-  };
+    })
+  }
 
   const clearCustomFilter = () => {
     runtimeController.dispatch({
       type: eventKeywords.analytics.filterCleared,
-    });
-    toast.info("Filter reset to default");
-  };
+    })
+    toast.info('Filter reset to default')
+  }
 
   const enableAllCategories = () => {
     runtimeController.dispatch({
       type: eventKeywords.analytics.filterChanged,
       maxEvents: maxEventsCaptured,
       allowedEventTypes: EVENT_CATEGORIES.map((c) => c.id),
-    });
-    toast.success("All categories enabled");
-  };
+    })
+    toast.success('All categories enabled')
+  }
 
   return (
     <div className="p-1 space-y-4">
@@ -479,13 +439,13 @@ export function EventsPanel() {
             </div>
             <div className="flex flex-wrap gap-2">
               {EVENT_CATEGORIES.map((category) => {
-                const Icon = category.icon;
+                const Icon = category.icon
                 const isEnabled =
-                  !allowedEventTypes || allowedEventTypes.includes(category.id);
+                  !allowedEventTypes || allowedEventTypes.includes(category.id)
                 return (
                   <Button
                     key={category.id}
-                    variant={isEnabled ? "default" : "outline"}
+                    variant={isEnabled ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => toggleEventCategory(category.id)}
                     className="gap-1"
@@ -493,7 +453,7 @@ export function EventsPanel() {
                     <Icon className="size-3" />
                     {category.label}
                   </Button>
-                );
+                )
               })}
             </div>
             {allowedEventTypes === null && (
@@ -527,31 +487,42 @@ export function EventsPanel() {
             <div className="p-1 space-y-2">
               <AnimatePresence initial={false}>
                 {aggregatedEvents.map((aggregated) => {
-                  const Icon = getEventIcon(aggregated.eventType);
-                  const colorClass = getEventColor(aggregated.eventType);
-                  const bgClass = getEventBgColor(aggregated.eventType);
-                  const summary = getAggregatedSummary(aggregated, species);
+                  const Icon = getEventIcon(aggregated.eventType)
+                  const colorClass = getEventColor(aggregated.eventType)
+                  const bgClass = getEventBgColor(aggregated.eventType)
+                  const summary = getAggregatedSummary(aggregated, species)
 
-                  // Show time range (compact, no tick info - that's in the header)
                   const timeStart = new Date(
-                    aggregated.firstTimestamp,
-                  ).toLocaleTimeString();
+                    aggregated.firstTimestamp
+                  ).toLocaleTimeString()
                   const timeEnd = new Date(
-                    aggregated.lastTimestamp,
-                  ).toLocaleTimeString();
+                    aggregated.lastTimestamp
+                  ).toLocaleTimeString()
                   const timeDisplay =
                     aggregated.count === 1
                       ? timeStart
-                      : `${timeEnd} - ${timeStart}`;
+                      : `${timeEnd} - ${timeStart}`
 
                   return (
                     <motion.div
                       key={aggregated.id}
-                      initial={{ opacity: 0, y: -20, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                      initial={{
+                        opacity: 0,
+                        y: -20,
+                        scale: 0.98,
+                      }}
+                      animate={{
+                        opacity: 1,
+                        y: 0,
+                        scale: 1,
+                      }}
+                      exit={{
+                        opacity: 0,
+                        y: 20,
+                        scale: 0.95,
+                      }}
                       transition={{
-                        type: "spring",
+                        type: 'spring',
                         stiffness: 500,
                         damping: 30,
                         mass: 0.2,
@@ -593,7 +564,7 @@ export function EventsPanel() {
                         </CardContent>
                       </Card>
                     </motion.div>
-                  );
+                  )
                 })}
               </AnimatePresence>
 
@@ -646,5 +617,5 @@ export function EventsPanel() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

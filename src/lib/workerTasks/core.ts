@@ -82,22 +82,22 @@
  * ```
  */
 
-import z, { ZodType } from "zod";
-import * as z4 from "zod/v4/core";
+import z, { ZodType } from 'zod'
+import * as z4 from 'zod/v4/core'
 
 function inferSchema<T extends z4.$ZodType>(schema: T) {
-  return schema;
+  return schema
 }
 
-inferSchema(z.string());
+inferSchema(z.string())
 
 import {
   clientStatusKeywords,
   effectKeywords,
   eventKeywords,
-} from "./vocabulary";
+} from './vocabulary'
 
-export type WorkerImportFn = () => Promise<{ default: new () => Worker }>;
+export type WorkerImportFn = () => Promise<{ default: new () => Worker }>
 
 /**
  * Task execution context
@@ -111,8 +111,8 @@ export type TaskExecutionContext<TProgress> = {
    */
   reportProgress: TProgress extends never
     ? never
-    : (progress: z4.infer<TProgress>) => Promise<void>;
-};
+    : (progress: z4.infer<TProgress>) => Promise<void>
+}
 
 /**
  * Unified task definition
@@ -124,50 +124,44 @@ export type TaskDefinition<
   TOutput extends z4.$ZodType,
   TProgress extends z4.$ZodType = never,
 > = {
-  input: TInput;
-  output: TOutput;
-  progress?: TProgress extends never ? never : TProgress;
+  input: TInput
+  output: TOutput
+  progress?: TProgress extends never ? never : TProgress
   execute: (
     input: z4.infer<TInput>,
-    ctx: TaskExecutionContext<TProgress>,
-  ) => Promise<z4.infer<TOutput>>;
-  // granularly define if input and output should be parsed
-  // reduces overhead for tasks that require every milisecond of performance
-  parseIO?: boolean;
-};
+    ctx: TaskExecutionContext<TProgress>
+  ) => Promise<z4.infer<TOutput>>
+  parseIO?: boolean
+}
 
 /**
  * Registry of tasks
  * Use `as const` when defining tasks for better type inference
  */
-export type TaskRegistry = Record<string, TaskDefinition<any, any, any>>;
+export type TaskRegistry = Record<string, TaskDefinition<any, any, any>>
 
 /**
  * Helper to check if task has progress schema
  */
 export function hasProgress(
-  task: TaskDefinition<any, any, any>,
+  task: TaskDefinition<any, any, any>
 ): task is TaskDefinition<any, any, any> & { progress: ZodType<any> } {
-  return "progress" in task && task.progress !== undefined;
+  return 'progress' in task && task.progress !== undefined
 }
-
-// ============================================
-// Type Extraction Utilities
-// ============================================
 
 /**
  * Extract input type from task definition
  */
 export type InferInput<T> = T extends { input: ZodType<infer TInput> }
   ? TInput
-  : never;
+  : never
 
 /**
  * Extract output type from task definition
  */
 export type InferOutput<T> = T extends { output: ZodType<infer TOutput> }
   ? TOutput
-  : never;
+  : never
 
 /**
  * Extract progress type from task definition
@@ -175,19 +169,17 @@ export type InferOutput<T> = T extends { output: ZodType<infer TOutput> }
  * Handles optional progress property
  */
 export type InferProgress<T> = T extends {
-  progress?: ZodType<infer TProgress>;
+  progress?: ZodType<infer TProgress>
 }
   ? TProgress extends undefined
     ? never
     : TProgress
-  : never;
+  : never
 
 /**
  * Check if task has progress at type level
  */
-export type HasProgress<T> = T extends { progress: ZodType<any> }
-  ? true
-  : false;
+export type HasProgress<T> = T extends { progress: ZodType<any> } ? true : false
 
 /**
  * Define a task with type inference
@@ -201,14 +193,10 @@ export function defineTask<
   TOutput extends z4.$ZodType,
   TProgress extends z4.$ZodType = never,
 >(
-  definition: TaskDefinition<TInput, TOutput, TProgress>,
+  definition: TaskDefinition<TInput, TOutput, TProgress>
 ): TaskDefinition<TInput, TOutput, TProgress> {
-  return definition;
+  return definition
 }
-
-// ============================================
-// Event Schemas
-// ============================================
 
 const schemas = {
   /** Task request event (Client → Worker) */
@@ -244,7 +232,7 @@ const schemas = {
     type: z.literal(eventKeywords.workerReady),
     timestamp: z.number(),
   }),
-};
+}
 
 export type TaskRequest = z.infer<
   (typeof schemas)[typeof eventKeywords.taskRequest]
@@ -262,60 +250,60 @@ export type TaskRequest = z.infer<
    *
    * dispatch('taskName', { offscreen }, [offscreen]);  // Transfer canvas
    */
-  transferables?: Transferable[];
-};
+  transferables?: Transferable[]
+}
 
 export type TaskProgress = z.infer<
   (typeof schemas)[typeof eventKeywords.taskProgress]
->;
+>
 
 export type TaskComplete = z.infer<
   (typeof schemas)[typeof eventKeywords.taskComplete]
->;
+>
 
 export type TaskError = z.infer<
   (typeof schemas)[typeof eventKeywords.taskError]
->;
+>
 
 export type WorkerReady = z.infer<
   (typeof schemas)[typeof eventKeywords.workerReady]
->;
+>
 
 /**
  * All client events (requests)
  */
-export type ClientEvent = TaskRequest;
+export type ClientEvent = TaskRequest
 
 /**
  * All worker events (responses)
  */
-export type WorkerEvent = WorkerReady | TaskProgress | TaskComplete | TaskError;
+export type WorkerEvent = WorkerReady | TaskProgress | TaskComplete | TaskError
 
 /**
  * Client effect types
  */
 export type ClientEffect =
   | {
-      type: typeof effectKeywords.client.forwardToWorker;
-      event: ClientEvent;
+      type: typeof effectKeywords.client.forwardToWorker
+      event: ClientEvent
     }
   | {
-      type: typeof effectKeywords.client.log;
-      message: string;
+      type: typeof effectKeywords.client.log
+      message: string
     }
   | {
-      type: typeof effectKeywords.client.flushQueue;
-    };
+      type: typeof effectKeywords.client.flushQueue
+    }
 /**
  * Generate lightweight task ID: timestamp-randomHex
  * Example: "1704234567890-a3f5"
  */
 export function generateTaskId(): string {
-  const timestamp = Date.now();
+  const timestamp = Date.now()
   const randomHex = Math.floor(Math.random() * 0xffff)
     .toString(16)
-    .padStart(4, "0");
-  return `${timestamp}-${randomHex}`;
+    .padStart(4, '0')
+  return `${timestamp}-${randomHex}`
 }
 
 const clientStatusSchema = z.enum([
@@ -324,5 +312,5 @@ const clientStatusSchema = z.enum([
   clientStatusKeywords.ready,
   clientStatusKeywords.error,
   clientStatusKeywords.terminated,
-]);
-export type ClientStatus = z.infer<typeof clientStatusSchema>;
+])
+export type ClientStatus = z.infer<typeof clientStatusSchema>

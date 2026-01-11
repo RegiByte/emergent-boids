@@ -2,11 +2,11 @@ interface CanvasFrameProps {
   /**
    * How far the fog extends inward (0-1, default: 0.3)
    */
-  fogIntensity?: number;
+  fogIntensity?: number
   /**
    * Opacity of the fog (0-1, default: 0.6)
    */
-  fogOpacity?: number;
+  fogOpacity?: number
 }
 
 /**
@@ -17,7 +17,7 @@ export function CanvasFrame({
   fogIntensity = 0.3,
   fogOpacity = 0.6,
 }: CanvasFrameProps) {
-  const stopColor = `var(--simulation-fog-color)`;
+  const stopColor = `var(--simulation-fog-color)`
   return (
     <svg
       className="absolute inset-0 w-full h-full pointer-events-none"
@@ -72,5 +72,5 @@ export function CanvasFrame({
       <rect width="8%" height="100%" fill="url(#fog-left)" />
       <rect x="92%" width="8%" height="100%" fill="url(#fog-right)" />
     </svg>
-  );
+  )
 }

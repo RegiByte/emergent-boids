@@ -1,39 +1,37 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { IconHome, IconRotate, IconZoomIn } from "@tabler/icons-react";
-import { BoidCard } from "@/components/BoidComparison";
-import { Button } from "@/components/ui/button";
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useState } from 'react'
+import { IconHome, IconRotate, IconZoomIn } from '@tabler/icons-react'
+import { BoidCard } from '@/components/BoidComparison'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
-import type { RenderMode } from "@/hooks/useStaticBoid";
-import { stableEcosystemProfile } from "@/profiles/stable-ecosystem";
-import { createSystemHooks, createSystemManager } from "braided-react";
-import { atlases } from "@/resources/browser/atlases.ts";
+} from '@/components/ui/card'
+import { Slider } from '@/components/ui/slider'
+import type { RenderMode } from '@/hooks/useStaticBoid'
+import { stableEcosystemProfile } from '@/profiles/stable-ecosystem'
+import { createSystemHooks, createSystemManager } from 'braided-react'
+import { atlases } from '@/resources/browser/atlases.ts'
 
-// Session 105: Minimal system config with just the atlases resource
-// This generates all texture atlases once and shares them across all boid cards
 const boidsAtlasSystem = {
   atlases,
-};
+}
 
-const manager = createSystemManager(boidsAtlasSystem);
-const { useResource } = createSystemHooks(manager);
+const manager = createSystemManager(boidsAtlasSystem)
+const { useResource } = createSystemHooks(manager)
 
-export const Route = createFileRoute("/boids-atlas")({
+export const Route = createFileRoute('/boids-atlas')({
   component: BoidsAtlasRoute,
-});
+})
 
 function BoidsAtlasRoute() {
-  const atlasesResource = useResource("atlases");
-  const [renderMode, setRenderMode] = useState<RenderMode>("both");
-  const [rotation, setRotation] = useState(0);
-  const [scale, setScale] = useState(3);
+  const atlasesResource = useResource('atlases')
+  const [renderMode, setRenderMode] = useState<RenderMode>('both')
+  const [rotation, setRotation] = useState(0)
+  const [scale, setScale] = useState(3)
   const [speciesData] = useState(() =>
     Object.entries(stableEcosystemProfile.species).map(
       ([speciesId, species]) => ({
@@ -42,9 +40,9 @@ function BoidsAtlasRoute() {
         name: species.name,
         role: species.role,
         speciesConfig: species,
-      }),
-    ),
-  );
+      })
+    )
+  )
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -81,23 +79,23 @@ function BoidsAtlasRoute() {
               <label className="text-sm font-medium">Render Mode</label>
               <div className="flex gap-2">
                 <Button
-                  variant={renderMode === "canvas2d" ? "default" : "outline"}
+                  variant={renderMode === 'canvas2d' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setRenderMode("canvas2d")}
+                  onClick={() => setRenderMode('canvas2d')}
                 >
                   Canvas 2D
                 </Button>
                 <Button
-                  variant={renderMode === "webgl" ? "default" : "outline"}
+                  variant={renderMode === 'webgl' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setRenderMode("webgl")}
+                  onClick={() => setRenderMode('webgl')}
                 >
                   WebGL
                 </Button>
                 <Button
-                  variant={renderMode === "both" ? "default" : "outline"}
+                  variant={renderMode === 'both' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setRenderMode("both")}
+                  onClick={() => setRenderMode('both')}
                 >
                   Side-by-Side
                 </Button>
@@ -118,8 +116,8 @@ function BoidsAtlasRoute() {
               <Slider
                 value={[rotation]}
                 onValueChange={(value) => {
-                  const val = Array.isArray(value) ? value[0] : value;
-                  setRotation(val);
+                  const val = Array.isArray(value) ? value[0] : value
+                  setRotation(val)
                 }}
                 min={0}
                 max={Math.PI * 2}
@@ -142,8 +140,8 @@ function BoidsAtlasRoute() {
               <Slider
                 value={[scale]}
                 onValueChange={(value) => {
-                  const val = Array.isArray(value) ? value[0] : value;
-                  setScale(val);
+                  const val = Array.isArray(value) ? value[0] : value
+                  setScale(val)
                 }}
                 min={0.5}
                 max={4}
@@ -162,7 +160,7 @@ function BoidsAtlasRoute() {
           <p className="text-sm text-muted-foreground mb-6">
             {speciesData.length > 0
               ? `Showing ${speciesData.length} species configurations`
-              : "Loading species configurations..."}
+              : 'Loading species configurations...'}
           </p>
 
           {speciesData.length > 0 && (
@@ -221,5 +219,5 @@ function BoidsAtlasRoute() {
         </Card>
       </div>
     </div>
-  );
+  )
 }

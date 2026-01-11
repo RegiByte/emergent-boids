@@ -1,30 +1,30 @@
-import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { AspectRatio } from '@/components/ui/aspect-ratio'
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@/components/ui/carousel";
-import AutoScroll from "embla-carousel-auto-scroll";
-import { EnergyGraph } from "./EnergyGraph";
-import { BirthRatesGraph } from "./BirthRatesGraph";
-import { DeathRatesGraph } from "./DeathRatesGraph";
-import { PopulationGraph } from "./PopulationGraph";
-import { Toggle } from "./ui/toggle";
-import { useState } from "react";
-import { ToggleGroup } from "./ui/toggle-group";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/carousel'
+import AutoScroll from 'embla-carousel-auto-scroll'
+import { EnergyGraph } from './EnergyGraph'
+import { BirthRatesGraph } from './BirthRatesGraph'
+import { DeathRatesGraph } from './DeathRatesGraph'
+import { PopulationGraph } from './PopulationGraph'
+import { Toggle } from './ui/toggle'
+import { useState } from 'react'
+import { ToggleGroup } from './ui/toggle-group'
+import { cn } from '@/lib/utils'
 
 export function GraphBar() {
-  const [expanded, setExpanded] = useState(true);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const isCompactMode = !expanded;
+  const [expanded, setExpanded] = useState(true)
+  const [autoScroll, setAutoScroll] = useState(true)
+  const isCompactMode = !expanded
   return (
     <div className="border-b border-border rounded-md bg-background px-2 py-2 max-h-48">
       <Carousel
         opts={{
-          align: "start",
+          align: 'start',
           loop: true,
         }}
         plugins={[
@@ -63,27 +63,27 @@ export function GraphBar() {
         </CarouselContent>
         <CarouselPrevious
           className={cn(
-            "-left-8 cursor-pointer",
-            autoScroll ? "dark:bg-background" : "dark:bg-background/30",
+            '-left-8 cursor-pointer',
+            autoScroll ? 'dark:bg-background' : 'dark:bg-background/30'
           )}
         />
         <CarouselNext
           className={cn(
-            "-right-8 cursor-pointer",
-            autoScroll ? "dark:bg-background/30" : "dark:bg-background",
+            '-right-8 cursor-pointer',
+            autoScroll ? 'dark:bg-background/30' : 'dark:bg-background'
           )}
         />
 
         <div className="absolute -top-5 -left-2">
-          <ToggleGroup className={cn("bg-background")}>
+          <ToggleGroup className={cn('bg-background')}>
             <Toggle
-              className={cn("")}
+              className={cn('')}
               variant="outline"
               size="sm"
               onPressedChange={() => setExpanded((current) => !current)}
               pressed={!expanded}
             >
-              {isCompactMode ? "Compact" : "Expanded"} view
+              {isCompactMode ? 'Compact' : 'Expanded'} view
             </Toggle>
             <Toggle
               variant="outline"
@@ -91,11 +91,11 @@ export function GraphBar() {
               onPressedChange={() => setAutoScroll((current) => !current)}
               pressed={!autoScroll}
             >
-              Auto Scroll {autoScroll ? "On" : "Off"}
+              Auto Scroll {autoScroll ? 'On' : 'Off'}
             </Toggle>
           </ToggleGroup>
         </div>
       </Carousel>
     </div>
-  );
+  )
 }

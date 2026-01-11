@@ -13,23 +13,15 @@
  * - WebGL: Y-up, rotation counter-clockwise
  */
 
-import type { RenderBodyPartType } from "@/boids/vocabulary/schemas/visual";
-import type { Vector2 } from "@/boids/vocabulary/schemas/primitives";
+import type { RenderBodyPartType } from '@/boids/vocabulary/schemas/visual'
+import type { Vector2 } from '@/boids/vocabulary/schemas/primitives'
 
-// ============================================
-// Types
-// ============================================
+export type BoidLocalPosition = Vector2 // Normalized (-1 to 1)
+export type BoidRelativePosition = Vector2 // Pixels
+export type Canvas2DPosition = Vector2 // Pixels, Y-down
+export type WebGLPosition = Vector2 // Pixels, Y-up
 
-export type BoidLocalPosition = Vector2; // Normalized (-1 to 1)
-export type BoidRelativePosition = Vector2; // Pixels
-export type Canvas2DPosition = Vector2; // Pixels, Y-down
-export type WebGLPosition = Vector2; // Pixels, Y-up
-
-export type BodyPartType = RenderBodyPartType;
-
-// ============================================
-// Scale Factors
-// ============================================
+export type BodyPartType = RenderBodyPartType
 
 /**
  * Semantic scale factors for genome position mapping
@@ -45,7 +37,7 @@ export const SCALE_FACTORS = {
   HALF: 0.5,
   QUARTER: 0.25,
   TIGHT: 0.1,
-} as const;
+} as const
 
 /**
  * Get appropriate scale factor for a body part type
@@ -55,29 +47,25 @@ export const SCALE_FACTORS = {
  */
 export function getPartScaleFactor(partType: BodyPartType): number {
   switch (partType) {
-    case "eye":
-    case "antenna":
-      return SCALE_FACTORS.FULL; // Eyes/antennae can be far from center
+    case 'eye':
+    case 'antenna':
+      return SCALE_FACTORS.FULL // Eyes/antennae can be far from center
 
-    case "fin":
-    case "spike":
-    case "shell":
-      return SCALE_FACTORS.HALF; // Structural parts closer to body
+    case 'fin':
+    case 'spike':
+    case 'shell':
+      return SCALE_FACTORS.HALF // Structural parts closer to body
 
-    case "tail":
-      return SCALE_FACTORS.QUARTER; // Tail attaches close to body
+    case 'tail':
+      return SCALE_FACTORS.QUARTER // Tail attaches close to body
 
-    case "glow":
-      return SCALE_FACTORS.FULL; // Glow can extend far
+    case 'glow':
+      return SCALE_FACTORS.FULL // Glow can extend far
 
     default:
-      return SCALE_FACTORS.HALF; // Safe default
+      return SCALE_FACTORS.HALF // Safe default
   }
 }
-
-// ============================================
-// Core Transformation: Boid-Local → Boid-Relative
-// ============================================
 
 /**
  * Convert genome position to boid-relative pixel coordinates
@@ -106,17 +94,13 @@ export function getPartScaleFactor(partType: BodyPartType): number {
  */
 export function boidLocalToBoidRelative(
   localPos: BoidLocalPosition,
-  boidSize: number,
+  boidSize: number
 ): BoidRelativePosition {
   return {
     x: -localPos.y * boidSize, // Front/back → Right/left
     y: localPos.x * boidSize, // Left/right → Perpendicular
-  };
+  }
 }
-
-// ============================================
-// Canvas 2D Converters
-// ============================================
 
 /**
  * Convert genome position to Canvas 2D offset
@@ -132,11 +116,9 @@ export function boidLocalToBoidRelative(
  */
 export function genomeToCanvas2D(
   genomePos: BoidLocalPosition,
-  boidSize: number,
+  boidSize: number
 ): Canvas2DPosition {
-  // Use core conversion
-  // Canvas 2D Y-down matches our Boid-Relative +Y convention
-  return boidLocalToBoidRelative(genomePos, boidSize);
+  return boidLocalToBoidRelative(genomePos, boidSize)
 }
 
 /**
@@ -146,14 +128,8 @@ export function genomeToCanvas2D(
  * @returns Heading angle in radians (clockwise from +X)
  */
 export function getBoidHeadingCanvas2D(velocity: Vector2): number {
-  // atan2 gives angle in radians, CCW from +X
-  // Canvas 2D Y-down makes this effectively clockwise
-  return Math.atan2(velocity.y, velocity.x);
+  return Math.atan2(velocity.y, velocity.x)
 }
-
-// ============================================
-// WebGL Converters
-// ============================================
 
 /**
  * Convert genome position to WebGL offset
@@ -169,16 +145,14 @@ export function getBoidHeadingCanvas2D(velocity: Vector2): number {
  */
 export function genomeToWebGL(
   genomePos: BoidLocalPosition,
-  boidSize: number,
+  boidSize: number
 ): WebGLPosition {
-  // Use core conversion
-  const relative = boidLocalToBoidRelative(genomePos, boidSize);
+  const relative = boidLocalToBoidRelative(genomePos, boidSize)
 
-  // WebGL Y-up, so negate Y
   return {
     x: relative.x,
     y: -relative.y, // Flip Y for WebGL
-  };
+  }
 }
 
 /**
@@ -188,13 +162,8 @@ export function genomeToWebGL(
  * @returns Heading angle in radians (counter-clockwise from +X)
  */
 export function getBoidHeadingWebGL(velocity: Vector2): number {
-  // Negate Y because WebGL Y-up vs world Y-down
-  return Math.atan2(-velocity.y, velocity.x);
+  return Math.atan2(-velocity.y, velocity.x)
 }
-
-// ============================================
-// Rotation Converters
-// ============================================
 
 /**
  * Convert genome rotation (degrees) to radians
@@ -209,7 +178,7 @@ export function getBoidHeadingWebGL(velocity: Vector2): number {
  * @returns Rotation in radians
  */
 export function genomeRotationToRadians(degrees: number): number {
-  return (degrees * Math.PI) / 180;
+  return (degrees * Math.PI) / 180
 }
 
 /**
@@ -219,12 +188,8 @@ export function genomeRotationToRadians(degrees: number): number {
  * @returns Rotation in degrees (0-360)
  */
 export function radiansToGenomeRotation(radians: number): number {
-  return (radians * 180) / Math.PI;
+  return (radians * 180) / Math.PI
 }
-
-// ============================================
-// Composite Transformations
-// ============================================
 
 /**
  * Transform genome body part to Canvas 2D rendering parameters
@@ -242,17 +207,17 @@ export function transformBodyPartCanvas2D(
   genomePos: BoidLocalPosition,
   genomeRotation: number,
   partType: BodyPartType,
-  boidSize: number,
+  boidSize: number
 ): {
-  offset: Canvas2DPosition;
-  rotation: number;
-  scaleFactor: number;
+  offset: Canvas2DPosition
+  rotation: number
+  scaleFactor: number
 } {
-  const scaleFactor = getPartScaleFactor(partType);
-  const offset = genomeToCanvas2D(genomePos, boidSize * scaleFactor);
-  const rotation = genomeRotationToRadians(genomeRotation);
+  const scaleFactor = getPartScaleFactor(partType)
+  const offset = genomeToCanvas2D(genomePos, boidSize * scaleFactor)
+  const rotation = genomeRotationToRadians(genomeRotation)
 
-  return { offset, rotation, scaleFactor };
+  return { offset, rotation, scaleFactor }
 }
 
 /**
@@ -268,22 +233,18 @@ export function transformBodyPartWebGL(
   genomePos: BoidLocalPosition,
   genomeRotation: number,
   partType: BodyPartType,
-  boidSize: number,
+  boidSize: number
 ): {
-  offset: WebGLPosition;
-  rotation: number;
-  scaleFactor: number;
+  offset: WebGLPosition
+  rotation: number
+  scaleFactor: number
 } {
-  const scaleFactor = getPartScaleFactor(partType);
-  const offset = genomeToWebGL(genomePos, boidSize * scaleFactor);
-  const rotation = genomeRotationToRadians(genomeRotation);
+  const scaleFactor = getPartScaleFactor(partType)
+  const offset = genomeToWebGL(genomePos, boidSize * scaleFactor)
+  const rotation = genomeRotationToRadians(genomeRotation)
 
-  return { offset, rotation, scaleFactor };
+  return { offset, rotation, scaleFactor }
 }
-
-// ============================================
-// Validation & Testing
-// ============================================
 
 /**
  * Test cases for validation
@@ -291,7 +252,6 @@ export function transformBodyPartWebGL(
  * Run these to verify coordinate conversions are correct.
  */
 export const TEST_CASES = {
-  // Eyes at front (left and right)
   leftEye: {
     genome: { x: -0.2, y: -0.4, rotation: 0 },
     boidSize: 100,
@@ -306,7 +266,6 @@ export const TEST_CASES = {
     expectedWebGL: { x: 40, y: -20 }, // Front → right, right → up (Y-flip)
   },
 
-  // Tail at back
   tail: {
     genome: { x: 0, y: 0.5, rotation: 0 },
     boidSize: 100,
@@ -314,7 +273,6 @@ export const TEST_CASES = {
     expectedWebGL: { x: -50, y: 0 }, // Back → left, center → center
   },
 
-  // Right spike (points outward)
   rightSpike: {
     genome: { x: 0.4, y: 0, rotation: -90 },
     boidSize: 100,
@@ -323,7 +281,6 @@ export const TEST_CASES = {
     expectedRotation: -Math.PI / 2, // -90° in radians
   },
 
-  // Left fin (angled backward)
   leftFin: {
     genome: { x: -0.3, y: 0.1, rotation: 120 },
     boidSize: 100,
@@ -331,7 +288,7 @@ export const TEST_CASES = {
     expectedWebGL: { x: -10, y: 30 }, // Slightly back, left side (Y-flip)
     expectedRotation: (120 * Math.PI) / 180, // 120° in radians
   },
-};
+}
 
 /**
  * Run validation tests
@@ -339,141 +296,122 @@ export const TEST_CASES = {
  * @returns true if all tests pass, false otherwise
  */
 export function runValidationTests(): boolean {
-  const epsilon = 0.01; // Floating point tolerance
+  const epsilon = 0.01 // Floating point tolerance
 
   function approxEqual(a: number, b: number): boolean {
-    return Math.abs(a - b) < epsilon;
+    return Math.abs(a - b) < epsilon
   }
 
   function testCase(name: string, actual: Vector2, expected: Vector2): boolean {
     const pass =
-      approxEqual(actual.x, expected.x) && approxEqual(actual.y, expected.y);
+      approxEqual(actual.x, expected.x) && approxEqual(actual.y, expected.y)
     console.log(
-      `${pass ? "✅" : "❌"} ${name}:`,
+      `${pass ? '✅' : '❌'} ${name}:`,
       `actual=(${actual.x.toFixed(2)}, ${actual.y.toFixed(2)})`,
-      `expected=(${expected.x.toFixed(2)}, ${expected.y.toFixed(2)})`,
-    );
-    return pass;
+      `expected=(${expected.x.toFixed(2)}, ${expected.y.toFixed(2)})`
+    )
+    return pass
   }
 
-  let allPass = true;
+  let allPass = true
 
-  // Test left eye
   const leftEyeCanvas = genomeToCanvas2D(
     TEST_CASES.leftEye.genome,
-    TEST_CASES.leftEye.boidSize,
-  );
+    TEST_CASES.leftEye.boidSize
+  )
   allPass &&= testCase(
-    "Left Eye (Canvas 2D)",
+    'Left Eye (Canvas 2D)',
     leftEyeCanvas,
-    TEST_CASES.leftEye.expectedCanvas2D,
-  );
+    TEST_CASES.leftEye.expectedCanvas2D
+  )
 
   const leftEyeWebGL = genomeToWebGL(
     TEST_CASES.leftEye.genome,
-    TEST_CASES.leftEye.boidSize,
-  );
+    TEST_CASES.leftEye.boidSize
+  )
   allPass &&= testCase(
-    "Left Eye (WebGL)",
+    'Left Eye (WebGL)',
     leftEyeWebGL,
-    TEST_CASES.leftEye.expectedWebGL,
-  );
+    TEST_CASES.leftEye.expectedWebGL
+  )
 
-  // Test right eye
   const rightEyeCanvas = genomeToCanvas2D(
     TEST_CASES.rightEye.genome,
-    TEST_CASES.rightEye.boidSize,
-  );
+    TEST_CASES.rightEye.boidSize
+  )
   allPass &&= testCase(
-    "Right Eye (Canvas 2D)",
+    'Right Eye (Canvas 2D)',
     rightEyeCanvas,
-    TEST_CASES.rightEye.expectedCanvas2D,
-  );
+    TEST_CASES.rightEye.expectedCanvas2D
+  )
 
   const rightEyeWebGL = genomeToWebGL(
     TEST_CASES.rightEye.genome,
-    TEST_CASES.rightEye.boidSize,
-  );
+    TEST_CASES.rightEye.boidSize
+  )
   allPass &&= testCase(
-    "Right Eye (WebGL)",
+    'Right Eye (WebGL)',
     rightEyeWebGL,
-    TEST_CASES.rightEye.expectedWebGL,
-  );
+    TEST_CASES.rightEye.expectedWebGL
+  )
 
-  // Test tail
   const tailCanvas = genomeToCanvas2D(
     TEST_CASES.tail.genome,
-    TEST_CASES.tail.boidSize,
-  );
+    TEST_CASES.tail.boidSize
+  )
   allPass &&= testCase(
-    "Tail (Canvas 2D)",
+    'Tail (Canvas 2D)',
     tailCanvas,
-    TEST_CASES.tail.expectedCanvas2D,
-  );
+    TEST_CASES.tail.expectedCanvas2D
+  )
 
   const tailWebGL = genomeToWebGL(
     TEST_CASES.tail.genome,
-    TEST_CASES.tail.boidSize,
-  );
-  allPass &&= testCase(
-    "Tail (WebGL)",
-    tailWebGL,
-    TEST_CASES.tail.expectedWebGL,
-  );
+    TEST_CASES.tail.boidSize
+  )
+  allPass &&= testCase('Tail (WebGL)', tailWebGL, TEST_CASES.tail.expectedWebGL)
 
-  // Test right spike
   const rightSpikeCanvas = genomeToCanvas2D(
     TEST_CASES.rightSpike.genome,
-    TEST_CASES.rightSpike.boidSize,
-  );
+    TEST_CASES.rightSpike.boidSize
+  )
   allPass &&= testCase(
-    "Right Spike (Canvas 2D)",
+    'Right Spike (Canvas 2D)',
     rightSpikeCanvas,
-    TEST_CASES.rightSpike.expectedCanvas2D,
-  );
+    TEST_CASES.rightSpike.expectedCanvas2D
+  )
 
   const rightSpikeWebGL = genomeToWebGL(
     TEST_CASES.rightSpike.genome,
-    TEST_CASES.rightSpike.boidSize,
-  );
+    TEST_CASES.rightSpike.boidSize
+  )
   allPass &&= testCase(
-    "Right Spike (WebGL)",
+    'Right Spike (WebGL)',
     rightSpikeWebGL,
-    TEST_CASES.rightSpike.expectedWebGL,
-  );
+    TEST_CASES.rightSpike.expectedWebGL
+  )
 
-  return allPass;
+  return allPass
 }
 
-// ============================================
-// Export All
-// ============================================
-
 export default {
-  // Scale factors
   SCALE_FACTORS,
   getPartScaleFactor,
 
-  // Core transformation
   boidLocalToBoidRelative,
 
-  // Canvas 2D
   genomeToCanvas2D,
   getBoidHeadingCanvas2D,
 
-  // WebGL
   genomeToWebGL,
   getBoidHeadingWebGL,
 
-  // Rotation
   genomeRotationToRadians,
   radiansToGenomeRotation,
 
-  // Composite
   transformBodyPartCanvas2D,
   transformBodyPartWebGL,
 
-  // Testing
   TEST_CASES,
   runValidationTests,
-};
+}

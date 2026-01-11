@@ -1,7 +1,4 @@
-import type {
-  SpeciesConfig,
-  SpeciesRecord,
-} from "./vocabulary/schemas/species";
+import type { SpeciesConfig, SpeciesRecord } from './vocabulary/schemas/species'
 
 /**
  * Affinity System - Inter-species relationship management
@@ -15,31 +12,23 @@ import type {
  * Simple relationship rules create emergent social structures
  */
 
-// ============================================
-// Constants
-// ============================================
-
 /**
  * Minimum affinity threshold for cohesion behavior
  * Boids only flock with species above this threshold
  */
-export const COHESION_AFFINITY_THRESHOLD = 0.5;
+export const COHESION_AFFINITY_THRESHOLD = 0.5
 
 /**
  * Default affinity when not explicitly configured
  * Neutral value allows moderate interaction
  */
-export const DEFAULT_AFFINITY = 0.5;
+export const DEFAULT_AFFINITY = 0.5
 
 /**
  * Affinity for same species when not explicitly configured
  * Same-species boids naturally have high affinity
  */
-export const SAME_SPECIES_AFFINITY = 1.0;
-
-// ============================================
-// Helper Functions
-// ============================================
+export const SAME_SPECIES_AFFINITY = 1.0
 
 /**
  * Get affinity between two species
@@ -59,21 +48,18 @@ export const SAME_SPECIES_AFFINITY = 1.0;
 export function getAffinity(
   speciesA: string,
   speciesB: string,
-  speciesConfigA: SpeciesConfig,
+  speciesConfigA: SpeciesConfig
 ): number {
-  // Same species always have high affinity (unless explicitly overridden)
   if (speciesA === speciesB) {
-    const explicitAffinity = speciesConfigA.affinities?.[speciesB];
+    const explicitAffinity = speciesConfigA.affinities?.[speciesB]
     return explicitAffinity !== undefined
       ? explicitAffinity
-      : SAME_SPECIES_AFFINITY;
+      : SAME_SPECIES_AFFINITY
   }
 
-  // Check configured affinity
-  const affinity = speciesConfigA.affinities?.[speciesB];
+  const affinity = speciesConfigA.affinities?.[speciesB]
 
-  // Default to neutral if not configured
-  return affinity !== undefined ? affinity : DEFAULT_AFFINITY;
+  return affinity !== undefined ? affinity : DEFAULT_AFFINITY
 }
 
 /**
@@ -91,12 +77,7 @@ export function getAffinity(
  * // Negative affinity (-0.5) = 2.5x separation (strong repulsion)
  */
 export function getSeparationModifier(affinity: number): number {
-  // Formula: 1.0 + (1.0 - affinity)
-  // - affinity 1.0 → modifier 1.0 (normal separation)
-  // - affinity 0.5 → modifier 1.5 (moderate separation)
-  // - affinity 0.0 → modifier 2.0 (strong separation)
-  // - affinity -0.5 → modifier 2.5 (very strong separation)
-  return 1.0 + (1.0 - affinity);
+  return 1.0 + (1.0 - affinity)
 }
 
 /**
@@ -109,7 +90,7 @@ export function getSeparationModifier(affinity: number): number {
  * @returns True if species should flock together
  */
 export function shouldFlock(affinity: number): boolean {
-  return affinity >= COHESION_AFFINITY_THRESHOLD;
+  return affinity >= COHESION_AFFINITY_THRESHOLD
 }
 
 /**
@@ -122,13 +103,11 @@ export function shouldFlock(affinity: number): boolean {
  * @returns Weight multiplier (0.0 to 1.0)
  */
 export function getCohesionWeight(affinity: number): number {
-  // Only apply weight if above threshold
   if (!shouldFlock(affinity)) {
-    return 0.0;
+    return 0.0
   }
 
-  // Return affinity as weight (0.5-1.0 range when above threshold)
-  return affinity;
+  return affinity
 }
 
 /**
@@ -145,7 +124,5 @@ export function getCohesionWeight(affinity: number): number {
  * Returning a fixed value is fast and correct for the phenotype system.
  */
 export function getMaxCrowdTolerance(_speciesConfig: SpeciesRecord): number {
-  // With phenotype-based crowd tolerance, max is 50 (sociability = 1.0)
-  // This is the theoretical maximum based on the phenotype formula
-  return 50;
+  return 50
 }

@@ -31,7 +31,7 @@ void main() {
   vec2 rotatedPos = rot * centeredPos;
   
   // Scale and translate to world position
-  // Session 97: scale represents radius; multiply by 2.0 to get diameter for quad
+  
   vec2 worldPos = rotatedPos * (scale * 2.0) + offset;
   
   // Apply combined camera transform (world -> NDC)

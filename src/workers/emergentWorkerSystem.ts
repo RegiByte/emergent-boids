@@ -10,35 +10,26 @@
  * Philosophy: "Worker is a system. Resources compose. Initialization is explicit."
  */
 
-import { defineResource, StartedSystem } from "braided";
-import { emergentSystem } from "emergent";
-import type { EventHandlerMap, EffectExecutorMap } from "emergent";
+import { defineResource, StartedSystem } from 'braided'
+import { emergentSystem } from 'emergent'
+import type { EventHandlerMap, EffectExecutorMap } from 'emergent'
 import {
   effectKeywords,
   eventKeywords,
   WorkerEffect,
   type ClientEvent,
   type WorkerEvent,
-} from "./workerEvents";
+} from './workerEvents'
 
-// ============================================
-// Worker State
-// ============================================
-
-// No state needed for this simple worker
-type WorkerState = Record<string, never>;
-type HandlerContext = Record<string, never>;
-
-// ============================================
-// Event Handlers (Pure Functions)
-// ============================================
+type WorkerState = Record<string, never>
+type HandlerContext = Record<string, never>
 
 const handlers = {
   [eventKeywords.client.ping]: (_state, _event) => {
     return [
       {
         type: effectKeywords.worker.log,
-        message: "Received ping",
+        message: 'Received ping',
       },
       {
         type: effectKeywords.worker.forwardToClient,
@@ -47,11 +38,11 @@ const handlers = {
           timestamp: Date.now(),
         },
       },
-    ];
+    ]
   },
 
   [eventKeywords.client.compute]: (_state, event) => {
-    const result = event.data * event.data;
+    const result = event.data * event.data
     return [
       {
         type: effectKeywords.worker.log,
@@ -60,95 +51,77 @@ const handlers = {
       {
         type: effectKeywords.worker.forwardToClient,
         event: {
-          type: "worker/result",
+          type: 'worker/result',
           value: result,
         },
       },
-    ];
+    ]
   },
 
-  "client/heavyComputation": (_state: WorkerState, event): WorkerEffect[] => {
-    // For heavy computation, we'll dispatch it as an effect
-    // so we can handle progress reporting there
+  'client/heavyComputation': (_state: WorkerState, event): WorkerEffect[] => {
     return [
       {
         type: effectKeywords.worker.log,
         message: `Starting heavy computation (${event.iterations} iterations)`,
       },
       {
-        type: "worker/performHeavyComputation" as const,
+        type: 'worker/performHeavyComputation' as const,
         iterations: event.iterations,
       },
-    ];
+    ]
   },
 } satisfies EventHandlerMap<
   ClientEvent,
   WorkerEffect,
   WorkerState,
   HandlerContext
->;
-
-// ============================================
-// Executor Context
-// ============================================
+>
 
 type ExecutorContext = {
-  dispatchToClient: (event: ClientEvent | WorkerEvent) => void;
-};
-
-// ============================================
-// Effect Executors (Side Effects)
-// ============================================
+  dispatchToClient: (event: ClientEvent | WorkerEvent) => void
+}
 
 const executors = {
   [effectKeywords.worker.forwardToClient]: (effect, _ctx) => {
-    // Forward event to client via postMessage
-    const event = (effect as { event: WorkerEvent }).event;
-    self.postMessage(event);
+    const event = (effect as { event: WorkerEvent }).event
+    self.postMessage(event)
   },
 
   [effectKeywords.worker.log]: (effect) => {
-    const message = (effect as { message: string }).message;
-    console.log(`[Worker] ${message}`);
+    const message = (effect as { message: string }).message
+    console.log(`[Worker] ${message}`)
   },
 
   [effectKeywords.worker.performHeavyComputation]: (
     effect,
-    ctx: ExecutorContext,
+    ctx: ExecutorContext
   ) => {
-    const { iterations } = effect;
-    const startTime = performance.now();
-    let sum = 0;
+    const { iterations } = effect
+    const startTime = performance.now()
+    let sum = 0
 
     for (let i = 0; i < iterations; i++) {
-      // Report progress every 10%
       if (i % Math.floor(iterations / 10) === 0) {
         ctx.dispatchToClient({
           type: eventKeywords.worker.progress,
           current: i,
           total: iterations,
-        });
+        })
       }
 
-      // Do some work
-      sum += Math.sqrt(i) * Math.sin(i);
+      sum += Math.sqrt(i) * Math.sin(i)
     }
 
-    const endTime = performance.now();
-    const duration = endTime - startTime;
+    const endTime = performance.now()
+    const duration = endTime - startTime
 
-    // Dispatch completion event
     ctx.dispatchToClient({
-      type: "worker/complete",
+      type: 'worker/complete',
       result: sum,
       duration,
-    });
+    })
   },
-} satisfies EffectExecutorMap<WorkerEffect, ClientEvent, ExecutorContext>;
-
-// ============================================
-// Worker Event Loop Resource
-// ============================================
+} satisfies EffectExecutorMap<WorkerEffect, ClientEvent, ExecutorContext>
 
 /**
  * Worker Event Loop Resource
@@ -159,7 +132,7 @@ const executors = {
 export const workerEventLoop = defineResource({
   dependencies: [],
   start: () => {
-    console.log("[Worker] Starting event loop resource...");
+    console.log('[Worker] Starting event loop resource...')
 
     const createWorkerLoop = emergentSystem<
       ClientEvent,
@@ -167,7 +140,7 @@ export const workerEventLoop = defineResource({
       WorkerState,
       HandlerContext,
       ExecutorContext
-    >();
+    >()
 
     const loop = createWorkerLoop({
       getState: () => ({}),
@@ -176,28 +149,22 @@ export const workerEventLoop = defineResource({
       handlerContext: {},
       executorContext: {
         dispatchToClient: (event: ClientEvent | WorkerEvent) => {
-          self.postMessage(event); // dispatch event to the client
+          self.postMessage(event) // dispatch event to the client
         },
       },
-    });
-
-    console.log("[Worker] ✅ Event loop resource started");
+    })
 
     return {
       dispatch: loop.dispatch,
       subscribe: loop.subscribe,
       dispose: loop.dispose,
-    };
+    }
   },
   halt: (loop) => {
-    console.log("[Worker] Halting event loop resource...");
-    loop.dispose();
+    console.log('[Worker] Halting event loop resource...')
+    loop.dispose()
   },
-});
-
-// ============================================
-// Message Listener Resource
-// ============================================
+})
 
 /**
  * Message Listener Resource
@@ -206,39 +173,30 @@ export const workerEventLoop = defineResource({
  * Depends on workerEventLoop to dispatch events.
  */
 export const messageListener = defineResource({
-  dependencies: ["workerEventLoop"],
+  dependencies: ['workerEventLoop'],
   start: ({ workerEventLoop }) => {
-    console.log("[Worker] Starting message listener resource...");
+    console.log('[Worker] Starting message listener resource...')
 
     const handleMessage = (event: MessageEvent<ClientEvent>) => {
-      const clientEvent = event.data;
-      console.log(`[Worker] Received event: ${clientEvent.type}`);
+      const clientEvent = event.data
+      console.log(`[Worker] Received event: ${clientEvent.type}`)
 
-      // Dispatch to emergent event loop
-      workerEventLoop.dispatch(clientEvent);
-    };
+      workerEventLoop.dispatch(clientEvent)
+    }
 
-    // Attach listener using addEventListener (cleaner than self.onmessage)
-    self.addEventListener("message", handleMessage);
-
-    console.log("[Worker] ✅ Message listener resource started");
+    self.addEventListener('message', handleMessage)
 
     return {
-      // Return cleanup function
       cleanup: () => {
-        self.removeEventListener("message", handleMessage);
+        self.removeEventListener('message', handleMessage)
       },
-    };
+    }
   },
   halt: (listener) => {
-    console.log("[Worker] Halting message listener resource...");
-    listener.cleanup();
+    console.log('[Worker] Halting message listener resource...')
+    listener.cleanup()
   },
-});
-
-// ============================================
-// Worker System Configuration
-// ============================================
+})
 
 /**
  * Worker System Config
@@ -250,6 +208,6 @@ export const messageListener = defineResource({
 export const workerSystemConfig = {
   workerEventLoop,
   messageListener,
-};
+}
 
-export type WorkerSystem = StartedSystem<typeof workerSystemConfig>;
+export type WorkerSystem = StartedSystem<typeof workerSystemConfig>

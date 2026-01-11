@@ -1,65 +1,66 @@
-import { getStanceDistribution } from "@/boids/analytics/statistics";
-import { getPredators, getPrey } from "@/boids/filters";
-import { boidsBySpecies, boidsToAge, boidsToEnergy } from "@/boids/mappings";
-import { calcAvg } from "@/lib/math";
-import { useEffect, useState } from "react";
-import { eventKeywords } from "../boids/vocabulary/keywords";
-import { useResource } from "../systems/standard.ts";
+import { getStanceDistribution } from '@/boids/analytics/statistics'
+import { getPredators, getPrey } from '@/boids/filters'
+import { boidsBySpecies, boidsToAge, boidsToEnergy } from '@/boids/mappings'
+import { calcAvg } from '@/lib/math'
+import { useEffect, useState } from 'react'
+import { eventKeywords } from '../boids/vocabulary/keywords'
+import { useResource } from '../systems/standard.ts'
 
 export function PopulationStats() {
-  const { useStore } = useResource("runtimeStore");
-  const { store: boidStore } = useResource("localBoidStore");
-  const species = useStore((state) => state.config.species);
-  const { subscribe } = useResource("runtimeController");
-  const simulation = useStore((state) => state.simulation);
-  const parameters = useStore((state) => state.config.parameters);
+  const { useStore } = useResource('runtimeStore')
+  const { store: boidStore } = useResource('localBoidStore')
+  const species = useStore((state) => state.config.species)
+  const { subscribe } = useResource('runtimeController')
+  const simulation = useStore((state) => state.simulation)
+  const parameters = useStore((state) => state.config.parameters)
 
-  // Force re-render every 500ms to update stats in real-time
-  const [, setTick] = useState(0);
+  const [, setTick] = useState(0)
 
   useEffect(() => {
     const unsubscribe = subscribe((event) => {
       if (event.type === eventKeywords.time.passed) {
-        setTick((prev) => (prev > 500 ? 0 : prev + 1));
+        setTick((prev) => (prev > 500 ? 0 : prev + 1))
       }
-    });
+    })
 
-    return () => unsubscribe();
-  }, [subscribe]);
+    return () => unsubscribe()
+  }, [subscribe])
 
-  // Calculate statistics
-  const allBoids = boidStore.boids;
+  const allBoids = boidStore.boids
 
-  // Separate by role
-  const prey = getPrey(allBoids, species);
+  const prey = getPrey(allBoids, species)
 
-  const predators = getPredators(allBoids, species);
+  const predators = getPredators(allBoids, species)
 
-  // Group prey by type
-  const preyBySpecies = boidsBySpecies(prey);
+  const preyBySpecies = boidsBySpecies(prey)
 
-  const preyEnergies = boidsToEnergy(prey);
-  const predatorEnergies = boidsToEnergy(predators);
-  const preyAges = boidsToAge(prey);
-  const predatorAges = boidsToAge(predators);
+  const preyEnergies = boidsToEnergy(prey)
+  const predatorEnergies = boidsToEnergy(predators)
+  const preyAges = boidsToAge(prey)
+  const predatorAges = boidsToAge(predators)
 
-  const avgPreyEnergy = calcAvg(preyEnergies);
-  const avgPredatorEnergy = calcAvg(predatorEnergies);
-  const avgPreyAge = calcAvg(preyAges);
-  const avgPredatorAge = calcAvg(predatorAges);
+  const avgPreyEnergy = calcAvg(preyEnergies)
+  const avgPredatorEnergy = calcAvg(predatorEnergies)
+  const avgPreyAge = calcAvg(preyAges)
+  const avgPredatorAge = calcAvg(predatorAges)
 
-  // Calculate stance distribution
-  const preyStances = getStanceDistribution(prey);
-  const predatorStances = getStanceDistribution(predators);
+  const preyStances = getStanceDistribution(prey)
+  const predatorStances = getStanceDistribution(predators)
 
   return (
     <div
       style={{
-        padding: "16px",
-        color: "#00ff88",
+        padding: '16px',
+        color: '#00ff88',
       }}
     >
-      <h3 style={{ margin: "0 0 16px 0", color: "#00ff88", fontSize: "16px" }}>
+      <h3
+        style={{
+          margin: '0 0 16px 0',
+          color: '#00ff88',
+          fontSize: '16px',
+        }}
+      >
         📊 Population Statistics
       </h3>
 
@@ -77,7 +78,7 @@ export function PopulationStats() {
           value={
             predators.length > 0
               ? (prey.length / predators.length).toFixed(2)
-              : "∞"
+              : '∞'
           }
           color="#ffaa00"
         />
@@ -104,7 +105,7 @@ export function PopulationStats() {
           value={
             preyEnergies.length > 0
               ? Math.min(...preyEnergies).toFixed(1)
-              : "N/A"
+              : 'N/A'
           }
           color="#666"
         />
@@ -113,7 +114,7 @@ export function PopulationStats() {
           value={
             preyEnergies.length > 0
               ? Math.max(...preyEnergies).toFixed(1)
-              : "N/A"
+              : 'N/A'
           }
           color="#666"
         />
@@ -150,55 +151,55 @@ export function PopulationStats() {
       {/* Prey by Species */}
       <StatSection title="Prey by Type">
         {Object.entries(preyBySpecies).map(([typeId, boids]) => {
-          const speciesConfig = species[typeId];
-          if (!speciesConfig) return null;
+          const speciesConfig = species[typeId]
+          if (!speciesConfig) return null
 
-          const energies = boids.map((b) => b.energy);
-          const ages = boids.map((b) => b.age);
-          const avgEnergy = calcAvg(energies);
-          const avgAge = calcAvg(ages);
+          const energies = boids.map((b) => b.energy)
+          const ages = boids.map((b) => b.age)
+          const avgEnergy = calcAvg(energies)
+          const avgAge = calcAvg(ages)
 
           return (
             <div
               key={typeId}
               style={{
-                marginBottom: "12px",
-                padding: "8px",
-                background: "#0a0a0a",
-                borderRadius: "4px",
+                marginBottom: '12px',
+                padding: '8px',
+                background: '#0a0a0a',
+                borderRadius: '4px',
                 borderLeft: `3px solid ${speciesConfig.baseGenome.visual.color}`,
               }}
             >
               <div
                 style={{
                   color: speciesConfig.baseGenome.visual.color,
-                  fontWeight: "bold",
-                  marginBottom: "6px",
-                  fontSize: "13px",
+                  fontWeight: 'bold',
+                  marginBottom: '6px',
+                  fontSize: '13px',
                 }}
               >
                 {speciesConfig.name} ({boids.length})
               </div>
-              <div style={{ fontSize: "11px", color: "#aaa" }}>
+              <div style={{ fontSize: '11px', color: '#aaa' }}>
                 <div>
-                  Avg Energy:{" "}
-                  <span style={{ color: "#fff" }}>{avgEnergy.toFixed(1)}</span>
+                  Avg Energy:{' '}
+                  <span style={{ color: '#fff' }}>{avgEnergy.toFixed(1)}</span>
                 </div>
                 <div>
-                  Avg Age:{" "}
-                  <span style={{ color: "#fff" }}>{avgAge.toFixed(1)}s</span>
+                  Avg Age:{' '}
+                  <span style={{ color: '#fff' }}>{avgAge.toFixed(1)}s</span>
                 </div>
               </div>
             </div>
-          );
+          )
         })}
         {Object.keys(preyBySpecies).length === 0 && (
           <div
             style={{
-              color: "#666",
-              fontSize: "12px",
-              textAlign: "center",
-              padding: "12px",
+              color: '#666',
+              fontSize: '12px',
+              textAlign: 'center',
+              padding: '12px',
             }}
           >
             No prey alive
@@ -227,7 +228,7 @@ export function PopulationStats() {
           value={
             predatorEnergies.length > 0
               ? Math.min(...predatorEnergies).toFixed(1)
-              : "N/A"
+              : 'N/A'
           }
           color="#666"
         />
@@ -236,7 +237,7 @@ export function PopulationStats() {
           value={
             predatorEnergies.length > 0
               ? Math.max(...predatorEnergies).toFixed(1)
-              : "N/A"
+              : 'N/A'
           }
           color="#666"
         />
@@ -296,133 +297,133 @@ export function PopulationStats() {
         <StatRow label="Max Boids" value={parameters.maxBoids} color="#888" />
       </StatSection>
     </div>
-  );
+  )
 }
 
 type StatSectionProps = {
-  title: string;
-  children: React.ReactNode;
-};
+  title: string
+  children: React.ReactNode
+}
 
 function StatSection({ title, children }: StatSectionProps) {
   return (
     <div
       style={{
-        marginBottom: "20px",
-        padding: "12px",
-        background: "#0a0a0a",
-        borderRadius: "6px",
-        border: "1px solid #333",
+        marginBottom: '20px',
+        padding: '12px',
+        background: '#0a0a0a',
+        borderRadius: '6px',
+        border: '1px solid #333',
       }}
     >
       <h4
         style={{
-          margin: "0 0 12px 0",
-          color: "#00ff88",
-          fontSize: "14px",
-          borderBottom: "1px solid #333",
-          paddingBottom: "8px",
+          margin: '0 0 12px 0',
+          color: '#00ff88',
+          fontSize: '14px',
+          borderBottom: '1px solid #333',
+          paddingBottom: '8px',
         }}
       >
         {title}
       </h4>
       {children}
     </div>
-  );
+  )
 }
 
 type StatRowProps = {
-  label: string;
-  value: string | number;
-  color: string;
-  max?: number;
-  current?: number;
-};
+  label: string
+  value: string | number
+  color: string
+  max?: number
+  current?: number
+}
 
 function StatRow({ label, value, color, max, current }: StatRowProps) {
-  const showBar = max !== undefined && current !== undefined;
-  const percentage = showBar ? Math.min((current / max) * 100, 100) : 0;
+  const showBar = max !== undefined && current !== undefined
+  const percentage = showBar ? Math.min((current / max) * 100, 100) : 0
 
   return (
-    <div style={{ marginBottom: "8px" }}>
+    <div style={{ marginBottom: '8px' }}>
       <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: "12px",
-          marginBottom: showBar ? "4px" : "0",
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: '12px',
+          marginBottom: showBar ? '4px' : '0',
         }}
       >
-        <span style={{ color: "#aaa" }}>{label}</span>
-        <span style={{ color, fontWeight: "bold" }}>{value}</span>
+        <span style={{ color: '#aaa' }}>{label}</span>
+        <span style={{ color, fontWeight: 'bold' }}>{value}</span>
       </div>
       {showBar && (
         <div
           style={{
-            width: "100%",
-            height: "4px",
-            background: "#1a1a1a",
-            borderRadius: "2px",
-            overflow: "hidden",
+            width: '100%',
+            height: '4px',
+            background: '#1a1a1a',
+            borderRadius: '2px',
+            overflow: 'hidden',
           }}
         >
           <div
             style={{
               width: `${percentage}%`,
-              height: "100%",
+              height: '100%',
               background: color,
-              transition: "width 0.3s ease",
+              transition: 'width 0.3s ease',
             }}
           />
         </div>
       )}
     </div>
-  );
+  )
 }
 
 type StanceRowProps = {
-  label: string;
-  value: number;
-  total: number;
-  color: string;
-};
+  label: string
+  value: number
+  total: number
+  color: string
+}
 
 function StanceRow({ label, value, total, color }: StanceRowProps) {
-  const percentage = total > 0 ? (value / total) * 100 : 0;
+  const percentage = total > 0 ? (value / total) * 100 : 0
 
   return (
-    <div style={{ marginBottom: "8px" }}>
+    <div style={{ marginBottom: '8px' }}>
       <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: "12px",
-          marginBottom: "4px",
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: '12px',
+          marginBottom: '4px',
         }}
       >
-        <span style={{ color: "#aaa" }}>{label}</span>
-        <span style={{ color, fontWeight: "bold" }}>
+        <span style={{ color: '#aaa' }}>{label}</span>
+        <span style={{ color, fontWeight: 'bold' }}>
           {value} ({percentage.toFixed(0)}%)
         </span>
       </div>
       <div
         style={{
-          width: "100%",
-          height: "4px",
-          background: "#1a1a1a",
-          borderRadius: "2px",
-          overflow: "hidden",
+          width: '100%',
+          height: '4px',
+          background: '#1a1a1a',
+          borderRadius: '2px',
+          overflow: 'hidden',
         }}
       >
         <div
           style={{
             width: `${percentage}%`,
-            height: "100%",
+            height: '100%',
             background: color,
-            transition: "width 0.3s ease",
+            transition: 'width 0.3s ease',
           }}
         />
       </div>
     </div>
-  );
+  )
 }

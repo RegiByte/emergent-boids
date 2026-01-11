@@ -4,14 +4,10 @@
  * Example task definitions using the worker tasks abstraction.
  */
 
-import { z } from "zod";
-import { defineTask } from "@/lib/workerTasks/core";
-import { createWorkerSystemConfig } from "@/lib/workerTasks/worker";
-import { createWorkerClientResource } from "@/lib/workerTasks/client";
-
-// ============================================
-// Task Definitions
-// ============================================
+import { z } from 'zod'
+import { defineTask } from '@/lib/workerTasks/core'
+import { createWorkerSystemConfig } from '@/lib/workerTasks/worker'
+import { createWorkerClientResource } from '@/lib/workerTasks/client'
 
 export const demoTasks = {
   /**
@@ -22,7 +18,7 @@ export const demoTasks = {
     input: z.number(),
     output: z.number(),
     execute: async (n, _ctx) => {
-      return n * n;
+      return n * n
     },
   }),
 
@@ -33,11 +29,11 @@ export const demoTasks = {
     input: z.number(),
     output: z.number(),
     execute: async (n, _ctx) => {
-      let result = 1;
+      let result = 1
       for (let i = 2; i <= n; i++) {
-        result *= i;
+        result *= i
       }
-      return result;
+      return result
     },
   }),
 
@@ -58,25 +54,22 @@ export const demoTasks = {
     }),
     parseIO: false,
     execute: async ({ iterations }, { reportProgress }) => {
-      const start = performance.now();
-      let sum = 0;
+      const start = performance.now()
+      let sum = 0
 
       for (let i = 0; i < iterations; i++) {
-        // Report progress every 10%
         if (i % Math.floor(iterations / 10) === 0) {
-          await reportProgress({ current: i, total: iterations });
+          await reportProgress({ current: i, total: iterations })
         }
 
-        // Do some work
-        sum += Math.sqrt(i) * Math.sin(i);
+        sum += Math.sqrt(i) * Math.sin(i)
       }
 
-      // Report 100% completion before returning
-      await reportProgress({ current: iterations, total: iterations });
+      await reportProgress({ current: iterations, total: iterations })
 
-      const duration = performance.now() - start;
+      const duration = performance.now() - start
 
-      return { result: sum, duration };
+      return { result: sum, duration }
     },
   }),
 
@@ -89,22 +82,14 @@ export const demoTasks = {
     }),
     output: z.never(),
     execute: async ({ message }, _ctx) => {
-      throw new Error(message);
+      throw new Error(message)
     },
   }),
-};
+}
 
-// ============================================
-// Create Worker System Config (for worker script)
-// ============================================
-
-export const workerSystemConfig = createWorkerSystemConfig(demoTasks);
-
-// ============================================
-// Create Client Resource (for main thread)
-// ============================================
+export const workerSystemConfig = createWorkerSystemConfig(demoTasks)
 
 export const clientResource = createWorkerClientResource(
-  () => import("@/workers/demoTasksWorker?worker"),
-  demoTasks,
-);
+  () => import('@/workers/demoTasksWorker?worker'),
+  demoTasks
+)

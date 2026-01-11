@@ -6,9 +6,9 @@
  * Each boid is rendered as a triangle pointing in the direction of movement.
  */
 
-import type REGL from "regl";
-import boidVertShader from "../../../../shaders/boid.vert?raw";
-import boidFragShader from "../../../../shaders/boid.frag?raw";
+import type REGL from 'regl'
+import boidVertShader from '../../../../shaders/boid.vert?raw'
+import boidFragShader from '../../../../shaders/boid.frag?raw'
 
 /**
  * Triangle vertices (shared by all boids)
@@ -20,7 +20,7 @@ const TRIANGLE_POSITIONS = [
   [5, 0], // Tip (right) - 10 units wide total
   [-3, -3], // Bottom left
   [-3, 3], // Top left
-];
+]
 
 /**
  * Creates a REGL draw command for rendering boids as triangles
@@ -29,42 +29,40 @@ const TRIANGLE_POSITIONS = [
  * @returns REGL draw command for triangle-based boids
  */
 export const createTriangleBoidsDrawCommand = (
-  regl: REGL.Regl,
+  regl: REGL.Regl
 ): REGL.DrawCommand => {
   return regl({
     vert: boidVertShader,
     frag: boidFragShader,
 
     attributes: {
-      // Shared triangle shape
       position: TRIANGLE_POSITIONS,
 
-      // Per-instance data
       offset: {
-        buffer: (regl.prop as (name: string) => unknown)("positions"),
+        buffer: (regl.prop as (name: string) => unknown)('positions'),
         divisor: 1,
       },
       rotation: {
-        buffer: (regl.prop as (name: string) => unknown)("rotations"),
+        buffer: (regl.prop as (name: string) => unknown)('rotations'),
         divisor: 1,
       },
       color: {
-        buffer: (regl.prop as (name: string) => unknown)("colors"),
+        buffer: (regl.prop as (name: string) => unknown)('colors'),
         divisor: 1,
       },
       scale: {
-        buffer: (regl.prop as (name: string) => unknown)("scales"),
+        buffer: (regl.prop as (name: string) => unknown)('scales'),
         divisor: 1,
       },
     },
 
     uniforms: {
       transform: (regl.prop as unknown as (name: string) => number[])(
-        "transform",
+        'transform'
       ),
     },
 
     count: 3, // 3 vertices per triangle
-    instances: (regl.prop as unknown as (name: string) => number)("count"),
-  });
-};
+    instances: (regl.prop as unknown as (name: string) => number)('count'),
+  })
+}

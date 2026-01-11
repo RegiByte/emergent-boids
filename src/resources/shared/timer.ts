@@ -1,5 +1,5 @@
-import { defineResource } from "braided";
-import type { TimeResource } from "./time.ts";
+import { defineResource } from 'braided'
+import type { TimeResource } from './time.ts'
 
 /**
  * Timer Manager - Simulation-time based scheduling
@@ -14,31 +14,30 @@ import type { TimeResource } from "./time.ts";
  */
 
 type Timer = {
-  startedAt: number; // Simulation time when scheduled (ms)
-  delayMs: number; // Delay in simulation milliseconds
-  id: string;
-  callback: () => void;
-};
+  startedAt: number // Simulation time when scheduled (ms)
+  delayMs: number // Delay in simulation milliseconds
+  id: string
+  callback: () => void
+}
 
 export interface TimerManager {
-  schedule: (id: string, delayMs: number, callback: () => void) => void;
-  cancel: (id: string) => void;
-  cleanup: () => void;
-  exists: (id: string) => boolean;
-  list: () => Timer[];
-  update: () => void; // NEW: Must be called each tick to check timers
+  schedule: (id: string, delayMs: number, callback: () => void) => void
+  cancel: (id: string) => void
+  cleanup: () => void
+  exists: (id: string) => boolean
+  list: () => Timer[]
+  update: () => void // NEW: Must be called each tick to check timers
 }
 
 export const timer = defineResource({
-  dependencies: ["time"],
+  dependencies: ['time'],
   start: ({ time }: { time: TimeResource }): TimerManager => {
-    const timers = new Map<string, Timer>();
+    const timers = new Map<string, Timer>()
 
     const manager: TimerManager = {
       schedule: (id: string, delayMs: number, callback: () => void) => {
         if (timers.has(id)) {
-          // Remove existing timer to prevent duplicate scheduling
-          timers.delete(id);
+          timers.delete(id)
         }
 
         const timer: Timer = {
@@ -46,44 +45,42 @@ export const timer = defineResource({
           delayMs,
           id,
           callback,
-        };
+        }
 
-        timers.set(id, timer);
+        timers.set(id, timer)
       },
 
       cancel: (id: string) => {
-        timers.delete(id);
+        timers.delete(id)
       },
 
       cleanup: () => {
-        timers.clear();
+        timers.clear()
       },
 
       exists: (id: string) => {
-        return timers.has(id);
+        return timers.has(id)
       },
 
       list: () => Array.from(timers.values()),
 
-      // NEW: Check timers and fire callbacks
       update: () => {
-        const now = time.now();
+        const now = time.now()
 
         for (const [id, timer] of timers.entries()) {
-          const elapsed = now - timer.startedAt;
+          const elapsed = now - timer.startedAt
 
           if (elapsed >= timer.delayMs) {
-            // Timer expired - fire callback and remove
-            timers.delete(id);
-            timer.callback();
+            timers.delete(id)
+            timer.callback()
           }
         }
       },
-    };
+    }
 
-    return manager;
+    return manager
   },
   halt: (timerManager) => {
-    timerManager.cleanup();
+    timerManager.cleanup()
   },
-});
+})

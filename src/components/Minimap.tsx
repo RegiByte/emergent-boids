@@ -1,129 +1,118 @@
-import { useEffect, useRef, useState } from "react";
-import { useResource } from "../systems/standard.ts";
-import type { Boid } from "../boids/vocabulary/schemas/entities";
-import { iterateBoids } from "@/boids/iterators.ts";
+import { useEffect, useRef, useState } from 'react'
+import { useResource } from '../systems/standard.ts'
+import type { Boid } from '../boids/vocabulary/schemas/entities'
+import { iterateBoids } from '@/boids/iterators.ts'
 
 export function Minimap({ backgroundColor }: { backgroundColor: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const camera = useResource("camera");
-  const runtimeStore = useResource("runtimeStore");
-  const { store: boidStore } = useResource("localBoidStore");
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const camera = useResource('camera')
+  const runtimeStore = useResource('runtimeStore')
+  const { store: boidStore } = useResource('localBoidStore')
 
-  // Get world dimensions from config
-  const worldWidth = runtimeStore.useStore((state) => state.config.world.width);
+  const worldWidth = runtimeStore.useStore((state) => state.config.world.width)
   const worldHeight = runtimeStore.useStore(
-    (state) => state.config.world.height,
-  );
-  const speciesConfigs = runtimeStore.useStore((state) => state.config.species);
+    (state) => state.config.world.height
+  )
+  const speciesConfigs = runtimeStore.useStore((state) => state.config.species)
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const canvas = canvasRef.current
+    if (!canvas) return
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
 
-    const MINIMAP_SIZE = 200;
-    const scaleX = MINIMAP_SIZE / worldWidth;
-    const scaleY = MINIMAP_SIZE / worldHeight;
+    const MINIMAP_SIZE = 200
+    const scaleX = MINIMAP_SIZE / worldWidth
+    const scaleY = MINIMAP_SIZE / worldHeight
 
-    // Animation loop for minimap
-    let animationId: number;
+    let animationId: number
 
     const render = () => {
-      // Clear with dark background
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
+      ctx.fillStyle = backgroundColor
+      ctx.fillRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE)
 
-      // Draw grid lines for reference
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
-      ctx.lineWidth = 1;
-      const gridSize = 1000; // 1K grid
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'
+      ctx.lineWidth = 1
+      const gridSize = 1000 // 1K grid
       for (let i = 0; i <= worldWidth; i += gridSize) {
-        const x = i * scaleX;
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, MINIMAP_SIZE);
-        ctx.stroke();
+        const x = i * scaleX
+        ctx.beginPath()
+        ctx.moveTo(x, 0)
+        ctx.lineTo(x, MINIMAP_SIZE)
+        ctx.stroke()
       }
       for (let i = 0; i <= worldHeight; i += gridSize) {
-        const y = i * scaleY;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(MINIMAP_SIZE, y);
-        ctx.stroke();
+        const y = i * scaleY
+        ctx.beginPath()
+        ctx.moveTo(0, y)
+        ctx.lineTo(MINIMAP_SIZE, y)
+        ctx.stroke()
       }
 
-      // Draw all boids as tiny dots (grouped by species for batching)
-      const boidsBySpecies = new Map<string, Boid[]>();
+      const boidsBySpecies = new Map<string, Boid[]>()
       for (const boid of iterateBoids(boidStore.boids)) {
-        const existing = boidsBySpecies.get(boid.typeId);
+        const existing = boidsBySpecies.get(boid.typeId)
         if (existing) {
-          existing.push(boid);
+          existing.push(boid)
         } else {
-          boidsBySpecies.set(boid.typeId, [boid]);
+          boidsBySpecies.set(boid.typeId, [boid])
         }
       }
 
-      // Render each species batch
       for (const [typeId, boids] of boidsBySpecies) {
-        const speciesConfig = speciesConfigs[typeId];
-        if (!speciesConfig) continue;
+        const speciesConfig = speciesConfigs[typeId]
+        if (!speciesConfig) continue
 
-        ctx.fillStyle = speciesConfig.baseGenome.visual.color;
+        ctx.fillStyle = speciesConfig.baseGenome.visual.color
 
-        // Draw all boids of this species
         for (const boid of boids) {
-          const x = boid.position.x * scaleX;
-          const y = boid.position.y * scaleY;
+          const x = boid.position.x * scaleX
+          const y = boid.position.y * scaleY
 
-          // Slightly larger dots for predators
-          const size = speciesConfig.role === "predator" ? 2.5 : 1.5;
+          const size = speciesConfig.role === 'predator' ? 2.5 : 1.5
 
-          ctx.beginPath();
-          ctx.arc(x, y, size, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.beginPath()
+          ctx.arc(x, y, size, 0, Math.PI * 2)
+          ctx.fill()
         }
       }
 
-      // Draw viewport rectangle
-      const viewportBounds = camera.getViewportBounds();
-      const viewportX = viewportBounds.left * scaleX;
-      const viewportY = viewportBounds.top * scaleY;
+      const viewportBounds = camera.getViewportBounds()
+      const viewportX = viewportBounds.left * scaleX
+      const viewportY = viewportBounds.top * scaleY
       const viewportWidth =
-        (viewportBounds.right - viewportBounds.left) * scaleX;
+        (viewportBounds.right - viewportBounds.left) * scaleX
       const viewportHeight =
-        (viewportBounds.bottom - viewportBounds.top) * scaleY;
+        (viewportBounds.bottom - viewportBounds.top) * scaleY
 
-      ctx.strokeStyle = "#00ff88";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(viewportX, viewportY, viewportWidth, viewportHeight);
+      ctx.strokeStyle = '#00ff88'
+      ctx.lineWidth = 2
+      ctx.strokeRect(viewportX, viewportY, viewportWidth, viewportHeight)
 
-      // Draw camera center crosshair
-      const cameraCenterX = camera.x * scaleX;
-      const cameraCenterY = camera.y * scaleY;
-      ctx.strokeStyle = "#00ff88";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(cameraCenterX - 4, cameraCenterY);
-      ctx.lineTo(cameraCenterX + 4, cameraCenterY);
-      ctx.moveTo(cameraCenterX, cameraCenterY - 4);
-      ctx.lineTo(cameraCenterX, cameraCenterY + 4);
-      ctx.stroke();
+      const cameraCenterX = camera.x * scaleX
+      const cameraCenterY = camera.y * scaleY
+      ctx.strokeStyle = '#00ff88'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(cameraCenterX - 4, cameraCenterY)
+      ctx.lineTo(cameraCenterX + 4, cameraCenterY)
+      ctx.moveTo(cameraCenterX, cameraCenterY - 4)
+      ctx.lineTo(cameraCenterX, cameraCenterY + 4)
+      ctx.stroke()
 
-      // Border around minimap
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
+      ctx.lineWidth = 2
+      ctx.strokeRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE)
 
-      animationId = requestAnimationFrame(render);
-    };
+      animationId = requestAnimationFrame(render)
+    }
 
-    render();
+    render()
 
     return () => {
-      cancelAnimationFrame(animationId);
-    };
+      cancelAnimationFrame(animationId)
+    }
   }, [
     boidStore,
     camera,
@@ -131,66 +120,59 @@ export function Minimap({ backgroundColor }: { backgroundColor: string }) {
     worldHeight,
     speciesConfigs,
     backgroundColor,
-  ]);
+  ])
 
-  // Drag state for minimap navigation
-  const [isDragging, setIsDragging] = useState(false);
+  const [isDragging, setIsDragging] = useState(false)
 
-  // Helper function to convert minimap coordinates to world coordinates
   const minimapToWorld = (
     minimapX: number,
-    minimapY: number,
+    minimapY: number
   ): { x: number; y: number } => {
-    const MINIMAP_SIZE = 200;
-    const scaleX = MINIMAP_SIZE / worldWidth;
-    const scaleY = MINIMAP_SIZE / worldHeight;
+    const MINIMAP_SIZE = 200
+    const scaleX = MINIMAP_SIZE / worldWidth
+    const scaleY = MINIMAP_SIZE / worldHeight
 
     return {
       x: minimapX / scaleX,
       y: minimapY / scaleY,
-    };
-  };
+    }
+  }
 
-  // Mouse down: start dragging
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDragging(true);
+    setIsDragging(true)
 
-    // Immediately pan to clicked location
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const canvas = canvasRef.current
+    if (!canvas) return
 
-    const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
+    const rect = canvas.getBoundingClientRect()
+    const clickX = e.clientX - rect.left
+    const clickY = e.clientY - rect.top
 
-    const worldPos = minimapToWorld(clickX, clickY);
-    camera.panTo(worldPos.x, worldPos.y, true); // Manual navigation
-  };
+    const worldPos = minimapToWorld(clickX, clickY)
+    camera.panTo(worldPos.x, worldPos.y, true) // Manual navigation
+  }
 
-  // Mouse move: pan camera in real-time while dragging
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging) return;
+    if (!isDragging) return
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const canvas = canvasRef.current
+    if (!canvas) return
 
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const rect = canvas.getBoundingClientRect()
+    const mouseX = e.clientX - rect.left
+    const mouseY = e.clientY - rect.top
 
-    const worldPos = minimapToWorld(mouseX, mouseY);
-    camera.panTo(worldPos.x, worldPos.y, true); // Manual navigation
-  };
+    const worldPos = minimapToWorld(mouseX, mouseY)
+    camera.panTo(worldPos.x, worldPos.y, true) // Manual navigation
+  }
 
-  // Mouse up: stop dragging
   const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+    setIsDragging(false)
+  }
 
-  // Mouse leave: stop dragging if mouse leaves minimap
   const handleMouseLeave = () => {
-    setIsDragging(false);
-  };
+    setIsDragging(false)
+  }
 
   return (
     <div className="fixed bottom-4 right-4 z-50 hidden md:block">
@@ -203,7 +185,7 @@ export function Minimap({ backgroundColor }: { backgroundColor: string }) {
           width={200}
           height={200}
           className={
-            isDragging ? "cursor-grabbing rounded" : "cursor-grab rounded"
+            isDragging ? 'cursor-grabbing rounded' : 'cursor-grab rounded'
           }
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -216,5 +198,5 @@ export function Minimap({ backgroundColor }: { backgroundColor: string }) {
         </div>
       </div>
     </div>
-  );
+  )
 }

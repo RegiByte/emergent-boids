@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { bodyPartKeywords, shapeKeywords } from "../keywords";
+import { z } from 'zod'
+import { bodyPartKeywords, shapeKeywords } from '../keywords'
 
 /**
  * Visual Schemas - Rendering and appearance types
@@ -10,30 +10,22 @@ import { bodyPartKeywords, shapeKeywords } from "../keywords";
  * Dependencies: None (except keywords)
  */
 
-// ============================================
-// Shape Type Schema
-// ============================================
-
 export const shapeTypeSchema = z.enum([
   shapeKeywords.diamond,
   shapeKeywords.circle,
   shapeKeywords.hexagon,
   shapeKeywords.square,
   shapeKeywords.triangle,
-  // Session 98: New shapes from expanded atlas
+
   shapeKeywords.oval,
   shapeKeywords.rectangle,
   shapeKeywords.pentagon_inverted,
   shapeKeywords.heptagon,
   shapeKeywords.nonagon,
   shapeKeywords.trapezoid,
-]);
+])
 
-export type RenderShapeType = z.infer<typeof shapeTypeSchema>;
-
-// ============================================
-// Body Part Type Schema
-// ============================================
+export type RenderShapeType = z.infer<typeof shapeTypeSchema>
 
 export const bodyPartTypeSchema = z.enum([
   bodyPartKeywords.eye,
@@ -43,13 +35,9 @@ export const bodyPartTypeSchema = z.enum([
   bodyPartKeywords.antenna,
   bodyPartKeywords.glow,
   bodyPartKeywords.shell,
-]);
+])
 
-export type RenderBodyPartType = z.infer<typeof bodyPartTypeSchema>;
-
-// ============================================
-// Body Part Schema
-// ============================================
+export type RenderBodyPartType = z.infer<typeof bodyPartTypeSchema>
 
 /**
  * Body Part - Visual traits with mechanical effects
@@ -64,7 +52,7 @@ export type RenderBodyPartType = z.infer<typeof bodyPartTypeSchema>;
  * - Inheritance mixes parts from both parents
  * - Mutations can add/remove/modify parts
  *
- * **Size Semantics (Session 98):**
+ * **Size Semantics:**
  * - Size is percentage of body collision radius
  * - 0.5 = 50% of body (small part)
  * - 1.0 = 100% of body (fills collision circle)
@@ -83,7 +71,6 @@ export const bodyPartSchema = z.object({
   }),
   rotation: z.number().min(-360).max(360), // Degrees
 
-  // Mechanical effects (additive across all parts)
   effects: z.object({
     visionBonus: z.number().optional(), // +% vision range (eyes)
     turnRateBonus: z.number().optional(), // +% turn rate (fins)
@@ -92,6 +79,6 @@ export const bodyPartSchema = z.object({
     defenseBonus: z.number().optional(), // +% damage reduction (shell)
     energyCost: z.number().optional(), // +% energy consumption (cost of having part)
   }),
-});
+})
 
-export type BodyPart = z.infer<typeof bodyPartSchema>;
+export type BodyPart = z.infer<typeof bodyPartSchema>

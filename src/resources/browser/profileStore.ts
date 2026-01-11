@@ -11,11 +11,11 @@
  * "Profiles are immutable configurations. Switching profiles is a controlled event."
  */
 
-import { defineResource, StartedResource } from "braided";
-import { createStore, StoreApi, useStore as useZustandStore } from "zustand";
-import { devtools } from "zustand/middleware";
-import { profiles as builtInProfiles } from "@/profiles";
-import { SimulationProfile } from "@/boids/vocabulary/schemas/world.ts";
+import { defineResource, StartedResource } from 'braided'
+import { createStore, StoreApi, useStore as useZustandStore } from 'zustand'
+import { devtools } from 'zustand/middleware'
+import { profiles as builtInProfiles } from '@/profiles'
+import { SimulationProfile } from '@/boids/vocabulary/schemas/world.ts'
 
 /**
  * Profile Store State
@@ -27,32 +27,25 @@ import { SimulationProfile } from "@/boids/vocabulary/schemas/world.ts";
 export type ProfileStore = {
   profiles: {
     data: {
-      // Built-in profiles from profiles/ directory
-      builtIn: Record<string, SimulationProfile>;
-      // Custom profiles created by user (empty for now, ready for future)
-      custom: Record<string, SimulationProfile>;
-      // Currently active profile ID
-      activeProfileId: string;
-    };
+      builtIn: Record<string, SimulationProfile>
+      custom: Record<string, SimulationProfile>
+      activeProfileId: string
+    }
     config: {
-      // Enable/disable custom profile creation (future feature)
-      enableCustomProfiles: boolean;
-      // Auto-save custom profiles to localStorage (future feature)
-      autoSave: boolean;
-    };
-  };
-};
+      enableCustomProfiles: boolean
+      autoSave: boolean
+    }
+  }
+}
 
-export type ProfileStoreApi = StoreApi<ProfileStore>;
+export type ProfileStoreApi = StoreApi<ProfileStore>
 
 export const profileStore = defineResource({
   dependencies: [],
   start: () => {
-    // Get default profile ID (stable-ecosystem)
     const defaultProfileId =
-      Object.keys(builtInProfiles)[0] || "stable-ecosystem";
+      Object.keys(builtInProfiles)[0] || 'stable-ecosystem'
 
-    // Create zustand store with built-in profiles
     const store = createStore<ProfileStore>()(
       devtools(
         () => ({
@@ -68,12 +61,12 @@ export const profileStore = defineResource({
             },
           },
         }),
-        { name: "ProfileStore" },
-      ),
-    );
+        { name: 'ProfileStore' }
+      )
+    )
 
     function useStore<T>(selector: (_state: ProfileStore) => T): T {
-      return useZustandStore(store, selector);
+      return useZustandStore(store, selector)
     }
 
     /**
@@ -81,19 +74,18 @@ export const profileStore = defineResource({
      * Returns the currently loaded simulation profile
      */
     function getActiveProfile(): SimulationProfile {
-      const state = store.getState();
-      const { activeProfileId, builtIn, custom } = state.profiles.data;
+      const state = store.getState()
+      const { activeProfileId, builtIn, custom } = state.profiles.data
 
-      // Check built-in profiles first, then custom
-      const profile = builtIn[activeProfileId] || custom[activeProfileId];
+      const profile = builtIn[activeProfileId] || custom[activeProfileId]
 
       if (!profile) {
         throw new Error(
-          `Active profile not found: ${activeProfileId}. Available built-in: ${Object.keys(builtIn).join(", ")}`,
-        );
+          `Active profile not found: ${activeProfileId}. Available built-in: ${Object.keys(builtIn).join(', ')}`
+        )
       }
 
-      return profile;
+      return profile
     }
 
     /**
@@ -101,10 +93,10 @@ export const profileStore = defineResource({
      * Checks built-in and custom profiles
      */
     function getProfileById(profileId: string): SimulationProfile | null {
-      const state = store.getState();
-      const { builtIn, custom } = state.profiles.data;
+      const state = store.getState()
+      const { builtIn, custom } = state.profiles.data
 
-      return builtIn[profileId] || custom[profileId] || null;
+      return builtIn[profileId] || custom[profileId] || null
     }
 
     /**
@@ -112,29 +104,29 @@ export const profileStore = defineResource({
      * Returns array of profile metadata for UI display
      */
     function getAllProfiles(): Array<{
-      id: string;
-      name: string;
-      description: string;
-      isCustom: boolean;
+      id: string
+      name: string
+      description: string
+      isCustom: boolean
     }> {
-      const state = store.getState();
-      const { builtIn, custom } = state.profiles.data;
+      const state = store.getState()
+      const { builtIn, custom } = state.profiles.data
 
       const builtInList = Object.values(builtIn).map((profile) => ({
         id: profile.id,
         name: profile.name,
         description: profile.description,
         isCustom: false,
-      }));
+      }))
 
       const customList = Object.values(custom).map((profile) => ({
         id: profile.id,
         name: profile.name,
         description: profile.description,
         isCustom: true,
-      }));
+      }))
 
-      return [...builtInList, ...customList];
+      return [...builtInList, ...customList]
     }
 
     /**
@@ -143,11 +135,11 @@ export const profileStore = defineResource({
      * Does NOT trigger simulation reset - that's handled by event system
      */
     function setActiveProfile(profileId: string) {
-      const profile = getProfileById(profileId);
+      const profile = getProfileById(profileId)
       if (!profile) {
         throw new Error(
-          `Cannot set active profile: Profile not found: ${profileId}`,
-        );
+          `Cannot set active profile: Profile not found: ${profileId}`
+        )
       }
 
       store.setState((state) => ({
@@ -158,7 +150,7 @@ export const profileStore = defineResource({
             activeProfileId: profileId,
           },
         },
-      }));
+      }))
     }
 
     return {
@@ -168,11 +160,9 @@ export const profileStore = defineResource({
       getProfileById,
       getAllProfiles,
       setActiveProfile,
-    };
+    }
   },
-  halt: () => {
-    // No cleanup needed for zustand store
-  },
-});
+  halt: () => {},
+})
 
-export type ProfileStoreResource = StartedResource<typeof profileStore>;
+export type ProfileStoreResource = StartedResource<typeof profileStore>

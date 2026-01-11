@@ -13,7 +13,7 @@ attribute vec2 partOffset;  // Part position relative to boid center (world unit
 attribute float partRotation; // Part rotation relative to boid (radians)
 attribute float partScale;  // Part radius (world units) - multiplied by 2.0 for diameter
 
-// Session 102: Multi-color body parts support (generic naming!)
+
 attribute vec3 primaryColor;    // Color for RED marker (layer 1)
 attribute vec3 secondaryColor;  // Color for GREEN marker (layer 2)
 attribute vec3 tertiaryColor;   // Color for BLUE marker (layer 3)
@@ -33,7 +33,7 @@ varying vec3 vTertiaryColor;
 
 void main() {
   // Center the quad and scale by part size
-  // Session 97: partScale represents radius; multiply by 2.0 to get diameter
+  
   // This matches the main boid shader's semantics (scale = radius)
   vec2 centeredPos = (position - 0.5) * (partScale * 2.0);
   

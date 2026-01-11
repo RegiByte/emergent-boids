@@ -1,11 +1,11 @@
-import { RenderMode } from "@/boids/vocabulary/schemas/primitives";
-import { createAtom } from "@/lib/state";
-import { defineResource, StartedResource } from "braided";
+import { RenderMode } from '@/boids/vocabulary/schemas/primitives'
+import { createAtom } from '@/lib/state'
+import { defineResource, StartedResource } from 'braided'
 
 export type SystemConfig = {
-  renderMode: RenderMode;
-  usesSharedMemory: boolean;
-};
+  renderMode: RenderMode
+  usesSharedMemory: boolean
+}
 
 /**
  * We have a separate system config resource to allow for different parts of the system (e.g render mode, shared memory usage, etc.)
@@ -17,20 +17,20 @@ export const createSystemConfigResource = (initialConfig: SystemConfig) => {
       const config = createAtom({
         renderMode: initialConfig.renderMode,
         usesSharedMemory: initialConfig.usesSharedMemory,
-      });
+      })
 
       const api = {
         getConfig: () => config.get(),
         updateConfig: (newConfig: SystemConfig) => config.set(newConfig),
         reset: () => config.set(initialConfig),
-      };
+      }
 
-      return api;
+      return api
     },
     halt: () => {},
-  });
-};
+  })
+}
 
 export type SystemConfigResource = StartedResource<
   ReturnType<typeof createSystemConfigResource>
->;
+>

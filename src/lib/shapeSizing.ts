@@ -1,4 +1,4 @@
-import type { RenderShapeType } from "@/boids/vocabulary/schemas/visual";
+import type { RenderShapeType } from '@/boids/vocabulary/schemas/visual'
 
 /**
  * Shape sizing helpers
@@ -16,20 +16,18 @@ import type { RenderShapeType } from "@/boids/vocabulary/schemas/visual";
 
 export function shapeMaxExtentFactor(shape: RenderShapeType): number {
   switch (shape) {
-    // Matches WebGL atlas generation in `src/resources/webgl/atlases/shapeAtlas.ts`
-    case "diamond":
-      return 0.9;
-    case "circle":
-      return 0.7;
-    case "hexagon":
-      return 0.7;
-    case "square":
-      return 0.6;
-    case "triangle":
-      return 0.8;
+    case 'diamond':
+      return 0.9
+    case 'circle':
+      return 0.7
+    case 'hexagon':
+      return 0.7
+    case 'square':
+      return 0.6
+    case 'triangle':
+      return 0.8
     default:
-      // Safe fallback: most shapes are authored around ~0.7
-      return 0.7;
+      return 0.7
   }
 }
 
@@ -40,7 +38,7 @@ export function shapeMaxExtentFactor(shape: RenderShapeType): number {
  */
 export function shapeSizeParamFromBaseSize(
   shape: RenderShapeType,
-  baseSize: number,
+  baseSize: number
 ): number {
-  return baseSize / shapeMaxExtentFactor(shape);
+  return baseSize / shapeMaxExtentFactor(shape)
 }

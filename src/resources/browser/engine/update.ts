@@ -1,55 +1,55 @@
-import { getMaxCrowdTolerance } from "@/boids/affinity";
-import { ForceCollector, LifecycleCollector } from "@/boids/collectors";
+import { getMaxCrowdTolerance } from '@/boids/affinity'
+import { ForceCollector, LifecycleCollector } from '@/boids/collectors'
 import {
   BoidUpdateContext,
   ConfigContext,
   EngineUpdateContext,
   SimulationContext,
-} from "@/boids/context";
-import { getBoidsByRole } from "@/boids/filters";
-import { FOOD_CONSTANTS } from "@/boids/food";
-import { updateBoidAge } from "@/boids/lifecycle/aging";
-// Session 122: Removed updateBoidCooldowns import - cooldowns now handled per-frame, not staggered
-import { updateBoidEnergy } from "@/boids/lifecycle/energy";
+} from '@/boids/context'
+import { getBoidsByRole } from '@/boids/filters'
+import { FOOD_CONSTANTS } from '@/boids/food'
+import { updateBoidAge } from '@/boids/lifecycle/aging'
+
+import { updateBoidEnergy } from '@/boids/lifecycle/energy'
 import {
   getDeathCause,
   isDead,
   regenerateHealth,
-} from "@/boids/lifecycle/health";
-import { processBoidReproduction } from "@/boids/lifecycle/reproduction";
-import { getNearbyBoidsByRole } from "@/boids/mappings";
-import { applyMatingResult } from "@/boids/mating";
-import { isReadyToMate } from "@/boids/predicates";
-import { SpatialHash } from "@/boids/spatialHash";
+} from '@/boids/lifecycle/health'
+import { processBoidReproduction } from '@/boids/lifecycle/reproduction'
+import { getNearbyBoidsByRole } from '@/boids/mappings'
+import { applyMatingResult } from '@/boids/mating'
+import { isReadyToMate } from '@/boids/predicates'
+import { SpatialHash } from '@/boids/spatialHash'
 import {
   lifecycleKeywords,
   profilerKeywords,
-} from "@/boids/vocabulary/keywords";
+} from '@/boids/vocabulary/keywords'
 import {
   Boid,
   DeathMarker,
   FoodSource,
   Obstacle,
-} from "@/boids/vocabulary/schemas/entities";
-import { Vector2 } from "@/boids/vocabulary/schemas/primitives";
-import { Profiler } from "@/resources/shared/profiler";
-import { LocalBoidStore } from "../localBoidStore";
+} from '@/boids/vocabulary/schemas/entities'
+import { Vector2 } from '@/boids/vocabulary/schemas/primitives'
+import { Profiler } from '@/resources/shared/profiler'
+import { LocalBoidStore } from '../localBoidStore'
 
 export type FrameUpdateOpsLayout = {
-  boidsToUpdate: number;
-  foodSourcesToUpdate: number;
-  boidSpatialHashToUpdate: number;
-  obstaclesToUpdate: number;
-  deathMarkersToUpdate: number;
-  totalOps: number;
+  boidsToUpdate: number
+  foodSourcesToUpdate: number
+  boidSpatialHashToUpdate: number
+  obstaclesToUpdate: number
+  deathMarkersToUpdate: number
+  totalOps: number
   opsRanges: {
-    deathMarkers: [number, number];
-    obstacles: [number, number];
-    foodSources: [number, number];
-    boids: [number, number];
-    boidSpatialHash: [number, number];
-  };
-};
+    deathMarkers: [number, number]
+    obstacles: [number, number]
+    foodSources: [number, number]
+    boids: [number, number]
+    boidSpatialHash: [number, number]
+  }
+}
 
 /*
   
@@ -68,10 +68,10 @@ export const computeOpsLayout = ({
   foodSourcesCount,
   boidsCount,
 }: {
-  deathMarkersCount: number;
-  obstaclesCount: number;
-  foodSourcesCount: number;
-  boidsCount: number;
+  deathMarkersCount: number
+  obstaclesCount: number
+  foodSourcesCount: number
+  boidsCount: number
 }): FrameUpdateOpsLayout => {
   const layout = {
     opsRanges: {
@@ -80,109 +80,104 @@ export const computeOpsLayout = ({
       obstacles: [0, 0],
       deathMarkers: [0, 0],
     },
-  } as FrameUpdateOpsLayout;
+  } as FrameUpdateOpsLayout
 
-  let totalOps = 0;
+  let totalOps = 0
 
-  // First update death markers
-  layout.deathMarkersToUpdate = deathMarkersCount;
+  layout.deathMarkersToUpdate = deathMarkersCount
   layout.opsRanges.deathMarkers = [
     totalOps,
     totalOps + layout.deathMarkersToUpdate - 1,
-  ];
-  totalOps += layout.deathMarkersToUpdate;
+  ]
+  totalOps += layout.deathMarkersToUpdate
 
-  // Then update obstacles
-  layout.obstaclesToUpdate = obstaclesCount;
-  layout.opsRanges.obstacles = [totalOps, totalOps + layout.obstaclesToUpdate - 1];
-  totalOps += layout.obstaclesToUpdate;
+  layout.obstaclesToUpdate = obstaclesCount
+  layout.opsRanges.obstacles = [
+    totalOps,
+    totalOps + layout.obstaclesToUpdate - 1,
+  ]
+  totalOps += layout.obstaclesToUpdate
 
-  // Then update food sources
-  layout.foodSourcesToUpdate = foodSourcesCount;
+  layout.foodSourcesToUpdate = foodSourcesCount
   layout.opsRanges.foodSources = [
     totalOps,
     totalOps + layout.foodSourcesToUpdate - 1,
-  ];
-  totalOps += layout.foodSourcesToUpdate;
+  ]
+  totalOps += layout.foodSourcesToUpdate
 
-  // Then update boid spatial hash
-  layout.boidSpatialHashToUpdate = boidsCount;
+  layout.boidSpatialHashToUpdate = boidsCount
   layout.opsRanges.boidSpatialHash = [
     totalOps,
     totalOps + layout.boidSpatialHashToUpdate - 1,
-  ];
-  totalOps += layout.boidSpatialHashToUpdate;
+  ]
+  totalOps += layout.boidSpatialHashToUpdate
 
-  // Then update boids
-  layout.boidsToUpdate = boidsCount;
-  layout.opsRanges.boids = [totalOps, totalOps + layout.boidsToUpdate - 1];
-  totalOps += layout.boidsToUpdate;
+  layout.boidsToUpdate = boidsCount
+  layout.opsRanges.boids = [totalOps, totalOps + layout.boidsToUpdate - 1]
+  totalOps += layout.boidsToUpdate
 
-  layout.totalOps = totalOps;
+  layout.totalOps = totalOps
 
-  return layout;
-};
+  return layout
+}
 
 const rangeToOperationMap = {
-  boidSpatialHash: "updateBoidSpatialHash",
-  deathMarkers: "updateDeathMarkers",
-  obstacles: "updateObstacles",
-  foodSources: "updateFoodSources",
-  boids: "updateBoids",
-} as const;
+  boidSpatialHash: 'updateBoidSpatialHash',
+  deathMarkers: 'updateDeathMarkers',
+  obstacles: 'updateObstacles',
+  foodSources: 'updateFoodSources',
+  boids: 'updateBoids',
+} as const
 
 export const getActiveOperation = (
-  opsRanges: FrameUpdateOpsLayout["opsRanges"],
+  opsRanges: FrameUpdateOpsLayout['opsRanges'],
   index: number
 ): [string, [number, number]] | null => {
   for (const key in opsRanges) {
-    const range = opsRanges[key as keyof FrameUpdateOpsLayout["opsRanges"]];
-    // Skip inactive ops
-    if (range[0] <= 0 && range[1] <= 0) continue;
-    // Session 122: CRITICAL FIX - ranges are INCLUSIVE [start, end]
-    // Must use <= not < to include the last item!
+    const range = opsRanges[key as keyof FrameUpdateOpsLayout['opsRanges']]
+    if (range[0] <= 0 && range[1] <= 0) continue
+
     if (index >= range[0] && index <= range[1]) {
       const operation =
-        rangeToOperationMap[key as keyof typeof rangeToOperationMap];
+        rangeToOperationMap[key as keyof typeof rangeToOperationMap]
       if (operation) {
-        return [operation, range];
+        return [operation, range]
       } else {
-        console.error("operation not found", key, index, range);
-        return null;
+        console.error('operation not found', key, index, range)
+        return null
       }
     }
   }
-  return null;
-};
+  return null
+}
 
 type EnvironmentHandlers = {
-  updateTrail: (boid: Boid, position: Vector2) => void;
-  evaluateBoidBehavior: (boid: Boid, context: BoidUpdateContext) => void;
-  updateBoid: (boid: Boid, context: BoidUpdateContext) => void;
+  updateTrail: (boid: Boid, position: Vector2) => void
+  evaluateBoidBehavior: (boid: Boid, context: BoidUpdateContext) => void
+  updateBoid: (boid: Boid, context: BoidUpdateContext) => void
   checkBoidLifecycle: (
     boid: Boid,
     context: BoidUpdateContext,
     staggerRate: number,
-    collectEvent: LifecycleCollector["collect"],
+    collectEvent: LifecycleCollector['collect'],
     matedBoidsThisFrame: Set<string>
-  ) => void;
-};
+  ) => void
+}
 
-type OperationFn = (index: number, context: EngineUpdateContext) => void;
+type OperationFn = (index: number, context: EngineUpdateContext) => void
 type OperationsMap<Fn = OperationFn> = {
-  updateDeathMarkers: Fn;
-  updateObstacles: Fn;
-  updateFoodSources: Fn;
-  updateBoidSpatialHash: Fn;
-  updateBoids: Fn;
-};
+  updateDeathMarkers: Fn
+  updateObstacles: Fn
+  updateFoodSources: Fn
+  updateBoidSpatialHash: Fn
+  updateBoids: Fn
+}
 type OperationFnWithHandlers = (
   index: number,
   context: EngineUpdateContext,
   handlers: EnvironmentHandlers
-) => void;
-type OperationsMapWithHandlers<Fn = OperationFnWithHandlers> =
-  OperationsMap<Fn>;
+) => void
+type OperationsMapWithHandlers<Fn = OperationFnWithHandlers> = OperationsMap<Fn>
 
 /**
  * Check lifecycle for a single boid (staggered)
@@ -198,100 +193,70 @@ export const checkBoidLifecycle = (
   boid: Boid,
   context: BoidUpdateContext,
   staggerRate: number,
-  collectEvent: LifecycleCollector["collect"],
+  collectEvent: LifecycleCollector['collect'],
   matedBoidsThisFrame: Set<string>
 ) => {
-  const speciesConfig = context.config.species[boid.typeId];
-  if (!speciesConfig) return;
-  const parameters = context.config.parameters;
+  const speciesConfig = context.config.species[boid.typeId]
+  if (!speciesConfig) return
+  const parameters = context.config.parameters
 
-  // Calculate effective delta (accounts for stagger rate)
-  const effectiveDelta = (context.scaledTime * staggerRate) / 60;
+  const effectiveDelta = (context.scaledTime * staggerRate) / 60
 
-  // 1. Age the boid (cheap)
-  boid.age = updateBoidAge(boid, effectiveDelta);
+  boid.age = updateBoidAge(boid, effectiveDelta)
 
-  // 2. Check for death FIRST (skip remaining updates if dead)
   if (isDead(boid)) {
-    const maxAge = boid.phenotype.maxAge;
-    const deathReason = getDeathCause(boid, maxAge);
-    // Death detected (Session 124)
+    const maxAge = boid.phenotype.maxAge
+    const deathReason = getDeathCause(boid, maxAge)
     collectEvent({
-      type: "lifecycle:death",
+      type: 'lifecycle:death',
       boidId: boid.id,
       typeId: boid.typeId,
       reason: deathReason,
-    });
-    return; // Skip remaining updates for dead boid
+    })
+    return // Skip remaining updates for dead boid
   }
 
-  // 3. Update energy (cheap)
-  boid.energy = updateBoidEnergy(boid, speciesConfig, effectiveDelta);
+  boid.energy = updateBoidEnergy(boid, speciesConfig, effectiveDelta)
 
-  // 3.5. Food consumption (if eating and near food)
-  if (boid.stance === "eating" && boid.eatingCooldownFrames === 0) {
-    // Check nearby food sources (already in context!)
+  if (boid.stance === 'eating' && boid.eatingCooldownFrames === 0) {
     for (const nearbyFood of context.nearbyFoodSources) {
-      const food = nearbyFood.item;
+      const food = nearbyFood.item
 
-      // Skip exhausted food
-      if (food.energy <= 0) continue;
+      if (food.energy <= 0) continue
 
-      // Check role match
-      if (food.sourceType === "prey" && speciesConfig.role !== "prey") continue;
-      if (food.sourceType === "predator" && speciesConfig.role !== "predator")
-        continue;
+      if (food.sourceType === 'prey' && speciesConfig.role !== 'prey') continue
+      if (food.sourceType === 'predator' && speciesConfig.role !== 'predator')
+        continue
 
-      // Check distance
       if (nearbyFood.distance >= FOOD_CONSTANTS.FOOD_CONSUMPTION_RADIUS) {
-        continue;
+        continue
       }
 
-      // Calculate consumption
       const consumptionRate =
-        food.sourceType === "prey"
+        food.sourceType === 'prey'
           ? FOOD_CONSTANTS.PREY_FOOD_CONSUMPTION_RATE
-          : FOOD_CONSTANTS.PREDATOR_FOOD_CONSUMPTION_RATE;
+          : FOOD_CONSTANTS.PREDATOR_FOOD_CONSUMPTION_RATE
 
-      const energyGain = Math.min(consumptionRate, food.energy);
+      const energyGain = Math.min(consumptionRate, food.energy)
 
-      // Apply energy to boid immediately (Session 124)
-      boid.energy = Math.min(
-        boid.energy + energyGain,
-        boid.phenotype.maxEnergy
-      );
+      boid.energy = Math.min(boid.energy + energyGain, boid.phenotype.maxEnergy)
 
-      // Collect food consumption event (will update food store later)
       collectEvent({
         type: lifecycleKeywords.events.foodConsumed,
         foodId: food.id,
         energyConsumed: energyGain,
-      });
+      })
 
-      // Set eating cooldown to respect turn-taking
-      boid.eatingCooldownFrames = parameters.eatingCooldownFrames; // ~20 frames between bites
+      boid.eatingCooldownFrames = parameters.eatingCooldownFrames // ~20 frames between bites
 
-      // Only eat from one source per check
-      break;
+      break
     }
   }
 
-  // 4. Regenerate health (cheap, passive)
-  boid.health = regenerateHealth(boid).health;
+  boid.health = regenerateHealth(boid).health
 
-  // 5. Session 122: REMOVED cooldown updates from here
-  // Cooldowns are now ONLY updated in the per-frame handler (every frame)
-  // This staggered function should only handle SLOW lifecycle events:
-  // - Age progression
-  // - Energy drain
-  // - Death checks
-  // - Reproduction attempts
-  // NOT fast-ticking counters like cooldowns!
+  boid.seekingMate = isReadyToMate(boid, parameters, speciesConfig)
 
-  // 6. Update seeking state (cheap)
-  boid.seekingMate = isReadyToMate(boid, parameters, speciesConfig);
-
-  // 7. Process reproduction (requires nearby boids - already in context!)
   if (boid.seekingMate) {
     const matingResult = processBoidReproduction(
       boid,
@@ -300,52 +265,36 @@ export const checkBoidLifecycle = (
       speciesConfig,
       matedBoidsThisFrame,
       staggerRate
-    );
+    )
 
-    // if (matingResult.type === "reproduction_complete") {
-    //   console.log("reproduction complete", {
-    //     boidId: boid.id,
-    //     mateId: boid.mateId,
-    //     offspring: matingResult.offspring,
-    //     frame: context.currentFrame,
-    //   });
-    // }
-
-    // Apply mating result (updates boid state)
     const matingContext = {
       boids: context.boidsById,
       matedBoids: matedBoidsThisFrame,
       boidsToAdd: [], // We'll collect events instead
-    };
-    applyMatingResult(boid, matingResult, matingContext);
+    }
+    applyMatingResult(boid, matingResult, matingContext)
 
-    // Collect reproduction event
-    if (matingResult.type === "reproduction_complete") {
+    if (matingResult.type === 'reproduction_complete') {
       collectEvent({
-        type: "lifecycle:reproduction",
+        type: 'lifecycle:reproduction',
         offspring: matingResult.offspring,
-      });
-      // Reset mate commitment after successful reproduction
-      boid.mateCommitmentFrames = 0;
-    } else if (matingResult.type === "mate_lost") {
-      // Reset mate commitment when mate lost
-      boid.mateCommitmentFrames = 0;
-    } else if (matingResult.type === "pair_found") {
-      // Just paired with new mate, reset commitment
-      boid.mateCommitmentFrames = 0;
+      })
+      boid.mateCommitmentFrames = 0
+    } else if (matingResult.type === 'mate_lost') {
+      boid.mateCommitmentFrames = 0
+    } else if (matingResult.type === 'pair_found') {
+      boid.mateCommitmentFrames = 0
     } else if (boid.mateId !== null) {
-      // Still has mate, increment commitment time
-      boid.mateCommitmentFrames++;
+      boid.mateCommitmentFrames++
     }
   }
 
-  // Optional: Collect low energy/health warnings (for UI/analytics)
   if (boid.energy < boid.phenotype.maxEnergy * 0.2) {
     collectEvent({
       type: lifecycleKeywords.events.energyLow,
       boidId: boid.id,
       energy: boid.energy,
-    });
+    })
   }
 
   if (boid.health < boid.phenotype.maxHealth * 0.3) {
@@ -353,9 +302,9 @@ export const checkBoidLifecycle = (
       type: lifecycleKeywords.events.healthLow,
       boidId: boid.id,
       health: boid.health,
-    });
+    })
   }
-};
+}
 
 export const updateEngine = (
   opsLayout: FrameUpdateOpsLayout,
@@ -364,26 +313,24 @@ export const updateEngine = (
   handlers: EnvironmentHandlers
 ) => {
   for (let i = 0; i < opsLayout.totalOps; i++) {
-    const op = getActiveOperation(opsLayout.opsRanges, i);
+    const op = getActiveOperation(opsLayout.opsRanges, i)
     if (op) {
-      const key = op[0];
-      const range = op[1];
-      const index = i - range[0];
-      // Session 121: Fixed off-by-one error - should be <= not <
-      // Range is [start, end] inclusive, so range[1] - range[0] is the count-1
-      // We need to process all indices from 0 to count-1, so use <=
+      const key = op[0]
+      const range = op[1]
+      const index = i - range[0]
+
       if (index >= 0 && index <= range[1] - range[0]) {
         const operationHandler =
-          operations[key as keyof OperationsMapWithHandlers];
+          operations[key as keyof OperationsMapWithHandlers]
         if (operationHandler) {
-          operationHandler(index, operationContext, handlers);
+          operationHandler(index, operationContext, handlers)
         } else {
-          console.error("operationHandler not found", key, index, range);
+          console.error('operationHandler not found', key, index, range)
         }
       }
     }
   }
-};
+}
 
 export const updateDeathMarkers = (
   index: number,
@@ -391,15 +338,15 @@ export const updateDeathMarkers = (
 ) => {
   context.deathMarkerSpatialHash.insertItem(
     context.simulation.deathMarkers[index]
-  );
-};
+  )
+}
 
 export const updateObstacles = (
   index: number,
   context: EngineUpdateContext
 ) => {
-  context.obstacleSpatialHash.insertItem(context.simulation.obstacles[index]);
-};
+  context.obstacleSpatialHash.insertItem(context.simulation.obstacles[index])
+}
 
 export const updateFoodSources = (
   index: number,
@@ -407,58 +354,57 @@ export const updateFoodSources = (
 ) => {
   context.foodSourceSpatialHash.insertItem(
     context.simulation.foodSources[index]
-  );
-};
+  )
+}
 
 export const updateBoidSpatialHash = (
   index: number,
   context: EngineUpdateContext
 ) => {
-  const boidId = context.boidIds[index];
-  const boid = boidId ? context.boidsById[boidId] : undefined;
+  const boidId = context.boidIds[index]
+  const boid = boidId ? context.boidsById[boidId] : undefined
   if (boid) {
-    context.boidSpatialHash.insertItem(boid);
+    context.boidSpatialHash.insertItem(boid)
   }
-};
+}
 
 export const updateBoids = (
   index: number,
   context: EngineUpdateContext,
   handlers: EnvironmentHandlers
 ) => {
-  const boidKey = context.boidIds[index];
-  const boid = context.boidsById[boidKey];
+  const boidKey = context.boidIds[index]
+  const boid = context.boidsById[boidKey]
   if (boid) {
-    const maxNeighborsLookup = context.constraints.maxNeighborsLookup;
+    const maxNeighborsLookup = context.constraints.maxNeighborsLookup
     const nearbyBoids = context.boidSpatialHash.getNearbyItems(
       boid.position,
       context.config.world,
       maxNeighborsLookup,
       context.config.parameters.perceptionRadius
-    );
+    )
     const nearbyFoodSources = context.foodSourceSpatialHash.getNearbyItems(
       boid.position,
       context.config.world,
       maxNeighborsLookup,
-      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS // Session 123: Use detection radius, not eating radius!
-    );
+      FOOD_CONSTANTS.FOOD_DETECTION_RADIUS
+    )
     const nearbyObstacles = context.obstacleSpatialHash.getNearbyItems(
       boid.position,
       context.config.world,
       maxNeighborsLookup
-    );
+    )
     const nearbyDeathMarkers = context.deathMarkerSpatialHash.getNearbyItems(
       boid.position,
       context.config.world,
       maxNeighborsLookup,
       context.config.parameters.perceptionRadius
-    );
+    )
     const { nearbyPrey, nearbyPredators } = getNearbyBoidsByRole(
       boid,
       nearbyBoids,
-      context.config.species // Session 123: Pass species config for proper role detection!
-    );
-    // Buildup local context for boid update
+      context.config.species
+    )
     const localContext = {
       ...context,
       nearbyBoids,
@@ -467,32 +413,29 @@ export const updateBoids = (
       nearbyDeathMarkers,
       nearbyPrey,
       nearbyPredators,
-    } satisfies BoidUpdateContext;
-    // Update boid
-    handlers.updateBoid(boid, localContext);
+    } satisfies BoidUpdateContext
+    handlers.updateBoid(boid, localContext)
 
-   
-
-    // Update trail
     const shouldUpdateTrail =
       boid.index % context.staggerFrames.tail ===
-      context.currentFrame % context.staggerFrames.tail;
+      context.currentFrame % context.staggerFrames.tail
     if (shouldUpdateTrail) {
-      handlers.updateTrail(boid, { x: boid.position.x, y: boid.position.y });
+      handlers.updateTrail(boid, {
+        x: boid.position.x,
+        y: boid.position.y,
+      })
     }
 
-    // Update behavior
     const shouldUpdateBehavior =
       boid.index % context.staggerFrames.behavior ===
-      context.currentFrame % context.staggerFrames.behavior;
+      context.currentFrame % context.staggerFrames.behavior
     if (shouldUpdateBehavior) {
-      handlers.evaluateBoidBehavior(boid, localContext);
+      handlers.evaluateBoidBehavior(boid, localContext)
     }
 
-    // Update lifecycle (staggered)
     const shouldUpdateLifecycle =
       boid.index % context.staggerFrames.lifecycle ===
-      context.currentFrame % context.staggerFrames.lifecycle;
+      context.currentFrame % context.staggerFrames.lifecycle
 
     if (shouldUpdateLifecycle) {
       handlers.checkBoidLifecycle(
@@ -501,10 +444,10 @@ export const updateBoids = (
         context.staggerFrames.lifecycle,
         context.lifecycleCollector?.collect ?? (() => {}),
         context.matedBoidsThisFrame ?? new Set()
-      );
+      )
     }
   }
-};
+}
 
 /**
  * Compatibility layer for the old frame update context
@@ -525,33 +468,26 @@ export const createBaseFrameUpdateContext = ({
   foodSourceSpatialHash,
   deathMarkerSpatialHash,
 }: {
-  frame: number;
-  config: ConfigContext;
-  profiler: Profiler | undefined;
-  simulation: SimulationContext;
-  boidsCount: number;
-  boidsStore: LocalBoidStore;
-  deltaSeconds: number;
-  forcesCollector: ForceCollector;
-  lifecycleCollector: LifecycleCollector;
-  boidSpatialHash: SpatialHash<Boid>;
-  obstacleSpatialHash: SpatialHash<Obstacle>;
-  foodSourceSpatialHash: SpatialHash<FoodSource>;
-  deathMarkerSpatialHash: SpatialHash<DeathMarker>;
+  frame: number
+  config: ConfigContext
+  profiler: Profiler | undefined
+  simulation: SimulationContext
+  boidsCount: number
+  boidsStore: LocalBoidStore
+  deltaSeconds: number
+  forcesCollector: ForceCollector
+  lifecycleCollector: LifecycleCollector
+  boidSpatialHash: SpatialHash<Boid>
+  obstacleSpatialHash: SpatialHash<Obstacle>
+  foodSourceSpatialHash: SpatialHash<FoodSource>
+  deathMarkerSpatialHash: SpatialHash<DeathMarker>
 }): EngineUpdateContext => {
-  profiler?.start(profilerKeywords.engine.createFrameUpdateContext);
-  // const { config, simulation } = runtimeStore.store.getState();
-  const maxBoidCrowdTolerance = getMaxCrowdTolerance(config.species);
-  // Max neighbors lookup is 30% more than the max crowd tolerance to prevent concentration bottleneck
-  // but still allow for some extra crowd tolerance
-  // we need to ensure the maxNeighbors is at least the maxBoidCrowdTolerance
-  // this is because, if it's lower, we will never reach the aversion threshold
-  // since we will always consider less neighbors than the maxBoidCrowdTolerance
-  const maxNeighborsLookup = Math.ceil(maxBoidCrowdTolerance * 1.3);
-  const boids = boidsStore.boids;
+  profiler?.start(profilerKeywords.engine.createFrameUpdateContext)
+  const maxBoidCrowdTolerance = getMaxCrowdTolerance(config.species)
+  const maxNeighborsLookup = Math.ceil(maxBoidCrowdTolerance * 1.3)
+  const boids = boidsStore.boids
 
-  // Build update context from state slices
-  profiler?.start(profilerKeywords.engine.buildFrameUpdateContext);
+  profiler?.start(profilerKeywords.engine.buildFrameUpdateContext)
   const baseUpdateContext = {
     simulation: {
       obstacles: simulation.obstacles,
@@ -580,13 +516,13 @@ export const createBaseFrameUpdateContext = ({
     staggerFrames: {
       tail: 3,
       behavior: 20,
-      lifecycle: 25, // Session 121: Faster lifecycle checks for eating/energy
+      lifecycle: 25,
     },
     constraints: {
       maxNeighborsLookup,
     },
-  } satisfies EngineUpdateContext;
-  profiler?.end(profilerKeywords.engine.buildFrameUpdateContext);
+  } satisfies EngineUpdateContext
+  profiler?.end(profilerKeywords.engine.buildFrameUpdateContext)
 
-  return baseUpdateContext;
-};
+  return baseUpdateContext
+}

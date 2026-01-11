@@ -3,101 +3,88 @@ import {
   FoodSource,
   DeathMarker,
   BoidsById,
-} from "../vocabulary/schemas/entities";
-import { SpeciesConfig } from "../vocabulary/schemas/species";
-import * as vec from "../vector";
-import { iterateBoids } from "../iterators";
-
-// ============================================
-// Behavioral Distribution
-// ============================================
+} from '../vocabulary/schemas/entities'
+import { SpeciesConfig } from '../vocabulary/schemas/species'
+import * as vec from '../vector'
+import { iterateBoids } from '../iterators'
 
 export function getStanceDistribution(boids: Boid[]) {
   return boids.reduce(
     (acc, boid) => {
-      acc[boid.stance] = (acc[boid.stance] || 0) + 1;
-      return acc;
+      acc[boid.stance] = (acc[boid.stance] || 0) + 1
+      return acc
     },
-    {} as Partial<Record<Boid["stance"], number>>,
-  );
+    {} as Partial<Record<Boid['stance'], number>>
+  )
 }
 
 export function getStanceDistributionBySpecies(boids: BoidsById) {
-  const result: Record<string, Record<string, number>> = {};
+  const result: Record<string, Record<string, number>> = {}
 
   for (const boid of iterateBoids(boids)) {
     if (!result[boid.typeId]) {
-      result[boid.typeId] = {};
+      result[boid.typeId] = {}
     }
     result[boid.typeId][boid.stance] =
-      (result[boid.typeId][boid.stance] || 0) + 1;
+      (result[boid.typeId][boid.stance] || 0) + 1
   }
 
-  return result;
+  return result
 }
 
-// ============================================
-// Energy Statistics
-// ============================================
-
 export interface EnergyStats {
-  total: number;
-  mean: number;
-  min: number;
-  max: number;
-  stdDev: number;
+  total: number
+  mean: number
+  min: number
+  max: number
+  stdDev: number
 }
 
 export function computeEnergyStats(boids: Boid[]): EnergyStats {
   if (boids.length === 0) {
-    return { total: 0, mean: 0, min: 0, max: 0, stdDev: 0 };
+    return { total: 0, mean: 0, min: 0, max: 0, stdDev: 0 }
   }
 
-  const energies = boids.map((b) => b.energy);
-  const total = energies.reduce((sum, e) => sum + e, 0);
-  const mean = total / boids.length;
-  const min = Math.min(...energies);
-  const max = Math.max(...energies);
+  const energies = boids.map((b) => b.energy)
+  const total = energies.reduce((sum, e) => sum + e, 0)
+  const mean = total / boids.length
+  const min = Math.min(...energies)
+  const max = Math.max(...energies)
 
-  // Calculate standard deviation
   const variance =
-    energies.reduce((sum, e) => sum + Math.pow(e - mean, 2), 0) / boids.length;
-  const stdDev = Math.sqrt(variance);
+    energies.reduce((sum, e) => sum + Math.pow(e - mean, 2), 0) / boids.length
+  const stdDev = Math.sqrt(variance)
 
-  return { total, mean, min, max, stdDev };
+  return { total, mean, min, max, stdDev }
 }
 
 export function computeEnergyStatsBySpecies(
-  boids: BoidsById,
+  boids: BoidsById
 ): Record<string, EnergyStats> {
-  const bySpecies: Record<string, Boid[]> = {};
+  const bySpecies: Record<string, Boid[]> = {}
 
   for (const boid of iterateBoids(boids)) {
     if (!bySpecies[boid.typeId]) {
-      bySpecies[boid.typeId] = [];
+      bySpecies[boid.typeId] = []
     }
-    bySpecies[boid.typeId].push(boid);
+    bySpecies[boid.typeId].push(boid)
   }
 
-  const result: Record<string, EnergyStats> = {};
+  const result: Record<string, EnergyStats> = {}
   for (const [typeId, speciesBoids] of Object.entries(bySpecies)) {
-    result[typeId] = computeEnergyStats(speciesBoids);
+    result[typeId] = computeEnergyStats(speciesBoids)
   }
 
-  return result;
+  return result
 }
 
-// ============================================
-// Age Distribution
-// ============================================
-
 export interface AgeDistribution {
-  mean: number;
-  min: number;
-  max: number;
-  youngCount: number; // Age < minReproductionAge
-  matureCount: number; // Age >= minReproductionAge
-  elderCount: number; // Age > 75% of maxAge
+  mean: number
+  min: number
+  max: number
+  youngCount: number // Age < minReproductionAge
+  matureCount: number // Age >= minReproductionAge
+  elderCount: number // Age > 75% of maxAge
 }
 
 export function computeAgeDistribution(boids: Boid[]): AgeDistribution {
@@ -109,75 +96,70 @@ export function computeAgeDistribution(boids: Boid[]): AgeDistribution {
       youngCount: 0,
       matureCount: 0,
       elderCount: 0,
-    };
+    }
   }
 
-  const ages = boids.map((b) => b.age);
-  const mean = ages.reduce((sum, age) => sum + age, 0) / boids.length;
-  const min = Math.min(...ages);
-  const max = Math.max(...ages);
+  const ages = boids.map((b) => b.age)
+  const mean = ages.reduce((sum, age) => sum + age, 0) / boids.length
+  const min = Math.min(...ages)
+  const max = Math.max(...ages)
 
-  let youngCount = 0;
-  let matureCount = 0;
-  let elderCount = 0;
+  let youngCount = 0
+  let matureCount = 0
+  let elderCount = 0
 
   boids.forEach((boid) => {
-    // Use per-boid phenotype values (evolvable!)
-    const elderThreshold = boid.phenotype.maxAge * 0.75;
+    const elderThreshold = boid.phenotype.maxAge * 0.75
 
     if (boid.age < boid.phenotype.minReproductionAge) {
-      youngCount++;
+      youngCount++
     } else if (boid.age >= elderThreshold) {
-      elderCount++;
+      elderCount++
     } else {
-      matureCount++;
+      matureCount++
     }
-  });
+  })
 
-  return { mean, min, max, youngCount, matureCount, elderCount };
+  return { mean, min, max, youngCount, matureCount, elderCount }
 }
 
 export function computeAgeDistributionBySpecies(
   boids: BoidsById,
-  speciesConfigs: Record<string, SpeciesConfig>,
+  speciesConfigs: Record<string, SpeciesConfig>
 ): Record<string, AgeDistribution> {
-  const bySpecies: Record<string, Boid[]> = {};
+  const bySpecies: Record<string, Boid[]> = {}
 
   for (const boid of iterateBoids(boids)) {
     if (!bySpecies[boid.typeId]) {
-      bySpecies[boid.typeId] = [];
+      bySpecies[boid.typeId] = []
     }
-    bySpecies[boid.typeId].push(boid);
+    bySpecies[boid.typeId].push(boid)
   }
 
-  const result: Record<string, AgeDistribution> = {};
+  const result: Record<string, AgeDistribution> = {}
   for (const [typeId, speciesBoids] of Object.entries(bySpecies)) {
-    const config = speciesConfigs[typeId];
+    const config = speciesConfigs[typeId]
     if (config) {
-      result[typeId] = computeAgeDistribution(speciesBoids);
+      result[typeId] = computeAgeDistribution(speciesBoids)
     }
   }
 
-  return result;
+  return result
 }
 
-// ============================================
-// Spatial Patterns
-// ============================================
-
 export interface SpatialPattern {
-  meanNearestNeighborDistance: number;
-  clusterCount: number;
-  largestClusterSize: number;
-  centerOfMass: { x: number; y: number };
-  spreadRadius: number;
-  territoryOverlap?: number;
+  meanNearestNeighborDistance: number
+  clusterCount: number
+  largestClusterSize: number
+  centerOfMass: { x: number; y: number }
+  spreadRadius: number
+  territoryOverlap?: number
 }
 
 export function computeSpatialPattern(
   boids: Boid[],
   worldWidth: number,
-  worldHeight: number,
+  worldHeight: number
 ): SpatialPattern {
   if (boids.length === 0) {
     return {
@@ -186,86 +168,81 @@ export function computeSpatialPattern(
       largestClusterSize: 0,
       centerOfMass: { x: 0, y: 0 },
       spreadRadius: 0,
-    };
+    }
   }
 
-  // Calculate center of mass
   const centerOfMass = {
     x: boids.reduce((sum, b) => sum + b.position.x, 0) / boids.length,
     y: boids.reduce((sum, b) => sum + b.position.y, 0) / boids.length,
-  };
+  }
 
-  // Calculate spread radius (average distance from center)
   const spreadRadius =
     boids.reduce((sum, b) => {
       return (
         sum +
         vec.toroidalDistance(b.position, centerOfMass, worldWidth, worldHeight)
-      );
-    }, 0) / boids.length;
+      )
+    }, 0) / boids.length
 
-  // Calculate mean nearest neighbor distance
-  let totalNearestDistance = 0;
+  let totalNearestDistance = 0
   boids.forEach((boid) => {
-    let minDist = Infinity;
+    let minDist = Infinity
     boids.forEach((other) => {
       if (boid.id !== other.id) {
         const dist = vec.toroidalDistance(
           boid.position,
           other.position,
           worldWidth,
-          worldHeight,
-        );
+          worldHeight
+        )
         if (dist < minDist) {
-          minDist = dist;
+          minDist = dist
         }
       }
-    });
-    totalNearestDistance += minDist === Infinity ? 0 : minDist;
-  });
-  const meanNearestNeighborDistance = totalNearestDistance / boids.length;
+    })
+    totalNearestDistance += minDist === Infinity ? 0 : minDist
+  })
+  const meanNearestNeighborDistance = totalNearestDistance / boids.length
 
-  // Simple clustering using distance threshold
-  const clusterThreshold = 100; // pixels
-  const visited = new Set<string>();
-  const clusters: number[] = [];
+  const clusterThreshold = 100 // pixels
+  const visited = new Set<string>()
+  const clusters: number[] = []
 
   const findCluster = (startBoid: Boid): number => {
-    const stack = [startBoid];
-    let clusterSize = 0;
+    const stack = [startBoid]
+    let clusterSize = 0
 
     while (stack.length > 0) {
-      const current = stack.pop()!;
-      if (visited.has(current.id)) continue;
+      const current = stack.pop()!
+      if (visited.has(current.id)) continue
 
-      visited.add(current.id);
-      clusterSize++;
+      visited.add(current.id)
+      clusterSize++
 
-      // Find nearby boids
       boids.forEach((other) => {
         if (!visited.has(other.id)) {
           const dist = vec.toroidalDistance(
             current.position,
             other.position,
             worldWidth,
-            worldHeight,
-          );
+            worldHeight
+          )
           if (dist < clusterThreshold) {
-            stack.push(other);
+            stack.push(other)
           }
         }
-      });
+      })
     }
 
-    return clusterSize;
-  };
+    return clusterSize
+  }
 
   boids.forEach((boid) => {
     if (!visited.has(boid.id)) {
-      const clusterSize = findCluster(boid);
-      clusters.push(clusterSize);
+      const clusterSize = findCluster(boid)
+      clusters.push(clusterSize)
     }
-  });
+  })
 
   return {
     meanNearestNeighborDistance,
@@ -273,49 +250,45 @@ export function computeSpatialPattern(
     largestClusterSize: clusters.length > 0 ? Math.max(...clusters) : 0,
     centerOfMass,
     spreadRadius,
-  };
+  }
 }
 
 export function computeSpatialPatternsBySpecies(
   boids: BoidsById,
   worldWidth: number,
-  worldHeight: number,
+  worldHeight: number
 ): Record<string, SpatialPattern> {
-  const bySpecies: Record<string, Boid[]> = {};
+  const bySpecies: Record<string, Boid[]> = {}
 
   for (const boid of iterateBoids(boids)) {
     if (!bySpecies[boid.typeId]) {
-      bySpecies[boid.typeId] = [];
+      bySpecies[boid.typeId] = []
     }
-    bySpecies[boid.typeId].push(boid);
+    bySpecies[boid.typeId].push(boid)
   }
 
-  const result: Record<string, SpatialPattern> = {};
+  const result: Record<string, SpatialPattern> = {}
   for (const [typeId, speciesBoids] of Object.entries(bySpecies)) {
     result[typeId] = computeSpatialPattern(
       speciesBoids,
       worldWidth,
-      worldHeight,
-    );
+      worldHeight
+    )
   }
 
-  return result;
+  return result
 }
 
-// ============================================
-// Reproduction Metrics
-// ============================================
-
 export interface ReproductionMetrics {
-  seekingMateCount: number;
-  matingCount: number;
-  reproductionReadyCount: number;
-  avgReproductionCooldown: number;
+  seekingMateCount: number
+  matingCount: number
+  reproductionReadyCount: number
+  avgReproductionCooldown: number
 }
 
 export function computeReproductionMetrics(
   boids: Boid[],
-  reproductionEnergyThreshold: number,
+  reproductionEnergyThreshold: number
 ): ReproductionMetrics {
   if (boids.length === 0) {
     return {
@@ -323,159 +296,146 @@ export function computeReproductionMetrics(
       matingCount: 0,
       reproductionReadyCount: 0,
       avgReproductionCooldown: 0,
-    };
+    }
   }
 
-  let seekingMateCount = 0;
-  let matingCount = 0;
-  let reproductionReadyCount = 0;
-  let totalCooldown = 0;
+  let seekingMateCount = 0
+  let matingCount = 0
+  let reproductionReadyCount = 0
+  let totalCooldown = 0
 
   boids.forEach((boid) => {
-    if (boid.seekingMate) seekingMateCount++;
-    if (boid.stance === "mating") matingCount++;
+    if (boid.seekingMate) seekingMateCount++
+    if (boid.stance === 'mating') matingCount++
 
-    // Check if ready to reproduce (using per-boid phenotype values)
-    const isOldEnough = boid.age >= boid.phenotype.minReproductionAge;
+    const isOldEnough = boid.age >= boid.phenotype.minReproductionAge
     const hasEnoughEnergy =
-      boid.energy >= boid.phenotype.maxEnergy * reproductionEnergyThreshold;
-    const noCooldown = boid.reproductionCooldown === 0;
+      boid.energy >= boid.phenotype.maxEnergy * reproductionEnergyThreshold
+    const noCooldown = boid.reproductionCooldown === 0
 
     if (isOldEnough && hasEnoughEnergy && noCooldown) {
-      reproductionReadyCount++;
+      reproductionReadyCount++
     }
 
-    totalCooldown += boid.reproductionCooldown;
-  });
+    totalCooldown += boid.reproductionCooldown
+  })
 
   return {
     seekingMateCount,
     matingCount,
     reproductionReadyCount,
     avgReproductionCooldown: totalCooldown / boids.length,
-  };
+  }
 }
 
 export function computeReproductionMetricsBySpecies(
   boids: BoidsById,
   speciesConfigs: Record<string, SpeciesConfig>,
-  reproductionEnergyThreshold: number,
+  reproductionEnergyThreshold: number
 ): Record<string, ReproductionMetrics> {
-  const bySpecies: Record<string, Boid[]> = {};
+  const bySpecies: Record<string, Boid[]> = {}
 
   for (const boid of iterateBoids(boids)) {
     if (!bySpecies[boid.typeId]) {
-      bySpecies[boid.typeId] = [];
+      bySpecies[boid.typeId] = []
     }
-    bySpecies[boid.typeId].push(boid);
+    bySpecies[boid.typeId].push(boid)
   }
 
-  const result: Record<string, ReproductionMetrics> = {};
+  const result: Record<string, ReproductionMetrics> = {}
   for (const [typeId, speciesBoids] of Object.entries(bySpecies)) {
-    const config = speciesConfigs[typeId];
+    const config = speciesConfigs[typeId]
     if (config) {
       result[typeId] = computeReproductionMetrics(
         speciesBoids,
-        reproductionEnergyThreshold,
-      );
+        reproductionEnergyThreshold
+      )
     }
   }
 
-  return result;
+  return result
 }
 
-// ============================================
-// Food Source Statistics
-// ============================================
-
 export interface FoodSourceStats {
-  count: number;
-  totalEnergy: number;
-  meanEnergy: number;
+  count: number
+  totalEnergy: number
+  meanEnergy: number
 }
 
 export function computeFoodSourceStats(
-  foodSources: FoodSource[],
+  foodSources: FoodSource[]
 ): FoodSourceStats {
   if (foodSources.length === 0) {
-    return { count: 0, totalEnergy: 0, meanEnergy: 0 };
+    return { count: 0, totalEnergy: 0, meanEnergy: 0 }
   }
 
-  const totalEnergy = foodSources.reduce((sum, f) => sum + f.energy, 0);
+  const totalEnergy = foodSources.reduce((sum, f) => sum + f.energy, 0)
   return {
     count: foodSources.length,
     totalEnergy,
     meanEnergy: totalEnergy / foodSources.length,
-  };
+  }
 }
 
 export function computeFoodSourceStatsByType(foodSources: FoodSource[]): {
-  prey: FoodSourceStats;
-  predator: FoodSourceStats;
+  prey: FoodSourceStats
+  predator: FoodSourceStats
 } {
-  const preyFood = foodSources.filter((f) => f.sourceType === "prey");
-  const predatorFood = foodSources.filter((f) => f.sourceType === "predator");
+  const preyFood = foodSources.filter((f) => f.sourceType === 'prey')
+  const predatorFood = foodSources.filter((f) => f.sourceType === 'predator')
 
   return {
     prey: computeFoodSourceStats(preyFood),
     predator: computeFoodSourceStats(predatorFood),
-  };
+  }
 }
 
-// ============================================
-// Death Marker Statistics
-// ============================================
-
 export interface DeathMarkerStats {
-  count: number;
-  totalStrength: number;
-  meanStrength: number;
+  count: number
+  totalStrength: number
+  meanStrength: number
 }
 
 export function computeDeathMarkerStats(
-  deathMarkers: DeathMarker[],
+  deathMarkers: DeathMarker[]
 ): DeathMarkerStats {
   if (deathMarkers.length === 0) {
-    return { count: 0, totalStrength: 0, meanStrength: 0 };
+    return { count: 0, totalStrength: 0, meanStrength: 0 }
   }
 
-  const totalStrength = deathMarkers.reduce((sum, m) => sum + m.strength, 0);
+  const totalStrength = deathMarkers.reduce((sum, m) => sum + m.strength, 0)
   return {
     count: deathMarkers.length,
     totalStrength,
     meanStrength: totalStrength / deathMarkers.length,
-  };
+  }
 }
 
-// ============================================
-// Legacy Functions (kept for backward compatibility)
-// ============================================
-
-type StanceDistribution = ReturnType<typeof getStanceDistribution>;
+type StanceDistribution = ReturnType<typeof getStanceDistribution>
 
 export function getStancePercentageDistribution(
   stanceDistribution: StanceDistribution,
-  total: number,
+  total: number
 ) {
   return Object.entries(stanceDistribution).reduce(
     (acc, [stance, count]) => {
-      acc[stance as Boid["stance"]] = (count / total) * 100;
-      return acc;
+      acc[stance as Boid['stance']] = (count / total) * 100
+      return acc
     },
-    {} as Partial<Record<Boid["stance"], number>>,
-  );
+    {} as Partial<Record<Boid['stance'], number>>
+  )
 }
 
 export function countFoodSourcesBySourceType(foodSources: FoodSource[]) {
   return foodSources.reduce(
     (acc, foodSource) => {
-      acc[foodSource.sourceType] = (acc[foodSource.sourceType] || 0) + 1;
-      return acc;
+      acc[foodSource.sourceType] = (acc[foodSource.sourceType] || 0) + 1
+      return acc
     },
-    {} as Partial<Record<FoodSource["sourceType"], number>>,
-  );
+    {} as Partial<Record<FoodSource['sourceType'], number>>
+  )
 }
 
 export type FoodSourcesBySourceType = ReturnType<
   typeof countFoodSourcesBySourceType
->;
+>

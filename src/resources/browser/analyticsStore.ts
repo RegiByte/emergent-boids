@@ -1,15 +1,15 @@
-import { defineResource, StartedResource } from "braided";
-import { useStore as useZustandStore } from "zustand";
-import type { StoreApi } from "zustand/vanilla";
-import { createStore } from "zustand/vanilla";
-import { AnalyticsStore } from "@/boids/vocabulary/schemas/state.ts";
-import { eventKeywords } from "@/boids/vocabulary/keywords.ts";
-import type { AllEvents } from "@/boids/vocabulary/schemas/events.ts";
-import type { EvolutionSnapshot } from "@/boids/vocabulary/schemas/evolution.ts";
-import { RandomnessResource } from "../shared/randomness.ts";
-import type { TimeResource } from "../shared/time.ts";
+import { defineResource, StartedResource } from 'braided'
+import { useStore as useZustandStore } from 'zustand'
+import type { StoreApi } from 'zustand/vanilla'
+import { createStore } from 'zustand/vanilla'
+import { AnalyticsStore } from '@/boids/vocabulary/schemas/state.ts'
+import { eventKeywords } from '@/boids/vocabulary/keywords.ts'
+import type { AllEvents } from '@/boids/vocabulary/schemas/events.ts'
+import type { EvolutionSnapshot } from '@/boids/vocabulary/schemas/evolution.ts'
+import { RandomnessResource } from '../shared/randomness.ts'
+import type { TimeResource } from '../shared/time.ts'
 
-export type AnalyticsStoreApi = StoreApi<AnalyticsStore>;
+export type AnalyticsStoreApi = StoreApi<AnalyticsStore>
 
 /**
  * Analytics Store Resource
@@ -28,19 +28,17 @@ export type AnalyticsStoreApi = StoreApi<AnalyticsStore>;
  * - clearEventsFilter(): Reset to default filter
  */
 export const analyticsStore = defineResource({
-  dependencies: ["randomness", "time"],
+  dependencies: ['randomness', 'time'],
   start: ({
     randomness,
     time,
   }: {
-    randomness: RandomnessResource;
-    time: TimeResource;
+    randomness: RandomnessResource
+    time: TimeResource
   }) => {
-    const rng = randomness.domain("analytics");
+    const rng = randomness.domain('analytics')
 
-    // Create zustand store with initial state
     const store = createStore<AnalyticsStore>()(() => ({
-      // Events domain
       events: {
         data: {
           recentEvents: [],
@@ -62,7 +60,6 @@ export const analyticsStore = defineResource({
         },
       },
 
-      // Evolution domain
       evolution: {
         data: {
           evolutionHistory: [],
@@ -74,11 +71,10 @@ export const analyticsStore = defineResource({
           geneticsSamplingInterval: 1, // Sample genetics every N snapshots (1 = every snapshot)
         },
       },
-    }));
+    }))
 
-    // React hook for components
     function useStore<T>(selector: (_state: AnalyticsStore) => T): T {
-      return useZustandStore(store, selector);
+      return useZustandStore(store, selector)
     }
 
     /**
@@ -91,31 +87,27 @@ export const analyticsStore = defineResource({
      * @param tick - Current simulation tick
      */
     function trackEvent(event: AllEvents, tick: number): void {
-      const state = store.getState();
-      const { config } = state.events;
+      const state = store.getState()
+      const { config } = state.events
 
-      // Get active filter (custom overrides default)
       const maxEvents =
-        config.customFilter?.maxEvents ?? config.defaultFilter.maxEvents;
+        config.customFilter?.maxEvents ?? config.defaultFilter.maxEvents
       const allowedEventTypes =
         config.customFilter?.allowedEventTypes ??
-        config.defaultFilter.allowedEventTypes;
+        config.defaultFilter.allowedEventTypes
 
-      // Check if event should be tracked
       const shouldTrack =
-        !allowedEventTypes || allowedEventTypes.includes(event.type);
+        !allowedEventTypes || allowedEventTypes.includes(event.type)
 
-      if (!shouldTrack) return;
+      if (!shouldTrack) return
 
-      // Create event entry (use simulation time)
       const eventEntry = {
         id: `event-${time.now()}-${rng.next().toString(36).slice(2, 9)}`,
         timestamp: time.now(), // Use simulation time instead of Date.now()
         tick,
         event,
-      };
+      }
 
-      // Update store (partial update - only events.data)
       store.setState((current) => ({
         ...current,
         events: {
@@ -127,7 +119,7 @@ export const analyticsStore = defineResource({
             ].slice(0, maxEvents),
           },
         },
-      }));
+      }))
     }
 
     /**
@@ -139,10 +131,9 @@ export const analyticsStore = defineResource({
      * @param snapshot - The evolution snapshot to capture
      */
     function captureSnapshot(snapshot: EvolutionSnapshot): void {
-      const state = store.getState();
-      const { maxSnapshots } = state.evolution.config;
+      const state = store.getState()
+      const { maxSnapshots } = state.evolution.config
 
-      // Update store (partial update - only evolution.data)
       store.setState((current) => ({
         ...current,
         evolution: {
@@ -155,7 +146,7 @@ export const analyticsStore = defineResource({
             currentSnapshot: snapshot,
           },
         },
-      }));
+      }))
     }
 
     /**
@@ -166,7 +157,7 @@ export const analyticsStore = defineResource({
      */
     function updateEventsFilter(
       maxEvents?: number,
-      allowedEventTypes?: string[] | null,
+      allowedEventTypes?: string[] | null
     ): void {
       store.setState((current) => ({
         ...current,
@@ -180,7 +171,7 @@ export const analyticsStore = defineResource({
             },
           },
         },
-      }));
+      }))
     }
 
     /**
@@ -196,7 +187,7 @@ export const analyticsStore = defineResource({
             customFilter: null,
           },
         },
-      }));
+      }))
     }
 
     /**
@@ -209,7 +200,7 @@ export const analyticsStore = defineResource({
     function updateEvolutionConfig(
       snapshotInterval?: number,
       maxSnapshots?: number,
-      geneticsSamplingInterval?: number,
+      geneticsSamplingInterval?: number
     ): void {
       store.setState((current) => ({
         ...current,
@@ -224,7 +215,7 @@ export const analyticsStore = defineResource({
               current.evolution.config.geneticsSamplingInterval,
           },
         },
-      }));
+      }))
     }
 
     return {
@@ -235,11 +226,9 @@ export const analyticsStore = defineResource({
       updateEventsFilter,
       clearEventsFilter,
       updateEvolutionConfig,
-    };
+    }
   },
-  halt: () => {
-    // No cleanup needed for zustand store
-  },
-});
+  halt: () => {},
+})
 
-export type AnalyticsStoreResource = StartedResource<typeof analyticsStore>;
+export type AnalyticsStoreResource = StartedResource<typeof analyticsStore>

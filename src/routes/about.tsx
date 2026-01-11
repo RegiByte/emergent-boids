@@ -1,14 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router'
 import {
   IconBrandGithub,
   IconDna,
   IconFish,
   IconBrain,
-} from "@tabler/icons-react";
+} from '@tabler/icons-react'
 
-export const Route = createFileRoute("/about")({
+export const Route = createFileRoute('/about')({
   component: About,
-});
+})
 
 function About() {
   return (
@@ -133,7 +133,7 @@ function About() {
         </footer>
       </div>
     </div>
-  );
+  )
 }
 
 function ConceptCard({
@@ -141,9 +141,9 @@ function ConceptCard({
   title,
   description,
 }: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
+  icon: React.ReactNode
+  title: string
+  description: string
 }) {
   return (
     <div className="space-y-2 rounded-lg border bg-card p-4 text-card-foreground">
@@ -151,22 +151,22 @@ function ConceptCard({
       <h3 className="font-semibold">{title}</h3>
       <p className="text-sm text-muted-foreground">{description}</p>
     </div>
-  );
+  )
 }
 
 function ArchitectureItem({
   title,
   description,
 }: {
-  title: string;
-  description: string;
+  title: string
+  description: string
 }) {
   return (
     <div>
       <h3 className="font-semibold text-foreground">{title}</h3>
       <p className="text-sm">{description}</p>
     </div>
-  );
+  )
 }
 
 function ResourceLink({
@@ -174,9 +174,9 @@ function ResourceLink({
   icon,
   label,
 }: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
+  href: string
+  icon: React.ReactNode
+  label: string
 }) {
   return (
     <a
@@ -188,5 +188,5 @@ function ResourceLink({
       {icon}
       {label}
     </a>
-  );
+  )
 }

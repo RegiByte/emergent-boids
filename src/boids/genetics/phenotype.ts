@@ -2,9 +2,9 @@ import {
   type Genome,
   type Phenotype,
   genomeSchema,
-} from "../vocabulary/schemas/genetics";
-import { BodyPart } from "@/boids/vocabulary/schemas/visual";
-import type { WorldPhysics } from "../vocabulary/schemas/world";
+} from '../vocabulary/schemas/genetics'
+import { BodyPart } from '@/boids/vocabulary/schemas/visual'
+import type { WorldPhysics } from '../vocabulary/schemas/world'
 
 /**
  * Phenotype Computation - Transform genome into effective gameplay values
@@ -44,8 +44,8 @@ function computeBodyPartBonuses(bodyParts: BodyPart[]) {
       damageBonus: 0,
       defenseBonus: 0,
       energyCost: 0,
-    },
-  );
+    }
+  )
 }
 
 /**
@@ -66,109 +66,87 @@ function computeBodyPartBonuses(bodyParts: BodyPart[]) {
  */
 export function computePhenotype(
   genomeBase: Genome,
-  physics: WorldPhysics,
+  physics: WorldPhysics
 ): Phenotype {
-  const genome = genomeSchema.parse(genomeBase);
-  // 1. Compute body part bonuses (additive)
-  const bonuses = computeBodyPartBonuses(genome.visual.bodyParts);
+  const genome = genomeSchema.parse(genomeBase)
+  const bonuses = computeBodyPartBonuses(genome.visual.bodyParts)
 
-  // 2. Compute vision range and its energy cost
   const visionRange =
     physics.perception.maxVisionRange *
     genome.traits.vision *
-    (1 + bonuses.visionBonus);
+    (1 + bonuses.visionBonus)
 
-  const visionEnergyCost = visionRange * physics.energy.visionCostPerUnit;
+  const visionEnergyCost = visionRange * physics.energy.visionCostPerUnit
 
-  // 3. Compute motion capabilities
   const maxSpeed =
-    physics.motion.maxSpeed * genome.traits.speed * (1 + bonuses.speedBonus);
+    physics.motion.maxSpeed * genome.traits.speed * (1 + bonuses.speedBonus)
 
   const maxForce =
-    physics.motion.maxForce * genome.traits.force * (1 + bonuses.turnRateBonus);
+    physics.motion.maxForce * genome.traits.force * (1 + bonuses.turnRateBonus)
 
-  // 4. Compute resource capacities (size-based)
-  const maxEnergy = 100 * genome.traits.size * physics.size.energyMultiplier;
-  const maxHealth = 100 * genome.traits.size * physics.size.healthMultiplier;
+  const maxEnergy = 100 * genome.traits.size * physics.size.energyMultiplier
+  const maxHealth = 100 * genome.traits.size * physics.size.healthMultiplier
 
-  // 5. Compute energy loss rate (metabolic + vision + body part costs)
-  // Efficiency trait reduces metabolic cost (0.0 efficiency = full cost, 1.0 = 50% cost)
   const metabolicCost =
     physics.energy.baseMetabolicRate *
     (1 + bonuses.energyCost) *
-    (1 - genome.traits.efficiency * 0.5);
+    (1 - genome.traits.efficiency * 0.5)
 
-  const energyLossRate = metabolicCost + visionEnergyCost;
+  const energyLossRate = metabolicCost + visionEnergyCost
 
-  // 6. Compute combat stats
   const attackDamage =
     physics.combat.baseDamage *
     genome.traits.size *
     physics.combat.sizeMultiplier *
-    (1 + bonuses.damageBonus);
+    (1 + bonuses.damageBonus)
 
-  const defense = bonuses.defenseBonus;
+  const defense = bonuses.defenseBonus
 
-  // 7. Compute collision radius (size-based)
   const collisionRadius =
-    genome.traits.size * physics.size.collisionMultiplier * 10;
-  // Base size for rendering/physics (same as collision radius)
-  const baseSize = collisionRadius;
+    genome.traits.size * physics.size.collisionMultiplier * 10
+  const baseSize = collisionRadius
 
-  // 8. Compute survival-critical traits
-  const fearFactor = genome.traits.fearResponse;
-  const minReproductionAge = 5 + genome.traits.maturityRate * 15; // 5-20 seconds
-  const maxAge = 100 + genome.traits.longevity * 200; // 100-300 seconds
+  const fearFactor = genome.traits.fearResponse
+  const minReproductionAge = 5 + genome.traits.maturityRate * 15 // 5-20 seconds
+  const maxAge = 100 + genome.traits.longevity * 200 // 100-300 seconds
 
-  // 9. Compute crowd behavior from sociability
-  const crowdTolerance = 10 + genome.traits.sociability * 40; // 10-50 boids
-  const crowdAversionStrength = 2.0 - genome.traits.sociability * 1.2; // 0.8-2.0
+  const crowdTolerance = 10 + genome.traits.sociability * 40 // 10-50 boids
+  const crowdAversionStrength = 2.0 - genome.traits.sociability * 1.2 // 0.8-2.0
 
-  // 10. Compute flocking weights from sociability
-  // Higher sociability = tighter flocks (low separation, high cohesion/alignment)
-  const separationWeight = 1.5 - genome.traits.sociability * 0.5; // 1.0-1.5
-  const alignmentWeight = 1.0 + genome.traits.sociability * 1.5; // 1.0-2.5
-  const cohesionWeight = 1.0 + genome.traits.sociability * 2.0; // 1.0-3.0
+  const separationWeight = 1.5 - genome.traits.sociability * 0.5 // 1.0-1.5
+  const alignmentWeight = 1.0 + genome.traits.sociability * 1.5 // 1.0-2.5
+  const cohesionWeight = 1.0 + genome.traits.sociability * 2.0 // 1.0-3.0
 
-  // 11. Return computed phenotype
   return {
-    // Motion
     maxSpeed,
     maxForce,
 
-    // Perception
     visionRange,
 
-    // Resources
     maxEnergy,
     maxHealth,
     energyLossRate,
     healthRegenRate: physics.health.baseRegenRate,
 
-    // Combat
     attackDamage,
     defense,
     collisionRadius,
     baseSize,
 
-    // Survival traits (evolvable)
     fearFactor,
     minReproductionAge,
     maxAge,
 
-    // Crowd behavior (from sociability)
     crowdTolerance,
     crowdAversionStrength,
 
-    // Flocking weights (from sociability)
     separationWeight,
     alignmentWeight,
     cohesionWeight,
 
-    // Visual (pass through from genome)
     color: genome.visual.color,
     bodyParts: genome.visual.bodyParts,
-  };
+  }
 }
 
 /**
@@ -188,26 +166,25 @@ export function computePhenotype(
  */
 export function createGenesisGenome(
   baseTraits: {
-    speed: number;
-    force: number;
-    vision: number;
-    size: number;
-    aggression: number;
-    sociability: number;
-    efficiency: number;
-    fearResponse?: number;
-    maturityRate?: number;
-    longevity?: number;
+    speed: number
+    force: number
+    vision: number
+    size: number
+    aggression: number
+    sociability: number
+    efficiency: number
+    fearResponse?: number
+    maturityRate?: number
+    longevity?: number
   },
   baseVisual: {
-    color: string;
-    bodyParts: BodyPart[];
-  },
+    color: string
+    bodyParts: BodyPart[]
+  }
 ): Genome {
   return {
     traits: {
       ...baseTraits,
-      // Provide defaults for new traits if not specified
       fearResponse: baseTraits.fearResponse ?? 0.5,
       maturityRate: baseTraits.maturityRate ?? 0.5,
       longevity: baseTraits.longevity ?? 0.5,
@@ -216,5 +193,5 @@ export function createGenesisGenome(
     parentIds: null, // Genesis boids have no parents
     generation: 0, // First generation
     mutations: [], // No mutations yet
-  };
+  }
 }

@@ -1,19 +1,15 @@
-import { z } from "zod";
-import { renderModeKeywords } from "../keywords";
-import {
-  deathMarkerSchema,
-  foodSourceSchema,
-  obstacleSchema,
-} from "./entities";
-import { allEventSchema } from "./events";
-import { evolutionSnapshotSchema } from "./evolution";
-import { renderModeSchema } from "./primitives";
-import { speciesRecordSchema } from "./species";
+import { z } from 'zod'
+import { renderModeKeywords } from '../keywords'
+import { deathMarkerSchema, foodSourceSchema, obstacleSchema } from './entities'
+import { allEventSchema } from './events'
+import { evolutionSnapshotSchema } from './evolution'
+import { renderModeSchema } from './primitives'
+import { speciesRecordSchema } from './species'
 import {
   simulationParametersSchema,
   worldConfigSchema,
   worldPhysicsSchema,
-} from "./world";
+} from './world'
 
 /**
  * State Schemas - Runtime state management
@@ -21,9 +17,6 @@ import {
  * Defines the structure of the centralized RuntimeStore.
  * Organized into logical slices for separation of concerns.
  */
-// ============================================
-// Visual Settings Schema
-// ============================================
 
 /**
  * Visual Settings - User preferences for rendering
@@ -40,9 +33,7 @@ export const visualSettingsSchema = z.object({
   foodSourcesEnabled: z.boolean(), // Show food source indicators
   healthBarsEnabled: z.boolean(), // Show health bars for wounded boids
 
-  // Atmosphere settings - environmental mood and visual effects
   atmosphere: z.object({
-    // Base settings (user-controlled defaults)
     base: z.object({
       trailAlpha: z.number().min(0).max(1), // Background transparency for trails
       fogColor: z.string(), // Base fog color
@@ -50,7 +41,6 @@ export const visualSettingsSchema = z.object({
       fogOpacity: z.number().min(0).max(1).default(0.6), // Fog opacity
     }),
 
-    // Current active event (null = using base settings)
     activeEvent: z
       .object({
         eventType: z.string(), // Type of atmospheric event
@@ -66,12 +56,8 @@ export const visualSettingsSchema = z.object({
       .nullable()
       .default(null),
   }),
-});
-export type VisualSettings = z.infer<typeof visualSettingsSchema>;
-
-// ============================================
-// Runtime Store Schema
-// ============================================
+})
+export type VisualSettings = z.infer<typeof visualSettingsSchema>
 
 /**
  * Runtime Store - Centralized state management
@@ -119,10 +105,10 @@ export const runtimeStoreSchema = z.object({
     sidebarOpen: z.boolean(), // Whether the sidebar is open
     headerCollapsed: z.boolean(), // Whether the header navbar is collapsed
     rendererMode: renderModeSchema.default(renderModeKeywords.canvas), // Which renderer to use
-    debugMode: z.boolean().default(false), // Session 129: Debug visualizations (collision circles, spatial grids, etc.)
+    debugMode: z.boolean().default(false),
   }),
-});
-export type RuntimeStore = z.infer<typeof runtimeStoreSchema>;
+})
+export type RuntimeStore = z.infer<typeof runtimeStoreSchema>
 
 /**
  * Analytics Store Schema
@@ -137,7 +123,6 @@ export type RuntimeStore = z.infer<typeof runtimeStoreSchema>;
  * - ml: (future) Machine learning models and predictions
  */
 export const analyticsStoreSchema = z.object({
-  // Events domain - tracks recent simulation events
   events: z.object({
     data: z.object({
       recentEvents: z.array(
@@ -146,16 +131,14 @@ export const analyticsStoreSchema = z.object({
           timestamp: z.number(), // Real-world timestamp (for display)
           tick: z.number(), // Simulation tick (for aggregation)
           event: allEventSchema, // The event data
-        }),
+        })
       ),
     }),
     config: z.object({
-      // Default filter (always active as baseline)
       defaultFilter: z.object({
         maxEvents: z.number().int().min(10).max(500), // Max events to track
         allowedEventTypes: z.array(z.string()).nullable(), // null = all events
       }),
-      // Custom filter (user override, null = use default)
       customFilter: z
         .object({
           maxEvents: z.number().int().min(10).max(500).optional(),
@@ -165,7 +148,6 @@ export const analyticsStoreSchema = z.object({
     }),
   }),
 
-  // Evolution domain - tracks population dynamics over time
   evolution: z.object({
     data: z.object({
       evolutionHistory: z.array(evolutionSnapshotSchema), // Historical data for graphs
@@ -177,6 +159,6 @@ export const analyticsStoreSchema = z.object({
       geneticsSamplingInterval: z.number().int().min(1).default(1), // Sample genetics every N snapshots (1 = every snapshot, 5 = every 5th)
     }),
   }),
-});
+})
 
-export type AnalyticsStore = z.infer<typeof analyticsStoreSchema>;
+export type AnalyticsStore = z.infer<typeof analyticsStoreSchema>

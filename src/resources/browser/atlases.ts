@@ -17,35 +17,35 @@
  * - Performance (single generation per app session)
  */
 
-import { defineResource } from "braided";
+import { defineResource } from 'braided'
 import {
   createShapeAtlas,
   type ShapeAtlasResult,
-} from "@/resources/browser/webgl/atlases/shapeAtlas.ts";
+} from '@/resources/browser/webgl/atlases/shapeAtlas.ts'
 import {
   createBodyPartsAtlas,
   type BodyPartsAtlasResult,
-} from "@/resources/browser/webgl/atlases/bodyPartsAtlas.ts";
+} from '@/resources/browser/webgl/atlases/bodyPartsAtlas.ts'
 import {
   createEmojiAtlas,
   type EmojiAtlasResult,
-} from "@/resources/browser/webgl/atlases/emojiAtlas.ts";
+} from '@/resources/browser/webgl/atlases/emojiAtlas.ts'
 import {
   createFontAtlas,
   DEFAULT_FONT_CHARS,
   type FontAtlasResult,
-} from "@/resources/browser/webgl/atlases/fontAtlas.ts";
+} from '@/resources/browser/webgl/atlases/fontAtlas.ts'
 import {
   createObstacleAtlas,
   type AtlasResult as ObstacleAtlasResult,
-} from "@/resources/browser/webgl/atlases/obstacleAtlas.ts";
+} from '@/resources/browser/webgl/atlases/obstacleAtlas.ts'
 
 export interface AtlasesResult {
-  shapes: ShapeAtlasResult | null;
-  bodyParts: BodyPartsAtlasResult | null;
-  emoji: EmojiAtlasResult | null;
-  font: FontAtlasResult | null;
-  obstacle: ObstacleAtlasResult | null; // Session 130
+  shapes: ShapeAtlasResult | null
+  bodyParts: BodyPartsAtlasResult | null
+  emoji: EmojiAtlasResult | null
+  font: FontAtlasResult | null
+  obstacle: ObstacleAtlasResult | null // Session 130
 }
 
 /**
@@ -57,42 +57,36 @@ export interface AtlasesResult {
 export const atlases = defineResource({
   dependencies: [],
   start: () => {
-    const startTime = performance.now();
-    console.log("🎨 [Atlases Resource] Starting atlas generation...");
+    const startTime = performance.now()
+    console.log('🎨 [Atlases Resource] Starting atlas generation...')
 
-    // Generate all atlases (these are synchronous, but independent)
-    // Note: We could use Promise.all() if these become async in the future
-    const shapes = createShapeAtlas();
-    const bodyParts = createBodyPartsAtlas();
-    const emoji = createEmojiAtlas();
-    const font = createFontAtlas("monospace", 16, DEFAULT_FONT_CHARS);
-    const obstacle = createObstacleAtlas(); // Session 130
+    const shapes = createShapeAtlas()
+    const bodyParts = createBodyPartsAtlas()
+    const emoji = createEmojiAtlas()
+    const font = createFontAtlas('monospace', 16, DEFAULT_FONT_CHARS)
+    const obstacle = createObstacleAtlas() // Session 130
 
-    const endTime = performance.now();
-    const duration = (endTime - startTime).toFixed(2);
+    const endTime = performance.now()
+    const duration = (endTime - startTime).toFixed(2)
 
-    // Log results
     console.log(
-      `✅ [Atlases Resource] Atlas generation complete in ${duration}ms`,
-    );
-    console.log(`  - Shapes: ${shapes ? "✅" : "❌"}`);
-    console.log(`  - Body Parts: ${bodyParts ? "✅" : "❌"}`);
-    console.log(`  - Emoji: ${emoji ? "✅" : "❌"}`);
-    console.log(`  - Font: ${font ? "✅" : "❌"}`);
-    console.log(`  - Obstacle: ${obstacle ? "✅" : "❌"}`);
+      `✅ [Atlases Resource] Atlas generation complete in ${duration}ms`
+    )
+    console.log(`  - Shapes: ${shapes ? '✅' : '❌'}`)
+    console.log(`  - Body Parts: ${bodyParts ? '✅' : '❌'}`)
+    console.log(`  - Emoji: ${emoji ? '✅' : '❌'}`)
+    console.log(`  - Font: ${font ? '✅' : '❌'}`)
+    console.log(`  - Obstacle: ${obstacle ? '✅' : '❌'}`)
 
-    // Return the atlases for consumers to use
     return {
       shapes,
       bodyParts,
       emoji,
       font,
       obstacle, // Session 130
-    };
+    }
   },
   halt: () => {
-    // Atlases are canvas-based and will be garbage collected
-    // No explicit cleanup needed
-    console.log("🎨 [Atlases Resource] Shutting down (atlases released)");
+    console.log('🎨 [Atlases Resource] Shutting down (atlases released)')
   },
-});
+})

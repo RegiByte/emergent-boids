@@ -1,17 +1,17 @@
-import { eventKeywords, simulationKeywords } from "@/boids/vocabulary/keywords";
+import { eventKeywords, simulationKeywords } from '@/boids/vocabulary/keywords'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Kbd } from "@/components/ui/kbd";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+} from '@/components/ui/accordion'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Kbd } from '@/components/ui/kbd'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
 import {
   Sidebar,
   SidebarContent,
@@ -21,15 +21,15 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import { Slider } from "@/components/ui/slider";
-import { generateRandomSeed } from "@/lib/seededRandom";
-import { useResource } from "@/systems/standard.ts";
+} from '@/components/ui/sidebar'
+import { Slider } from '@/components/ui/slider'
+import { generateRandomSeed } from '@/lib/seededRandom'
+import { useResource } from '@/systems/standard.ts'
 import {
   copyToClipboard,
   exportAndDownloadMultiRate,
-  exportEvolutionJSONL
-} from "@/utils/exportData";
+  exportEvolutionJSONL,
+} from '@/utils/exportData'
 import {
   IconActivity,
   IconAdjustments,
@@ -41,49 +41,48 @@ import {
   IconDna,
   IconRefresh,
   IconSettings,
-} from "@tabler/icons-react";
-import { useState } from "react";
-import { toast } from "sonner";
-import { BirthRatesGraph } from "./BirthRatesGraph";
-import { DeathRatesGraph } from "./DeathRatesGraph";
-import { EnergyGraph } from "./EnergyGraph";
-import { EventsPanel } from "./EventsPanel";
-import { PopulationGraph } from "./PopulationGraph";
-import { PopulationStats } from "./PopulationStats";
+} from '@tabler/icons-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { BirthRatesGraph } from './BirthRatesGraph'
+import { DeathRatesGraph } from './DeathRatesGraph'
+import { EnergyGraph } from './EnergyGraph'
+import { EventsPanel } from './EventsPanel'
+import { PopulationGraph } from './PopulationGraph'
+import { PopulationStats } from './PopulationStats'
 
-export type SpawnMode = "obstacle" | "predator";
+export type SpawnMode = 'obstacle' | 'predator'
 
 type ControlsSidebarProps = {
-  spawnMode: SpawnMode;
-  onSpawnModeChange: (mode: SpawnMode) => void;
-};
+  spawnMode: SpawnMode
+  onSpawnModeChange: (mode: SpawnMode) => void
+}
 
 export function ControlsSidebar({
   spawnMode,
   onSpawnModeChange,
 }: ControlsSidebarProps) {
-  const { useStore: useRuntimeStore } = useResource("runtimeStore");
-  const { useStore: useAnalyticsStore } = useResource("analyticsStore");
-  const { store: boidStore } = useResource("localBoidStore");
-  const simulation = useResource("simulation")
-  const runtimeStore = useRuntimeStore((state) => state);
-  const { config, simulation: simulationState } = runtimeStore;
-  const analytics = useAnalyticsStore((state) => state.evolution.data);
-  const runtimeController = useResource("runtimeController");
-  // const lifecycleManager = useResource("lifecycleManager");
-  const randomness = useResource("randomness");
-  const time = useResource("time");
-  const timeState = time.useTime();
-  const speciesIds = Object.keys(config.species);
+  const { useStore: useRuntimeStore } = useResource('runtimeStore')
+  const { useStore: useAnalyticsStore } = useResource('analyticsStore')
+  const { store: boidStore } = useResource('localBoidStore')
+  const simulation = useResource('simulation')
+  const runtimeStore = useRuntimeStore((state) => state)
+  const { config, simulation: simulationState } = runtimeStore
+  const analytics = useAnalyticsStore((state) => state.evolution.data)
+  const runtimeController = useResource('runtimeController')
+  const randomness = useResource('randomness')
+  const time = useResource('time')
+  const timeState = time.useTime()
+  const speciesIds = Object.keys(config.species)
   const [activeTab, setActiveTab] = useState<
-    "controls" | "species" | "events" | "stats" | "graphs"
-  >("controls");
+    'controls' | 'species' | 'events' | 'stats' | 'graphs'
+  >('controls')
   const [activeSpecies, setActiveSpecies] = useState(
-    speciesIds[0] || "explorer",
-  );
-  const [seedInput, setSeedInput] = useState(config.randomSeed || "");
+    speciesIds[0] || 'explorer'
+  )
+  const [seedInput, setSeedInput] = useState(config.randomSeed || '')
 
-  const species = config.species[activeSpecies];
+  const species = config.species[activeSpecies]
 
   return (
     <Sidebar
@@ -97,8 +96,8 @@ export function ControlsSidebar({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveTab("controls")}
-                isActive={activeTab === "controls"}
+                onClick={() => setActiveTab('controls')}
+                isActive={activeTab === 'controls'}
                 tooltip="Controls"
               >
                 <IconSettings className="size-4" />
@@ -107,8 +106,8 @@ export function ControlsSidebar({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveTab("species")}
-                isActive={activeTab === "species"}
+                onClick={() => setActiveTab('species')}
+                isActive={activeTab === 'species'}
                 tooltip="Species"
               >
                 <IconDna className="size-4" />
@@ -117,8 +116,8 @@ export function ControlsSidebar({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveTab("events")}
-                isActive={activeTab === "events"}
+                onClick={() => setActiveTab('events')}
+                isActive={activeTab === 'events'}
                 tooltip="Events"
               >
                 <IconActivity className="size-4" />
@@ -127,8 +126,8 @@ export function ControlsSidebar({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveTab("stats")}
-                isActive={activeTab === "stats"}
+                onClick={() => setActiveTab('stats')}
+                isActive={activeTab === 'stats'}
                 tooltip="Stats"
               >
                 <IconChartBar className="size-4" />
@@ -137,8 +136,8 @@ export function ControlsSidebar({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => setActiveTab("graphs")}
-                isActive={activeTab === "graphs"}
+                onClick={() => setActiveTab('graphs')}
+                isActive={activeTab === 'graphs'}
                 tooltip="Graphs"
               >
                 <IconChartLine className="size-4" />
@@ -151,7 +150,7 @@ export function ControlsSidebar({
         <Separator />
 
         {/* Controls Tab */}
-        {activeTab === "controls" && (
+        {activeTab === 'controls' && (
           <>
             {/* Global Settings */}
             <SidebarGroup className="px-0">
@@ -170,11 +169,13 @@ export function ControlsSidebar({
                   <Slider
                     value={[config.parameters.perceptionRadius]}
                     onValueChange={(values) => {
-                      const value = Array.isArray(values) ? values[0] : values;
+                      const value = Array.isArray(values) ? values[0] : values
                       simulation.dispatch({
                         type: simulationKeywords.commands.updateParameters,
-                        parameters: { perceptionRadius: value },
-                      });
+                        parameters: {
+                          perceptionRadius: value,
+                        },
+                      })
                     }}
                     min={10}
                     max={150}
@@ -192,11 +193,13 @@ export function ControlsSidebar({
                   <Slider
                     value={[config.parameters.obstacleAvoidanceWeight]}
                     onValueChange={(values) => {
-                      const value = Array.isArray(values) ? values[0] : values;
+                      const value = Array.isArray(values) ? values[0] : values
                       simulation.dispatch({
                         type: simulationKeywords.commands.updateParameters,
-                        parameters: { obstacleAvoidanceWeight: value },
-                      });
+                        parameters: {
+                          obstacleAvoidanceWeight: value,
+                        },
+                      })
                     }}
                     min={0}
                     max={5}
@@ -214,7 +217,7 @@ export function ControlsSidebar({
               <SidebarGroupContent className="px-4 space-y-3">
                 {/* Pause/Resume Button */}
                 <Button
-                  variant={timeState.isPaused ? "default" : "destructive"}
+                  variant={timeState.isPaused ? 'default' : 'destructive'}
                   size="sm"
                   className="w-full"
                   onClick={() => {
@@ -222,10 +225,10 @@ export function ControlsSidebar({
                       type: timeState.isPaused
                         ? simulationKeywords.commands.resume
                         : simulationKeywords.commands.pause,
-                    });
+                    })
                   }}
                 >
-                  {timeState.isPaused ? "▶️ Resume" : "⏸️ Pause"}
+                  {timeState.isPaused ? '▶️ Resume' : '⏸️ Pause'}
                 </Button>
 
                 {/* Speed Control Buttons */}
@@ -234,7 +237,7 @@ export function ControlsSidebar({
                     <Button
                       key={scale}
                       variant={
-                        timeState.timeScale === scale ? "default" : "outline"
+                        timeState.timeScale === scale ? 'default' : 'outline'
                       }
                       size="sm"
                       className="flex-1 text-xs px-1"
@@ -242,7 +245,7 @@ export function ControlsSidebar({
                         simulation.dispatch({
                           type: simulationKeywords.commands.setTimeScale,
                           timeScale: scale,
-                        });
+                        })
                       }}
                     >
                       {scale}x
@@ -259,7 +262,7 @@ export function ControlsSidebar({
                     onClick={() => {
                       simulation.dispatch({
                         type: simulationKeywords.commands.step,
-                      });
+                      })
                     }}
                   >
                     ⏭️ Step (1 Tick)
@@ -269,14 +272,14 @@ export function ControlsSidebar({
                 {/* Status Indicator */}
                 <div className="text-xs text-muted-foreground text-center space-y-1">
                   <p>
-                    <strong>Frame:</strong>{" "}
+                    <strong>Frame:</strong>{' '}
                     <code className="text-primary">
                       {timeState.simulationFrame}
                     </code>
                   </p>
                   <p>
                     {timeState.isPaused
-                      ? "⏸️ PAUSED"
+                      ? '⏸️ PAUSED'
                       : `▶️ Running at ${timeState.timeScale}x speed`}
                   </p>
                 </div>
@@ -310,23 +313,23 @@ export function ControlsSidebar({
               <SidebarGroupContent className="px-4 space-y-3">
                 <div className="flex gap-2">
                   <Button
-                    variant={spawnMode === "obstacle" ? "default" : "outline"}
+                    variant={spawnMode === 'obstacle' ? 'default' : 'outline'}
                     size="sm"
                     className="flex-1"
                     onClick={() => {
-                      onSpawnModeChange("obstacle");
-                      toast.info("Mode: Place Obstacles");
+                      onSpawnModeChange('obstacle')
+                      toast.info('Mode: Place Obstacles')
                     }}
                   >
                     🚧 Obstacle
                   </Button>
                   <Button
-                    variant={spawnMode === "predator" ? "default" : "outline"}
+                    variant={spawnMode === 'predator' ? 'default' : 'outline'}
                     size="sm"
                     className="flex-1"
                     onClick={() => {
-                      onSpawnModeChange("predator");
-                      toast.info("Mode: Spawn Predators");
+                      onSpawnModeChange('predator')
+                      toast.info('Mode: Spawn Predators')
                     }}
                   >
                     🦅 Predator
@@ -361,8 +364,8 @@ export function ControlsSidebar({
                       onClick={() => {
                         runtimeController.dispatch({
                           type: eventKeywords.obstacles.cleared,
-                        });
-                        toast.success("All obstacles cleared");
+                        })
+                        toast.success('All obstacles cleared')
                       }}
                     >
                       Clear All
@@ -385,16 +388,7 @@ export function ControlsSidebar({
                   variant="outline"
                   size="sm"
                   className="w-full justify-start"
-                  onClick={() => {
-                    // TODO: reimplement this with the new architecture
-                    // const json = exportCurrentStats(
-                    //   boidStore.boids,
-                    //   runtimeStore,
-                    //   lifecycleManager.getMutationCounters(),
-                    // );
-                    // copyToClipboard(json, "Current Stats (JSON)");
-                    // toast.success("Stats copied to clipboard!");
-                  }}
+                  onClick={() => {}}
                 >
                   📋 Copy Current Stats
                 </Button>
@@ -405,10 +399,10 @@ export function ControlsSidebar({
                   className="w-full justify-start"
                   onClick={() => {
                     const jsonl = exportEvolutionJSONL(
-                      analytics.evolutionHistory,
-                    );
-                    copyToClipboard(jsonl, "Evolution Data (JSONL)");
-                    toast.success("Evolution data copied! (JSONL format)");
+                      analytics.evolutionHistory
+                    )
+                    copyToClipboard(jsonl, 'Evolution Data (JSONL)')
+                    toast.success('Evolution data copied! (JSONL format)')
                   }}
                 >
                   📈 Copy Evolution Data
@@ -420,7 +414,7 @@ export function ControlsSidebar({
                   className="w-full justify-start"
                   onClick={async () => {
                     try {
-                      toast.loading("Generating multi-rate export...");
+                      toast.loading('Generating multi-rate export...')
                       await exportAndDownloadMultiRate(
                         analytics.evolutionHistory,
                         boidStore.boids,
@@ -430,12 +424,12 @@ export function ControlsSidebar({
                           samplingRates: [1, 3, 10, 50, 100],
                           includeMetadata: true,
                           includeCurrentStats: true,
-                        },
-                      );
-                      toast.success("Evolution data exported as ZIP!");
+                        }
+                      )
+                      toast.success('Evolution data exported as ZIP!')
                     } catch (error) {
-                      toast.error("Failed to export evolution data");
-                      console.error(error);
+                      toast.error('Failed to export evolution data')
+                      console.error(error)
                     }
                   }}
                 >
@@ -467,9 +461,9 @@ export function ControlsSidebar({
                       placeholder="Enter seed..."
                       className="flex-1 text-xs font-mono"
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && seedInput.trim()) {
-                          randomness.setSeed(seedInput.trim());
-                          toast.success(`Seed set to: ${seedInput.trim()}`);
+                        if (e.key === 'Enter' && seedInput.trim()) {
+                          randomness.setSeed(seedInput.trim())
+                          toast.success(`Seed set to: ${seedInput.trim()}`)
                         }
                       }}
                     />
@@ -478,8 +472,8 @@ export function ControlsSidebar({
                       size="icon"
                       onClick={() => {
                         if (config.randomSeed) {
-                          navigator.clipboard.writeText(config.randomSeed);
-                          toast.success("Seed copied to clipboard!");
+                          navigator.clipboard.writeText(config.randomSeed)
+                          toast.success('Seed copied to clipboard!')
                         }
                       }}
                       title="Copy seed"
@@ -496,10 +490,10 @@ export function ControlsSidebar({
                     className="flex-1"
                     onClick={() => {
                       if (seedInput.trim()) {
-                        randomness.setSeed(seedInput.trim());
-                        toast.success(`Seed applied: ${seedInput.trim()}`);
+                        randomness.setSeed(seedInput.trim())
+                        toast.success(`Seed applied: ${seedInput.trim()}`)
                       } else {
-                        toast.error("Please enter a seed");
+                        toast.error('Please enter a seed')
                       }
                     }}
                   >
@@ -510,10 +504,10 @@ export function ControlsSidebar({
                     size="sm"
                     className="flex-1"
                     onClick={() => {
-                      const newSeed = generateRandomSeed();
-                      setSeedInput(newSeed);
-                      randomness.setSeed(newSeed);
-                      toast.success("Random seed generated!");
+                      const newSeed = generateRandomSeed()
+                      setSeedInput(newSeed)
+                      randomness.setSeed(newSeed)
+                      toast.success('Random seed generated!')
                     }}
                   >
                     <IconRefresh className="size-4 mr-1" />
@@ -523,9 +517,9 @@ export function ControlsSidebar({
 
                 <div className="text-xs text-muted-foreground space-y-1">
                   <p>
-                    <strong>Active:</strong>{" "}
+                    <strong>Active:</strong>{' '}
                     <code className="text-primary">
-                      {config.randomSeed || "default-seed"}
+                      {config.randomSeed || 'default-seed'}
                     </code>
                   </p>
                   <p className="text-[10px] leading-tight">
@@ -539,7 +533,7 @@ export function ControlsSidebar({
         )}
 
         {/* Species Tab */}
-        {activeTab === "species" && (
+        {activeTab === 'species' && (
           <>
             {/* Species Selector */}
             <SidebarGroup className="px-0">
@@ -547,12 +541,12 @@ export function ControlsSidebar({
               <SidebarGroupContent className="px-4">
                 <div className="flex flex-wrap gap-2">
                   {speciesIds.map((typeId) => {
-                    const sp = config.species[typeId];
+                    const sp = config.species[typeId]
                     return (
                       <Button
                         key={typeId}
                         variant={
-                          activeSpecies === typeId ? "default" : "outline"
+                          activeSpecies === typeId ? 'default' : 'outline'
                         }
                         size="sm"
                         onClick={() => setActiveSpecies(typeId)}
@@ -562,12 +556,12 @@ export function ControlsSidebar({
                               ? sp.baseGenome.visual.color
                               : undefined,
                           borderColor: sp.baseGenome.visual.color,
-                          color: activeSpecies === typeId ? "#000" : undefined,
+                          color: activeSpecies === typeId ? '#000' : undefined,
                         }}
                       >
                         {sp.name}
                       </Button>
-                    );
+                    )
                   })}
                 </div>
               </SidebarGroupContent>
@@ -579,12 +573,14 @@ export function ControlsSidebar({
             {species && (
               <SidebarGroup className="px-0">
                 <SidebarGroupLabel
-                  style={{ color: species.baseGenome.visual.color }}
+                  style={{
+                    color: species.baseGenome.visual.color,
+                  }}
                 >
                   {species.name} Traits
                 </SidebarGroupLabel>
                 <SidebarGroupContent className="px-4">
-                  <Accordion defaultValue={["traits"]}>
+                  <Accordion defaultValue={['traits']}>
                     <AccordionItem value="traits">
                       <AccordionTrigger>Genome Traits</AccordionTrigger>
                       <AccordionContent className="space-y-4 px-2">
@@ -594,7 +590,7 @@ export function ControlsSidebar({
                             <Label className="text-xs">Speed</Label>
                             <span className="text-xs font-mono text-primary">
                               {(species.baseGenome.traits.speed * 100).toFixed(
-                                0,
+                                0
                               )}
                               %
                             </span>
@@ -606,7 +602,7 @@ export function ControlsSidebar({
                             <Label className="text-xs">Force</Label>
                             <span className="text-xs font-mono text-primary">
                               {(species.baseGenome.traits.force * 100).toFixed(
-                                0,
+                                0
                               )}
                               %
                             </span>
@@ -655,7 +651,7 @@ export function ControlsSidebar({
         )}
 
         {/* Events Tab */}
-        {activeTab === "events" && (
+        {activeTab === 'events' && (
           <SidebarGroup className="px-0">
             <SidebarGroupContent className="px-0">
               <EventsPanel />
@@ -664,7 +660,7 @@ export function ControlsSidebar({
         )}
 
         {/* Stats Tab */}
-        {activeTab === "stats" && (
+        {activeTab === 'stats' && (
           <SidebarGroup className="px-0">
             <SidebarGroupContent className="px-0">
               <PopulationStats />
@@ -673,7 +669,7 @@ export function ControlsSidebar({
         )}
 
         {/* Graphs Tab */}
-        {activeTab === "graphs" && (
+        {activeTab === 'graphs' && (
           <SidebarGroup className="px-0">
             <SidebarGroupContent className="px-4 space-y-4">
               <PopulationGraph />
@@ -685,5 +681,5 @@ export function ControlsSidebar({
         )}
       </SidebarContent>
     </Sidebar>
-  );
+  )
 }

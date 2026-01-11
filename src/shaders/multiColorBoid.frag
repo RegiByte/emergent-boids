@@ -18,7 +18,7 @@ void main() {
   
   vec3 finalColor;
   
-  // Session 102: Color dominance detection (tolerates anti-aliasing)
+  
   // A channel is "dominant" if it's 2x larger than the other two channels
   bool rDominant = shapeColor.r > shapeColor.g * 2.0 && shapeColor.r > shapeColor.b * 2.0;
   bool gDominant = shapeColor.g > shapeColor.r * 2.0 && shapeColor.g > shapeColor.b * 2.0;

@@ -1,66 +1,61 @@
-import { iterateBoids } from "../iterators";
-import type { Boid, BoidsById } from "../vocabulary/schemas/entities";
-import type { SpeciesConfig } from "../vocabulary/schemas/species";
-import { colorDistance } from "@/lib/colors";
-
-// ============================================
-// Genetics Statistics
-// ============================================
+import { iterateBoids } from '../iterators'
+import type { Boid, BoidsById } from '../vocabulary/schemas/entities'
+import type { SpeciesConfig } from '../vocabulary/schemas/species'
+import { colorDistance } from '@/lib/colors'
 
 /**
  * Statistics for a single trait across a population
  */
 export interface TraitStats {
-  mean: number;
-  min: number;
-  max: number;
-  stdDev: number;
+  mean: number
+  min: number
+  max: number
+  stdDev: number
 }
 
 /**
  * Body part statistics
  */
 export interface BodyPartStats {
-  avgPartsPerBoid: number;
-  minParts: number;
-  maxParts: number;
-  partTypeCounts: Record<string, number>;
+  avgPartsPerBoid: number
+  minParts: number
+  maxParts: number
+  partTypeCounts: Record<string, number>
 }
 
 /**
  * Mutation tracking counters
  */
 export interface MutationCounters {
-  traitMutations: number;
-  colorMutations: number;
-  bodyPartMutations: number;
-  totalOffspring: number;
+  traitMutations: number
+  colorMutations: number
+  bodyPartMutations: number
+  totalOffspring: number
 }
 
 /**
  * Complete genetics statistics for a species
  */
 export interface GeneticsStats {
-  generationDistribution: Record<string, number>;
-  maxGeneration: number;
-  avgGeneration: number;
+  generationDistribution: Record<string, number>
+  maxGeneration: number
+  avgGeneration: number
   traits: {
-    speed: TraitStats;
-    size: TraitStats;
-    vision: TraitStats;
-    force: TraitStats;
-    aggression: TraitStats;
-    sociability: TraitStats;
-    efficiency: TraitStats;
-    // Phase 1 traits (survival-critical)
-    fearResponse: TraitStats;
-    maturityRate: TraitStats;
-    longevity: TraitStats;
-  };
-  colorDiversity: number;
-  uniqueColors: number;
-  bodyPartStats: BodyPartStats;
-  mutationsSinceLastSnapshot: MutationCounters;
+    speed: TraitStats
+    size: TraitStats
+    vision: TraitStats
+    force: TraitStats
+    aggression: TraitStats
+    sociability: TraitStats
+    efficiency: TraitStats
+    fearResponse: TraitStats
+    maturityRate: TraitStats
+    longevity: TraitStats
+  }
+  colorDiversity: number
+  uniqueColors: number
+  bodyPartStats: BodyPartStats
+  mutationsSinceLastSnapshot: MutationCounters
 }
 
 /**
@@ -68,19 +63,18 @@ export interface GeneticsStats {
  */
 function computeTraitStats(values: number[]): TraitStats {
   if (values.length === 0) {
-    return { mean: 0, min: 0, max: 0, stdDev: 0 };
+    return { mean: 0, min: 0, max: 0, stdDev: 0 }
   }
 
-  const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const mean = values.reduce((sum, v) => sum + v, 0) / values.length
+  const min = Math.min(...values)
+  const max = Math.max(...values)
 
-  // Standard deviation
-  const squaredDiffs = values.map((v) => Math.pow(v - mean, 2));
-  const variance = squaredDiffs.reduce((sum, v) => sum + v, 0) / values.length;
-  const stdDev = Math.sqrt(variance);
+  const squaredDiffs = values.map((v) => Math.pow(v - mean, 2))
+  const variance = squaredDiffs.reduce((sum, v) => sum + v, 0) / values.length
+  const stdDev = Math.sqrt(variance)
 
-  return { mean, min, max, stdDev };
+  return { mean, min, max, stdDev }
 }
 
 /**
@@ -89,11 +83,9 @@ function computeTraitStats(values: number[]): TraitStats {
  */
 function quantizeColor(color: string): string {
   try {
-    // Use a simple hex-based quantization (first 4 hex digits)
-    // This groups similar colors together
-    return color.substring(0, 5); // "#XXYY" - groups similar colors
+    return color.substring(0, 5) // "#XXYY" - groups similar colors
   } catch {
-    return color;
+    return color
   }
 }
 
@@ -108,7 +100,7 @@ function quantizeColor(color: string): string {
 export function computeGeneticsStats(
   boids: Boid[],
   speciesConfig: SpeciesConfig,
-  mutationCounters: MutationCounters,
+  mutationCounters: MutationCounters
 ): GeneticsStats {
   if (boids.length === 0) {
     return {
@@ -136,37 +128,34 @@ export function computeGeneticsStats(
         partTypeCounts: {},
       },
       mutationsSinceLastSnapshot: mutationCounters,
-    };
+    }
   }
 
-  // Generation distribution
-  const generationDistribution: Record<string, number> = {};
-  let maxGeneration = 0;
-  let totalGenerations = 0;
+  const generationDistribution: Record<string, number> = {}
+  let maxGeneration = 0
+  let totalGenerations = 0
 
   for (const boid of boids) {
-    const gen = boid.genome.generation;
+    const gen = boid.genome.generation
     generationDistribution[gen.toString()] =
-      (generationDistribution[gen.toString()] || 0) + 1;
-    maxGeneration = Math.max(maxGeneration, gen);
-    totalGenerations += gen;
+      (generationDistribution[gen.toString()] || 0) + 1
+    maxGeneration = Math.max(maxGeneration, gen)
+    totalGenerations += gen
   }
 
-  const avgGeneration = totalGenerations / boids.length;
+  const avgGeneration = totalGenerations / boids.length
 
-  // Extract trait arrays
-  const speeds = boids.map((b) => b.genome.traits.speed);
-  const sizes = boids.map((b) => b.genome.traits.size);
-  const visions = boids.map((b) => b.genome.traits.vision);
-  const forces = boids.map((b) => b.genome.traits.force);
-  const aggressions = boids.map((b) => b.genome.traits.aggression);
-  const sociabilities = boids.map((b) => b.genome.traits.sociability);
-  const efficiencies = boids.map((b) => b.genome.traits.efficiency);
-  const fearResponses = boids.map((b) => b.genome.traits.fearResponse);
-  const maturityRates = boids.map((b) => b.genome.traits.maturityRate);
-  const longevities = boids.map((b) => b.genome.traits.longevity);
+  const speeds = boids.map((b) => b.genome.traits.speed)
+  const sizes = boids.map((b) => b.genome.traits.size)
+  const visions = boids.map((b) => b.genome.traits.vision)
+  const forces = boids.map((b) => b.genome.traits.force)
+  const aggressions = boids.map((b) => b.genome.traits.aggression)
+  const sociabilities = boids.map((b) => b.genome.traits.sociability)
+  const efficiencies = boids.map((b) => b.genome.traits.efficiency)
+  const fearResponses = boids.map((b) => b.genome.traits.fearResponse)
+  const maturityRates = boids.map((b) => b.genome.traits.maturityRate)
+  const longevities = boids.map((b) => b.genome.traits.longevity)
 
-  // Compute trait statistics
   const traits = {
     speed: computeTraitStats(speeds),
     size: computeTraitStats(sizes),
@@ -178,38 +167,34 @@ export function computeGeneticsStats(
     fearResponse: computeTraitStats(fearResponses),
     maturityRate: computeTraitStats(maturityRates),
     longevity: computeTraitStats(longevities),
-  };
+  }
 
-  // Color diversity - average LAB distance from species base color
-  const baseColor = speciesConfig.baseGenome.visual.color;
+  const baseColor = speciesConfig.baseGenome.visual.color
   const colorDistances = boids.map((b) => {
     try {
-      return colorDistance(b.genome.visual.color, baseColor);
+      return colorDistance(b.genome.visual.color, baseColor)
     } catch {
-      return 0; // If color parsing fails, assume no distance
+      return 0 // If color parsing fails, assume no distance
     }
-  });
+  })
   const colorDiversity =
-    colorDistances.reduce((sum, d) => sum + d, 0) / colorDistances.length;
+    colorDistances.reduce((sum, d) => sum + d, 0) / colorDistances.length
 
-  // Unique colors (quantized to reduce noise)
   const quantizedColors = new Set(
-    boids.map((b) => quantizeColor(b.genome.visual.color)),
-  );
-  const uniqueColors = quantizedColors.size;
+    boids.map((b) => quantizeColor(b.genome.visual.color))
+  )
+  const uniqueColors = quantizedColors.size
 
-  // Body part statistics
-  const partCounts = boids.map((b) => b.genome.visual.bodyParts.length);
+  const partCounts = boids.map((b) => b.genome.visual.bodyParts.length)
   const avgPartsPerBoid =
-    partCounts.reduce((sum, c) => sum + c, 0) / partCounts.length;
-  const minParts = Math.min(...partCounts, 0); // Default 0 if no boids
-  const maxParts = Math.max(...partCounts, 0);
+    partCounts.reduce((sum, c) => sum + c, 0) / partCounts.length
+  const minParts = Math.min(...partCounts, 0) // Default 0 if no boids
+  const maxParts = Math.max(...partCounts, 0)
 
-  // Count part types
-  const partTypeCounts: Record<string, number> = {};
+  const partTypeCounts: Record<string, number> = {}
   for (const boid of boids) {
     for (const part of boid.genome.visual.bodyParts) {
-      partTypeCounts[part.type] = (partTypeCounts[part.type] || 0) + 1;
+      partTypeCounts[part.type] = (partTypeCounts[part.type] || 0) + 1
     }
   }
 
@@ -227,7 +212,7 @@ export function computeGeneticsStats(
       partTypeCounts,
     },
     mutationsSinceLastSnapshot: mutationCounters,
-  };
+  }
 }
 
 /**
@@ -241,44 +226,38 @@ export function computeGeneticsStats(
 export function computeGeneticsStatsBySpecies(
   boids: BoidsById,
   speciesConfigs: Record<string, SpeciesConfig>,
-  mutationCountersBySpecies: Record<string, MutationCounters>,
+  mutationCountersBySpecies: Record<string, MutationCounters>
 ): Record<string, GeneticsStats> {
-  const result: Record<string, GeneticsStats> = {};
+  const result: Record<string, GeneticsStats> = {}
 
-  // Group boids by species
-  const boidsBySpecies: Record<string, Boid[]> = {};
+  const boidsBySpecies: Record<string, Boid[]> = {}
   for (const boid of iterateBoids(boids)) {
     if (!boidsBySpecies[boid.typeId]) {
-      boidsBySpecies[boid.typeId] = [];
+      boidsBySpecies[boid.typeId] = []
     }
-    boidsBySpecies[boid.typeId].push(boid);
+    boidsBySpecies[boid.typeId].push(boid)
   }
 
-  // Compute stats for each species
   for (const [speciesId, speciesBoids] of Object.entries(boidsBySpecies)) {
-    const speciesConfig = speciesConfigs[speciesId];
-    if (!speciesConfig) continue;
+    const speciesConfig = speciesConfigs[speciesId]
+    if (!speciesConfig) continue
 
     const mutationCounters = mutationCountersBySpecies[speciesId] || {
       traitMutations: 0,
       colorMutations: 0,
       bodyPartMutations: 0,
       totalOffspring: 0,
-    };
+    }
 
     result[speciesId] = computeGeneticsStats(
       speciesBoids,
       speciesConfig,
-      mutationCounters,
-    );
+      mutationCounters
+    )
   }
 
-  return result;
+  return result
 }
-
-// ============================================
-// Evolution Metrics
-// ============================================
 
 /**
  * Evolution metrics - Rates of change between snapshots
@@ -287,43 +266,39 @@ export function computeGeneticsStatsBySpecies(
  * and how strong selection pressure is.
  */
 export interface EvolutionMetrics {
-  // Trait drift (change per tick)
   traitDrift: {
-    speed: number;
-    size: number;
-    vision: number;
-    force: number;
-    aggression: number;
-    sociability: number;
-    efficiency: number;
-    fearResponse: number;
-    maturityRate: number;
-    longevity: number;
-  };
+    speed: number
+    size: number
+    vision: number
+    force: number
+    aggression: number
+    sociability: number
+    efficiency: number
+    fearResponse: number
+    maturityRate: number
+    longevity: number
+  }
 
-  // Generation turnover (generations per tick)
-  generationRate: number;
+  generationRate: number
 
-  // Mutation effectiveness (mutations per offspring)
   mutationRate: {
-    traitMutations: number;
-    colorMutations: number;
-    bodyPartMutations: number;
-  };
+    traitMutations: number
+    colorMutations: number
+    bodyPartMutations: number
+  }
 
-  // Selection pressure (trait variance change per tick)
   selectionPressure: {
-    speed: number;
-    size: number;
-    vision: number;
-    force: number;
-    aggression: number;
-    sociability: number;
-    efficiency: number;
-    fearResponse: number;
-    maturityRate: number;
-    longevity: number;
-  };
+    speed: number
+    size: number
+    vision: number
+    force: number
+    aggression: number
+    sociability: number
+    efficiency: number
+    fearResponse: number
+    maturityRate: number
+    longevity: number
+  }
 }
 
 /**
@@ -339,10 +314,9 @@ export interface EvolutionMetrics {
 export function computeEvolutionMetrics(
   current: GeneticsStats,
   previous: GeneticsStats | null,
-  tickDelta: number,
+  tickDelta: number
 ): EvolutionMetrics {
   if (!previous || tickDelta === 0) {
-    // First snapshot or no time elapsed - return zero rates
     return {
       traitDrift: {
         speed: 0,
@@ -374,10 +348,9 @@ export function computeEvolutionMetrics(
         maturityRate: 0,
         longevity: 0,
       },
-    };
+    }
   }
 
-  // Trait drift - change in mean per tick
   const traitDrift = {
     speed: (current.traits.speed.mean - previous.traits.speed.mean) / tickDelta,
     size: (current.traits.size.mean - previous.traits.size.mean) / tickDelta,
@@ -402,14 +375,12 @@ export function computeEvolutionMetrics(
     longevity:
       (current.traits.longevity.mean - previous.traits.longevity.mean) /
       tickDelta,
-  };
+  }
 
-  // Generation turnover - change in max generation per tick
   const generationRate =
-    (current.maxGeneration - previous.maxGeneration) / tickDelta;
+    (current.maxGeneration - previous.maxGeneration) / tickDelta
 
-  // Mutation rates - mutations per offspring
-  const totalOffspring = current.mutationsSinceLastSnapshot.totalOffspring || 1; // Avoid division by zero
+  const totalOffspring = current.mutationsSinceLastSnapshot.totalOffspring || 1 // Avoid division by zero
   const mutationRate = {
     traitMutations:
       current.mutationsSinceLastSnapshot.traitMutations / totalOffspring,
@@ -417,11 +388,8 @@ export function computeEvolutionMetrics(
       current.mutationsSinceLastSnapshot.colorMutations / totalOffspring,
     bodyPartMutations:
       current.mutationsSinceLastSnapshot.bodyPartMutations / totalOffspring,
-  };
+  }
 
-  // Selection pressure - change in trait variance (stdDev) per tick
-  // Positive = increasing variance (diversifying selection)
-  // Negative = decreasing variance (directional selection)
   const selectionPressure = {
     speed:
       (current.traits.speed.stdDev - previous.traits.speed.stdDev) / tickDelta,
@@ -452,12 +420,12 @@ export function computeEvolutionMetrics(
     longevity:
       (current.traits.longevity.stdDev - previous.traits.longevity.stdDev) /
       tickDelta,
-  };
+  }
 
   return {
     traitDrift,
     generationRate,
     mutationRate,
     selectionPressure,
-  };
+  }
 }

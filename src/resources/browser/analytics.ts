@@ -1,14 +1,25 @@
-import { defineResource } from "braided";
-import { eventKeywords, simulationKeywords } from "../../boids/vocabulary/keywords.ts";
-import type { AnalyticsStoreResource } from "./analyticsStore.ts";
-import type { BoidEngine } from "./engine.ts";
-import { LocalBoidStoreResource } from "./localBoidStore.ts";
-import type { SimulationGateway } from "./simulationController.ts";
-import { iterateBoids } from "@/boids/iterators.ts";
-import { RuntimeStoreResource } from "./runtimeStore.ts";
-import { computeAgeDistributionBySpecies, computeDeathMarkerStats, computeEnergyStatsBySpecies, computeFoodSourceStatsByType, computeReproductionMetricsBySpecies, computeSpatialPatternsBySpecies, getStanceDistributionBySpecies } from "@/boids/analytics/statistics.ts";
-import { EvolutionSnapshot } from "@/boids/vocabulary/schemas/evolution.ts";
-import { computeGeneticsStatsBySpecies } from "@/boids/analytics/genetics.ts";
+import { defineResource } from 'braided'
+import {
+  eventKeywords,
+  simulationKeywords,
+} from '../../boids/vocabulary/keywords.ts'
+import type { AnalyticsStoreResource } from './analyticsStore.ts'
+import type { BoidEngine } from './engine.ts'
+import { LocalBoidStoreResource } from './localBoidStore.ts'
+import type { SimulationGateway } from './simulationController.ts'
+import { iterateBoids } from '@/boids/iterators.ts'
+import { RuntimeStoreResource } from './runtimeStore.ts'
+import {
+  computeAgeDistributionBySpecies,
+  computeDeathMarkerStats,
+  computeEnergyStatsBySpecies,
+  computeFoodSourceStatsByType,
+  computeReproductionMetricsBySpecies,
+  computeSpatialPatternsBySpecies,
+  getStanceDistributionBySpecies,
+} from '@/boids/analytics/statistics.ts'
+import { EvolutionSnapshot } from '@/boids/vocabulary/schemas/evolution.ts'
+import { computeGeneticsStatsBySpecies } from '@/boids/analytics/genetics.ts'
 
 /**
  * Analytics Resource
@@ -34,11 +45,10 @@ import { computeGeneticsStatsBySpecies } from "@/boids/analytics/genetics.ts";
  */
 export const analytics = defineResource({
   dependencies: [
-    "runtimeController",
-    "runtimeStore",
-    "analyticsStore",
-    // "lifecycleManager",
-    "localBoidStore",
+    'runtimeController',
+    'runtimeStore',
+    'analyticsStore',
+    'localBoidStore',
   ],
   start: ({
     runtimeController,
@@ -46,21 +56,20 @@ export const analytics = defineResource({
     analyticsStore,
     localBoidStore,
   }: {
-    engine: BoidEngine;
-    runtimeController: SimulationGateway;
-    runtimeStore: RuntimeStoreResource;
-    analyticsStore: AnalyticsStoreResource;
-    localBoidStore: LocalBoidStoreResource;
+    engine: BoidEngine
+    runtimeController: SimulationGateway
+    runtimeStore: RuntimeStoreResource
+    analyticsStore: AnalyticsStoreResource
+    localBoidStore: LocalBoidStoreResource
   }) => {
-    let tickCounter = 0;
-    console.log("[Analytics] Starting", runtimeController);
-    let lastSnapshotTime = Date.now();
-    let isFirstSnapshot = true; // Track if this is the first snapshot
-    let snapshotCount = 0; // Track total snapshots for genetics sampling
+    let tickCounter = 0
+    console.log('[Analytics] Starting', runtimeController)
+    let lastSnapshotTime = Date.now()
+    let isFirstSnapshot = true // Track if this is the first snapshot
+    let snapshotCount = 0 // Track total snapshots for genetics sampling
 
     const boidStore = localBoidStore.store
 
-    // Event counters (reset after each snapshot)
     const eventCounters = {
       births: {} as Record<string, number>,
       deaths: {} as Record<string, number>,
@@ -74,128 +83,113 @@ export const analytics = defineResource({
       totalFleeDistance: 0,
       chaseCount: 0,
       fleeCount: 0,
-    };
-    
-    // Session 124: Mutation counters per species (accumulated from worker events)
-    const mutationCounters: Record<string, {
-      traitMutations: number;
-      colorMutations: number;
-      bodyPartMutations: number;
-      totalOffspring: number;
-    }> = {};
+    }
 
-    // Subscribe to all events
+    const mutationCounters: Record<
+      string,
+      {
+        traitMutations: number
+        colorMutations: number
+        bodyPartMutations: number
+        totalOffspring: number
+      }
+    > = {}
+
     const unsubscribe = runtimeController.subscribe((event) => {
-      // Track event using analyticsStore helper (handles filtering)
-      analyticsStore.trackEvent(event, tickCounter);
+      analyticsStore.trackEvent(event, tickCounter)
 
-      // Track lifecycle events (Session 119: Updated to use simulation events)
       if (event.type === simulationKeywords.events.boidsReproduced) {
-        // Handle batched reproduction events
         for (const reproduction of event.boids) {
-          // Each reproduction has offspring array
           for (const offspring of reproduction.offspring) {
-            const typeId = offspring.typeId;
+            const typeId = offspring.typeId
             eventCounters.births[typeId] =
-              (eventCounters.births[typeId] || 0) + 1;
-            
-            // Session 124: Accumulate mutation counters per species
+              (eventCounters.births[typeId] || 0) + 1
+
             if (!mutationCounters[typeId]) {
               mutationCounters[typeId] = {
                 traitMutations: 0,
                 colorMutations: 0,
                 bodyPartMutations: 0,
                 totalOffspring: 0,
-              };
+              }
             }
-            mutationCounters[typeId].totalOffspring++;
+            mutationCounters[typeId].totalOffspring++
           }
-          
-          // Session 124: Track mutations if available
+
           if (reproduction.mutations) {
-            const typeId = reproduction.offspring[0]?.typeId;
+            const typeId = reproduction.offspring[0]?.typeId
             if (typeId && mutationCounters[typeId]) {
-              mutationCounters[typeId].traitMutations += reproduction.mutations.traitMutations;
-              mutationCounters[typeId].colorMutations += reproduction.mutations.colorMutations;
-              mutationCounters[typeId].bodyPartMutations += reproduction.mutations.bodyPartMutations;
+              mutationCounters[typeId].traitMutations +=
+                reproduction.mutations.traitMutations
+              mutationCounters[typeId].colorMutations +=
+                reproduction.mutations.colorMutations
+              mutationCounters[typeId].bodyPartMutations +=
+                reproduction.mutations.bodyPartMutations
             }
           }
         }
       } else if (event.type === simulationKeywords.events.boidsDied) {
-        // Handle batched death events
         for (const death of event.boids) {
-          const typeId = death.typeId;
-          const reason = death.reason;
+          const typeId = death.typeId
+          const reason = death.reason
 
-          // Track total deaths
-          eventCounters.deaths[typeId] = (eventCounters.deaths[typeId] || 0) + 1;
+          eventCounters.deaths[typeId] = (eventCounters.deaths[typeId] || 0) + 1
 
-          // Track deaths by cause
           if (!eventCounters.deathsByCause[typeId]) {
             eventCounters.deathsByCause[typeId] = {
               old_age: 0,
               starvation: 0,
               predation: 0,
-            };
+            }
           }
-          eventCounters.deathsByCause[typeId][reason]++;
+          eventCounters.deathsByCause[typeId][reason]++
         }
       } else if (event.type === simulationKeywords.events.boidsCaught) {
-        // Handle batched catch events
         for (const catchEvent of event.catches) {
-          const typeId = catchEvent.preyTypeId;
+          const typeId = catchEvent.preyTypeId
           eventCounters.catches[typeId] =
-            (eventCounters.catches[typeId] || 0) + 1;
+            (eventCounters.catches[typeId] || 0) + 1
         }
       } else if (event.type === eventKeywords.time.passed) {
-        // Capture snapshot every N ticks
-        tickCounter++;
+        tickCounter++
         const snapshotInterval =
-          analyticsStore.store.getState().evolution.config.snapshotInterval;
+          analyticsStore.store.getState().evolution.config.snapshotInterval
         if (tickCounter % snapshotInterval === 0) {
-          captureSnapshot();
+          captureSnapshot()
         }
       }
-    });
+    })
 
     const captureSnapshot = () => {
-      const { config, simulation, ui } = runtimeStore.store.getState();
-      const timestamp = Date.now();
-      const deltaSeconds = (timestamp - lastSnapshotTime) / 1000;
-      lastSnapshotTime = timestamp;
-      // Calculate populations per species
-      const populations: Record<string, number> = {};
+      const { config, simulation, ui } = runtimeStore.store.getState()
+      const timestamp = Date.now()
+      const deltaSeconds = (timestamp - lastSnapshotTime) / 1000
+      lastSnapshotTime = timestamp
+      const populations: Record<string, number> = {}
       for (const boid of iterateBoids(boidStore.boids)) {
-        populations[boid.typeId] = (populations[boid.typeId] || 0) + 1;
+        populations[boid.typeId] = (populations[boid.typeId] || 0) + 1
       }
-      // Compute comprehensive statistics
-      const energyStats = computeEnergyStatsBySpecies(boidStore.boids);
+      const energyStats = computeEnergyStatsBySpecies(boidStore.boids)
       const ageStats = computeAgeDistributionBySpecies(
         boidStore.boids,
         config.species
-      );
+      )
       const spatialPatterns = computeSpatialPatternsBySpecies(
         boidStore.boids,
         config.world.width,
         config.world.height
-      );
+      )
       const reproductionMetrics = computeReproductionMetricsBySpecies(
         boidStore.boids,
         config.species,
         config.parameters.reproductionEnergyThreshold
-      );
-      // Stance distribution by species
-      const stancesBySpecies = getStanceDistributionBySpecies(boidStore.boids);
-      // Food source statistics
+      )
+      const stancesBySpecies = getStanceDistributionBySpecies(boidStore.boids)
       const foodSourceStats = computeFoodSourceStatsByType(
         simulation.foodSources
-      );
-      // Death marker statistics
-      const deathMarkerStats = computeDeathMarkerStats(simulation.deathMarkers);
-      // Get atmosphere state
-      const atmosphereState = ui.visualSettings.atmosphere.activeEvent;
-      // Build configuration snapshot (only for first snapshot to reduce file size)
-      // OPTIMIZATION: activeParameters is ~1KB and never changes, so we only include it once
+      )
+      const deathMarkerStats = computeDeathMarkerStats(simulation.deathMarkers)
+      const atmosphereState = ui.visualSettings.atmosphere.activeEvent
       const activeParameters = isFirstSnapshot
         ? {
             perceptionRadius: config.parameters.perceptionRadius,
@@ -205,8 +199,6 @@ export const analytics = defineResource({
               config.parameters.reproductionEnergyThreshold,
             speciesConfigs: Object.entries(config.species).reduce(
               (acc, [id, species]) => {
-                // Use genome traits converted to absolute values (multiply by physics limits)
-                // These are approximations since we don't have access to physics here
                 acc[id] = {
                   role: species.role,
                   maxSpeed: species.baseGenome.traits.speed * 10, // Assuming physics.maxSpeed = 10
@@ -217,55 +209,47 @@ export const analytics = defineResource({
                   fearFactor: species.baseGenome.traits.fearResponse,
                   reproductionType: species.reproduction.type,
                   offspringCount: species.reproduction.offspringCount,
-                };
-                return acc;
+                }
+                return acc
               },
               {} as Record<
                 string,
                 {
-                  role: "prey" | "predator";
-                  maxSpeed: number;
-                  maxForce: number;
-                  maxEnergy: number;
-                  energyLossRate: number;
-                  fearFactor: number;
-                  reproductionType: "sexual" | "asexual";
-                  offspringCount: number;
+                  role: 'prey' | 'predator'
+                  maxSpeed: number
+                  maxForce: number
+                  maxEnergy: number
+                  energyLossRate: number
+                  fearFactor: number
+                  reproductionType: 'sexual' | 'asexual'
+                  offspringCount: number
                 }
               >
             ),
           }
-        : undefined;
-      // Ensure all species have death cause entries (even if zero)
+        : undefined
       const deathsByCause: Record<
         string,
         { old_age: number; starvation: number; predation: number }
-      > = {};
+      > = {}
       Object.keys(config.species).forEach((typeId) => {
         deathsByCause[typeId] = eventCounters.deathsByCause[typeId] || {
           old_age: 0,
           starvation: 0,
           predation: 0,
-        };
-      });
-      // Create comprehensive snapshot
+        }
+      })
       const snapshot: EvolutionSnapshot = {
-        // Temporal context
         tick: tickCounter,
         timestamp,
         deltaSeconds,
-        // Population dynamics
         populations,
         births: { ...eventCounters.births },
         deaths: { ...eventCounters.deaths },
         deathsByCause,
-        // Energy dynamics
         energy: energyStats,
-        // Behavioral distribution
         stances: stancesBySpecies,
-        // Age distribution
         age: ageStats,
-        // Environmental state
         environment: {
           foodSources: foodSourceStats,
           deathMarkers: deathMarkerStats,
@@ -273,9 +257,7 @@ export const analytics = defineResource({
             count: simulation.obstacles.length,
           },
         },
-        // Spatial patterns
         spatial: spatialPatterns,
-        // Predator-prey dynamics
         interactions: {
           catches: { ...eventCounters.catches },
           escapes: { ...eventCounters.escapes },
@@ -288,12 +270,8 @@ export const analytics = defineResource({
               ? eventCounters.totalFleeDistance / eventCounters.fleeCount
               : 0,
         },
-        // Reproduction dynamics
         reproduction: reproductionMetrics,
-        // Configuration snapshot
         activeParameters,
-        // Genetics & Evolution (sampled based on geneticsSamplingInterval)
-        // OPTIMIZATION: Genetics is ~6KB per snapshot, sampling reduces file size significantly
         genetics:
           snapshotCount %
             analyticsStore.store.getState().evolution.config
@@ -302,10 +280,9 @@ export const analytics = defineResource({
             ? computeGeneticsStatsBySpecies(
                 boidStore.boids,
                 config.species,
-                mutationCounters // Session 124: Use local mutation counters (from worker events)
+                mutationCounters
               )
             : {}, // Empty object when not sampling (saves ~55% of snapshot size)
-        // Atmosphere state
         atmosphere: {
           activeEvent: atmosphereState?.eventType || null,
           eventStartedAtTick: atmosphereState ? tickCounter : null,
@@ -314,48 +291,43 @@ export const analytics = defineResource({
               Math.floor((timestamp - atmosphereState.startedAt) / 1000)
             : null,
         },
-      };
-      // Update analyticsStore with new snapshot
-      analyticsStore.captureSnapshot(snapshot);
-      // Increment snapshot counter
-      snapshotCount++;
-      // Periodic genetics stats logging (every 300 frames = ~5 seconds at 60fps)
+      }
+      analyticsStore.captureSnapshot(snapshot)
+      snapshotCount++
       if (
         tickCounter % 300 === 0 &&
         tickCounter > 0 &&
         Object.keys(snapshot.genetics).length > 0
       ) {
-        console.log("🧬 GENETICS STATS", {
+        console.log('🧬 GENETICS STATS', {
           frame: tickCounter,
           genetics: snapshot.genetics,
-        });
+        })
       }
-      // Reset event counters
-      eventCounters.births = {};
-      eventCounters.deaths = {};
-      eventCounters.deathsByCause = {};
-      eventCounters.catches = {};
-      eventCounters.escapes = {};
-      // Session 124: Reset mutation counters (no longer from lifecycleManager)
+      eventCounters.births = {}
+      eventCounters.deaths = {}
+      eventCounters.deathsByCause = {}
+      eventCounters.catches = {}
+      eventCounters.escapes = {}
+
       for (const typeId in mutationCounters) {
         mutationCounters[typeId] = {
           traitMutations: 0,
           colorMutations: 0,
           bodyPartMutations: 0,
           totalOffspring: 0,
-        };
+        }
       }
-      eventCounters.totalChaseDistance = 0;
-      eventCounters.totalFleeDistance = 0;
-      eventCounters.chaseCount = 0;
-      eventCounters.fleeCount = 0;
-      // Mark that we've captured the first snapshot (for activeParameters optimization)
-      isFirstSnapshot = false;
-    };
+      eventCounters.totalChaseDistance = 0
+      eventCounters.totalFleeDistance = 0
+      eventCounters.chaseCount = 0
+      eventCounters.fleeCount = 0
+      isFirstSnapshot = false
+    }
 
-    return { 
+    return {
       unsubscribe,
-      // Session 124: Expose mutation counters for external use (e.g., data export)
+
       getMutationCounters: () => ({ ...mutationCounters }),
       resetMutationCounters: () => {
         for (const typeId in mutationCounters) {
@@ -364,12 +336,12 @@ export const analytics = defineResource({
             colorMutations: 0,
             bodyPartMutations: 0,
             totalOffspring: 0,
-          };
+          }
         }
       },
-    };
+    }
   },
   halt: ({ unsubscribe }: { unsubscribe: () => void }) => {
-    unsubscribe();
+    unsubscribe()
   },
-});
+})

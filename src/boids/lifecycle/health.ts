@@ -1,5 +1,5 @@
-import type { Boid } from "../vocabulary/schemas/entities";
-import type { WorldPhysics } from "../vocabulary/schemas/world";
+import type { Boid } from '../vocabulary/schemas/entities'
+import type { WorldPhysics } from '../vocabulary/schemas/world'
 
 /**
  * Health System - Damage, healing, and death mechanics
@@ -26,7 +26,7 @@ import type { WorldPhysics } from "../vocabulary/schemas/world";
  * @returns Updated boid with regenerated health
  */
 export function regenerateHealth(boid: Boid): Boid {
-  if (boid.health >= boid.phenotype.maxHealth) return boid;
+  if (boid.health >= boid.phenotype.maxHealth) return boid
 
   return {
     ...boid,
@@ -34,7 +34,7 @@ export function regenerateHealth(boid: Boid): Boid {
       boid.phenotype.maxHealth,
       boid.health + boid.phenotype.healthRegenRate
     ),
-  };
+  }
 }
 
 /**
@@ -48,12 +48,12 @@ export function regenerateHealth(boid: Boid): Boid {
  * @returns Updated boid with reduced health
  */
 export function takeDamage(boid: Boid, damage: number): Boid {
-  const actualDamage = damage * (1 - boid.phenotype.defense);
+  const actualDamage = damage * (1 - boid.phenotype.defense)
 
   return {
     ...boid,
     health: Math.max(0, boid.health - actualDamage),
-  };
+  }
 }
 
 /**
@@ -72,12 +72,12 @@ export function healFromFood(
   energyGained: number,
   physics: WorldPhysics
 ): Boid {
-  const healing = energyGained * physics.health.foodHealingMultiplier;
+  const healing = energyGained * physics.health.foodHealingMultiplier
 
   return {
     ...boid,
     health: Math.min(boid.phenotype.maxHealth, boid.health + healing),
-  };
+  }
 }
 
 /**
@@ -91,7 +91,7 @@ export function healFromFood(
  * @returns True if dead, false otherwise
  */
 export function isDead(boid: Boid): boolean {
-  return boid.health <= 0 || boid.energy <= 0;
+  return boid.health <= 0 || boid.energy <= 0
 }
 
 /**
@@ -106,11 +106,11 @@ export function isDead(boid: Boid): boolean {
 export function getDeathCause(
   boid: Boid,
   maxAge: number
-): "old_age" | "starvation" | "predation" {
-  if (boid.health <= 0) return "predation"; // Combat death
-  if (boid.energy <= 0) return "starvation"; // Energy depletion
-  if (maxAge > 0 && boid.age >= maxAge) return "old_age"; // Age limit
-  return "starvation"; // Default fallback
+): 'old_age' | 'starvation' | 'predation' {
+  if (boid.health <= 0) return 'predation' // Combat death
+  if (boid.energy <= 0) return 'starvation' // Energy depletion
+  if (maxAge > 0 && boid.age >= maxAge) return 'old_age' // Age limit
+  return 'starvation' // Default fallback
 }
 
 /**
@@ -125,11 +125,11 @@ export function getDeathCause(
 export function getWoundedTint(
   boid: Boid
 ): { color: string; alpha: number } | null {
-  const healthPercent = boid.health / boid.phenotype.maxHealth;
+  const healthPercent = boid.health / boid.phenotype.maxHealth
 
-  if (healthPercent > 0.7) return null; // Healthy (>70%)
-  if (healthPercent > 0.4) return { color: "rgba(255, 200, 0)", alpha: 0.2 }; // Wounded (40-70%, yellow)
-  return { color: "rgba(255, 0, 0)", alpha: 0.4 }; // Critical (<40%, red)
+  if (healthPercent > 0.7) return null // Healthy (>70%)
+  if (healthPercent > 0.4) return { color: 'rgba(255, 200, 0)', alpha: 0.2 } // Wounded (40-70%, yellow)
+  return { color: 'rgba(255, 0, 0)', alpha: 0.4 } // Critical (<40%, red)
 }
 
 /**
@@ -142,6 +142,6 @@ export function getWoundedTint(
  * @returns True if health bar should be shown
  */
 export function shouldShowHealthBar(boid: Boid): boolean {
-  const healthPercent = boid.health / boid.phenotype.maxHealth;
-  return healthPercent < 0.99; // Show if less than 99% health
+  const healthPercent = boid.health / boid.phenotype.maxHealth
+  return healthPercent < 0.99 // Show if less than 99% health
 }

@@ -1,5 +1,5 @@
-import SimulationView from "@/components/SimulationView";
-import { Toaster } from "@/components/ui/sonner";
+import SimulationView from '@/components/SimulationView'
+import { Toaster } from '@/components/ui/sonner'
 
 export function App() {
   return (
@@ -7,7 +7,7 @@ export function App() {
       <SimulationView />
       <Toaster />
     </>
-  );
+  )
 }
 
-export default App;
+export default App

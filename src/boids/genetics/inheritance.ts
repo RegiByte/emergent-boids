@@ -1,7 +1,7 @@
-import type { Genome, MutationConfig } from "../vocabulary/schemas/genetics";
-import type { DomainRNG } from "@/lib/seededRandom";
-import { mixColors, lighten, darken, saturate, desaturate } from "@/lib/colors";
-import { BodyPart } from "@/boids/vocabulary/schemas/visual";
+import type { Genome, MutationConfig } from '../vocabulary/schemas/genetics'
+import type { DomainRNG } from '@/lib/seededRandom'
+import { mixColors, lighten, darken, saturate, desaturate } from '@/lib/colors'
+import { BodyPart } from '@/boids/vocabulary/schemas/visual'
 
 /**
  * Genome Inheritance - Mix parent genomes and apply mutations
@@ -31,7 +31,7 @@ export const DEFAULT_MUTATION_CONFIG: MutationConfig = {
   traitMagnitude: 0.1, // ±10% change
   visualRate: 0.02, // 2% chance of body part mutation
   colorRate: 0.1, // 10% chance of color shift
-};
+}
 
 /**
  * Mutate a single trait value
@@ -55,17 +55,15 @@ export function mutateValue(
   max: number,
   rng: DomainRNG
 ): { value: number; mutated: boolean } {
-  // Check if mutation occurs
   if (rng.next() > rate) {
-    return { value, mutated: false };
+    return { value, mutated: false }
   }
 
-  // Apply mutation: value ± (magnitude * range)
-  const range = max - min;
-  const delta = (rng.next() * 2 - 1) * magnitude * range;
-  const newValue = Math.max(min, Math.min(max, value + delta));
+  const range = max - min
+  const delta = (rng.next() * 2 - 1) * magnitude * range
+  const newValue = Math.max(min, Math.min(max, value + delta))
 
-  return { value: newValue, mutated: true };
+  return { value: newValue, mutated: true }
 }
 
 /**
@@ -91,30 +89,23 @@ export function inheritColor(
   mutationRate: number,
   rng: DomainRNG
 ): string {
-  // Blend parent colors if both exist (for future cross-species breeding)
-  // For now, same species = same color, so this just uses parent1
-  const baseColor = color2 ? mixColors(color1, color2, 0.5, "lab") : color1;
+  const baseColor = color2 ? mixColors(color1, color2, 0.5, 'lab') : color1
 
-  // Check if color mutation occurs
   if (rng.next() > mutationRate) {
-    return baseColor; // No mutation
+    return baseColor // No mutation
   }
 
-  // Apply LAB space mutation using chroma-js
-  // Randomly choose mutation type for variety
-  const mutationType = rng.next();
-  const mutationStrength = rng.range(0.1, 0.3); // Small mutations
+  const mutationType = rng.next()
+  const mutationStrength = rng.range(0.1, 0.3) // Small mutations
 
   if (mutationType < 0.5) {
-    // Brightness shift (lighten or darken)
     return rng.next() < 0.5
       ? lighten(baseColor, mutationStrength)
-      : darken(baseColor, mutationStrength);
+      : darken(baseColor, mutationStrength)
   } else {
-    // Saturation shift (saturate or desaturate)
     return rng.next() < 0.5
       ? saturate(baseColor, mutationStrength)
-      : desaturate(baseColor, mutationStrength);
+      : desaturate(baseColor, mutationStrength)
   }
 }
 
@@ -133,22 +124,21 @@ export function inheritColor(
  */
 export function mutateBodyParts(parts: BodyPart[], rng: DomainRNG): BodyPart[] {
   if (parts.length === 0) {
-    return parts; // Can't mutate empty list
+    return parts // Can't mutate empty list
   }
 
-  const roll = rng.next();
+  const roll = rng.next()
 
-  // 30% chance: Add part (if space available)
   if (roll < 0.3 && parts.length < 5) {
-    const partTypes: BodyPart["type"][] = [
-      "eye",
-      "fin",
-      "tail",
-      "spike",
-      "antenna",
-      "glow",
-      "shell",
-    ];
+    const partTypes: BodyPart['type'][] = [
+      'eye',
+      'fin',
+      'tail',
+      'spike',
+      'antenna',
+      'glow',
+      'shell',
+    ]
     const newPart: BodyPart = {
       type: rng.pick(partTypes),
       size: rng.range(0.5, 2.0),
@@ -162,36 +152,33 @@ export function mutateBodyParts(parts: BodyPart[], rng: DomainRNG): BodyPart[] {
         speedBonus: rng.next() < 0.3 ? rng.range(0.05, 0.15) : undefined,
         energyCost: rng.range(0.02, 0.08),
       },
-    };
-    return [...parts, newPart];
+    }
+    return [...parts, newPart]
   }
 
-  // 30% chance: Remove part (if > 0 parts)
   if (roll < 0.6 && parts.length > 0) {
-    const indexToRemove = rng.intRange(0, parts.length);
-    return parts.filter((_, i) => i !== indexToRemove);
+    const indexToRemove = rng.intRange(0, parts.length)
+    return parts.filter((_, i) => i !== indexToRemove)
   }
 
-  // 40% chance: Modify existing part
-  const indexToModify = rng.intRange(0, parts.length);
-  const modifiedParts = [...parts];
-  const part = { ...modifiedParts[indexToModify] };
+  const indexToModify = rng.intRange(0, parts.length)
+  const modifiedParts = [...parts]
+  const part = { ...modifiedParts[indexToModify] }
 
-  // Randomly modify size, position, or rotation
-  const modType = rng.next();
+  const modType = rng.next()
   if (modType < 0.33) {
-    part.size = Math.max(0.5, Math.min(2.0, part.size + rng.range(-0.2, 0.2)));
+    part.size = Math.max(0.5, Math.min(2.0, part.size + rng.range(-0.2, 0.2)))
   } else if (modType < 0.66) {
     part.position = {
       x: Math.max(-1, Math.min(1, part.position.x + rng.range(-0.2, 0.2))),
       y: Math.max(-1, Math.min(1, part.position.y + rng.range(-0.2, 0.2))),
-    };
+    }
   } else {
-    part.rotation = (part.rotation + rng.range(-45, 45)) % 360;
+    part.rotation = (part.rotation + rng.range(-45, 45)) % 360
   }
 
-  modifiedParts[indexToModify] = part;
-  return modifiedParts;
+  modifiedParts[indexToModify] = part
+  return modifiedParts
 }
 
 /**
@@ -215,28 +202,23 @@ export function inheritBodyParts(
   mutationRate: number,
   rng: DomainRNG
 ): BodyPart[] {
-  let inheritedParts: BodyPart[];
+  let inheritedParts: BodyPart[]
 
   if (!parts2) {
-    // Asexual: Use all parent parts
-    inheritedParts = [...parts1];
+    inheritedParts = [...parts1]
   } else {
-    // Sexual: Randomly select ~50% from each parent
-    // This prevents doubling of parts while mixing traits
-    const allParts = [...parts1, ...parts2];
-    const targetCount = Math.max(1, Math.ceil(allParts.length / 2)); // At least 1 part
+    const allParts = [...parts1, ...parts2]
+    const targetCount = Math.max(1, Math.ceil(allParts.length / 2)) // At least 1 part
 
-    // Randomly shuffle and take first N parts
-    const shuffled = [...allParts].sort(() => rng.next() - 0.5);
-    inheritedParts = shuffled.slice(0, targetCount);
+    const shuffled = [...allParts].sort(() => rng.next() - 0.5)
+    inheritedParts = shuffled.slice(0, targetCount)
   }
 
-  // Apply mutation
   if (rng.next() < mutationRate) {
-    inheritedParts = mutateBodyParts(inheritedParts, rng);
+    inheritedParts = mutateBodyParts(inheritedParts, rng)
   }
 
-  return inheritedParts;
+  return inheritedParts
 }
 
 /**
@@ -264,24 +246,23 @@ export function inheritGenome(
   rng: DomainRNG,
   enableLogging: boolean = false
 ): {
-  genome: Genome;
-  hadTraitMutation: boolean;
-  hadColorMutation: boolean;
-  hadBodyPartMutation: boolean;
+  genome: Genome
+  hadTraitMutation: boolean
+  hadColorMutation: boolean
+  hadBodyPartMutation: boolean
 } {
-  const isAsexual = !parent2;
+  const isAsexual = !parent2
 
   if (enableLogging) {
-    console.log("🧬 GENOME INHERITANCE", {
-      type: isAsexual ? "ASEXUAL" : "SEXUAL",
+    console.log('🧬 GENOME INHERITANCE', {
+      type: isAsexual ? 'ASEXUAL' : 'SEXUAL',
       parent1Generation: parent1.generation,
       parent2Generation: parent2?.generation,
       mutationConfig,
-    });
+    })
   }
 
-  // 1. Inherit traits (with mutations)
-  const traits: Genome["traits"] = {
+  const traits: Genome['traits'] = {
     speed: 0,
     force: 0,
     vision: 0,
@@ -292,31 +273,26 @@ export function inheritGenome(
     fearResponse: 0,
     maturityRate: 0,
     longevity: 0,
-  };
+  }
 
-  // Track mutations for genealogy
   const mutations: Array<{
-    generation: number;
-    trait: string;
-    oldValue: number;
-    newValue: number;
-    magnitude: number;
-  }> = [];
+    generation: number
+    trait: string
+    oldValue: number
+    newValue: number
+    magnitude: number
+  }> = []
 
-  const generation = Math.max(parent1.generation, parent2?.generation ?? 0) + 1;
+  const generation = Math.max(parent1.generation, parent2?.generation ?? 0) + 1
 
-  // Inherit each trait
   for (const key of Object.keys(traits) as Array<keyof typeof traits>) {
-    // Blend parent values (asexual = 100% parent1, sexual = 50/50)
     const baseValue = isAsexual
       ? parent1.traits[key]
-      : (parent1.traits[key] + parent2!.traits[key]) / 2;
+      : (parent1.traits[key] + parent2!.traits[key]) / 2
 
-    // Determine bounds for this trait
-    const min = key === "size" ? 0.5 : 0.0;
-    const max = key === "size" ? 3.0 : 1.0;
+    const min = key === 'size' ? 0.5 : 0.0
+    const max = key === 'size' ? 3.0 : 1.0
 
-    // Apply mutation
     const { value, mutated } = mutateValue(
       baseValue,
       mutationConfig.traitRate,
@@ -324,11 +300,10 @@ export function inheritGenome(
       min,
       max,
       rng
-    );
+    )
 
-    traits[key] = value;
+    traits[key] = value
 
-    // Record significant mutations (>5% change from base)
     if (mutated && Math.abs(value - baseValue) > 0.05) {
       mutations.push({
         generation,
@@ -336,40 +311,36 @@ export function inheritGenome(
         oldValue: baseValue,
         newValue: value,
         magnitude: Math.abs(value - baseValue),
-      });
+      })
     }
   }
 
-  // 2. Inherit visual traits
   const color = inheritColor(
     parent1.visual.color,
     parent2?.visual.color,
     mutationConfig.colorRate,
     rng
-  );
+  )
 
   const bodyParts = inheritBodyParts(
     parent1.visual.bodyParts,
     parent2?.visual.bodyParts,
     mutationConfig.visualRate,
     rng
-  );
+  )
 
-  // Track if mutations occurred
-  const hadTraitMutation = mutations.length > 0;
-  const hadColorMutation = color !== parent1.visual.color;
+  const hadTraitMutation = mutations.length > 0
+  const hadColorMutation = color !== parent1.visual.color
   const hadBodyPartMutation =
-    bodyParts.length !== parent1.visual.bodyParts.length;
+    bodyParts.length !== parent1.visual.bodyParts.length
 
-  // 3. Set genealogy
   const parentIds: [string, string] | null = isAsexual
     ? null // Asexual doesn't track parents (for now)
     : ([
-        parent1.parentIds?.[0] ?? "unknown",
-        parent2!.parentIds?.[0] ?? "unknown",
-      ] as [string, string]);
+        parent1.parentIds?.[0] ?? 'unknown',
+        parent2!.parentIds?.[0] ?? 'unknown',
+      ] as [string, string])
 
-  // 4. Build offspring genome
   const offspring: Genome = {
     traits,
     visual: {
@@ -379,14 +350,13 @@ export function inheritGenome(
     parentIds,
     generation,
     mutations: [...(parent1.mutations || []), ...mutations],
-  };
+  }
 
-  // 5. Log inheritance results
   if (
     enableLogging &&
     (hadTraitMutation || hadColorMutation || hadBodyPartMutation)
   ) {
-    console.log("✨ MUTATION DETECTED!", {
+    console.log('✨ MUTATION DETECTED!', {
       generation: offspring.generation,
       traitMutations: mutations.length,
       colorChanged: hadColorMutation,
@@ -401,7 +371,7 @@ export function inheritGenome(
         parent1BodyParts: parent1.visual.bodyParts.length,
         offspringBodyParts: bodyParts.length,
       },
-    });
+    })
   }
 
   return {
@@ -409,5 +379,5 @@ export function inheritGenome(
     hadTraitMutation,
     hadColorMutation,
     hadBodyPartMutation,
-  };
+  }
 }

@@ -19,7 +19,7 @@ void main() {
   
   vec3 finalColor;
   
-  // Session 102: Color dominance detection for body parts (same as shapes)
+  
   // A channel is "dominant" if it's 2x larger than the other two channels
   bool rDominant = partColor.r > partColor.g * 2.0 && partColor.r > partColor.b * 2.0;
   bool gDominant = partColor.g > partColor.r * 2.0 && partColor.g > partColor.b * 2.0;

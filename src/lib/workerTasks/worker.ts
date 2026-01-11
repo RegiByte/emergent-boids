@@ -1,57 +1,57 @@
-// ============================================
-// Worker System Generation
-// ============================================
-
-import { defineResource, StartedResource } from "braided";
-import type { EffectExecutorMap, EventHandlerMap } from "emergent";
-import { emergentSystem } from "emergent";
-import { ClientEvent, hasProgress, TaskRegistry, WorkerEvent } from "@/lib/workerTasks/core";
-import { effectKeywords, eventKeywords } from "@/lib/workerTasks/vocabulary";
-import { ZodSafeParseSuccess } from "zod";
-import { createSubscription } from "@/lib/state";
+import { defineResource, StartedResource } from 'braided'
+import type { EffectExecutorMap, EventHandlerMap } from 'emergent'
+import { emergentSystem } from 'emergent'
+import {
+  ClientEvent,
+  hasProgress,
+  TaskRegistry,
+  WorkerEvent,
+} from '@/lib/workerTasks/core'
+import { effectKeywords, eventKeywords } from '@/lib/workerTasks/vocabulary'
+import { ZodSafeParseSuccess } from 'zod'
+import { createSubscription } from '@/lib/state'
 
 /**
  * Worker effect types
  */
 type WorkerEffect =
   | {
-      type: typeof effectKeywords.worker.forwardToClient;
-      event: WorkerEvent;
+      type: typeof effectKeywords.worker.forwardToClient
+      event: WorkerEvent
     }
   | {
-      type: typeof effectKeywords.worker.log;
-      message: string;
+      type: typeof effectKeywords.worker.log
+      message: string
     }
   | {
-      type: typeof effectKeywords.worker.executeTask;
-      taskId: string;
-      taskName: string;
-      input: unknown;
-    };
+      type: typeof effectKeywords.worker.executeTask
+      taskId: string
+      taskName: string
+      input: unknown
+    }
 
 /**
  * Worker state (none needed)
  */
-type WorkerState = Record<string, never>;
+type WorkerState = Record<string, never>
 
 /**
  * Worker handler context
  */
-type WorkerHandlerContext = Record<string, never>;
+type WorkerHandlerContext = Record<string, never>
 
 /**
  * Worker executor context
  */
 type WorkerExecutorContext = {
-  dispatchToClient: (event: WorkerEvent) => void;
-  tasks: TaskRegistry;
-};
+  dispatchToClient: (event: WorkerEvent) => void
+  tasks: TaskRegistry
+}
 
 const workerEventHandlers = (tasks: TaskRegistry) =>
   ({
     [eventKeywords.taskRequest]: (_state, event) => {
-      // Validate task exists
-      const task = tasks[event.taskName];
+      const task = tasks[event.taskName]
       if (!task) {
         return [
           {
@@ -67,15 +67,14 @@ const workerEventHandlers = (tasks: TaskRegistry) =>
               error: `Unknown task: ${event.taskName}`,
             },
           },
-        ];
+        ]
       }
 
-      // Validate input against task schema
       const inputResult = task.parseIO
         ? task.input.safeParse(event.input)
         : ({ success: true, data: event.input } as ZodSafeParseSuccess<
             typeof event.input
-          >);
+          >)
       if (!inputResult.success) {
         return [
           {
@@ -91,10 +90,9 @@ const workerEventHandlers = (tasks: TaskRegistry) =>
               error: `Invalid input: ${inputResult.error.message}`,
             },
           },
-        ];
+        ]
       }
 
-      // Schedule task execution
       return [
         {
           type: effectKeywords.worker.log,
@@ -106,18 +104,14 @@ const workerEventHandlers = (tasks: TaskRegistry) =>
           taskName: event.taskName,
           input: inputResult.data,
         },
-      ];
+      ]
     },
   }) satisfies EventHandlerMap<
     ClientEvent,
     WorkerEffect,
     WorkerState,
     WorkerHandlerContext
-  >;
-
-// ============================================
-// Effect Executors
-// ============================================
+  >
 
 const workerExecutors: EffectExecutorMap<
   WorkerEffect,
@@ -125,26 +119,23 @@ const workerExecutors: EffectExecutorMap<
   WorkerExecutorContext
 > = {
   [effectKeywords.worker.forwardToClient]: ({ event }, ctx) => {
-    ctx.dispatchToClient(event);
+    ctx.dispatchToClient(event)
   },
 
   [effectKeywords.worker.log]: ({ message }) => {
-    console.log(`[Worker] ${message}`);
+    console.log(`[Worker] ${message}`)
   },
 
   [effectKeywords.worker.executeTask]: async (
     { taskId, taskName, input },
-    ctx,
+    ctx
   ) => {
-    const task = ctx.tasks[taskName];
+    const task = ctx.tasks[taskName]
     if (!task) {
-      // Should never happen (validated in handler)
-      return;
+      return
     }
 
     try {
-      // Create task context
-      // reportProgress is typed as never for tasks without progress
       const taskContext = {
         reportProgress: hasProgress(task)
           ? async (progress: unknown) => {
@@ -153,80 +144,76 @@ const workerExecutors: EffectExecutorMap<
                 taskId,
                 taskName,
                 progress,
-              });
+              })
             }
           : (undefined as never), // Type as never for tasks without progress
-      };
+      }
 
-      // Execute task with context (all tasks receive context)
-      const result = await task.execute(input, taskContext);
+      const result = await task.execute(input, taskContext)
 
-      // Validate output
       const outputResult = task.parseIO
         ? task.output.safeParse(result)
         : ({ success: true, data: result } as ZodSafeParseSuccess<
             typeof result
-          >);
+          >)
       if (!outputResult.success) {
         ctx.dispatchToClient({
           type: eventKeywords.taskError,
           taskId,
           taskName,
           error: `Invalid output: ${outputResult.error.message}`,
-        });
-        return;
+        })
+        return
       }
 
-      // Send completion
       ctx.dispatchToClient({
         type: eventKeywords.taskComplete,
         taskId,
         taskName,
         output: outputResult.data,
-      });
+      })
     } catch (error) {
-      // Send error
       ctx.dispatchToClient({
         type: eventKeywords.taskError,
         taskId,
         taskName,
         error: String(error),
-      });
+      })
     }
   },
-};
+}
 
 const workerTransport = defineResource({
   start: () => {
-    const transportListeners = createSubscription<ClientEvent>();
+    const transportListeners = createSubscription<ClientEvent>()
 
     const handleMessage = (event: MessageEvent<ClientEvent>) => {
-      const clientEvent = event.data;
-      transportListeners.notify(clientEvent);
-    };
+      const clientEvent = event.data
+      transportListeners.notify(clientEvent)
+    }
 
     const sendMessage = (event: WorkerEvent) => {
-      self.postMessage(event);
-    };
+      self.postMessage(event)
+    }
 
     const api = {
       notifyReady: () => {
         sendMessage({
           type: eventKeywords.workerReady,
           timestamp: Date.now(),
-        });
+        })
       },
       addMessageListener: (listener: (event: ClientEvent) => void) => {
-        return transportListeners.subscribe(listener);
+        return transportListeners.subscribe(listener)
       },
       sendMessage: (event: WorkerEvent) => {
-        sendMessage(event);
+        sendMessage(event)
       },
       setupWorkerListener: () => {
-        self.addEventListener("message", handleMessage);
+        self.addEventListener('message', handleMessage)
       },
       cleanupWorkerListener: () => {
-        self.removeEventListener("message", handleMessage);
+        self.removeEventListener('message', handleMessage)
       },
       notifyError: (message: string, taskId: string, taskName: string) => {
         sendMessage({
@@ -234,26 +221,26 @@ const workerTransport = defineResource({
           taskId,
           taskName,
           error: message,
-        });
+        })
       },
-    };
+    }
 
-    return api;
+    return api
   },
   halt: (api) => {
-    api.cleanupWorkerListener();
+    api.cleanupWorkerListener()
   },
-});
-type WorkerTransport = StartedResource<typeof workerTransport>;
+})
+type WorkerTransport = StartedResource<typeof workerTransport>
 
 /**
  * Create worker system configuration for a task registry
  */
 export function createWorkerSystem<T extends TaskRegistry>(tasks: T) {
   const workerEventLoop = defineResource({
-    dependencies: ["workerTransport"],
+    dependencies: ['workerTransport'],
     start: ({ workerTransport }: { workerTransport: WorkerTransport }) => {
-      console.log("[Worker] Starting task event loop...");
+      console.log('[Worker] Starting task event loop...')
 
       const createWorkerLoop = emergentSystem<
         ClientEvent,
@@ -261,7 +248,7 @@ export function createWorkerSystem<T extends TaskRegistry>(tasks: T) {
         WorkerState,
         WorkerHandlerContext,
         WorkerExecutorContext
-      >();
+      >()
 
       const loop = createWorkerLoop({
         getState: () => ({}),
@@ -270,73 +257,62 @@ export function createWorkerSystem<T extends TaskRegistry>(tasks: T) {
         handlerContext: {},
         executorContext: {
           dispatchToClient: (event: WorkerEvent) => {
-            workerTransport.sendMessage(event);
+            workerTransport.sendMessage(event)
           },
           tasks,
         },
-      });
-
-      console.log("[Worker] ✅ Task event loop started");
+      })
 
       return {
         dispatch: loop.dispatch,
         subscribe: loop.subscribe,
         dispose: loop.dispose,
-      };
+      }
     },
     halt: (loop) => {
-      console.log("[Worker] Halting task event loop...");
-      loop.dispose();
+      console.log('[Worker] Halting task event loop...')
+      loop.dispose()
     },
-  });
-  type WorkerLoop = StartedResource<typeof workerEventLoop>;
-
-  // ============================================
-  // Message Listener Resource
-  // ============================================
+  })
+  type WorkerLoop = StartedResource<typeof workerEventLoop>
 
   const messageListener = defineResource({
-    dependencies: ["workerEventLoop", "workerTransport"],
+    dependencies: ['workerEventLoop', 'workerTransport'],
     start: ({
       workerEventLoop,
       workerTransport,
     }: {
-      workerEventLoop: WorkerLoop;
-      workerTransport: WorkerTransport;
+      workerEventLoop: WorkerLoop
+      workerTransport: WorkerTransport
     }) => {
-      console.log("[Worker] Starting message listener...");
+      console.log('[Worker] Starting message listener...')
 
       const handleMessage = (event: ClientEvent) => {
-        console.log(`[Worker] Received event: ${event.type}`);
+        console.log(`[Worker] Received event: ${event.type}`)
 
-        // Dispatch to event loop
-        workerEventLoop.dispatch(event);
-      };
+        workerEventLoop.dispatch(event)
+      }
 
-      // Attach listener
-      const unsubscribe = workerTransport.addMessageListener(handleMessage);
-      workerTransport.setupWorkerListener();
-
-      console.log("[Worker] ✅ Message listener started");
+      const unsubscribe = workerTransport.addMessageListener(handleMessage)
+      workerTransport.setupWorkerListener()
 
       return {
         cleanup: () => {
-          unsubscribe();
+          unsubscribe()
         },
-      };
+      }
     },
     halt: (listener) => {
-      console.log("[Worker] Halting message listener...");
-      listener.cleanup();
+      console.log('[Worker] Halting message listener...')
+      listener.cleanup()
     },
-  });
+  })
 
-  // system configuration
   return {
     workerTransport,
     workerEventLoop,
     messageListener,
-  };
+  }
 }
 
 /**
@@ -361,5 +337,5 @@ export function createWorkerSystem<T extends TaskRegistry>(tasks: T) {
  * ```
  */
 export function createWorkerSystemConfig<T extends TaskRegistry>(tasks: T) {
-  return createWorkerSystem(tasks);
+  return createWorkerSystem(tasks)
 }

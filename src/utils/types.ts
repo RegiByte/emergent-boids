@@ -1,3 +1,3 @@
 export type ExpandType<T> = {
-  [K in keyof T]: T[K];
-} & {};
+  [K in keyof T]: T[K]
+} & {}

@@ -1,7 +1,7 @@
-import { z } from "zod";
-import { reproductionTypeSchema, roleSchema } from "./primitives";
-import { shapeTypeSchema, bodyPartSchema } from "./visual";
-import { mutationConfigSchema } from "./genetics";
+import { z } from 'zod'
+import { reproductionTypeSchema, roleSchema } from './primitives'
+import { shapeTypeSchema, bodyPartSchema } from './visual'
+import { mutationConfigSchema } from './genetics'
 
 /**
  * Species Schemas - Species configuration and relationships
@@ -12,14 +12,10 @@ import { mutationConfigSchema } from "./genetics";
  * Dependencies: primitives, visual, genetics
  */
 
-// ============================================
-// Species Configuration Schema
-// ============================================
-
 /**
  * Species Configuration - Defines behavior and characteristics of a species
  *
- * UNIFIED GENOME-BASED ARCHITECTURE (Session 69)
+ * UNIFIED GENOME-BASED ARCHITECTURE
  * - baseGenome: Required - Starting traits for genesis boids (evolvable)
  * - visualConfig: Required - Non-evolvable visual preferences (shape, trails)
  * - mutation: Optional - Mutation rates for evolution
@@ -35,7 +31,6 @@ export const speciesConfigSchema = z.object({
   name: z.string(), // Display name
   role: roleSchema, // "prey" or "predator"
 
-  // Base genome (evolvable traits) required
   baseGenome: z.object({
     traits: z.object({
       speed: z.number().min(0).max(1), // % of physics.maxSpeed
@@ -55,7 +50,6 @@ export const speciesConfigSchema = z.object({
     }),
   }),
 
-  // Visual configuration (non-evolvable, species-level) required
   visualConfig: z.object({
     shape: shapeTypeSchema, // Render shape (diamond, circle, hexagon, etc.)
     trail: z.boolean().default(true), // Enable motion trails
@@ -64,10 +58,8 @@ export const speciesConfigSchema = z.object({
     tailColor: z.string().optional(), // Custom tail color override (hex)
   }),
 
-  // Mutation configuration optional
   mutation: mutationConfigSchema.optional(), // Mutation rates (optional, uses defaults if not specified)
 
-  // Reproduction - Mating and offspring required
   reproduction: z.object({
     type: reproductionTypeSchema, // "sexual" (needs mate) or "asexual" (solo)
     offspringCount: z.number(), // Number of offspring per reproduction (1-2 for twins)
@@ -75,30 +67,21 @@ export const speciesConfigSchema = z.object({
     cooldownFrames: z.number().optional(), // Frames to wait before reproducing again (overrides global)
   }),
 
-  // Limits - Population caps and parameter overrides required
   limits: z.object({
     maxPopulation: z.number().optional(), // Maximum population for this species
     fearRadius: z.number().optional(), // How far this species can sense predators (overrides global)
   }),
 
-  // Parameter overrides (species-specific tweaks) optional
   overrides: z
     .object({
       minDistance: z.number().optional(), // Personal space override
     })
     .optional(),
 
-  // Affinities - Inter-species relationships (optional)
-  // Maps species ID to affinity value (-1.0 to 1.0)
-  // - 1.0: Strong attraction (flock together)
-  // - 0.5: Neutral (default if not specified)
-  // - 0.0: Indifferent (minimal interaction)
-  // - -0.5: Repulsion (actively avoid)
-  // Same species always defaults to 1.0 if not specified
   affinities: z.record(z.string(), z.number().min(-1).max(1)).optional(),
-});
+})
 
-export const speciesRecordSchema = z.record(z.string(), speciesConfigSchema);
+export const speciesRecordSchema = z.record(z.string(), speciesConfigSchema)
 
-export type SpeciesConfig = z.infer<typeof speciesConfigSchema>;
-export type SpeciesRecord = z.infer<typeof speciesRecordSchema>;
+export type SpeciesConfig = z.infer<typeof speciesConfigSchema>
+export type SpeciesRecord = z.infer<typeof speciesRecordSchema>

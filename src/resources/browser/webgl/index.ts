@@ -11,9 +11,6 @@
  * - utils/: Shared utilities (transforms, event handlers)
  */
 
-// ============================================
-// TYPES
-// ============================================
 export type {
   AtlasData,
   ShapeAtlasData,
@@ -23,72 +20,66 @@ export type {
   InstanceData,
   StanceSymbol,
   StanceSymbols,
-} from "./types.ts";
+} from './types.ts'
 
-// ============================================
-// ATLASES
-// ============================================
 export {
   createEmojiAtlas,
   createEmojiTexture,
   stanceSymbols,
   foodEmojis,
   type EmojiAtlasResult,
-} from "./atlases/emojiAtlas.ts";
+} from './atlases/emojiAtlas.ts'
 
 export {
   createFontAtlas,
   createFontTexture,
   DEFAULT_FONT_CHARS,
   type FontAtlasResult,
-} from "./atlases/fontAtlas.ts";
+} from './atlases/fontAtlas.ts'
 
 export {
   createObstacleAtlas,
   createObstacleTexture,
   OBSTACLE_CONFIG,
-} from "./atlases/obstacleAtlas.ts";
+} from './atlases/obstacleAtlas.ts'
 
 export {
   createShapeAtlas,
   createShapeTexture,
   logShapeAtlasDebugInfo,
   type ShapeAtlasResult,
-} from "./atlases/shapeAtlas.ts";
+} from './atlases/shapeAtlas.ts'
 
 export {
   createBodyPartsAtlas,
   createBodyPartsTexture,
   logBodyPartsAtlasDebugInfo,
   type BodyPartsAtlasResult,
-} from "./atlases/bodyPartsAtlas.ts";
+} from './atlases/bodyPartsAtlas.ts'
 
-// ============================================
-// DATA PREPARATION
-// ============================================
-export { colorToRgb, calculateBoidRotation } from "./dataPreparation/utils.ts";
+export { colorToRgb, calculateBoidRotation } from './dataPreparation/utils.ts'
 
 export {
   prepareShapeBoidData,
   type ShapeBoidInstanceData,
-} from "./dataPreparation/shapeBoids.ts";
+} from './dataPreparation/shapeBoids.ts'
 
 export {
   prepareBodyPartsData,
   type BodyPartsInstanceData,
-} from "./dataPreparation/bodyParts.ts";
+} from './dataPreparation/bodyParts.ts'
 
 export {
   prepareTriangleBoidData,
   type TriangleBoidInstanceData,
-} from "./dataPreparation/triangleBoids.ts";
+} from './dataPreparation/triangleBoids.ts'
 
 export {
   prepareFoodData,
   prepareFoodEmojiData,
   type FoodInstanceData,
   type FoodEmojiInstanceData,
-} from "./dataPreparation/food.ts";
+} from './dataPreparation/food.ts'
 
 export {
   prepareTrailData,
@@ -96,72 +87,66 @@ export {
   type TrailBatch,
   type TrailSegment,
   type TrailInstanceData,
-} from "./dataPreparation/trails.ts";
+} from './dataPreparation/trails.ts'
 
 export {
   prepareEnergyBarData,
   type EnergyBarInstanceData,
-} from "./dataPreparation/energyBars.ts";
+} from './dataPreparation/energyBars.ts'
 
 export {
   prepareHealthBarData,
   type HealthBarInstanceData,
-} from "./dataPreparation/healthBars.ts";
+} from './dataPreparation/healthBars.ts'
 
 export {
   prepareSelectionData,
   type SelectionInstanceData,
-} from "./dataPreparation/selection.ts";
+} from './dataPreparation/selection.ts'
 
 export {
   prepareStanceSymbolData,
   type StanceSymbolInstanceData,
-} from "./dataPreparation/stanceSymbols.ts";
+} from './dataPreparation/stanceSymbols.ts'
 
-export { layoutText, type TextInstanceData } from "./dataPreparation/text.ts";
+export { layoutText, type TextInstanceData } from './dataPreparation/text.ts'
 
 export {
   prepareObstacleData,
   type ObstacleInstanceData,
-} from "./dataPreparation/obstacles.ts";
+} from './dataPreparation/obstacles.ts'
 
-// ============================================
-// DRAW COMMANDS
-// ============================================
-export { createShapeBoidsDrawCommand } from "./drawCommands/shapeBoids.ts";
-export { createBodyPartsDrawCommand } from "./drawCommands/bodyParts.ts";
-export { createTriangleBoidsDrawCommand } from "./drawCommands/triangleBoids.ts";
-export { createFoodDrawCommand } from "./drawCommands/food.ts";
-export { createFoodEmojiDrawCommand } from "./drawCommands/foodEmojis.ts";
-export { createTrailsDrawCommand } from "./drawCommands/trails.ts";
+export { createShapeBoidsDrawCommand } from './drawCommands/shapeBoids.ts'
+export { createBodyPartsDrawCommand } from './drawCommands/bodyParts.ts'
+export { createTriangleBoidsDrawCommand } from './drawCommands/triangleBoids.ts'
+export { createFoodDrawCommand } from './drawCommands/food.ts'
+export { createFoodEmojiDrawCommand } from './drawCommands/foodEmojis.ts'
+export { createTrailsDrawCommand } from './drawCommands/trails.ts'
 export {
   createEnergyBarsDrawCommand,
   ENERGY_BAR_CONFIG,
-} from "./drawCommands/energyBars.ts";
+} from './drawCommands/energyBars.ts'
 export {
   createHealthBarsDrawCommand,
   HEALTH_BAR_CONFIG,
-} from "./drawCommands/healthBars.ts";
-export { createSelectionCirclesDrawCommand } from "./drawCommands/selection.ts";
+} from './drawCommands/healthBars.ts'
+export { createSelectionCirclesDrawCommand } from './drawCommands/selection.ts'
 export {
   createStanceSymbolsDrawCommand,
   STANCE_SYMBOL_CONFIG,
-} from "./drawCommands/stanceSymbols.ts";
-export { createTextDrawCommand } from "./drawCommands/text.ts";
+} from './drawCommands/stanceSymbols.ts'
+export { createTextDrawCommand } from './drawCommands/text.ts'
 export {
   createDebugCollisionCirclesDrawCommand,
   prepareDebugCollisionCirclesData,
-} from "./drawCommands/debugCollisionCircles.ts";
-export { createObstacleDrawCommand } from "./drawCommands/obstacles.ts";
+} from './drawCommands/debugCollisionCircles.ts'
+export { createObstacleDrawCommand } from './drawCommands/obstacles.ts'
 
-// ============================================
-// UTILITIES
-// ============================================
 export {
   createProjectionMatrix,
   createViewMatrix,
   getResolution,
-} from "./utils/transforms.ts";
+} from './utils/transforms.ts'
 
 export {
   createWheelHandler,
@@ -171,4 +156,4 @@ export {
   createMouseLeaveHandler,
   createClickHandler,
   attachEventHandlers,
-} from "./utils/eventHandlers.ts";
+} from './utils/eventHandlers.ts'

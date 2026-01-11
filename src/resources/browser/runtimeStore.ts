@@ -1,34 +1,29 @@
-import { defineResource, StartedResource } from "braided";
-import { useStore as useZustandStore } from "zustand";
-import type { StoreApi } from "zustand/vanilla";
-import { createStore } from "zustand/vanilla";
-import { defaultProfileId, getProfile } from "../../profiles";
-import { devtools } from "zustand/middleware";
+import { defineResource, StartedResource } from 'braided'
+import { useStore as useZustandStore } from 'zustand'
+import type { StoreApi } from 'zustand/vanilla'
+import { createStore } from 'zustand/vanilla'
+import { defaultProfileId, getProfile } from '../../profiles'
+import { devtools } from 'zustand/middleware'
 
-import { RuntimeStore } from "../../boids/vocabulary/schemas/state.ts";
-import { defaultWorldPhysics } from "@/boids/defaultPhysics.ts";
-import { SystemConfigResource } from "../shared/config.ts";
+import { RuntimeStore } from '../../boids/vocabulary/schemas/state.ts'
+import { defaultWorldPhysics } from '@/boids/defaultPhysics.ts'
+import { SystemConfigResource } from '../shared/config.ts'
 
-export type RuntimeStoreApi = StoreApi<RuntimeStore>;
+export type RuntimeStoreApi = StoreApi<RuntimeStore>
 
 export const runtimeStore = defineResource({
   dependencies: ['config'],
   start: ({ config }: { config: SystemConfigResource }) => {
-    // Load default profile
-    const profile = getProfile(defaultProfileId);
+    const profile = getProfile(defaultProfileId)
 
-    // World configuration from profile
-    // Each profile defines its own world size and appearance for guaranteed stability
     const {
       width,
       height,
       backgroundColor,
       initialPreyCount,
       initialPredatorCount,
-    } = profile.world;
+    } = profile.world
 
-    // Create zustand store with initial values from profile
-    // This becomes the single source of truth - all runtime code should read from here
     const store = createStore<RuntimeStore>()(
       devtools(() => ({
         config: {
@@ -61,7 +56,7 @@ export const runtimeStore = defineResource({
             atmosphere: {
               base: {
                 trailAlpha: 0.6,
-                fogColor: "rgba(0, 200, 100, 0.5)",
+                fogColor: 'rgba(0, 200, 100, 0.5)',
                 fogIntensity: 0.3,
                 fogOpacity: 0.6,
               },
@@ -71,13 +66,13 @@ export const runtimeStore = defineResource({
           sidebarOpen: true,
           headerCollapsed: false, // Start with header expanded
           rendererMode: config.getConfig().renderMode, // Start with Canvas renderer (WebGL is experimental)
-          debugMode: false, // Session 129: Start with debug mode off
+          debugMode: false,
         },
-      })),
-    );
+      }))
+    )
 
     function useStore<T>(selector: (_state: RuntimeStore) => T): T {
-      return useZustandStore(store, selector);
+      return useZustandStore(store, selector)
     }
 
     /**
@@ -85,7 +80,7 @@ export const runtimeStore = defineResource({
      * TODO: Add UI control to switch profiles
      */
     function loadProfile(profileId: string) {
-      const profile = getProfile(profileId);
+      const profile = getProfile(profileId)
 
       store.setState({
         config: {
@@ -95,22 +90,18 @@ export const runtimeStore = defineResource({
           parameters: profile.parameters,
           physics: profile.physics || defaultWorldPhysics,
         },
-        // Reset simulation state
         simulation: {
           obstacles: [],
           foodSources: [],
           deathMarkers: [],
         },
-        // Keep UI preferences
         ui: store.getState().ui,
-      });
+      })
     }
 
-    return { store, useStore, loadProfile };
+    return { store, useStore, loadProfile }
   },
-  halt: () => {
-    // No cleanup needed for zustand store
-  },
-});
+  halt: () => {},
+})
 
-export type RuntimeStoreResource = StartedResource<typeof runtimeStore>;
+export type RuntimeStoreResource = StartedResource<typeof runtimeStore>

@@ -1,5 +1,5 @@
 /**
- * Worker System Configuration (Session 112)
+ * Worker System Configuration
  *
  * Braided system for the worker thread.
  * Provides worker-compatible versions of core resources:
@@ -15,90 +15,80 @@
  * - Same patterns as main system (braided composition)
  */
 
-import { defineResource } from "braided";
-import { createSeededRNG, type DomainRNG } from "@/lib/seededRandom";
-
-// ============================================================================
-// Worker Time Resource
-// ============================================================================
+import { defineResource } from 'braided'
+import { createSeededRNG, type DomainRNG } from '@/lib/seededRandom'
 
 export type WorkerTimeResource = {
-  getFrame: () => number;
-  getElapsed: () => number; // milliseconds
-  getElapsedSeconds: () => number;
-  tick: () => void; // Increment frame
-  addTime: (deltaMs: number) => void; // Add elapsed time
-  reset: (frame: number, elapsedMs: number) => void;
-};
+  getFrame: () => number
+  getElapsed: () => number // milliseconds
+  getElapsedSeconds: () => number
+  tick: () => void // Increment frame
+  addTime: (deltaMs: number) => void // Add elapsed time
+  reset: (frame: number, elapsedMs: number) => void
+}
 
 export const createWorkerTimeResource = (initialState?: {
-  frame: number;
-  elapsedMs: number;
+  frame: number
+  elapsedMs: number
 }) => {
   return defineResource({
     start: () => {
-      let frame = initialState?.frame ?? 0;
-      let elapsedMs = initialState?.elapsedMs ?? 0;
+      let frame = initialState?.frame ?? 0
+      let elapsedMs = initialState?.elapsedMs ?? 0
 
       return {
         getFrame: () => frame,
         getElapsed: () => elapsedMs,
         getElapsedSeconds: () => elapsedMs / 1000,
         tick: () => {
-          frame++;
+          frame++
         },
         addTime: (deltaMs: number) => {
-          elapsedMs += deltaMs;
+          elapsedMs += deltaMs
         },
         reset: (newFrame: number, newElapsedMs: number) => {
-          frame = newFrame;
-          elapsedMs = newElapsedMs;
+          frame = newFrame
+          elapsedMs = newElapsedMs
         },
-      } satisfies WorkerTimeResource;
+      } satisfies WorkerTimeResource
     },
-    halt: () => {
-      // No cleanup needed
-    },
-  });
-};
-
-// ============================================================================
-// Worker Profiler Resource
-// ============================================================================
+    halt: () => {},
+  })
+}
 
 type ProfileMetric = {
-  totalTime: number;
-  count: number;
-  avgTime: number;
-  minTime: number;
-  maxTime: number;
-};
+  totalTime: number
+  count: number
+  avgTime: number
+  minTime: number
+  maxTime: number
+}
 
 export type WorkerProfilerResource = {
-  start: (name: string) => void;
-  end: (name: string) => void;
-  measure: <T>(name: string, fn: () => T) => T;
-  getMetrics: () => Record<string, ProfileMetric>;
-  reset: () => void;
-};
+  start: (name: string) => void
+  end: (name: string) => void
+  measure: <T>(name: string, fn: () => T) => T
+  getMetrics: () => Record<string, ProfileMetric>
+  reset: () => void
+}
 
 export const workerProfiler = defineResource({
   start: () => {
-    const metrics = new Map<string, ProfileMetric>();
-    const activeTimers = new Map<string, number>();
+    const metrics = new Map<string, ProfileMetric>()
+    const activeTimers = new Map<string, number>()
 
     const updateMetric = (name: string, duration: number) => {
-      const existing = metrics.get(name);
+      const existing = metrics.get(name)
       if (existing) {
-        const totalTime = existing.totalTime + duration;
-        const count = existing.count + 1;
+        const totalTime = existing.totalTime + duration
+        const count = existing.count + 1
         metrics.set(name, {
           totalTime,
           count,
           avgTime: totalTime / count,
           minTime: Math.min(existing.minTime, duration),
           maxTime: Math.max(existing.maxTime, duration),
-        });
+        })
       } else {
         metrics.set(name, {
           totalTime: duration,
@@ -106,132 +96,114 @@ export const workerProfiler = defineResource({
           avgTime: duration,
           minTime: duration,
           maxTime: duration,
-        });
+        })
       }
-    };
+    }
 
     return {
       start: (name: string) => {
-        activeTimers.set(name, performance.now());
+        activeTimers.set(name, performance.now())
       },
       end: (name: string) => {
-        const startTime = activeTimers.get(name);
+        const startTime = activeTimers.get(name)
         if (startTime === undefined) {
-          console.warn(`[WorkerProfiler] No start time for "${name}"`);
-          return;
+          console.warn(`[WorkerProfiler] No start time for "${name}"`)
+          return
         }
-        const duration = performance.now() - startTime;
-        activeTimers.delete(name);
-        updateMetric(name, duration);
+        const duration = performance.now() - startTime
+        activeTimers.delete(name)
+        updateMetric(name, duration)
       },
       measure: <T>(name: string, fn: () => T): T => {
-        const startTime = performance.now();
+        const startTime = performance.now()
         try {
-          return fn();
+          return fn()
         } finally {
-          const duration = performance.now() - startTime;
-          updateMetric(name, duration);
+          const duration = performance.now() - startTime
+          updateMetric(name, duration)
         }
       },
       getMetrics: () => {
-        const result: Record<string, ProfileMetric> = {};
+        const result: Record<string, ProfileMetric> = {}
         for (const [name, metric] of metrics.entries()) {
-          result[name] = metric;
+          result[name] = metric
         }
-        return result;
+        return result
       },
       reset: () => {
-        metrics.clear();
-        activeTimers.clear();
+        metrics.clear()
+        activeTimers.clear()
       },
-    } satisfies WorkerProfilerResource;
+    } satisfies WorkerProfilerResource
   },
-  halt: () => {
-    // No cleanup needed
-  },
-});
-
-// ============================================================================
-// Worker Randomness Resource
-// ============================================================================
+  halt: () => {},
+})
 
 export type WorkerRandomnessResource = {
-  getMasterSeed: () => string;
-  getMasterSeedNumber: () => number;
-  domain: (name: string) => DomainRNG;
-  getDomains: () => string[];
-};
+  getMasterSeed: () => string
+  getMasterSeedNumber: () => number
+  domain: (name: string) => DomainRNG
+  getDomains: () => string[]
+}
 
 export const createWorkerRandomnessResource = (seed?: string | number) => {
   return defineResource({
     start: () => {
-      const rng = createSeededRNG(seed ?? "worker-default-seed");
+      const rng = createSeededRNG(seed ?? 'worker-default-seed')
 
       console.log(
-        `[WorkerRandomness] Initialized with seed: "${rng.getMasterSeed()}" (${rng.getMasterSeedNumber()})`,
-      );
+        `[WorkerRandomness] Initialized with seed: "${rng.getMasterSeed()}" (${rng.getMasterSeedNumber()})`
+      )
 
       return {
         getMasterSeed: () => rng.getMasterSeed(),
         getMasterSeedNumber: () => rng.getMasterSeedNumber(),
         domain: (name: string) => rng.domain(name),
         getDomains: () => rng.getDomains(),
-      } satisfies WorkerRandomnessResource;
+      } satisfies WorkerRandomnessResource
     },
-    halt: () => {
-      // No cleanup needed
-    },
-  });
-};
-
-// ============================================================================
-// Worker Config Resource
-// ============================================================================
+    halt: () => {},
+  })
+}
 
 export type WorkerConfigResource = {
-  get: () => any; // Full config snapshot
-  update: (newConfig: any) => void;
-  getParameters: () => any;
-  getPhysics: () => any;
-  getWorld: () => any;
-  getSpecies: () => any;
-};
+  get: () => any // Full config snapshot
+  update: (newConfig: any) => void
+  getParameters: () => any
+  getPhysics: () => any
+  getWorld: () => any
+  getSpecies: () => any
+}
 
 export const createWorkerConfigResource = (initialConfig?: any) => {
   return defineResource({
     start: () => {
-      let config = initialConfig ?? {};
+      let config = initialConfig ?? {}
 
       return {
         get: () => config,
         update: (newConfig: any) => {
-          config = newConfig;
+          config = newConfig
         },
         getParameters: () => config.parameters ?? {},
         getPhysics: () => config.physics ?? {},
         getWorld: () => config.world ?? {},
         getSpecies: () => config.species ?? {},
-      } satisfies WorkerConfigResource;
+      } satisfies WorkerConfigResource
     },
-    halt: () => {
-      // No cleanup needed
-    },
-  });
-};
-
-// ============================================================================
-// Worker System Configuration
-// ============================================================================
+    halt: () => {},
+  })
+}
 
 /**
  * Worker system configuration
  * Minimal set of resources needed for physics simulation
  */
 export const createWorkerSystemConfig = (initialState?: {
-  seed?: string | number;
-  frame?: number;
-  elapsedMs?: number;
-  config?: any;
+  seed?: string | number
+  frame?: number
+  elapsedMs?: number
+  config?: any
 }) => {
   return {
     time: createWorkerTimeResource({
@@ -241,5 +213,5 @@ export const createWorkerSystemConfig = (initialState?: {
     profiler: workerProfiler,
     randomness: createWorkerRandomnessResource(initialState?.seed),
     config: createWorkerConfigResource(initialState?.config),
-  };
-};
+  }
+}

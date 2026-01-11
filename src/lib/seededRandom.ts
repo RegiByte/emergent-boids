@@ -25,21 +25,21 @@
  * Uses cyrb53 algorithm - fast, good distribution
  */
 function hashString(str: string): number {
-  let h1 = 0xdeadbeef;
-  let h2 = 0x41c6ce57;
+  let h1 = 0xdeadbeef
+  let h2 = 0x41c6ce57
 
   for (let i = 0; i < str.length; i++) {
-    const ch = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
+    const ch = str.charCodeAt(i)
+    h1 = Math.imul(h1 ^ ch, 2654435761)
+    h2 = Math.imul(h2 ^ ch, 1597334677)
   }
 
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
-  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
-  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507)
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507)
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909)
 
-  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0)
 }
 
 /**
@@ -47,15 +47,15 @@ function hashString(str: string): number {
  * Returns values in range [0, 1) like Math.random()
  */
 function createPRNG(seed: number) {
-  let state = seed;
+  let state = seed
 
   return function next(): number {
-    state |= 0;
-    state = (state + 0x6d2b79f5) | 0;
-    let t = Math.imul(state ^ (state >>> 15), 1 | state);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+    state |= 0
+    state = (state + 0x6d2b79f5) | 0
+    let t = Math.imul(state ^ (state >>> 15), 1 | state)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
 }
 
 /**
@@ -64,58 +64,57 @@ function createPRNG(seed: number) {
  */
 export interface DomainRNG {
   /** Get next random number in [0, 1) */
-  next(): number;
+  next(): number
 
   /** Get random number in range [min, max) */
-  range(min: number, max: number): number;
+  range(min: number, max: number): number
 
   /** Get random integer in range [min, max) */
-  intRange(min: number, max: number): number;
+  intRange(min: number, max: number): number
 
   /** Pick random element from array */
-  pick<T>(array: T[]): T;
+  pick<T>(array: T[]): T
 
   /** Shuffle array in place (Fisher-Yates) */
-  shuffle<T>(array: T[]): T[];
+  shuffle<T>(array: T[]): T[]
 
   /** Random boolean with given probability (0-1) */
-  chance(probability: number): boolean;
+  chance(probability: number): boolean
 }
 
 /**
  * Create a domain-specific RNG from a seed
  */
 function createDomainRNG(seed: number): DomainRNG {
-  const prng = createPRNG(seed);
+  const prng = createPRNG(seed)
 
   return {
     next: () => prng(),
 
     range: (min: number, max: number) => {
-      return min + prng() * (max - min);
+      return min + prng() * (max - min)
     },
 
     intRange: (min: number, max: number) => {
-      return Math.floor(min + prng() * (max - min));
+      return Math.floor(min + prng() * (max - min))
     },
 
     pick: <T>(array: T[]): T => {
-      return array[Math.floor(prng() * array.length)];
+      return array[Math.floor(prng() * array.length)]
     },
 
     shuffle: <T>(array: T[]): T[] => {
-      // Fisher-Yates shuffle
       for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(prng() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+        const j = Math.floor(prng() * (i + 1))
+        ;[array[i], array[j]] = [array[j], array[i]]
       }
-      return array;
+      return array
     },
 
     chance: (probability: number) => {
-      return prng() < probability;
+      return prng() < probability
     },
-  };
+  }
 }
 
 /**
@@ -126,16 +125,16 @@ function createDomainRNG(seed: number): DomainRNG {
  */
 export interface SeededRNG {
   /** Get the master seed string */
-  getMasterSeed(): string;
+  getMasterSeed(): string
 
   /** Get the master seed as number */
-  getMasterSeedNumber(): number;
+  getMasterSeedNumber(): number
 
   /** Get or create a domain-specific RNG */
-  domain(name: string): DomainRNG;
+  domain(name: string): DomainRNG
 
   /** Get all active domain names */
-  getDomains(): string[];
+  getDomains(): string[]
 }
 
 /**
@@ -155,11 +154,11 @@ export interface SeededRNG {
  * movement.next(); // 0.789... (independent!)
  */
 export function createSeededRNG(masterSeed: string | number): SeededRNG {
-  const masterSeedStr = String(masterSeed);
+  const masterSeedStr = String(masterSeed)
   const masterSeedNum =
-    typeof masterSeed === "number" ? masterSeed : hashString(masterSeedStr);
+    typeof masterSeed === 'number' ? masterSeed : hashString(masterSeedStr)
 
-  const domains = new Map<string, DomainRNG>();
+  const domains = new Map<string, DomainRNG>()
 
   return {
     getMasterSeed: () => masterSeedStr,
@@ -167,16 +166,15 @@ export function createSeededRNG(masterSeed: string | number): SeededRNG {
 
     domain: (name: string) => {
       if (!domains.has(name)) {
-        // Create domain seed by hashing "masterSeed:domainName"
-        const domainSeedStr = `${masterSeedStr}:${name}`;
-        const domainSeed = hashString(domainSeedStr);
-        domains.set(name, createDomainRNG(domainSeed));
+        const domainSeedStr = `${masterSeedStr}:${name}`
+        const domainSeed = hashString(domainSeedStr)
+        domains.set(name, createDomainRNG(domainSeed))
       }
-      return domains.get(name)!;
+      return domains.get(name)!
     },
 
     getDomains: () => Array.from(domains.keys()),
-  };
+  }
 }
 
 /**
@@ -184,10 +182,10 @@ export function createSeededRNG(masterSeed: string | number): SeededRNG {
  * Handles strings, numbers, dates, etc.
  */
 export function toSeed(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (typeof value === "number") return String(value);
-  if (value instanceof Date) return String(value.getTime());
-  return String(value);
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  if (value instanceof Date) return String(value.getTime())
+  return String(value)
 }
 
 /**
@@ -195,7 +193,7 @@ export function toSeed(value: unknown): string {
  * Uses current timestamp + random component
  */
 export function generateRandomSeed(): string {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 10);
-  return `${timestamp}-${random}`;
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(2, 10)
+  return `${timestamp}-${random}`
 }

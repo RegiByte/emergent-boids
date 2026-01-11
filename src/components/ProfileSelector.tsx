@@ -5,53 +5,48 @@
  * Uses profileStore for profile data and runtimeController for event dispatch.
  */
 
-import { useResource } from "@/systems/standard.ts";
+import { useResource } from '@/systems/standard.ts'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { IconWorld } from "@tabler/icons-react";
+} from '@/components/ui/select'
+import { IconWorld } from '@tabler/icons-react'
 
 export function ProfileSelector() {
-  const profileStore = useResource("profileStore");
-  const runtimeController = useResource("runtimeController");
+  const profileStore = useResource('profileStore')
+  const runtimeController = useResource('runtimeController')
 
-  // Get active profile ID from profile store
   const activeProfileId = profileStore.useStore(
-    (state) => state.profiles.data.activeProfileId,
-  );
+    (state) => state.profiles.data.activeProfileId
+  )
 
-  // Get all available profiles
-  const allProfiles = profileStore.getAllProfiles();
+  const allProfiles = profileStore.getAllProfiles()
 
   const handleProfileChange = (profileId: string) => {
-    // Dispatch profile/switched event
     runtimeController.dispatch({
-      type: "profile/switched",
+      type: 'profile/switched',
       profileId,
-    });
+    })
 
-    // Update profile store to reflect new active profile
-    profileStore.setActiveProfile(profileId);
-  };
+    profileStore.setActiveProfile(profileId)
+  }
 
-  // Find current profile info for display
-  const currentProfile = allProfiles.find((p) => p.id === activeProfileId);
+  const currentProfile = allProfiles.find((p) => p.id === activeProfileId)
 
   return (
     <div className="flex items-center gap-2">
       <IconWorld size={16} className="text-primary/70" />
       <Select
         value={activeProfileId}
-        onValueChange={(value) => handleProfileChange(value || "")}
+        onValueChange={(value) => handleProfileChange(value || '')}
       >
         <SelectTrigger size="sm" className="w-[200px]">
           <SelectValue>
             <span className="font-semibold text-primary">
-              {currentProfile?.name || "Select Profile"}
+              {currentProfile?.name || 'Select Profile'}
             </span>
           </SelectValue>
         </SelectTrigger>
@@ -69,5 +64,5 @@ export function ProfileSelector() {
         </SelectContent>
       </Select>
     </div>
-  );
+  )
 }

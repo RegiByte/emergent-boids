@@ -1,17 +1,13 @@
-import type { Boid } from "./vocabulary/schemas/entities";
-import type { Vector2 } from "./vocabulary/schemas/primitives";
-import * as vec from "./vector";
-import { SimulationParameters } from "./vocabulary/schemas/world";
-import { SpeciesConfig } from "./vocabulary/schemas/species";
+import type { Boid } from './vocabulary/schemas/entities'
+import type { Vector2 } from './vocabulary/schemas/primitives'
+import * as vec from './vector'
+import { SimulationParameters } from './vocabulary/schemas/world'
+import { SpeciesConfig } from './vocabulary/schemas/species'
 
 /**
  * Pure predicates for boid state and behavior
  * All functions are side-effect free and testable
  */
-
-// ============================================================================
-// Distance Predicates
-// ============================================================================
 
 /**
  * Check if two points are within a given radius (Euclidean distance)
@@ -21,10 +17,10 @@ export function isWithinRadius(
   b: Vector2,
   radius: number
 ): boolean {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  const distSq = dx * dx + dy * dy;
-  return distSq < radius * radius;
+  const dx = a.x - b.x
+  const dy = a.y - b.y
+  const distSq = dx * dx + dy * dy
+  return distSq < radius * radius
 }
 
 /**
@@ -37,13 +33,9 @@ export function isWithinToroidalRadius(
   width: number,
   height: number
 ): boolean {
-  const dist = vec.toroidalDistance(a, b, width, height);
-  return dist < radius;
+  const dist = vec.toroidalDistance(a, b, width, height)
+  return dist < radius
 }
-
-// ============================================================================
-// Role Predicates
-// ============================================================================
 
 /**
  * Check if a boid is prey
@@ -52,8 +44,8 @@ export function isPrey(
   boid: Boid,
   speciesTypes: Record<string, SpeciesConfig>
 ): boolean {
-  const speciesConfig = speciesTypes[boid.typeId];
-  return speciesConfig?.role === "prey";
+  const speciesConfig = speciesTypes[boid.typeId]
+  return speciesConfig?.role === 'prey'
 }
 
 /**
@@ -63,20 +55,16 @@ export function isPredator(
   boid: Boid,
   speciesTypes: Record<string, SpeciesConfig>
 ): boolean {
-  const speciesConfig = speciesTypes[boid.typeId];
-  return speciesConfig?.role === "predator";
+  const speciesConfig = speciesTypes[boid.typeId]
+  return speciesConfig?.role === 'predator'
 }
 
 /**
  * Check if two boids have the same type
  */
 export function isSameType(boid1: Boid, boid2: Boid): boolean {
-  return boid1.typeId === boid2.typeId;
+  return boid1.typeId === boid2.typeId
 }
-
-// ============================================================================
-// Energy Predicates
-// ============================================================================
 
 /**
  * Check if boid energy is below idle threshold (30%)
@@ -86,7 +74,7 @@ export function isEnergyBelowIdleThreshold(
   boid: Boid,
   _speciesConfig: SpeciesConfig
 ): boolean {
-  return boid.energy < boid.phenotype.maxEnergy * 0.3;
+  return boid.energy < boid.phenotype.maxEnergy * 0.3
 }
 
 /**
@@ -97,7 +85,7 @@ export function isEnergyAboveActiveThreshold(
   boid: Boid,
   _speciesConfig: SpeciesConfig
 ): boolean {
-  return boid.energy >= boid.phenotype.maxEnergy * 0.5;
+  return boid.energy >= boid.phenotype.maxEnergy * 0.5
 }
 
 /**
@@ -109,13 +97,9 @@ export function hasReproductionEnergy(
   _speciesConfig: SpeciesConfig
 ): boolean {
   const threshold =
-    boid.phenotype.maxEnergy * parameters.reproductionEnergyThreshold;
-  return boid.energy >= threshold;
+    boid.phenotype.maxEnergy * parameters.reproductionEnergyThreshold
+  return boid.energy >= threshold
 }
-
-// ============================================================================
-// Mating Predicates
-// ============================================================================
 
 /**
  * Check if boid is ready to mate (age, energy, cooldown)
@@ -129,14 +113,14 @@ export function isReadyToMate(
     boid.age >= boid.phenotype.minReproductionAge &&
     hasReproductionEnergy(boid, parameters, speciesConfig) &&
     boid.reproductionCooldown === 0
-  );
+  )
 }
 
 /**
  * Check if boid is currently seeking a mate (derived from stance)
  */
 export function isSeekingMate(boid: Boid): boolean {
-  return boid.stance === "seeking_mate" || boid.stance === "mating";
+  return boid.stance === 'seeking_mate' || boid.stance === 'mating'
 }
 
 /**
@@ -156,12 +140,8 @@ export function isEligibleMate(
     boid.reproductionCooldown === 0 &&
     boid.mateId === null &&
     !alreadyMated.has(boid.id)
-  );
+  )
 }
-
-// ============================================================================
-// Stance Predicates
-// ============================================================================
 
 /**
  * Check if predator should enter idle stance (low energy)
@@ -171,8 +151,8 @@ export function shouldEnterIdleStance(
   speciesConfig: SpeciesConfig
 ): boolean {
   return (
-    boid.stance !== "idle" && isEnergyBelowIdleThreshold(boid, speciesConfig)
-  );
+    boid.stance !== 'idle' && isEnergyBelowIdleThreshold(boid, speciesConfig)
+  )
 }
 
 /**
@@ -183,8 +163,8 @@ export function shouldExitIdleStance(
   speciesConfig: SpeciesConfig
 ): boolean {
   return (
-    boid.stance === "idle" && isEnergyAboveActiveThreshold(boid, speciesConfig)
-  );
+    boid.stance === 'idle' && isEnergyAboveActiveThreshold(boid, speciesConfig)
+  )
 }
 
 /**
@@ -194,23 +174,19 @@ export function shouldStayIdle(
   boid: Boid,
   speciesConfig: SpeciesConfig
 ): boolean {
-  return boid.stance === "idle" && !shouldExitIdleStance(boid, speciesConfig);
+  return boid.stance === 'idle' && !shouldExitIdleStance(boid, speciesConfig)
 }
-
-// ============================================================================
-// Age Predicates
-// ============================================================================
 
 /**
  * Check if boid has died from old age
  */
 export function hasDiedFromOldAge(boid: Boid): boolean {
-  return boid.phenotype.maxAge > 0 && boid.age >= boid.phenotype.maxAge;
+  return boid.phenotype.maxAge > 0 && boid.age >= boid.phenotype.maxAge
 }
 
 /**
  * Check if boid has died from starvation (predators only)
  */
 export function hasDiedFromStarvation(boid: Boid): boolean {
-  return boid.energy <= 0;
+  return boid.energy <= 0
 }

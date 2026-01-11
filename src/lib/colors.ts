@@ -1,4 +1,4 @@
-import chroma from "chroma-js";
+import chroma from 'chroma-js'
 
 /**
  * Color Utilities using chroma-js
@@ -18,13 +18,13 @@ import chroma from "chroma-js";
 export const adjustColorBrightness = (
   hexColor: string,
   energyRatio: number,
-  minBrightness = 0.4,
+  minBrightness = 0.4
 ): string => {
-  const brightness = minBrightness + (1 - minBrightness) * energyRatio;
+  const brightness = minBrightness + (1 - minBrightness) * energyRatio
   return chroma(hexColor)
     .brighten(brightness - 1)
-    .css();
-};
+    .css()
+}
 
 /**
  * Convert hex color to RGBA with specified alpha
@@ -35,8 +35,8 @@ export const adjustColorBrightness = (
  * @returns RGBA color string suitable for canvas fillStyle
  */
 export const hexToRgba = (hexColor: string, alpha: number): string => {
-  return chroma(hexColor).alpha(alpha).css();
-};
+  return chroma(hexColor).alpha(alpha).css()
+}
 
 /**
  * Parse any color format to RGB components
@@ -46,8 +46,8 @@ export const hexToRgba = (hexColor: string, alpha: number): string => {
  * @returns [r, g, b] array with values 0-255
  */
 export const toRgb = (color: string): [number, number, number] => {
-  return chroma(color).rgb();
-};
+  return chroma(color).rgb()
+}
 
 /**
  * Parse any color format to hex
@@ -56,8 +56,8 @@ export const toRgb = (color: string): [number, number, number] => {
  * @returns Hex color string
  */
 export const toHex = (color: string): string => {
-  return chroma(color).hex();
-};
+  return chroma(color).hex()
+}
 
 /**
  * Mix two colors together
@@ -73,10 +73,10 @@ export const mixColors = (
   color1: string,
   color2: string,
   ratio: number,
-  mode: "rgb" | "lab" | "lch" = "lab",
+  mode: 'rgb' | 'lab' | 'lch' = 'lab'
 ): string => {
-  return chroma.mix(color1, color2, ratio, mode).hex();
-};
+  return chroma.mix(color1, color2, ratio, mode).hex()
+}
 
 /**
  * Get contrasting text color for any background
@@ -87,11 +87,11 @@ export const mixColors = (
  */
 export const getContrastColor = (
   backgroundColor: string,
-  darkColor = "#000000",
-  lightColor = "#ffffff",
+  darkColor = '#000000',
+  lightColor = '#ffffff'
 ): string => {
-  return chroma(backgroundColor).luminance() > 0.5 ? darkColor : lightColor;
-};
+  return chroma(backgroundColor).luminance() > 0.5 ? darkColor : lightColor
+}
 
 /**
  * Generate UI theme colors from a base background color
@@ -101,21 +101,21 @@ export const getContrastColor = (
  * @returns Theme object with derived colors
  */
 export const generateUITheme = (backgroundColor: string) => {
-  const base = chroma(backgroundColor);
-  const isLight = base.luminance() > 0.5;
+  const base = chroma(backgroundColor)
+  const isLight = base.luminance() > 0.5
 
   return {
     background: base.css(),
     text: getContrastColor(backgroundColor),
-    textMuted: isLight ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.6)",
-    accent: base.set("hsl.h", "+180").saturate(2).css(),
+    textMuted: isLight ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)',
+    accent: base.set('hsl.h', '+180').saturate(2).css(),
     hover: base.brighten(0.5).alpha(0.8).css(),
     border: base
       .brighten(isLight ? -1 : 1)
       .alpha(0.3)
       .css(),
-  };
-};
+  }
+}
 
 /**
  * Create a color scale for data visualization
@@ -129,11 +129,11 @@ export const generateUITheme = (backgroundColor: string) => {
 export const createColorScale = (
   from: string,
   to: string,
-  steps: number,
+  steps: number
 ): string[] => {
-  const scale = chroma.scale([from, to]).mode("lab");
-  return Array.from({ length: steps }, (_, i) => scale(i / (steps - 1)).hex());
-};
+  const scale = chroma.scale([from, to]).mode('lab')
+  return Array.from({ length: steps }, (_, i) => scale(i / (steps - 1)).hex())
+}
 
 /**
  * Lighten a color by a specified amount
@@ -143,8 +143,8 @@ export const createColorScale = (
  * @returns Lightened color as hex
  */
 export const lighten = (color: string, amount = 1): string => {
-  return chroma(color).brighten(amount).hex();
-};
+  return chroma(color).brighten(amount).hex()
+}
 
 /**
  * Darken a color by a specified amount
@@ -154,8 +154,8 @@ export const lighten = (color: string, amount = 1): string => {
  * @returns Darkened color as hex
  */
 export const darken = (color: string, amount = 1): string => {
-  return chroma(color).darken(amount).hex();
-};
+  return chroma(color).darken(amount).hex()
+}
 
 /**
  * Saturate a color
@@ -165,8 +165,8 @@ export const darken = (color: string, amount = 1): string => {
  * @returns Saturated color as hex
  */
 export const saturate = (color: string, amount = 1): string => {
-  return chroma(color).saturate(amount).hex();
-};
+  return chroma(color).saturate(amount).hex()
+}
 
 /**
  * Desaturate a color
@@ -176,8 +176,8 @@ export const saturate = (color: string, amount = 1): string => {
  * @returns Desaturated color as hex
  */
 export const desaturate = (color: string, amount = 1): string => {
-  return chroma(color).desaturate(amount).hex();
-};
+  return chroma(color).desaturate(amount).hex()
+}
 
 /**
  * Calculate perceptual distance between two colors using DeltaE (LAB color space)
@@ -193,5 +193,5 @@ export const desaturate = (color: string, amount = 1): string => {
  *          100+ = colors are exact opposite
  */
 export const colorDistance = (color1: string, color2: string): number => {
-  return chroma.deltaE(color1, color2);
-};
+  return chroma.deltaE(color1, color2)
+}

@@ -25,7 +25,7 @@ varying vec2 vPartUV;
 
 void main() {
   // Center the quad and scale by part size
-  // Session 97: partScale represents radius; multiply by 2.0 to get diameter
+  
   // This matches the main boid shader's semantics (scale = radius)
   vec2 centeredPos = (position - 0.5) * (partScale * 2.0);
   

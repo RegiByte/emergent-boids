@@ -1,6 +1,6 @@
-import type { DeathMarker } from "./vocabulary/schemas/entities";
-import { calculateDistance } from "./calculations";
-import type { Boid } from "./vocabulary/schemas/entities";
+import type { DeathMarker } from './vocabulary/schemas/entities'
+import { calculateDistance } from './calculations'
+import type { Boid } from './vocabulary/schemas/entities'
 
 /**
  * Death Marker Management System
@@ -10,10 +10,6 @@ import type { Boid } from "./vocabulary/schemas/entities";
  * areas where deaths have occurred (starvation/old age).
  */
 
-// ============================================
-// Constants
-// ============================================
-
 export const DEATH_MARKER_CONSTANTS = {
   CONSOLIDATION_RADIUS: 100, // Nearby deaths merge into existing markers
   INITIAL_STRENGTH: 1.0, // Starting repulsion strength
@@ -21,25 +17,17 @@ export const DEATH_MARKER_CONSTANTS = {
   MAX_STRENGTH: 5.0, // Maximum repulsion strength
   INITIAL_FRAMES: 300, // Starting lifetime
   MAX_LIFETIME_FRAMES: 600, // Maximum lifetime (prevents immortal markers)
-} as const;
-
-// ============================================
-// Types
-// ============================================
+} as const
 
 export type DeathMarkerUpdate = {
-  markers: DeathMarker[];
-  shouldUpdate: boolean;
-};
+  markers: DeathMarker[]
+  shouldUpdate: boolean
+}
 
 export type DeathEvent = {
-  boidId: string;
-  reason: "old_age" | "starvation" | "predation";
-};
-
-// ============================================
-// Pure Logic Functions
-// ============================================
+  boidId: string
+  reason: 'old_age' | 'starvation' | 'predation'
+}
 
 /**
  * Find nearby markers within consolidation radius
@@ -49,18 +37,18 @@ function findNearbyMarkers(
   position: { x: number; y: number },
   radius: number
 ): number[] {
-  const nearbyIndexes: number[] = [];
+  const nearbyIndexes: number[] = []
 
   for (let i = 0; i < markers.length; i++) {
-    const marker = markers[i];
-    const dist = calculateDistance(marker.position, position);
+    const marker = markers[i]
+    const dist = calculateDistance(marker.position, position)
 
     if (dist < radius) {
-      nearbyIndexes.push(i);
+      nearbyIndexes.push(i)
     }
   }
 
-  return nearbyIndexes;
+  return nearbyIndexes
 }
 
 /**
@@ -70,8 +58,8 @@ function createDeathMarker(
   position: { x: number; y: number },
   typeId: string
 ): DeathMarker {
-  const now = performance.now();
-  const randomId = Math.random().toString(36).substring(2, 15);
+  const now = performance.now()
+  const randomId = Math.random().toString(36).substring(2, 15)
   return {
     id: `deathMarker:${now}-${randomId}`,
     position: { x: position.x, y: position.y },
@@ -79,7 +67,7 @@ function createDeathMarker(
     strength: DEATH_MARKER_CONSTANTS.INITIAL_STRENGTH,
     maxLifetimeFrames: DEATH_MARKER_CONSTANTS.MAX_LIFETIME_FRAMES,
     typeId,
-  };
+  }
 }
 
 /**
@@ -96,7 +84,7 @@ function strengthenMarker(marker: DeathMarker): DeathMarker {
       marker.remainingFrames + DEATH_MARKER_CONSTANTS.INITIAL_FRAMES,
       marker.maxLifetimeFrames
     ),
-  };
+  }
 }
 
 /**
@@ -108,43 +96,38 @@ export function processDeathMarkers(
   deathEvents: DeathEvent[],
   getBoidById: (id: string) => Boid | undefined
 ): DeathMarkerUpdate {
-  const updatedMarkers = [...currentMarkers];
-  let hasChanges = false;
+  const updatedMarkers = [...currentMarkers]
+  let hasChanges = false
 
   for (const { boidId, reason } of deathEvents) {
-    // Only create markers for natural deaths (starvation/old age)
-    // Predation deaths create food sources instead
-    if (reason !== "starvation" && reason !== "old_age") {
-      continue;
+    if (reason !== 'starvation' && reason !== 'old_age') {
+      continue
     }
 
-    const boid = getBoidById(boidId);
-    if (!boid) continue;
+    const boid = getBoidById(boidId)
+    if (!boid) continue
 
-    // Find nearby markers to consolidate
     const nearbyIndexes = findNearbyMarkers(
       updatedMarkers,
       boid.position,
       DEATH_MARKER_CONSTANTS.CONSOLIDATION_RADIUS
-    );
+    )
 
     if (nearbyIndexes.length > 0) {
-      // Strengthen existing nearby markers
       for (const index of nearbyIndexes) {
-        updatedMarkers[index] = strengthenMarker(updatedMarkers[index]);
+        updatedMarkers[index] = strengthenMarker(updatedMarkers[index])
       }
-      hasChanges = true;
+      hasChanges = true
     } else {
-      // Create new marker
-      updatedMarkers.push(createDeathMarker(boid.position, boid.typeId));
-      hasChanges = true;
+      updatedMarkers.push(createDeathMarker(boid.position, boid.typeId))
+      hasChanges = true
     }
   }
 
   return {
     markers: updatedMarkers,
     shouldUpdate: hasChanges,
-  };
+  }
 }
 
 /**
@@ -154,24 +137,21 @@ export function processDeathMarkers(
 export function fadeDeathMarkers(
   currentMarkers: DeathMarker[]
 ): DeathMarkerUpdate {
-  // Skip if no markers
   if (currentMarkers.length === 0) {
-    return { markers: currentMarkers, shouldUpdate: false };
+    return { markers: currentMarkers, shouldUpdate: false }
   }
 
-  // Decrement frames and filter expired markers
   const updatedMarkers = currentMarkers
     .map((marker) => ({
       ...marker,
       remainingFrames: marker.remainingFrames - 1,
     }))
-    .filter((marker) => marker.remainingFrames > 0);
+    .filter((marker) => marker.remainingFrames > 0)
 
-  // Always update (frames change even if length doesn't)
   return {
     markers: updatedMarkers,
     shouldUpdate: true,
-  };
+  }
 }
 
 /**
@@ -181,11 +161,11 @@ export function haveMarkersChanged(
   oldMarkers: DeathMarker[],
   newMarkers: DeathMarker[]
 ): boolean {
-  if (oldMarkers.length !== newMarkers.length) return true;
+  if (oldMarkers.length !== newMarkers.length) return true
 
   return newMarkers.some(
     (marker, idx) =>
       marker.remainingFrames !== oldMarkers[idx]?.remainingFrames ||
       marker.strength !== oldMarkers[idx]?.strength
-  );
+  )
 }

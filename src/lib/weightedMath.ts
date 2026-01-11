@@ -20,9 +20,9 @@
  * // → 100*1.0 + 50*0.5 + 10*0.1 = 126
  */
 export function weightedSum(
-  factors: Array<{ value: number; weight: number }>,
+  factors: Array<{ value: number; weight: number }>
 ): number {
-  return factors.reduce((sum, { value, weight }) => sum + value * weight, 0);
+  return factors.reduce((sum, { value, weight }) => sum + value * weight, 0)
 }
 
 /**
@@ -47,9 +47,9 @@ export function weightedSum(
  */
 export function weightedDifference(
   factorsA: Array<{ value: number; weight: number }>,
-  factorsB: Array<{ value: number; weight: number }>,
+  factorsB: Array<{ value: number; weight: number }>
 ): number {
-  return weightedSum(factorsA) - weightedSum(factorsB);
+  return weightedSum(factorsA) - weightedSum(factorsB)
 }
 
 /**
@@ -68,23 +68,23 @@ export function weightedDifference(
  */
 export function createWeightedComparator<T>(
   factors: Array<{
-    getValue: (item: T) => number;
-    weight: number;
-    order?: "asc" | "desc";
-  }>,
+    getValue: (item: T) => number
+    weight: number
+    order?: 'asc' | 'desc'
+  }>
 ): (a: T, b: T) => number {
   return (a: T, b: T) => {
-    let score = 0;
+    let score = 0
 
-    for (const { getValue, weight, order = "desc" } of factors) {
-      const valueA = getValue(a);
-      const valueB = getValue(b);
-      const diff = order === "desc" ? valueB - valueA : valueA - valueB;
-      score += diff * weight;
+    for (const { getValue, weight, order = 'desc' } of factors) {
+      const valueA = getValue(a)
+      const valueB = getValue(b)
+      const diff = order === 'desc' ? valueB - valueA : valueA - valueB
+      score += diff * weight
     }
 
-    return score;
-  };
+    return score
+  }
 }
 
 /**
@@ -98,11 +98,11 @@ export function createWeightedComparator<T>(
  * // → (100*2 + 50*1) / (2+1) = 83.33
  */
 export function weightedAverage(
-  factors: Array<{ value: number; weight: number }>,
+  factors: Array<{ value: number; weight: number }>
 ): number {
-  const totalWeight = factors.reduce((sum, { weight }) => sum + weight, 0);
-  if (totalWeight === 0) return 0;
-  return weightedSum(factors) / totalWeight;
+  const totalWeight = factors.reduce((sum, { weight }) => sum + weight, 0)
+  if (totalWeight === 0) return 0
+  return weightedSum(factors) / totalWeight
 }
 
 /**
@@ -121,15 +121,15 @@ export function weightedAverage(
  * // ]
  */
 export function normalizeWeights(
-  factors: Array<{ value: number; weight: number }>,
+  factors: Array<{ value: number; weight: number }>
 ): Array<{ value: number; weight: number }> {
-  const totalWeight = factors.reduce((sum, { weight }) => sum + weight, 0);
-  if (totalWeight === 0) return factors;
+  const totalWeight = factors.reduce((sum, { weight }) => sum + weight, 0)
+  if (totalWeight === 0) return factors
 
   return factors.map(({ value, weight }) => ({
     value,
     weight: weight / totalWeight,
-  }));
+  }))
 }
 
 /**
@@ -147,17 +147,17 @@ export function normalizeWeights(
  */
 export function weightedScoreNormalized(
   factors: Array<{
-    value: number;
-    weight: number;
-    min: number;
-    max: number;
-  }>,
+    value: number
+    weight: number
+    min: number
+    max: number
+  }>
 ): number {
   return factors.reduce((sum, { value, weight, min, max }) => {
-    const range = max - min;
-    const normalized = range === 0 ? 0 : (value - min) / range;
-    return sum + normalized * weight;
-  }, 0);
+    const range = max - min
+    const normalized = range === 0 ? 0 : (value - min) / range
+    return sum + normalized * weight
+  }, 0)
 }
 
 /**
@@ -172,9 +172,9 @@ export function weightedScoreNormalized(
 export function decayWeight(
   initialWeight: number,
   timePassed: number,
-  decayRate: number,
+  decayRate: number
 ): number {
-  return initialWeight * Math.exp(-decayRate * timePassed);
+  return initialWeight * Math.exp(-decayRate * timePassed)
 }
 
 /**
@@ -194,16 +194,16 @@ export function decayWeight(
 export function weightedManhattanDistance(
   pointA: number[],
   pointB: number[],
-  weights: number[],
+  weights: number[]
 ): number {
-  const minLength = Math.min(pointA.length, pointB.length, weights.length);
-  let distance = 0;
+  const minLength = Math.min(pointA.length, pointB.length, weights.length)
+  let distance = 0
 
   for (let i = 0; i < minLength; i++) {
-    distance += Math.abs(pointA[i] - pointB[i]) * weights[i];
+    distance += Math.abs(pointA[i] - pointB[i]) * weights[i]
   }
 
-  return distance;
+  return distance
 }
 
 /**
@@ -221,17 +221,17 @@ export function weightedManhattanDistance(
 export function weightedEuclideanDistance(
   pointA: number[],
   pointB: number[],
-  weights: number[],
+  weights: number[]
 ): number {
-  const minLength = Math.min(pointA.length, pointB.length, weights.length);
-  let sumSquares = 0;
+  const minLength = Math.min(pointA.length, pointB.length, weights.length)
+  let sumSquares = 0
 
   for (let i = 0; i < minLength; i++) {
-    const diff = pointA[i] - pointB[i];
-    sumSquares += diff * diff * weights[i];
+    const diff = pointA[i] - pointB[i]
+    sumSquares += diff * diff * weights[i]
   }
 
-  return Math.sqrt(sumSquares);
+  return Math.sqrt(sumSquares)
 }
 
 /**
@@ -267,48 +267,44 @@ export function weightedEuclideanDistance(
 export function createPriorityComparator<T>(
   currentTime: number,
   factors: Array<{
-    getValue: (item: T) => number;
-    weight: number;
+    getValue: (item: T) => number
+    weight: number
   }>,
   options?: {
-    decayRate?: number;
-    getCreatedAt?: (item: T) => number;
-  },
+    decayRate?: number
+    getCreatedAt?: (item: T) => number
+  }
 ): (a: T, b: T) => number {
-  const decayRate = options?.decayRate ?? 0;
-  const getCreatedAt = options?.getCreatedAt;
+  const decayRate = options?.decayRate ?? 0
+  const getCreatedAt = options?.getCreatedAt
 
   return (a: T, b: T) => {
-    // Calculate base score from weighted factors
     const calculateBaseScore = (item: T): number => {
       return factors.reduce((sum, { getValue, weight }) => {
-        return sum + getValue(item) * weight;
-      }, 0);
-    };
+        return sum + getValue(item) * weight
+      }, 0)
+    }
 
-    // Apply time decay if configured
     const applyDecay = (baseScore: number, item: T): number => {
-      // No decay configured
       if (decayRate === 0 || !getCreatedAt) {
-        return baseScore;
+        return baseScore
       }
 
-      const createdAt = getCreatedAt(item);
-      const age = currentTime - createdAt;
+      const createdAt = getCreatedAt(item)
+      const age = currentTime - createdAt
 
-      // No decay for items created now or in the future
       if (age <= 0) {
-        return baseScore;
+        return baseScore
       }
 
-      return baseScore * Math.exp(-decayRate * age);
-    };
+      return baseScore * Math.exp(-decayRate * age)
+    }
 
-    const scoreA = applyDecay(calculateBaseScore(a), a);
-    const scoreB = applyDecay(calculateBaseScore(b), b);
+    const scoreA = applyDecay(calculateBaseScore(a), a)
+    const scoreB = applyDecay(calculateBaseScore(b), b)
 
-    return scoreB - scoreA; // Higher score = higher priority
-  };
+    return scoreB - scoreA // Higher score = higher priority
+  }
 }
 
 /**
@@ -320,7 +316,7 @@ export function createPriorityComparator<T>(
  * lerp(0, 100, 0.75) // → 75
  */
 export function lerp(start: number, end: number, weight: number): number {
-  return start + (end - start) * weight;
+  return start + (end - start) * weight
 }
 
 /**
@@ -335,13 +331,13 @@ export function inverseLerp(
   start: number,
   end: number,
   value: number,
-  clamp: boolean = false,
+  clamp: boolean = false
 ): number {
-  const range = end - start;
-  if (range === 0) return 0;
+  const range = end - start
+  if (range === 0) return 0
 
-  const t = (value - start) / range;
-  return clamp ? Math.max(0, Math.min(1, t)) : t;
+  const t = (value - start) / range
+  return clamp ? Math.max(0, Math.min(1, t)) : t
 }
 
 /**
@@ -358,8 +354,8 @@ export function remap(
   fromMax: number,
   toMin: number,
   toMax: number,
-  clamp: boolean = false,
+  clamp: boolean = false
 ): number {
-  const t = inverseLerp(fromMin, fromMax, value, clamp);
-  return lerp(toMin, toMax, t);
+  const t = inverseLerp(fromMin, fromMax, value, clamp)
+  return lerp(toMin, toMax, t)
 }

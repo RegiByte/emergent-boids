@@ -1,371 +1,301 @@
-import { Atom, AtomState, createAtom, useAtomState } from "@/lib/state.ts";
-import { rateLimit } from "@tanstack/pacer";
-import { defineResource } from "braided";
-import type { CanvasAPI } from "./canvas.ts";
-import type { RuntimeStoreResource } from "./runtimeStore.ts";
+import { Atom, AtomState, createAtom, useAtomState } from '@/lib/state.ts'
+import { rateLimit } from '@tanstack/pacer'
+import { defineResource } from 'braided'
+import type { CanvasAPI } from './canvas.ts'
+import type { RuntimeStoreResource } from './runtimeStore.ts'
 
 export type CameraMode =
-  | { type: "free" }
+  | { type: 'free' }
   | {
-      type: "picker";
-      targetBoidId: string | null;
-      mouseWorldPos: { x: number; y: number };
-      mouseInCanvas: boolean;
+      type: 'picker'
+      targetBoidId: string | null
+      mouseWorldPos: { x: number; y: number }
+      mouseInCanvas: boolean
     }
-  | { type: "following"; boidId: string; lerpFactor: number };
+  | { type: 'following'; boidId: string; lerpFactor: number }
 
 export type CameraAPI = {
-  x: number;
-  y: number;
-  zoom: number;
-  viewportWidth: number;
-  viewportHeight: number;
-  mode: CameraMode;
-  isDragging: boolean;
-  useMode: () => AtomState<Atom<CameraMode>>;
-  panTo: (x: number, y: number, isManualNavigation?: boolean) => void;
-  setZoom: (zoom: number) => void;
-  screenToWorld: (screenX: number, screenY: number) => { x: number; y: number };
-  worldToScreen: (worldX: number, worldY: number) => { x: number; y: number };
-  isInViewport: (worldX: number, worldY: number, buffer?: number) => boolean;
+  x: number
+  y: number
+  zoom: number
+  viewportWidth: number
+  viewportHeight: number
+  mode: CameraMode
+  isDragging: boolean
+  useMode: () => AtomState<Atom<CameraMode>>
+  panTo: (x: number, y: number, isManualNavigation?: boolean) => void
+  setZoom: (zoom: number) => void
+  screenToWorld: (screenX: number, screenY: number) => { x: number; y: number }
+  worldToScreen: (worldX: number, worldY: number) => { x: number; y: number }
+  isInViewport: (worldX: number, worldY: number, buffer?: number) => boolean
   getViewportBounds: () => {
-    left: number;
-    right: number;
-    top: number;
-    bottom: number;
-  };
-  getTransformMatrix: () => number[];
-  enterPickerMode: () => void;
+    left: number
+    right: number
+    top: number
+    bottom: number
+  }
+  getTransformMatrix: () => number[]
+  enterPickerMode: () => void
   updatePickerTarget: (
     boidId: string | null,
     mouseWorldPos: { x: number; y: number }
-  ) => void;
-  setMouseInCanvas: (inCanvas: boolean) => void;
-  exitPickerMode: () => void;
-  startFollowing: (boidId: string) => void;
-  stopFollowing: () => void;
-  updateFollowPosition: (targetX: number, targetY: number) => void;
-};
+  ) => void
+  setMouseInCanvas: (inCanvas: boolean) => void
+  exitPickerMode: () => void
+  startFollowing: (boidId: string) => void
+  stopFollowing: () => void
+  updateFollowPosition: (targetX: number, targetY: number) => void
+}
 
 export const camera = defineResource({
-  dependencies: ["canvas", "runtimeStore"],
+  dependencies: ['canvas', 'runtimeStore'],
   start: ({
     canvas,
     runtimeStore,
   }: {
-    canvas: CanvasAPI;
-    runtimeStore: RuntimeStoreResource;
+    canvas: CanvasAPI
+    runtimeStore: RuntimeStoreResource
   }) => {
-    const { config: runtimeConfig } = runtimeStore.store.getState();
+    const { config: runtimeConfig } = runtimeStore.store.getState()
 
-    // Start centered in world
-    let x = runtimeConfig.world.width / 2;
-    let y = runtimeConfig.world.height / 2;
-    let zoom = 1.0; // 1.0 = see full viewport width in world units
+    let x = runtimeConfig.world.width / 2
+    let y = runtimeConfig.world.height / 2
+    let zoom = 1.0 // 1.0 = see full viewport width in world units
 
     const cameraAtom = createAtom({
-      type: "free",
-    } as CameraMode);
+      type: 'free',
+    } as CameraMode)
 
-    // Sync initial mode to store
-    // useCameraModeStore.setState({ mode });
-
-    // Pure functions for coordinate transforms
-    // Note: Use canvas.width/height dynamically to handle viewport resizing
     const worldToScreen = (worldX: number, worldY: number) => ({
       x: (worldX - x) * zoom + canvas.width / 2,
       y: (worldY - y) * zoom + canvas.height / 2,
-    });
+    })
 
     const screenToWorld = (screenX: number, screenY: number) => ({
       x: (screenX - canvas.width / 2) / zoom + x,
       y: (screenY - canvas.height / 2) / zoom + y,
-    });
+    })
 
     const isInViewport = (worldX: number, worldY: number, buffer = 100) => {
-      const halfWidth = canvas.width / zoom / 2 + buffer;
-      const halfHeight = canvas.height / zoom / 2 + buffer;
+      const halfWidth = canvas.width / zoom / 2 + buffer
+      const halfHeight = canvas.height / zoom / 2 + buffer
 
       return (
         worldX >= x - halfWidth &&
         worldX <= x + halfWidth &&
         worldY >= y - halfHeight &&
         worldY <= y + halfHeight
-      );
-    };
+      )
+    }
 
     const getViewportBounds = () => {
-      const halfWidth = canvas.width / zoom / 2;
-      const halfHeight = canvas.height / zoom / 2;
+      const halfWidth = canvas.width / zoom / 2
+      const halfHeight = canvas.height / zoom / 2
 
       return {
         left: x - halfWidth,
         right: x + halfWidth,
         top: y - halfHeight,
         bottom: y + halfHeight,
-      };
-    };
+      }
+    }
 
     const panTo = (newX: number, newY: number, isManualNavigation = false) => {
-      const state = cameraAtom.get();
-      // If user manually navigates while following, exit follow mode
-      if (isManualNavigation && state.type === "following") {
-        // mode = { type: "free" };
-        cameraAtom.set({ type: "free" });
+      const state = cameraAtom.get()
+      if (isManualNavigation && state.type === 'following') {
+        cameraAtom.set({ type: 'free' })
       }
 
-      // Calculate viewport half-dimensions at current zoom
-      const halfWidth = canvas.width / zoom / 2;
-      const halfHeight = canvas.height / zoom / 2;
+      const halfWidth = canvas.width / zoom / 2
+      const halfHeight = canvas.height / zoom / 2
 
-      // Clamp camera position to keep viewport within world bounds
-      const worldWidth = runtimeConfig.world.width;
-      const worldHeight = runtimeConfig.world.height;
+      const worldWidth = runtimeConfig.world.width
+      const worldHeight = runtimeConfig.world.height
 
-      x = Math.max(halfWidth, Math.min(worldWidth - halfWidth, newX));
-      y = Math.max(halfHeight, Math.min(worldHeight - halfHeight, newY));
-    };
+      x = Math.max(halfWidth, Math.min(worldWidth - halfWidth, newX))
+      y = Math.max(halfHeight, Math.min(worldHeight - halfHeight, newY))
+    }
 
     const rateLimitedPanTo = rateLimit(
       (newX: number, newY: number, isManualNavigation = false) => {
-        panTo(newX, newY, isManualNavigation);
+        panTo(newX, newY, isManualNavigation)
       },
       {
         limit: 4,
         window: 100,
-        windowType: "sliding",
+        windowType: 'sliding',
       }
-    );
+    )
 
     const setZoom = (newZoom: number) => {
-      // Calculate minimum zoom to prevent seeing beyond world borders
-      // Zoom system: LOWER zoom = more zoomed OUT (see more world)
-      // viewport shows: canvas.width / zoom world units horizontally
-      // We want to stop zooming out when EITHER width OR height fits entirely
-      // Therefore: use the LARGER of the two constraints (stops zooming out earlier)
-      const worldWidth = runtimeConfig.world.width;
-      const worldHeight = runtimeConfig.world.height;
-      const maxZoomForWidth = canvas.width / worldWidth;
-      const maxZoomForHeight = canvas.height / worldHeight;
-      const minZoom = Math.max(maxZoomForWidth, maxZoomForHeight); // Stop when either dimension fits
+      const worldWidth = runtimeConfig.world.width
+      const worldHeight = runtimeConfig.world.height
+      const maxZoomForWidth = canvas.width / worldWidth
+      const maxZoomForHeight = canvas.height / worldHeight
+      const minZoom = Math.max(maxZoomForWidth, maxZoomForHeight) // Stop when either dimension fits
 
-      // Clamp zoom: minimum = fit whole world (largest constraint), maximum = 2.5x (most zoomed in)
-      zoom = Math.max(minZoom, Math.min(2.5, newZoom));
-    };
+      zoom = Math.max(minZoom, Math.min(2.5, newZoom))
+    }
 
-    // Keyboard controls (WASD for pan, Escape to exit modes)
     const handleKeyboard = (e: KeyboardEvent) => {
-      const state = cameraAtom.get();
-      // Exit picker/follow mode on Escape
-      if (e.key === "Escape") {
-        if (state.type === "picker" || state.type === "following") {
-          cameraAtom.set({ type: "free" });
-          return;
+      const state = cameraAtom.get()
+      if (e.key === 'Escape') {
+        if (state.type === 'picker' || state.type === 'following') {
+          cameraAtom.set({ type: 'free' })
+          return
         }
       }
 
-      const panSpeed = 50 / zoom; // Faster pan when zoomed out
+      const panSpeed = 50 / zoom // Faster pan when zoomed out
 
       switch (e.key.toLowerCase()) {
-        case "w":
-          panTo(x, y - panSpeed, true); // Manual navigation
-          break;
-        case "s":
-          panTo(x, y + panSpeed, true); // Manual navigation
-          break;
-        case "a":
-          panTo(x - panSpeed, y, true); // Manual navigation
-          break;
-        case "d":
-          panTo(x + panSpeed, y, true); // Manual navigation
-          break;
+        case 'w':
+          panTo(x, y - panSpeed, true) // Manual navigation
+          break
+        case 's':
+          panTo(x, y + panSpeed, true) // Manual navigation
+          break
+        case 'a':
+          panTo(x - panSpeed, y, true) // Manual navigation
+          break
+        case 'd':
+          panTo(x + panSpeed, y, true) // Manual navigation
+          break
       }
-    };
+    }
 
-    // Mouse wheel for zoom
     const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
+      e.preventDefault()
 
-      // Get mouse position relative to canvas
-      const rect = canvas.canvas.getBoundingClientRect();
-      const mouseScreenX = e.clientX - rect.left;
-      const mouseScreenY = e.clientY - rect.top;
+      const rect = canvas.canvas.getBoundingClientRect()
+      const mouseScreenX = e.clientX - rect.left
+      const mouseScreenY = e.clientY - rect.top
 
-      // Calculate world position under mouse BEFORE zoom
-      const worldBeforeZoom = screenToWorld(mouseScreenX, mouseScreenY);
+      const worldBeforeZoom = screenToWorld(mouseScreenX, mouseScreenY)
 
-      // Apply zoom
-      const zoomFactor = 1.01;
-      const oldZoom = zoom;
-      const newZoom = e.deltaY > 0 ? zoom / zoomFactor : zoom * zoomFactor;
-      setZoom(newZoom);
+      const zoomFactor = 1.01
+      const oldZoom = zoom
+      const newZoom = e.deltaY > 0 ? zoom / zoomFactor : zoom * zoomFactor
+      setZoom(newZoom)
 
-      // If zoom actually changed (not clamped), adjust camera position
-      // so the world point under the mouse stays in the same screen position
       if (zoom !== oldZoom) {
-        // Calculate where that world point would NOW be on screen with new zoom
-        const worldAfterZoom = screenToWorld(mouseScreenX, mouseScreenY);
+        const worldAfterZoom = screenToWorld(mouseScreenX, mouseScreenY)
 
-        // The difference tells us how much the world "shifted" under the mouse
-        // We need to move the camera in the OPPOSITE direction to compensate
-        const dx = worldBeforeZoom.x - worldAfterZoom.x;
-        const dy = worldBeforeZoom.y - worldAfterZoom.y;
+        const dx = worldBeforeZoom.x - worldAfterZoom.x
+        const dy = worldBeforeZoom.y - worldAfterZoom.y
 
-        panTo(x + dx, y + dy);
+        panTo(x + dx, y + dy)
       }
-    };
+    }
 
-    // Mouse drag for pan
-    let isDragging = false;
-    let lastMouseX = 0;
-    let lastMouseY = 0;
+    let isDragging = false
+    let lastMouseX = 0
+    let lastMouseY = 0
 
     const handleMouseDown = (e: MouseEvent) => {
-      // Middle mouse button or Ctrl+Left click
       if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
-        isDragging = true;
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-        e.preventDefault(); // Prevent text selection during drag
-        e.stopPropagation(); // Stop other click handlers
+        isDragging = true
+        lastMouseX = e.clientX
+        lastMouseY = e.clientY
+        e.preventDefault() // Prevent text selection during drag
+        e.stopPropagation() // Stop other click handlers
       }
-    };
+    }
 
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
-        const dx = e.clientX - lastMouseX;
-        const dy = e.clientY - lastMouseY;
+        const dx = e.clientX - lastMouseX
+        const dy = e.clientY - lastMouseY
 
-        // Pan camera (invert direction for natural feel)
-        panTo(x - dx / zoom, y - dy / zoom, true); // Manual navigation
+        panTo(x - dx / zoom, y - dy / zoom, true) // Manual navigation
 
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-        e.preventDefault(); // Prevent any default behavior while dragging
+        lastMouseX = e.clientX
+        lastMouseY = e.clientY
+        e.preventDefault() // Prevent any default behavior while dragging
       }
-    };
-
-    // const rateLimitedHandleMouseMove = rateLimit(handleMouseMove, {
-    //   limit: 3,
-    //   window: 100,
-    //   windowType: "sliding",
-    //   onReject(rateLimiter) {
-    //     console.log(
-    //       `Rate limit exceeded. Try again in ${rateLimiter.getMsUntilNextWindow()}ms`
-    //     );
-    //   },
-    // });
+    }
 
     const handleMouseUp = (e: MouseEvent) => {
       if (isDragging) {
-        isDragging = false;
-        e.preventDefault(); // Prevent click event after drag
-        e.stopPropagation(); // Stop click from bubbling to canvas click handler
+        isDragging = false
+        e.preventDefault() // Prevent click event after drag
+        e.stopPropagation() // Stop click from bubbling to canvas click handler
       }
-    };
+    }
 
-    // Prevent context menu on Ctrl+Click (panning gesture)
     const handleContextMenu = (e: MouseEvent) => {
       if (e.ctrlKey) {
-        e.preventDefault(); // Block "Save image as..." menu
+        e.preventDefault() // Block "Save image as..." menu
       }
-    };
+    }
 
-    // Camera mode methods
     const enterPickerMode = () => {
       cameraAtom.set({
-        type: "picker",
+        type: 'picker',
         targetBoidId: null,
         mouseWorldPos: { x, y },
         mouseInCanvas: false,
-      });
-    };
+      })
+    }
 
     const updatePickerTarget = (
       boidId: string | null,
       mouseWorldPos: { x: number; y: number }
     ) => {
-      const state = cameraAtom.get();
-      if (state.type === "picker") {
+      const state = cameraAtom.get()
+      if (state.type === 'picker') {
         cameraAtom.set({
-          type: "picker",
+          type: 'picker',
           targetBoidId: boidId,
           mouseWorldPos,
           mouseInCanvas: state.mouseInCanvas,
-        });
+        })
       }
-    };
+    }
 
     const setMouseInCanvas = (inCanvas: boolean) => {
-      const state = cameraAtom.get();
-      if (state.type === "picker") {
+      const state = cameraAtom.get()
+      if (state.type === 'picker') {
         cameraAtom.set({
-          type: "picker",
+          type: 'picker',
           targetBoidId: state.targetBoidId,
           mouseWorldPos: state.mouseWorldPos,
           mouseInCanvas: inCanvas,
-        });
+        })
       }
-    };
+    }
 
     const exitPickerMode = () => {
-      cameraAtom.set({ type: "free" });
-    };
+      cameraAtom.set({ type: 'free' })
+    }
 
     const startFollowing = (boidId: string) => {
-      // Session 127: Increased lerp factor from 0.1 to 0.3 for more responsive following
-      // Lower values = smoother but more lag, Higher values = snappier but less smooth
-      cameraAtom.set({ type: "following", boidId, lerpFactor: 0.3 });
-    };
+      cameraAtom.set({ type: 'following', boidId, lerpFactor: 0.3 })
+    }
 
     const stopFollowing = () => {
-      cameraAtom.set({ type: "free" });
-    };
+      cameraAtom.set({ type: 'free' })
+    }
 
     const updateFollowPosition = (targetX: number, targetY: number) => {
-      const state = cameraAtom.get();
-      if (state.type === "following") {
-        // Smooth lerp to target position
-        const lerpFactor = state.lerpFactor;
-        const newX = x + (targetX - x) * lerpFactor;
-        const newY = y + (targetY - y) * lerpFactor;
-        panTo(newX, newY);
+      const state = cameraAtom.get()
+      if (state.type === 'following') {
+        const lerpFactor = state.lerpFactor
+        const newX = x + (targetX - x) * lerpFactor
+        const newY = y + (targetY - y) * lerpFactor
+        panTo(newX, newY)
       }
-    };
+    }
 
-    // WebGL matrix generation (mat3 for 2D transforms)
-    // Single combined matrix: world -> NDC
-    // Matches Canvas 2D: ctx.translate(w/2, h/2); ctx.scale(zoom, zoom); ctx.translate(-x, -y)
-    // Then converts screen space to NDC: ndc = (screen / size) * 2 - 1
     const getTransformMatrix = (): number[] => {
-      const w = canvas.width;
-      const h = canvas.height;
+      const w = canvas.width
+      const h = canvas.height
 
-      // Canvas 2D transform (applied right-to-left):
-      // screen = ((world - camera) * zoom) + center
-      // screen_x = (px - x) * zoom + w/2
-      // screen_y = (py - y) * zoom + h/2
-      //
-      // Then to NDC:
-      // ndc_x = (screen_x / w) * 2 - 1
-      // ndc_y = -(screen_y / h) * 2 + 1  (flip Y for WebGL)
-      //
-      // Combined:
-      // ndc_x = ((px - x) * zoom + w/2) / w * 2 - 1
-      //       = px * (2*zoom/w) - x * (2*zoom/w) + 1 - 1
-      //       = px * (2*zoom/w) + (-x*zoom + w/2) * (2/w) - 1
-      //
-      // ndc_y = -(((py - y) * zoom + h/2) / h * 2 - 1)
-      //       = -py * (2*zoom/h) + y * (2*zoom/h) - 1 + 1
-      //       = py * (-2*zoom/h) + (-y*zoom + h/2) * (-2/h) + 1
+      const scaleX = (2 * zoom) / w
+      const scaleY = (-2 * zoom) / h
+      const translateX = ((-x * zoom + w / 2) * 2) / w - 1
+      const translateY = ((-y * zoom + h / 2) * -2) / h + 1
 
-      const scaleX = (2 * zoom) / w;
-      const scaleY = (-2 * zoom) / h;
-      const translateX = ((-x * zoom + w / 2) * 2) / w - 1;
-      const translateY = ((-y * zoom + h / 2) * -2) / h + 1;
-
-      // Return in COLUMN-MAJOR order for WebGL (mat3 in GLSL)
-      // Column 0 (x-axis), Column 1 (y-axis), Column 2 (translation)
       return [
         scaleX,
         0,
@@ -376,47 +306,46 @@ export const camera = defineResource({
         translateX,
         translateY,
         1, // Column 2: translation + homogeneous
-      ];
-    };
+      ]
+    }
 
-    // Register event listeners
-    document.addEventListener("keydown", handleKeyboard);
-    canvas.canvas.addEventListener("wheel", handleWheel, { passive: false });
-    canvas.canvas.addEventListener("mousedown", handleMouseDown);
-    canvas.canvas.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener('keydown', handleKeyboard)
+    canvas.canvas.addEventListener('wheel', handleWheel, { passive: false })
+    canvas.canvas.addEventListener('mousedown', handleMouseDown)
+    canvas.canvas.addEventListener('contextmenu', handleContextMenu)
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
 
     const cleanup = () => {
-      document.removeEventListener("keydown", handleKeyboard);
-      canvas.canvas.removeEventListener("wheel", handleWheel);
-      canvas.canvas.removeEventListener("mousedown", handleMouseDown);
-      canvas.canvas.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
+      document.removeEventListener('keydown', handleKeyboard)
+      canvas.canvas.removeEventListener('wheel', handleWheel)
+      canvas.canvas.removeEventListener('mousedown', handleMouseDown)
+      canvas.canvas.removeEventListener('contextmenu', handleContextMenu)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
 
     const api = {
       get x() {
-        return x;
+        return x
       },
       get y() {
-        return y;
+        return y
       },
       get zoom() {
-        return zoom;
+        return zoom
       },
       get mode() {
-        return cameraAtom.get();
+        return cameraAtom.get()
       },
       get isDragging() {
-        return isDragging;
+        return isDragging
       },
       get viewportWidth() {
-        return canvas.width; // Dynamic - reads current canvas size
+        return canvas.width // Dynamic - reads current canvas size
       },
       get viewportHeight() {
-        return canvas.height; // Dynamic - reads current canvas size
+        return canvas.height // Dynamic - reads current canvas size
       },
       useMode: () => useAtomState(cameraAtom),
       panTo: rateLimitedPanTo,
@@ -434,13 +363,13 @@ export const camera = defineResource({
       stopFollowing,
       updateFollowPosition,
       cleanup,
-    } satisfies CameraAPI & { cleanup: () => void };
+    } satisfies CameraAPI & { cleanup: () => void }
 
-    return api;
+    return api
   },
   halt: (camera: CameraAPI & { cleanup?: () => void }) => {
     if (camera.cleanup) {
-      camera.cleanup();
+      camera.cleanup()
     }
   },
-});
+})

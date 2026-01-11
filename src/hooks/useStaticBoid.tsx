@@ -10,42 +10,42 @@
  * - "both": Render both side-by-side for comparison
  */
 
-import { useEffect, useRef } from "react";
-import type { Genome } from "@/boids/vocabulary/schemas/genetics";
-import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
-import type { AtlasesResult } from "@/resources/browser/atlases.ts";
+import { useEffect, useRef } from 'react'
+import type { Genome } from '@/boids/vocabulary/schemas/genetics'
+import type { SpeciesConfig } from '@/boids/vocabulary/schemas/species'
+import type { AtlasesResult } from '@/resources/browser/atlases.ts'
 import {
   createStaticBoid,
   renderBoidCanvas2D,
   applyCameraTransform,
   type StaticCamera,
-} from "@/lib/staticBoidRenderer";
+} from '@/lib/staticBoidRenderer'
 import {
   createMinimalWebGLContext,
   renderBoidWebGL,
   destroyWebGLContext,
   type StaticWebGLContext,
-} from "@/lib/staticBoidWebGL";
+} from '@/lib/staticBoidWebGL'
 
-export type RenderMode = "canvas2d" | "webgl" | "both";
+export type RenderMode = 'canvas2d' | 'webgl' | 'both'
 
 export interface UseStaticBoidOptions {
-  mode?: RenderMode;
-  typeId?: string; // Species/type identifier
-  rotation?: number;
-  scale?: number;
-  width?: number;
-  height?: number;
-  camera?: StaticCamera;
-  backgroundColor?: string;
-  speciesConfig?: SpeciesConfig; // Species configuration for shape rendering
-  atlases?: AtlasesResult; // Session 105: Pre-generated atlases from resource
+  mode?: RenderMode
+  typeId?: string // Species/type identifier
+  rotation?: number
+  scale?: number
+  width?: number
+  height?: number
+  camera?: StaticCamera
+  backgroundColor?: string
+  speciesConfig?: SpeciesConfig // Species configuration for shape rendering
+  atlases?: AtlasesResult
 }
 
 export interface UseStaticBoidResult {
-  canvas2dRef: React.RefObject<HTMLCanvasElement | null>;
-  webglRef: React.RefObject<HTMLCanvasElement | null>;
-  mode: RenderMode;
+  canvas2dRef: React.RefObject<HTMLCanvasElement | null>
+  webglRef: React.RefObject<HTMLCanvasElement | null>
+  mode: RenderMode
 }
 
 /**
@@ -71,133 +71,131 @@ export interface UseStaticBoidResult {
  * ```
  */
 export function useStaticBoid(
-  genome: Pick<Genome, "traits" | "visual"> | Genome | null,
-  options?: UseStaticBoidOptions,
+  genome: Pick<Genome, 'traits' | 'visual'> | Genome | null,
+  options?: UseStaticBoidOptions
 ): UseStaticBoidResult {
   const {
-    mode = "canvas2d",
-    typeId = "unknown",
+    mode = 'canvas2d',
+    typeId = 'unknown',
     rotation = 0,
     scale = 1,
     width = 200,
     height = 200,
     camera = { position: { x: 0, y: 0 }, zoom: 1 },
-    backgroundColor = "transparent",
+    backgroundColor = 'transparent',
     speciesConfig,
     atlases,
-  } = options ?? {};
+  } = options ?? {}
 
-  const canvas2dRef = useRef<HTMLCanvasElement>(null);
-  const webglRef = useRef<HTMLCanvasElement>(null);
-  const webglContextRef = useRef<StaticWebGLContext | null>(null);
+  const canvas2dRef = useRef<HTMLCanvasElement>(null)
+  const webglRef = useRef<HTMLCanvasElement>(null)
+  const webglContextRef = useRef<StaticWebGLContext | null>(null)
 
-  // Initialize WebGL context (once per mode change or atlases change)
-  // Session 105: Now requires atlases to be provided
   useEffect(() => {
-    if (mode === "canvas2d") return; // Skip if Canvas 2D-only mode
-    if (!webglRef.current) return;
+    if (mode === 'canvas2d') return // Skip if Canvas 2D-only mode
+    if (!webglRef.current) return
     if (!atlases) {
-      console.warn("Atlases not provided - cannot initialize WebGL context");
-      return;
+      console.warn('Atlases not provided - cannot initialize WebGL context')
+      return
     }
 
-    // Create WebGL context with pre-generated atlases
-    const context = createMinimalWebGLContext(webglRef.current, atlases);
+    const context = createMinimalWebGLContext(webglRef.current, atlases)
     if (!context) {
-      console.warn("Failed to initialize WebGL context for static boid");
-      return;
+      console.warn('Failed to initialize WebGL context for static boid')
+      return
     }
 
-    webglContextRef.current = context;
+    webglContextRef.current = context
 
-    // Cleanup on unmount or mode change
     return () => {
       if (webglContextRef.current) {
-        destroyWebGLContext(webglContextRef.current);
-        webglContextRef.current = null;
+        destroyWebGLContext(webglContextRef.current)
+        webglContextRef.current = null
       }
-    };
-  }, [mode, atlases]); // Reinitialize when mode or atlases change
+    }
+  }, [mode, atlases]) // Reinitialize when mode or atlases change
 
-  // Render Canvas 2D
   useEffect(() => {
-    if (mode === "webgl") return; // Skip if WebGL-only mode
-    if (!canvas2dRef.current || !genome) return;
+    if (mode === 'webgl') return // Skip if WebGL-only mode
+    if (!canvas2dRef.current || !genome) return
 
-    const canvas = canvas2dRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const canvas = canvas2dRef.current
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
 
-    // Clear canvas
-    if (backgroundColor === "transparent") {
-      ctx.clearRect(0, 0, width, height);
+    if (backgroundColor === 'transparent') {
+      ctx.clearRect(0, 0, width, height)
     } else {
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = backgroundColor
+      ctx.fillRect(0, 0, width, height)
     }
 
-    // Create static boid
-    // Profile baseGenomes don't have genealogy fields, so we add defaults
     const completeGenome = {
       traits: genome.traits,
       visual: genome.visual,
       parentIds: null,
       generation: 0,
       mutations: undefined,
-    } as Genome;
+    } as Genome
     const boid = createStaticBoid(
       completeGenome,
       typeId,
       0,
       { x: 0, y: 0 },
-      rotation,
-    );
+      rotation
+    )
 
-    // Apply camera transform
-    ctx.save();
-    applyCameraTransform(ctx, camera, width, height);
+    ctx.save()
+    applyCameraTransform(ctx, camera, width, height)
 
-    // Render boid
-    renderBoidCanvas2D(ctx, boid, scale, speciesConfig, atlases);
+    renderBoidCanvas2D(ctx, boid, scale, speciesConfig, atlases)
 
-    ctx.restore();
-  }, [genome, typeId, mode, rotation, scale, width, height, camera, backgroundColor, speciesConfig, atlases]);
+    ctx.restore()
+  }, [
+    genome,
+    typeId,
+    mode,
+    rotation,
+    scale,
+    width,
+    height,
+    camera,
+    backgroundColor,
+    speciesConfig,
+    atlases,
+  ])
 
-  // Render WebGL
   useEffect(() => {
-    if (mode === "canvas2d") return; // Skip if Canvas 2D-only mode
-    if (!webglContextRef.current || !genome) return;
+    if (mode === 'canvas2d') return // Skip if Canvas 2D-only mode
+    if (!webglContextRef.current || !genome) return
 
-    // Create static boid
-    // Profile baseGenomes don't have genealogy fields, so we add defaults
     const completeGenome = {
       traits: genome.traits,
       visual: genome.visual,
       parentIds: null,
       generation: 0,
       mutations: undefined,
-    } as Genome;
+    } as Genome
     const boid = createStaticBoid(
       completeGenome,
       typeId,
       0,
       { x: 0, y: 0 },
-      rotation,
-    );
+      rotation
+    )
 
-    // Render boid using WebGL
     renderBoidWebGL(webglContextRef.current, boid, speciesConfig, {
       scale,
       width,
       height,
-    });
-  }, [genome, typeId, mode, rotation, scale, width, height, speciesConfig]);
+    })
+  }, [genome, typeId, mode, rotation, scale, width, height, speciesConfig])
 
   return {
     canvas2dRef,
     webglRef,
     mode,
-  };
+  }
 }
 
 /**
@@ -213,11 +211,11 @@ export function useStaticBoid(
  */
 export function useStaticBoidCanvas2D(
   genome: Genome | null,
-  options?: Omit<UseStaticBoidOptions, "mode">,
+  options?: Omit<UseStaticBoidOptions, 'mode'>
 ) {
   const { canvas2dRef } = useStaticBoid(genome, {
     ...options,
-    mode: "canvas2d",
-  });
-  return canvas2dRef;
+    mode: 'canvas2d',
+  })
+  return canvas2dRef
 }

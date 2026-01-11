@@ -1,4 +1,4 @@
-import type { WorldPhysics } from "./vocabulary/schemas/world.ts";
+import type { WorldPhysics } from './vocabulary/schemas/world.ts'
 
 /**
  * Default World Physics
@@ -45,4 +45,4 @@ export const defaultWorldPhysics: WorldPhysics = {
     baseRegenRate: 0.05, // Health regen per tick (5% of max health)
     foodHealingMultiplier: 0.5, // % of energy gained also heals
   },
-};
+}

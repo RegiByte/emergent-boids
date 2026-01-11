@@ -11,37 +11,37 @@
  * - No dependency on braided resource system
  */
 
-import REGL from "regl";
-import type { Boid } from "@/boids/vocabulary/schemas/entities";
-import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
-import type { AtlasesResult } from "@/resources/browser/atlases.ts";
+import REGL from 'regl'
+import type { Boid } from '@/boids/vocabulary/schemas/entities'
+import type { SpeciesConfig } from '@/boids/vocabulary/schemas/species'
+import type { AtlasesResult } from '@/resources/browser/atlases.ts'
 import {
   createShapeTexture,
   type ShapeAtlasResult,
-} from "@/resources/browser/webgl/atlases/shapeAtlas";
+} from '@/resources/browser/webgl/atlases/shapeAtlas'
 import {
   createBodyPartsTexture,
   type BodyPartsAtlasResult,
-} from "@/resources/browser/webgl/atlases/bodyPartsAtlas";
-import { createShapeBoidsDrawCommand } from "@/resources/browser/webgl/drawCommands/shapeBoids";
-import { createBodyPartsDrawCommand } from "@/resources/browser/webgl/drawCommands/bodyParts";
-import { colorToRgb } from "@/resources/browser/webgl/dataPreparation/utils";
-import { transformBodyPartWebGL, type BodyPartType } from "@/lib/coordinates";
-import { shapeSizeParamFromBaseSize } from "@/lib/shapeSizing";
-import { darken } from "@/lib/colors"; // Session 101 Phase 2: Perceptual shadow colors
+} from '@/resources/browser/webgl/atlases/bodyPartsAtlas'
+import { createShapeBoidsDrawCommand } from '@/resources/browser/webgl/drawCommands/shapeBoids'
+import { createBodyPartsDrawCommand } from '@/resources/browser/webgl/drawCommands/bodyParts'
+import { colorToRgb } from '@/resources/browser/webgl/dataPreparation/utils'
+import { transformBodyPartWebGL, type BodyPartType } from '@/lib/coordinates'
+import { shapeSizeParamFromBaseSize } from '@/lib/shapeSizing'
+import { darken } from '@/lib/colors' // Session 101 Phase 2: Perceptual shadow colors
 
 /**
  * Minimal WebGL context for static boid rendering
  * Contains all resources needed to render a single boid
  */
 export interface StaticWebGLContext {
-  regl: REGL.Regl;
-  shapeAtlas: ShapeAtlasResult;
-  shapeTexture: REGL.Texture2D;
-  bodyPartsAtlas: BodyPartsAtlasResult;
-  bodyPartsTexture: REGL.Texture2D;
-  drawShapeBoids: REGL.DrawCommand;
-  drawBodyParts: REGL.DrawCommand;
+  regl: REGL.Regl
+  shapeAtlas: ShapeAtlasResult
+  shapeTexture: REGL.Texture2D
+  bodyPartsAtlas: BodyPartsAtlasResult
+  bodyPartsTexture: REGL.Texture2D
+  drawShapeBoids: REGL.DrawCommand
+  drawBodyParts: REGL.DrawCommand
 }
 
 /**
@@ -51,7 +51,7 @@ export interface StaticWebGLContext {
  * and prepares draw commands. This is a standalone setup that doesn't
  * depend on the full resource system.
  *
- * Session 105: Now accepts pre-generated atlases instead of generating them.
+ *
  * This eliminates redundant atlas generation and improves performance.
  *
  * @param canvas - Canvas element to render to
@@ -60,75 +60,64 @@ export interface StaticWebGLContext {
  */
 export function createMinimalWebGLContext(
   canvas: HTMLCanvasElement,
-  atlases: AtlasesResult,
+  atlases: AtlasesResult
 ): StaticWebGLContext | null {
   try {
-    // Create a raw WebGL context first
-    // This approach works better than letting REGL create it, especially when
-    // dealing with multiple canvases in a React environment
-    // Session 101: Disable premultipliedAlpha for proper color rendering
-    const gl = canvas.getContext("webgl", {
+    const gl = canvas.getContext('webgl', {
       alpha: true,
       antialias: false,
       depth: true,
       stencil: false,
       preserveDrawingBuffer: false,
       premultipliedAlpha: false, // Match blend function expectations
-    });
+    })
 
     if (!gl) {
       console.error(
-        "Failed to create WebGL context - WebGL may not be available",
-      );
-      return null;
+        'Failed to create WebGL context - WebGL may not be available'
+      )
+      return null
     }
 
-    // Initialize REGL with the existing WebGL context
-    // This is more reliable than letting REGL create the context
     const regl = REGL({
       gl,
-      extensions: ["ANGLE_instanced_arrays"],
-    });
+      extensions: ['ANGLE_instanced_arrays'],
+    })
 
-    // Session 105: Use pre-generated atlases (no more redundant generation!)
-    const shapeAtlas = atlases.shapes;
+    const shapeAtlas = atlases.shapes
     if (!shapeAtlas) {
-      console.error("Shape atlas not available from resource");
-      return null;
+      console.error('Shape atlas not available from resource')
+      return null
     }
 
-    // Create shape texture
-    const shapeTexture = createShapeTexture(regl, shapeAtlas);
+    const shapeTexture = createShapeTexture(regl, shapeAtlas)
     if (!shapeTexture) {
-      console.error("Failed to create shape texture");
-      return null;
+      console.error('Failed to create shape texture')
+      return null
     }
 
-    // Use pre-generated body parts atlas
-    const bodyPartsAtlas = atlases.bodyParts;
+    const bodyPartsAtlas = atlases.bodyParts
     if (!bodyPartsAtlas) {
-      console.error("Body parts atlas not available from resource");
-      return null;
+      console.error('Body parts atlas not available from resource')
+      return null
     }
 
-    // Create body parts texture
-    const bodyPartsTexture = createBodyPartsTexture(regl, bodyPartsAtlas);
+    const bodyPartsTexture = createBodyPartsTexture(regl, bodyPartsAtlas)
     if (!bodyPartsTexture) {
-      console.error("Failed to create body parts texture");
-      return null;
+      console.error('Failed to create body parts texture')
+      return null
     }
 
-    // Create draw commands (reuse existing infrastructure)
     const drawShapeBoids = createShapeBoidsDrawCommand(
       regl,
       shapeTexture,
-      shapeAtlas,
-    );
+      shapeAtlas
+    )
     const drawBodyParts = createBodyPartsDrawCommand(
       regl,
       bodyPartsTexture,
-      bodyPartsAtlas,
-    );
+      bodyPartsAtlas
+    )
 
     return {
       regl,
@@ -138,10 +127,10 @@ export function createMinimalWebGLContext(
       bodyPartsTexture,
       drawShapeBoids,
       drawBodyParts,
-    };
+    }
   } catch (error) {
-    console.error("Failed to initialize WebGL context:", error);
-    return null;
+    console.error('Failed to initialize WebGL context:', error)
+    return null
   }
 }
 
@@ -157,15 +146,11 @@ export function createMinimalWebGLContext(
 function createStaticTransformMatrix(
   _scale: number,
   width: number,
-  height: number,
+  height: number
 ): number[] {
-  // Simple orthographic projection that centers content
-  // Note: We apply visual scaling in boidScale, so keep projection unscaled
-  const scaleX = 2 / width;
-  const scaleY = 2 / height; // Positive Y (WebGL coords, not flipped)
+  const scaleX = 2 / width
+  const scaleY = 2 / height // Positive Y (WebGL coords, not flipped)
 
-  // Column-major mat3 for WebGL (matches shader expectations)
-  // Column 0 (x-axis), Column 1 (y-axis), Column 2 (translation)
   return [
     scaleX,
     0,
@@ -176,7 +161,7 @@ function createStaticTransformMatrix(
     0,
     0,
     1, // Column 2: translation + homogeneous
-  ];
+  ]
 }
 
 /**
@@ -195,58 +180,50 @@ export function renderBoidWebGL(
   boid: Boid,
   speciesConfig: SpeciesConfig | undefined,
   options: {
-    scale?: number;
-    width: number;
-    height: number;
-  },
+    scale?: number
+    width: number
+    height: number
+  }
 ): void {
   const { regl, shapeAtlas, bodyPartsAtlas, drawShapeBoids, drawBodyParts } =
-    context;
-  const { scale = 1, width, height } = options;
+    context
+  const { scale = 1, width, height } = options
 
-  // Clear canvas with transparent background
   regl.clear({
     color: [0, 0, 0, 0],
     depth: 1,
-  });
+  })
 
-  // Create transform matrix for centered static view
-  const transform = createStaticTransformMatrix(scale, width, height);
+  const transform = createStaticTransformMatrix(scale, width, height)
 
-  // Prepare shape boid instance data (single boid)
   const shapeBoidData = prepareShapeBoidInstanceData(
     boid,
     speciesConfig,
     shapeAtlas,
-    scale,
-  );
+    scale
+  )
 
-  // Draw boid shape
   drawShapeBoids({
     ...shapeBoidData,
     transform,
-  });
+  })
 
-  // Prepare and draw body parts if present
   const bodyPartsData = prepareBodyPartsInstanceData(
     boid,
     speciesConfig,
     bodyPartsAtlas,
-    scale,
-  );
+    scale
+  )
 
   if (bodyPartsData && bodyPartsData.count > 0) {
     drawBodyParts({
       ...bodyPartsData,
       transform,
-    });
+    })
   }
 
-  // DEBUG: Draw collision radius circle (Session 96)
-  // Shows the actual physics collision boundary for comparison
-  // Use a simple circle rendering approach
-  const collisionRadius = boid.phenotype.collisionRadius * scale;
-  drawDebugCollisionCircle(regl, transform, boid.position, collisionRadius);
+  const collisionRadius = boid.phenotype.collisionRadius * scale
+  drawDebugCollisionCircle(regl, transform, boid.position, collisionRadius)
 }
 
 /**
@@ -257,38 +234,28 @@ function prepareShapeBoidInstanceData(
   boid: Boid,
   speciesConfig: SpeciesConfig | undefined,
   shapeAtlas: ShapeAtlasResult,
-  scale: number,
+  scale: number
 ) {
-  const { position, velocity, phenotype } = boid;
+  const { position, velocity, phenotype } = boid
 
-  // Calculate rotation from velocity
-  const rotation = Math.atan2(velocity.y, velocity.x);
+  const rotation = Math.atan2(velocity.y, velocity.x)
 
-  // Get color (normalized to 0-1)
-  const [r, g, b] = colorToRgb(phenotype.color);
+  const [r, g, b] = colorToRgb(phenotype.color)
 
-  // Session 101: Border color (darker version of primary, 50% brightness)
-  const borderR = r * 0.5;
-  const borderG = g * 0.5;
-  const borderB = b * 0.5;
+  const borderR = r * 0.5
+  const borderG = g * 0.5
+  const borderB = b * 0.5
 
-  // Session 101 Phase 2: Shadow color using perceptually accurate darkening
-  const shadowHex = darken(phenotype.color, 2.5);
-  const [shadowR, shadowG, shadowB] = colorToRgb(shadowHex);
+  const shadowHex = darken(phenotype.color, 2.5)
+  const [shadowR, shadowG, shadowB] = colorToRgb(shadowHex)
 
-  // Session 96-97: use phenotype baseSize (== collisionRadius) and per-shape extent factor
-  // shapeSizeParamFromBaseSize compensates for each shape's internal max extent
-  // Shader multiplies by 2.0 to treat scale attribute as radius (produces diameter)
-  const baseSize = phenotype.baseSize;
+  const baseSize = phenotype.baseSize
 
-  // Get shape UV coordinates from atlas
-  const shapeName = speciesConfig?.visualConfig?.shape || "triangle";
-  const boidScale = shapeSizeParamFromBaseSize(shapeName, baseSize) * scale;
-  const shapeUV = shapeAtlas.uvMap.get(shapeName);
-  const uvCoords = shapeUV ||
-    shapeAtlas.uvMap.get("triangle") || { u: 0, v: 0 };
+  const shapeName = speciesConfig?.visualConfig?.shape || 'triangle'
+  const boidScale = shapeSizeParamFromBaseSize(shapeName, baseSize) * scale
+  const shapeUV = shapeAtlas.uvMap.get(shapeName)
+  const uvCoords = shapeUV || shapeAtlas.uvMap.get('triangle') || { u: 0, v: 0 }
 
-  // Create typed arrays (single instance)
   return {
     positions: new Float32Array([position.x, position.y]),
     rotations: new Float32Array([rotation]),
@@ -298,7 +265,7 @@ function prepareShapeBoidInstanceData(
     scales: new Float32Array([boidScale]),
     shapeUVs: new Float32Array([uvCoords.u, uvCoords.v]),
     count: 1,
-  };
+  }
 }
 
 /**
@@ -309,47 +276,42 @@ function prepareBodyPartsInstanceData(
   boid: Boid,
   speciesConfig: SpeciesConfig | undefined,
   bodyPartsAtlas: BodyPartsAtlasResult,
-  scale: number,
+  scale: number
 ) {
-  const { position, velocity, phenotype } = boid;
-  // Use species config body parts (matches main simulation pattern)
-  const bodyParts = speciesConfig?.baseGenome?.visual?.bodyParts || [];
+  const { position, velocity, phenotype } = boid
+  const bodyParts = speciesConfig?.baseGenome?.visual?.bodyParts || []
 
-  if (bodyParts.length === 0) return null;
+  if (bodyParts.length === 0) return null
 
-  // Filter out glow (handled differently) but keep all other parts
   const renderableParts = bodyParts.filter((part) => {
-    const partType = typeof part === "string" ? part : part.type;
-    return partType !== "glow";
-  });
+    const partType = typeof part === 'string' ? part : part.type
+    return partType !== 'glow'
+  })
 
-  if (renderableParts.length === 0) return null;
+  if (renderableParts.length === 0) return null
 
-  // Boid properties
-  const boidRotation = Math.atan2(velocity.y, velocity.x);
-  const boidColor = colorToRgb(phenotype.color);
-  // Session 96: Body parts should use physics size (baseSize == collisionRadius)
-  const boidScale = phenotype.baseSize * scale;
+  const boidRotation = Math.atan2(velocity.y, velocity.x)
+  const boidColor = colorToRgb(phenotype.color)
 
-  // Get tail color override if present
+  const boidScale = phenotype.baseSize * scale
+
   const tailColor = speciesConfig?.visualConfig?.tailColor
     ? colorToRgb(speciesConfig.visualConfig.tailColor)
-    : boidColor;
+    : boidColor
 
-  // Prepare data for each unique part type
   const partDataArrays: {
-    boidPos: number[];
-    boidRotation: number[];
-    boidColor: number[];
-    boidScale: number[];
-    partUV: number[];
-    partOffset: number[];
-    partRotation: number[];
-    partScale: number[];
-    // Session 102: Multi-color attributes (generic!)
-    primaryColor: number[];
-    secondaryColor: number[];
-    tertiaryColor: number[];
+    boidPos: number[]
+    boidRotation: number[]
+    boidColor: number[]
+    boidScale: number[]
+    partUV: number[]
+    partOffset: number[]
+    partRotation: number[]
+    partScale: number[]
+
+    primaryColor: number[]
+    secondaryColor: number[]
+    tertiaryColor: number[]
   } = {
     boidPos: [],
     boidRotation: [],
@@ -362,65 +324,45 @@ function prepareBodyPartsInstanceData(
     primaryColor: [],
     secondaryColor: [],
     tertiaryColor: [],
-  };
+  }
 
   for (const part of renderableParts) {
-    // Extract part data
-    const partType = typeof part === "string" ? part : part.type;
-    const partData = typeof part === "object" ? part : null;
-    const partSize = partData?.size || 1.0;
-    const partPosX = partData?.position?.x || 0;
-    const partPosY = partData?.position?.y || 0;
-    const partRotation = partData?.rotation || 0; // Rotation in degrees (from genome)
+    const partType = typeof part === 'string' ? part : part.type
+    const partData = typeof part === 'object' ? part : null
+    const partSize = partData?.size || 1.0
+    const partPosX = partData?.position?.x || 0
+    const partPosY = partData?.position?.y || 0
+    const partRotation = partData?.rotation || 0 // Rotation in degrees (from genome)
 
-    // Get UV coordinates for this part type
-    const partUV = bodyPartsAtlas.uvMap.get(partType);
-    if (!partUV) continue;
+    const partUV = bodyPartsAtlas.uvMap.get(partType)
+    if (!partUV) continue
 
-    // Use tail color for tails, body color for everything else
-    const partColor = partType === "tail" ? tailColor : boidColor;
+    const partColor = partType === 'tail' ? tailColor : boidColor
 
-    // Add instance data for this part
-    partDataArrays.boidPos.push(position.x, position.y);
-    partDataArrays.boidRotation.push(boidRotation);
-    partDataArrays.boidColor.push(partColor[0], partColor[1], partColor[2]);
-    partDataArrays.boidScale.push(boidScale);
-    partDataArrays.partUV.push(partUV.u, partUV.v);
+    partDataArrays.boidPos.push(position.x, position.y)
+    partDataArrays.boidRotation.push(boidRotation)
+    partDataArrays.boidColor.push(partColor[0], partColor[1], partColor[2])
+    partDataArrays.boidScale.push(boidScale)
+    partDataArrays.partUV.push(partUV.u, partUV.v)
 
-    // Use unified coordinate transformation
-    // transformBodyPartWebGL handles:
-    // - Genome position (-1 to 1) → WebGL offset (pixels)
-    // - Genome rotation (degrees) → Radians
-    // - Proper scale factor for part type
-    // - Y-axis flip for WebGL coordinate system
     const { offset, rotation } = transformBodyPartWebGL(
       { x: partPosX, y: partPosY },
       partRotation,
       partType as BodyPartType,
-      boidScale,
-    );
+      boidScale
+    )
 
-    partDataArrays.partOffset.push(offset.x, offset.y);
-    partDataArrays.partRotation.push(rotation);
+    partDataArrays.partOffset.push(offset.x, offset.y)
+    partDataArrays.partRotation.push(rotation)
 
-    // Session 98: partSize is now percentage of body (0.1-3.0)
-    // No multiplier needed - partSize directly represents percentage of boid collision radius
-    // Shader multiplies by 2.0 to convert radius → diameter for quad rendering
-    partDataArrays.partScale.push(partSize * boidScale);
+    partDataArrays.partScale.push(partSize * boidScale)
 
-    // Session 102: Multi-color attributes (generic naming!)
-    // For eyes: Primary=white, Secondary=part color, Tertiary=black
-    // For other parts: All use part color (future: customize per type!)
-    partDataArrays.primaryColor.push(1.0, 1.0, 1.0); // White
-    partDataArrays.secondaryColor.push(
-      partColor[0],
-      partColor[1],
-      partColor[2],
-    ); // Part color
-    partDataArrays.tertiaryColor.push(0.0, 0.0, 0.0); // Black
+    partDataArrays.primaryColor.push(1.0, 1.0, 1.0) // White
+    partDataArrays.secondaryColor.push(partColor[0], partColor[1], partColor[2]) // Part color
+    partDataArrays.tertiaryColor.push(0.0, 0.0, 0.0) // Black
   }
 
-  const count = renderableParts.length;
+  const count = renderableParts.length
 
   return {
     boidPositions: new Float32Array(partDataArrays.boidPos),
@@ -431,34 +373,33 @@ function prepareBodyPartsInstanceData(
     partOffsets: new Float32Array(partDataArrays.partOffset),
     partRotations: new Float32Array(partDataArrays.partRotation),
     partScales: new Float32Array(partDataArrays.partScale),
-    // Session 102: Multi-color attributes (generic!)
+
     primaryColors: new Float32Array(partDataArrays.primaryColor),
     secondaryColors: new Float32Array(partDataArrays.secondaryColor),
     tertiaryColors: new Float32Array(partDataArrays.tertiaryColor),
     count,
-  };
+  }
 }
 
 /**
- * Draw debug collision circle (Session 96)
+ * Draw debug collision circle
  * Simple circle outline to show collision radius
  */
 function drawDebugCollisionCircle(
   regl: REGL.Regl,
   transform: number[],
   position: { x: number; y: number },
-  radius: number,
+  radius: number
 ): void {
-  // Create circle vertices
-  const segments = 32;
-  const positions: number[] = [];
+  const segments = 32
+  const positions: number[] = []
 
   for (let i = 0; i <= segments; i++) {
-    const angle = (i / segments) * Math.PI * 2;
+    const angle = (i / segments) * Math.PI * 2
     positions.push(
       position.x + Math.cos(angle) * radius,
-      position.y + Math.sin(angle) * radius,
-    );
+      position.y + Math.sin(angle) * radius
+    )
   }
 
   const drawCircle = regl({
@@ -486,11 +427,10 @@ function drawDebugCollisionCircle(
       transform,
     },
     count: segments + 1,
-    primitive: "line strip",
-    // Note: WebGL only supports lineWidth = 1 on most platforms
-  });
+    primitive: 'line strip',
+  })
 
-  drawCircle();
+  drawCircle()
 }
 
 /**
@@ -501,13 +441,11 @@ function drawDebugCollisionCircle(
  */
 export function destroyWebGLContext(context: StaticWebGLContext): void {
   try {
-    // Destroy textures
-    context.shapeTexture.destroy();
-    context.bodyPartsTexture.destroy();
+    context.shapeTexture.destroy()
+    context.bodyPartsTexture.destroy()
 
-    // Destroy REGL context (cleans up all resources)
-    context.regl.destroy();
+    context.regl.destroy()
   } catch (error) {
-    console.error("Error destroying WebGL context:", error);
+    console.error('Error destroying WebGL context:', error)
   }
 }

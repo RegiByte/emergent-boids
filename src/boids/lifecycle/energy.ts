@@ -1,6 +1,6 @@
-import type { Boid } from "../vocabulary/schemas/entities";
+import type { Boid } from '../vocabulary/schemas/entities'
 
-import { SpeciesConfig } from "../vocabulary/schemas/species";
+import { SpeciesConfig } from '../vocabulary/schemas/species'
 
 /**
  * Update energy for a single boid based on its role and stance
@@ -9,32 +9,23 @@ import { SpeciesConfig } from "../vocabulary/schemas/species";
 export function updateBoidEnergy(
   boid: Boid,
   speciesConfig: SpeciesConfig,
-  deltaSeconds: number,
+  deltaSeconds: number
 ): number {
-  // Use phenotype energy loss rate (computed from genome + physics)
-  const energyLossRate = boid.phenotype.energyLossRate;
+  const energyLossRate = boid.phenotype.energyLossRate
 
-  if (speciesConfig.role === "predator") {
-    if (boid.stance === "idle" || boid.stance === "eating") {
-      // No energy change when idle or eating (eating gains from food sources)
-      return boid.energy;
+  if (speciesConfig.role === 'predator') {
+    if (boid.stance === 'idle' || boid.stance === 'eating') {
+      return boid.energy
     } else {
-      // Lose energy while active (hunting, seeking mate, mating)
-      return boid.energy - energyLossRate * deltaSeconds;
+      return boid.energy - energyLossRate * deltaSeconds
     }
   } else {
-    // Prey no longer gain passive energy - must eat from food sources
-    if (boid.stance === "fleeing") {
-      // Lose double energy when fleeing from predator
-      return boid.energy - energyLossRate * deltaSeconds * 2;
-    } else if (boid.stance === "eating") {
-      // No passive change, only from food sources
-      return boid.energy;
+    if (boid.stance === 'fleeing') {
+      return boid.energy - energyLossRate * deltaSeconds * 2
+    } else if (boid.stance === 'eating') {
+      return boid.energy
     } else {
-      // Session 122: Prey MUST lose some energy even when safe
-      // Otherwise they never drop below 50% and never seek food!
-      // Lose normal energy rate (same as predators when active)
-      return boid.energy - energyLossRate * deltaSeconds;
+      return boid.energy - energyLossRate * deltaSeconds
     }
   }
 }

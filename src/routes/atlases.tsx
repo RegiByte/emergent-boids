@@ -1,78 +1,74 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import {
   IconHome,
   IconZoomIn,
   IconZoomOut,
   IconGridDots,
-} from "@tabler/icons-react";
+} from '@tabler/icons-react'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import type { AtlasResult } from "@/resources/browser/webgl/atlases/types";
-import type { AtlasesResult } from "@/resources/browser/atlases.ts";
-import { createSystemHooks, createSystemManager } from "braided-react";
-import { atlases } from "@/resources/browser/atlases.ts";
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import type { AtlasResult } from '@/resources/browser/webgl/atlases/types'
+import type { AtlasesResult } from '@/resources/browser/atlases.ts'
+import { createSystemHooks, createSystemManager } from 'braided-react'
+import { atlases } from '@/resources/browser/atlases.ts'
 
-// Create a minimal system with just the atlases resource
-// This demonstrates braided's flexibility - routes can compose their own systems!
 const atlasViewerSystem = {
   atlases,
-};
+}
 
-const manager = createSystemManager(atlasViewerSystem);
-const { useResource, useSystem } = createSystemHooks(manager);
+const manager = createSystemManager(atlasViewerSystem)
+const { useResource, useSystem } = createSystemHooks(manager)
 
-export const Route = createFileRoute("/atlases")({
+export const Route = createFileRoute('/atlases')({
   component: AtlasesRoute,
-});
+})
 
 type AtlasConfig = {
-  name: string;
-  description: string;
-  getAtlas: (atlases: AtlasesResult) => AtlasResult | null;
-  info?: string;
-};
+  name: string
+  description: string
+  getAtlas: (atlases: AtlasesResult) => AtlasResult | null
+  info?: string
+}
 
 const atlasConfigs: AtlasConfig[] = [
   {
-    name: "Emoji Atlas",
-    description: "Stance symbol emojis for boid behavior indicators",
+    name: 'Emoji Atlas',
+    description: 'Stance symbol emojis for boid behavior indicators',
     getAtlas: (atlases) => atlases.emoji,
-    info: "64px cells - Hunting 😈, Fleeing 😱, Mating 💑, etc.",
+    info: '64px cells - Hunting 😈, Fleeing 😱, Mating 💑, etc.',
   },
   {
-    name: "Font Atlas",
-    description: "Bitmap font texture for text rendering",
+    name: 'Font Atlas',
+    description: 'Bitmap font texture for text rendering',
     getAtlas: (atlases) => atlases.font,
-    info: "16px font with metrics for proper character spacing",
+    info: '16px font with metrics for proper character spacing',
   },
   {
-    name: "Shape Atlas",
-    description: "Geometric body shapes for boid rendering",
+    name: 'Shape Atlas',
+    description: 'Geometric body shapes for boid rendering',
     getAtlas: (atlases) => atlases.shapes,
-    info: "256px cells (Session 102) - Multi-color: Diamond, Circle, Hexagon, Triangle, etc.",
+    info: '256px cells - Multi-color: Diamond, Circle, Hexagon, Triangle, etc.',
   },
   {
-    name: "Body Parts Atlas",
-    description: "Composable body parts layered on base shapes",
+    name: 'Body Parts Atlas',
+    description: 'Composable body parts layered on base shapes',
     getAtlas: (atlases) => atlases.bodyParts,
-    info: "128px cells - Multi-color Eyes (Session 102), Fins, Spikes, Tails, Antennae",
+    info: '128px cells - Multi-color Eyes, Fins, Spikes, Tails, Antennae',
   },
-];
+]
 
 function AtlasesRoute() {
-  // Initialize the minimal system (just atlases resource)
-  useSystem();
+  useSystem()
 
-  // Get the atlases from the resource
-  const atlasesResource = useResource("atlases");
+  const atlasesResource = useResource('atlases')
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -160,48 +156,45 @@ function AtlasesRoute() {
         </Card>
       </div>
     </div>
-  );
+  )
 }
 
 function AtlasCard({
   config,
   atlasResult,
 }: {
-  config: AtlasConfig;
-  atlasResult: AtlasResult | null;
+  config: AtlasConfig
+  atlasResult: AtlasResult | null
 }) {
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(1);
-  const [showGrid, setShowGrid] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const canvasRef = useRef<HTMLDivElement>(null)
+  const [zoom, setZoom] = useState(1)
+  const [showGrid, setShowGrid] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Append canvas to DOM
   useEffect(() => {
-    if (!atlasResult || !canvasRef.current) return;
+    if (!atlasResult || !canvasRef.current) return
 
-    const canvas = atlasResult.canvas as unknown as HTMLElement;
-    const canvasRefCurrent = canvasRef.current;
+    const canvas = atlasResult.canvas as unknown as HTMLElement
+    const canvasRefCurrent = canvasRef.current
 
-    // Style the canvas for proper display
-    // eslint-disable-next-line react-hooks/immutability
-    canvas.style.display = "block";
-    canvas.style.imageRendering = "pixelated"; // Sharp pixel rendering
-    canvas.style.borderRadius = "8px";
-    canvas.style.backgroundColor = "#1a1a1a"; // Dark background for contrast
-    canvas.style.maxWidth = "100%";
+    canvas.style.display = 'block'
+    canvas.style.imageRendering = 'pixelated' // Sharp pixel rendering
+    canvas.style.borderRadius = '8px'
+    canvas.style.backgroundColor = '#1a1a1a' // Dark background for contrast
+    canvas.style.maxWidth = '100%'
 
-    canvasRefCurrent.appendChild(canvas);
-    setIsLoading(false);
+    canvasRefCurrent.appendChild(canvas)
+    setIsLoading(false)
 
     return () => {
       if (canvasRefCurrent?.contains(canvas)) {
-        canvasRefCurrent.removeChild(canvas);
+        canvasRefCurrent.removeChild(canvas)
       }
-    };
-  }, [atlasResult]);
+    }
+  }, [atlasResult])
 
-  const handleZoomIn = () => setZoom((z) => Math.min(z + 0.5, 4));
-  const handleZoomOut = () => setZoom((z) => Math.max(z - 0.5, 0.5));
+  const handleZoomIn = () => setZoom((z) => Math.min(z + 0.5, 4))
+  const handleZoomOut = () => setZoom((z) => Math.max(z - 0.5, 0.5))
 
   if (!atlasResult) {
     return (
@@ -211,11 +204,11 @@ function AtlasCard({
           <CardDescription>Failed to generate atlas</CardDescription>
         </CardHeader>
       </Card>
-    );
+    )
   }
 
-  const gridSize = atlasResult.gridSize;
-  const atlasSize = atlasResult.canvas.width;
+  const gridSize = atlasResult.gridSize
+  const atlasSize = atlasResult.canvas.width
 
   return (
     <Card>
@@ -248,7 +241,7 @@ function AtlasCard({
             </Button>
           </div>
           <Button
-            variant={showGrid ? "default" : "outline"}
+            variant={showGrid ? 'default' : 'outline'}
             size="sm"
             onClick={() => setShowGrid(!showGrid)}
           >
@@ -263,7 +256,7 @@ function AtlasCard({
             className="relative inline-block"
             style={{
               transform: `scale(${zoom})`,
-              transformOrigin: "top left",
+              transformOrigin: 'top left',
             }}
           >
             <div ref={canvasRef} className="relative" />
@@ -331,5 +324,5 @@ function AtlasCard({
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

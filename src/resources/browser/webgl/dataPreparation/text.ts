@@ -5,19 +5,19 @@
  * Converts strings to character quads with UV coordinates.
  */
 
-import type { FontAtlasResult } from "../atlases/fontAtlas.ts";
+import type { FontAtlasResult } from '../atlases/fontAtlas.ts'
 
 /**
  * Instance data for text rendering
  */
 export type TextInstanceData = {
-  charPositions: Float32Array;
-  uvOffsets: Float32Array;
-  charSizes: Float32Array;
-  colors: Float32Array;
-  alphas: Float32Array;
-  count: number;
-};
+  charPositions: Float32Array
+  uvOffsets: Float32Array
+  charSizes: Float32Array
+  colors: Float32Array
+  alphas: Float32Array
+  count: number
+}
 
 /**
  * Text layout engine - converts string to character quads
@@ -40,39 +40,36 @@ export const layoutText = (
   g: number,
   b: number,
   alpha: number,
-  fontAtlas: FontAtlasResult,
+  fontAtlas: FontAtlasResult
 ): TextInstanceData | null => {
-  const charPositions: number[] = [];
-  const uvOffsets: number[] = [];
-  const charSizes: number[] = [];
-  const colors: number[] = [];
-  const alphas: number[] = [];
+  const charPositions: number[] = []
+  const uvOffsets: number[] = []
+  const charSizes: number[] = []
+  const colors: number[] = []
+  const alphas: number[] = []
 
-  let cursorX = x;
-  const cursorY = y;
+  let cursorX = x
+  const cursorY = y
 
   for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const charInfo = fontAtlas.uvMap.get(char);
+    const char = text[i]
+    const charInfo = fontAtlas.uvMap.get(char)
 
     if (!charInfo) {
-      // Unknown character, skip or use space
-      cursorX += fontAtlas.fontSize * 0.5;
-      continue;
+      cursorX += fontAtlas.fontSize * 0.5
+      continue
     }
 
-    // Add character quad
-    charPositions.push(cursorX, cursorY);
-    uvOffsets.push(charInfo.u, charInfo.v);
-    charSizes.push(fontAtlas.charSize, fontAtlas.charSize);
-    colors.push(r, g, b);
-    alphas.push(alpha);
+    charPositions.push(cursorX, cursorY)
+    uvOffsets.push(charInfo.u, charInfo.v)
+    charSizes.push(fontAtlas.charSize, fontAtlas.charSize)
+    colors.push(r, g, b)
+    alphas.push(alpha)
 
-    // Advance cursor by character width
-    cursorX += charInfo.width;
+    cursorX += charInfo.width
   }
 
-  if (charPositions.length === 0) return null;
+  if (charPositions.length === 0) return null
 
   return {
     charPositions: new Float32Array(charPositions),
@@ -81,5 +78,5 @@ export const layoutText = (
     colors: new Float32Array(colors),
     alphas: new Float32Array(alphas),
     count: charPositions.length / 2,
-  };
-};
+  }
+}

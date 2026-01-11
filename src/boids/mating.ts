@@ -2,58 +2,52 @@ import {
   calculateDistance,
   calculateOffspringPosition,
   calculateReproductionEnergyCost,
-} from "./calculations";
-import { lookupBoid } from "./conversions";
-import { iterateBoids } from "./iterators";
-import { isEligibleMate } from "./predicates";
-import type { Boid, BoidsById, OffspringData } from "./vocabulary/schemas/entities";
-import { SpeciesConfig } from "./vocabulary/schemas/species";
-import { SimulationParameters } from "./vocabulary/schemas/world";
+} from './calculations'
+import { lookupBoid } from './conversions'
+import { iterateBoids } from './iterators'
+import { isEligibleMate } from './predicates'
+import type {
+  Boid,
+  BoidsById,
+  OffspringData,
+} from './vocabulary/schemas/entities'
+import { SpeciesConfig } from './vocabulary/schemas/species'
+import { SimulationParameters } from './vocabulary/schemas/world'
 
 /**
  * Pure mating state machine
  * Handles all mating logic in a declarative, side-effect free way
  */
 
-// ============================================================================
-// Types
-// ============================================================================
-
-
-
 export type BoidUpdates = {
-  energy: number;
-  reproductionCooldown: number;
-  matingBuildupCounter: number;
-  mateId: string | null;
-  seekingMate: boolean;
-};
+  energy: number
+  reproductionCooldown: number
+  matingBuildupCounter: number
+  mateId: string | null
+  seekingMate: boolean
+}
 
 export type MatingResult =
-  | { type: "no_action" }
-  | { type: "pair_found"; mateId: string; updates: BoidUpdates }
-  | { type: "building_up"; buildup: number; updates: BoidUpdates }
-  | { type: "buildup_reset"; updates: BoidUpdates }
-  | { type: "mate_lost"; updates: BoidUpdates }
+  | { type: 'no_action' }
+  | { type: 'pair_found'; mateId: string; updates: BoidUpdates }
+  | { type: 'building_up'; buildup: number; updates: BoidUpdates }
+  | { type: 'buildup_reset'; updates: BoidUpdates }
+  | { type: 'mate_lost'; updates: BoidUpdates }
   | {
-      type: "reproduction_complete";
-      offspring: OffspringData;
-      boidUpdates: BoidUpdates;
-      mateUpdates: BoidUpdates;
-    };
+      type: 'reproduction_complete'
+      offspring: OffspringData
+      boidUpdates: BoidUpdates
+      mateUpdates: BoidUpdates
+    }
 
 /**
  * Context for applying mating results (side effects)
  */
 export type MatingContext = {
-  boids: BoidsById;
-  matedBoids: Set<string>;
-  boidsToAdd: OffspringData[];
-};
-
-// ============================================================================
-// Pure Mating Logic
-// ============================================================================
+  boids: BoidsById
+  matedBoids: Set<string>
+  boidsToAdd: OffspringData[]
+}
 
 /**
  * Find nearest eligible mate within radius
@@ -66,13 +60,13 @@ export function findNearbyMate(
 ): Boid | null {
   for (const other of iterateBoids(allBoids)) {
     if (isEligibleMate(other, boid, alreadyMated)) {
-      const distance = calculateDistance(boid.position, other.position);
+      const distance = calculateDistance(boid.position, other.position)
       if (distance < mateRadius) {
-        return other;
+        return other
       }
     }
   }
-  return null;
+  return null
 }
 
 /**
@@ -84,18 +78,16 @@ export function processAsexualReproduction(
   parameters: SimulationParameters,
   speciesConfig: SpeciesConfig
 ): MatingResult {
-  // Asexual reproduction is instant - no mate needed, no buildup
   const reproductionEnergy = calculateReproductionEnergyCost(
     boid.phenotype.maxEnergy
-  );
+  )
 
-  // Use type-specific cooldown if available, otherwise use global
   const cooldownFrames =
     speciesConfig.reproduction.cooldownFrames ??
-    parameters.reproductionCooldownFrames;
+    parameters.reproductionCooldownFrames
 
   return {
-    type: "reproduction_complete",
+    type: 'reproduction_complete',
     offspring: {
       parent1Id: boid.id,
       parent2Id: undefined, // No second parent for asexual
@@ -110,14 +102,13 @@ export function processAsexualReproduction(
       seekingMate: false,
     },
     mateUpdates: {
-      // No mate, but we need to provide this for type compatibility
       energy: 0,
       reproductionCooldown: 0,
       matingBuildupCounter: 0,
       mateId: null,
       seekingMate: false,
     },
-  };
+  }
 }
 
 /**
@@ -132,20 +123,16 @@ export function processMatingCycle(
   matedBoids: Set<string>,
   elapsedFrames: number // how many frames have passed since last check?
 ): MatingResult {
-  // Check if this type uses asexual reproduction
-  if (speciesConfig.reproduction.type === "asexual") {
-    return processAsexualReproduction(boid, parameters, speciesConfig);
+  if (speciesConfig.reproduction.type === 'asexual') {
+    return processAsexualReproduction(boid, parameters, speciesConfig)
   }
 
-  // Sexual reproduction logic below
-  // If already paired, check mating progress
   if (boid.mateId) {
-    const mate = lookupBoid(boid.mateId, allBoids);
+    const mate = lookupBoid(boid.mateId, allBoids)
 
-    // Mate died or disappeared
     if (!mate) {
       return {
-        type: "mate_lost",
+        type: 'mate_lost',
         updates: {
           energy: boid.energy,
           reproductionCooldown: boid.reproductionCooldown,
@@ -153,31 +140,28 @@ export function processMatingCycle(
           mateId: null,
           seekingMate: boid.seekingMate,
         },
-      };
+      }
     }
 
-    const distance = calculateDistance(boid.position, mate.position);
+    const distance = calculateDistance(boid.position, mate.position)
 
-    // Close enough to build up mating
     if (distance < parameters.mateRadius) {
       const newBuildup = Math.min(
         boid.matingBuildupFrames + elapsedFrames,
         parameters.matingBuildupFrames
-      );
+      )
 
-      // Buildup complete - reproduce!
       if (newBuildup >= parameters.matingBuildupFrames) {
         const reproductionEnergy = calculateReproductionEnergyCost(
           boid.phenotype.maxEnergy
-        );
+        )
 
-        // Use type-specific cooldown if available, otherwise use global
         const cooldownFrames =
           speciesConfig.reproduction.cooldownFrames ??
-          parameters.reproductionCooldownFrames;
+          parameters.reproductionCooldownFrames
 
         return {
-          type: "reproduction_complete",
+          type: 'reproduction_complete',
           offspring: {
             parent1Id: boid.id,
             parent2Id: mate.id,
@@ -198,12 +182,11 @@ export function processMatingCycle(
             mateId: null,
             seekingMate: false,
           },
-        };
+        }
       }
 
-      // Still building up
       return {
-        type: "building_up",
+        type: 'building_up',
         buildup: newBuildup,
         updates: {
           energy: boid.energy,
@@ -212,11 +195,10 @@ export function processMatingCycle(
           mateId: boid.mateId,
           seekingMate: boid.seekingMate,
         },
-      };
+      }
     } else {
-      // Too far apart - reset buildup
       return {
-        type: "buildup_reset",
+        type: 'buildup_reset',
         updates: {
           energy: boid.energy,
           reproductionCooldown: boid.reproductionCooldown,
@@ -224,20 +206,19 @@ export function processMatingCycle(
           mateId: boid.mateId,
           seekingMate: boid.seekingMate,
         },
-      };
+      }
     }
   } else {
-    // Not paired yet - find a mate
     const mate = findNearbyMate(
       boid,
       allBoids,
       matedBoids,
       parameters.mateRadius
-    );
+    )
 
     if (mate) {
       return {
-        type: "pair_found",
+        type: 'pair_found',
         mateId: mate.id,
         updates: {
           energy: boid.energy,
@@ -246,26 +227,22 @@ export function processMatingCycle(
           mateId: mate.id,
           seekingMate: boid.seekingMate,
         },
-      };
+      }
     }
   }
 
-  return { type: "no_action" };
+  return { type: 'no_action' }
 }
-
-// ============================================================================
-// Update Helpers
-// ============================================================================
 
 /**
  * Apply updates to a boid (side effect)
  */
 export function applyBoidUpdates(boid: Boid, updates: BoidUpdates): void {
-  boid.energy = updates.energy;
-  boid.reproductionCooldown = updates.reproductionCooldown;
-  boid.matingBuildupFrames = updates.matingBuildupCounter;
-  boid.mateId = updates.mateId;
-  boid.seekingMate = updates.seekingMate;
+  boid.energy = updates.energy
+  boid.reproductionCooldown = updates.reproductionCooldown
+  boid.matingBuildupFrames = updates.matingBuildupCounter
+  boid.mateId = updates.mateId
+  boid.seekingMate = updates.seekingMate
 }
 
 /**
@@ -276,24 +253,24 @@ export function incrementMatingBuildup(
   mate: Boid,
   amount: number = 1
 ): void {
-  boid.matingBuildupFrames += amount;
-  mate.matingBuildupFrames += amount;
+  boid.matingBuildupFrames += amount
+  mate.matingBuildupFrames += amount
 }
 
 /**
  * Reset mating buildup for both boids (side effect)
  */
 export function resetMatingBuildup(boid: Boid, mate: Boid): void {
-  boid.matingBuildupFrames = 0;
-  mate.matingBuildupFrames = 0;
+  boid.matingBuildupFrames = 0
+  mate.matingBuildupFrames = 0
 }
 
 /**
  * Pair two boids as mates (side effect)
  */
 export function pairBoids(boid: Boid, mate: Boid): void {
-  boid.mateId = mate.id;
-  mate.mateId = boid.id;
+  boid.mateId = mate.id
+  mate.mateId = boid.id
 }
 
 /**
@@ -301,14 +278,10 @@ export function pairBoids(boid: Boid, mate: Boid): void {
  */
 export function unpairBoids(boid: Boid, mate: Boid | null | undefined): void {
   if (mate) {
-    mate.mateId = null;
+    mate.mateId = null
   }
-  boid.mateId = null;
+  boid.mateId = null
 }
-
-// ============================================================================
-// Mating Result Application (Side Effects)
-// ============================================================================
 
 /**
  * Apply mating result to the world (side effects)
@@ -325,58 +298,54 @@ export function applyMatingResult(
   result: MatingResult,
   context: MatingContext
 ): void {
-  const { boids, matedBoids, boidsToAdd } = context;
+  const { boids, matedBoids, boidsToAdd } = context
 
   switch (result.type) {
-    case "reproduction_complete": {
-      // Apply updates to parent(s)
-      applyBoidUpdates(boid, result.boidUpdates);
+    case 'reproduction_complete': {
+      applyBoidUpdates(boid, result.boidUpdates)
 
-      // For sexual reproduction, update mate
       if (result.offspring.parent2Id) {
-        const mate = lookupBoid(result.offspring.parent2Id, boids);
+        const mate = lookupBoid(result.offspring.parent2Id, boids)
         if (mate) {
-          applyBoidUpdates(mate, result.mateUpdates);
-          matedBoids.add(result.offspring.parent2Id);
+          applyBoidUpdates(mate, result.mateUpdates)
+          matedBoids.add(result.offspring.parent2Id)
         }
       }
 
-      // Mark parent as mated and add offspring to spawn queue
-      matedBoids.add(boid.id);
-      boidsToAdd.push(result.offspring);
-      break;
+      matedBoids.add(boid.id)
+      boidsToAdd.push(result.offspring)
+      break
     }
 
-    case "pair_found": {
-      const mate = lookupBoid(result.mateId, boids);
+    case 'pair_found': {
+      const mate = lookupBoid(result.mateId, boids)
       if (mate) {
-        pairBoids(boid, mate);
-        matedBoids.add(boid.id);
-        matedBoids.add(mate.id);
+        pairBoids(boid, mate)
+        matedBoids.add(boid.id)
+        matedBoids.add(mate.id)
       }
-      break;
+      break
     }
 
-    case "building_up": {
-      applyBoidUpdates(boid, result.updates);
-      break;
+    case 'building_up': {
+      applyBoidUpdates(boid, result.updates)
+      break
     }
 
-    case "buildup_reset": {
-      const mate = lookupBoid(boid.mateId!, boids);
+    case 'buildup_reset': {
+      const mate = lookupBoid(boid.mateId!, boids)
       if (mate) {
-        resetMatingBuildup(boid, mate);
+        resetMatingBuildup(boid, mate)
       }
-      break;
+      break
     }
 
-    case "mate_lost": {
-      applyBoidUpdates(boid, result.updates);
-      break;
+    case 'mate_lost': {
+      applyBoidUpdates(boid, result.updates)
+      break
     }
 
-    case "no_action":
-      // Nothing to do
-      break;
+    case 'no_action':
+      break
   }
 }

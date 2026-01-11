@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { speciesRecordSchema } from "./species";
+import { z } from 'zod'
+import { speciesRecordSchema } from './species'
 
 /**
  * World Schemas - World configuration and simulation profiles
@@ -11,10 +11,6 @@ import { speciesRecordSchema } from "./species";
  *
  * Dependencies: species
  */
-
-// ============================================
-// World Physics Schema
-// ============================================
 
 /**
  * World Physics - Universal constants that define physical limits
@@ -33,14 +29,12 @@ import { speciesRecordSchema } from "./species";
  * Different profiles can have different physics!
  */
 export const worldPhysicsSchema = z.object({
-  // Motion physics
   motion: z.object({
     maxSpeed: z.number().default(10.0), // Absolute speed limit
     maxForce: z.number().default(0.5), // Absolute turning force
     friction: z.number().default(0.98), // Velocity damping
   }),
 
-  // Energy costs
   energy: z.object({
     baseMetabolicRate: z.number().default(0.01), // Minimum cost per tick (breathing)
     movementCostPerSpeed: z.number().default(0.001), // Cost per unit of speed
@@ -48,12 +42,10 @@ export const worldPhysicsSchema = z.object({
     combatCost: z.number().default(0.05), // Cost per attack
   }),
 
-  // Perception limits
   perception: z.object({
     maxVisionRange: z.number().default(300), // Absolute vision limit
   }),
 
-  // Size effects
   size: z.object({
     min: z.number().default(0.5), // Minimum boid size
     max: z.number().default(3.0), // Maximum boid size
@@ -62,24 +54,18 @@ export const worldPhysicsSchema = z.object({
     collisionMultiplier: z.number().default(1.0), // Size affects collision radius
   }),
 
-  // Combat mechanics
   combat: z.object({
     baseDamage: z.number().default(10), // Base attack damage
     sizeMultiplier: z.number().default(1.5), // Larger = more damage
   }),
 
-  // Health mechanics
   health: z.object({
     baseRegenRate: z.number().default(0.05), // Health regen per tick
     foodHealingMultiplier: z.number().default(0.5), // % of energy gained also heals
   }),
-});
+})
 
-export type WorldPhysics = z.infer<typeof worldPhysicsSchema>;
-
-// ============================================
-// World Configuration Schema
-// ============================================
+export type WorldPhysics = z.infer<typeof worldPhysicsSchema>
 
 /**
  * Physical dimensions and initial conditions
@@ -93,13 +79,9 @@ export const worldConfigSchema = z.object({
   backgroundColor: z.string(), // World background color (CSS color)
   initialPreyCount: z.number(), // Number of prey to spawn at start
   initialPredatorCount: z.number().optional(), // Number of predators to spawn at start
-});
+})
 
-export type WorldConfig = z.infer<typeof worldConfigSchema>;
-
-// ============================================
-// Simulation Parameters Schema
-// ============================================
+export type WorldConfig = z.infer<typeof worldConfigSchema>
 
 /**
  * Simulation Parameters - Global rules that govern all species
@@ -108,7 +90,6 @@ export type WorldConfig = z.infer<typeof worldConfigSchema>;
  * Species-specific overrides are defined in SpeciesConfig.limits.
  */
 export const simulationParametersSchema = z.object({
-  // Perception and interaction radii (in pixels)
   perceptionRadius: z.number(), // How far boids can see neighbors for flocking
   obstacleAvoidanceWeight: z.number(), // Steering force strength for avoiding obstacles
   fearRadius: z.number(), // How far prey can sense predators
@@ -118,25 +99,19 @@ export const simulationParametersSchema = z.object({
   mateRadius: z.number(), // How close boids must be to initiate mating
   minDistance: z.number(), // Minimum distance between boids (prevents overlap/stacking)
 
-  // Population limits (safety caps)
   maxBoids: z.number(), // Global population cap (hard limit for performance)
   maxPreyBoids: z.number(), // Maximum total prey population
   maxPredatorBoids: z.number(), // Maximum total predator population
 
-  // Lifecycle parameters (timing and thresholds)
   minReproductionAge: z.number(), // Minimum age to start reproducing (seconds)
   reproductionEnergyThreshold: z.number(), // Energy % needed to seek mates (0-1 ratio)
   reproductionCooldownFrames: z.number(), // Frames to wait before reproducing again
   matingBuildupFrames: z.number(), // Frames boids must stay close before reproducing
   eatingCooldownFrames: z.number(), // Frames predator must wait after eating (prevents monopolizing food)
   attackCooldownFrames: z.number(), // Frames predator must wait between attacks
-});
+})
 
-export type SimulationParameters = z.infer<typeof simulationParametersSchema>;
-
-// ============================================
-// Simulation Profile Schema
-// ============================================
+export type SimulationParameters = z.infer<typeof simulationParametersSchema>
 
 /**
  * Simulation Profile - Complete preset for a simulation scenario
@@ -161,6 +136,6 @@ export const simulationProfileSchema = z.object({
   species: speciesRecordSchema, // All species in this scenario
   parameters: simulationParametersSchema, // Global rules
   physics: worldPhysicsSchema.optional(), // World physics (NEW - optional, uses defaults if not specified)
-});
+})
 
-export type SimulationProfile = z.infer<typeof simulationProfileSchema>;
+export type SimulationProfile = z.infer<typeof simulationProfileSchema>

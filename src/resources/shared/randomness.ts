@@ -23,33 +23,33 @@
  * const typeId = spawning.pick(typeIds);
  */
 
-import { defineResource } from "braided";
-import { createSeededRNG, type DomainRNG } from "@/lib/seededRandom.ts";
-import { createSubscription } from "@/lib/state.ts";
+import { defineResource } from 'braided'
+import { createSeededRNG, type DomainRNG } from '@/lib/seededRandom.ts'
+import { createSubscription } from '@/lib/state.ts'
 
 type RandomnessEvent = {
-  type: "seedUpdated";
-  newSeed: string | number;
-};
+  type: 'seedUpdated'
+  newSeed: string | number
+}
 
 export interface RandomnessResource {
   /** Get the current master seed */
-  getMasterSeed(): string;
+  getMasterSeed(): string
 
   /** Get the master seed as number */
-  getMasterSeedNumber(): number;
+  getMasterSeedNumber(): number
 
   /** Get a domain-specific RNG */
-  domain(_name: string): DomainRNG;
+  domain(_name: string): DomainRNG
 
   /** Get all active domain names */
-  getDomains(): string[];
+  getDomains(): string[]
 
   /** Reset RNG with new seed (triggers re-initialization) */
-  setSeed(_newSeed: string | number): void;
+  setSeed(_newSeed: string | number): void
 
   /** Watch for seed updates */
-  watch: (callback: (event: RandomnessEvent) => void) => () => void;
+  watch: (callback: (event: RandomnessEvent) => void) => () => void
 }
 
 /**
@@ -61,17 +61,15 @@ export interface RandomnessResource {
 export const randomness = defineResource({
   dependencies: [],
   start: (): RandomnessResource => {
-    // Get seed from store, or use default
-    const seed = "simulation-42";
+    const seed = 'simulation-42'
 
-    // Create hierarchical RNG
-    let rng = createSeededRNG(seed);
+    let rng = createSeededRNG(seed)
 
-    const outptutSubscription = createSubscription<RandomnessEvent>();
+    const outptutSubscription = createSubscription<RandomnessEvent>()
 
     console.log(
       `[randomness] Initialized with seed: "${seed}" (${rng.getMasterSeedNumber()})`
-    );
+    )
 
     const api = {
       getMasterSeed: () => rng.getMasterSeed(),
@@ -80,16 +78,16 @@ export const randomness = defineResource({
       getDomains: () => rng.getDomains(),
 
       setSeed: (newSeed: string | number) => {
-        // Notify subscribers and re-initialize RNG with new seed
-        rng = createSeededRNG(newSeed);
-        outptutSubscription.notify({ type: "seedUpdated", newSeed: newSeed });
+        rng = createSeededRNG(newSeed)
+        outptutSubscription.notify({
+          type: 'seedUpdated',
+          newSeed: newSeed,
+        })
       },
       watch: outptutSubscription.subscribe,
-    };
+    }
 
-    return api;
+    return api
   },
-  halt: () => {
-    // No cleanup needed - RNG is stateless
-  },
-});
+  halt: () => {},
+})

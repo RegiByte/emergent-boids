@@ -17,11 +17,11 @@
  */
 export function getTickWindow(
   tick: number,
-  windowSize: number,
+  windowSize: number
 ): { start: number; end: number } {
-  const start = Math.floor(tick / windowSize) * windowSize;
-  const end = start + windowSize;
-  return { start, end };
+  const start = Math.floor(tick / windowSize) * windowSize
+  const end = start + windowSize
+  return { start, end }
 }
 
 /**
@@ -34,10 +34,10 @@ export function getTickWindow(
 export function getTickWindowKey(
   category: string,
   tick: number,
-  windowSize: number,
+  windowSize: number
 ): string {
-  const { start, end } = getTickWindow(tick, windowSize);
-  return `${category}-${start}-${end}`;
+  const { start, end } = getTickWindow(tick, windowSize)
+  return `${category}-${start}-${end}`
 }
 
 /**
@@ -50,11 +50,11 @@ export function getTickWindowKey(
 export function areInSameWindow(
   tick1: number,
   tick2: number,
-  windowSize: number,
+  windowSize: number
 ): boolean {
-  const window1 = getTickWindow(tick1, windowSize);
-  const window2 = getTickWindow(tick2, windowSize);
-  return window1.start === window2.start;
+  const window1 = getTickWindow(tick1, windowSize)
+  const window2 = getTickWindow(tick2, windowSize)
+  return window1.start === window2.start
 }
 
 /**
@@ -87,24 +87,24 @@ export function groupByTickWindow<T>(
   items: T[],
   getCategoryFn: (item: T) => string,
   getTickFn: (item: T) => number,
-  windowSize: number,
+  windowSize: number
 ): Map<string, T[]> {
-  const groups = new Map<string, T[]>();
+  const groups = new Map<string, T[]>()
 
   for (const item of items) {
-    const category = getCategoryFn(item);
-    const tick = getTickFn(item);
-    const key = getTickWindowKey(category, tick, windowSize);
+    const category = getCategoryFn(item)
+    const tick = getTickFn(item)
+    const key = getTickWindowKey(category, tick, windowSize)
 
-    const group = groups.get(key);
+    const group = groups.get(key)
     if (group) {
-      group.push(item);
+      group.push(item)
     } else {
-      groups.set(key, [item]);
+      groups.set(key, [item])
     }
   }
 
-  return groups;
+  return groups
 }
 
 /**
@@ -141,24 +141,24 @@ export function aggregateByTickWindow<T, A>(
   getTickFn: (item: T) => number,
   windowSize: number,
   reducerFn: (accumulator: A, item: T) => A,
-  initialValueFn: () => A,
+  initialValueFn: () => A
 ): Map<string, A> {
-  const aggregates = new Map<string, A>();
+  const aggregates = new Map<string, A>()
 
   for (const item of items) {
-    const category = getCategoryFn(item);
-    const tick = getTickFn(item);
-    const key = getTickWindowKey(category, tick, windowSize);
+    const category = getCategoryFn(item)
+    const tick = getTickFn(item)
+    const key = getTickWindowKey(category, tick, windowSize)
 
-    const current = aggregates.get(key);
+    const current = aggregates.get(key)
     if (current) {
-      aggregates.set(key, reducerFn(current, item));
+      aggregates.set(key, reducerFn(current, item))
     } else {
-      aggregates.set(key, reducerFn(initialValueFn(), item));
+      aggregates.set(key, reducerFn(initialValueFn(), item))
     }
   }
 
-  return aggregates;
+  return aggregates
 }
 
 /**
@@ -171,9 +171,9 @@ export function aggregateByTickWindow<T, A>(
  */
 export function getCurrentTickWindow(
   currentTick: number,
-  windowSize: number,
+  windowSize: number
 ): { start: number; end: number } {
-  return getTickWindow(currentTick, windowSize);
+  return getTickWindow(currentTick, windowSize)
 }
 
 /**
@@ -186,10 +186,10 @@ export function getCurrentTickWindow(
  */
 export function ticksUntilNextWindow(
   currentTick: number,
-  windowSize: number,
+  windowSize: number
 ): number {
-  const { end } = getTickWindow(currentTick, windowSize);
-  return end - currentTick;
+  const { end } = getTickWindow(currentTick, windowSize)
+  return end - currentTick
 }
 
 /**
@@ -208,21 +208,21 @@ export function ticksUntilNextWindow(
 export function getOverlappingWindows(
   startTick: number,
   endTick: number,
-  windowSize: number,
+  windowSize: number
 ): Array<{ start: number; end: number }> {
-  const windows: Array<{ start: number; end: number }> = [];
-  const firstWindow = getTickWindow(startTick, windowSize);
-  const lastWindow = getTickWindow(endTick, windowSize);
+  const windows: Array<{ start: number; end: number }> = []
+  const firstWindow = getTickWindow(startTick, windowSize)
+  const lastWindow = getTickWindow(endTick, windowSize)
 
   for (
     let start = firstWindow.start;
     start <= lastWindow.start;
     start += windowSize
   ) {
-    windows.push({ start, end: start + windowSize });
+    windows.push({ start, end: start + windowSize })
   }
 
-  return windows;
+  return windows
 }
 
 /**
@@ -234,10 +234,10 @@ export function getOverlappingWindows(
  */
 export function formatTickWindow(
   window: { start: number; end: number },
-  format: "full" | "compact" = "full",
+  format: 'full' | 'compact' = 'full'
 ): string {
-  if (format === "compact") {
-    return `${window.start}-${window.end}`;
+  if (format === 'compact') {
+    return `${window.start}-${window.end}`
   }
-  return `T${window.start}-T${window.end}`;
+  return `T${window.start}-T${window.end}`
 }

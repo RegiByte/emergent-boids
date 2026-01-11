@@ -5,58 +5,54 @@
  * Now using the `useTaskDispatcher` hook for cleaner state management!
  */
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { createSystemHooks, createSystemManager } from "braided-react";
-import { clientResource } from "@/workers/demoTasks";
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { createSystemHooks, createSystemManager } from 'braided-react'
+import { clientResource } from '@/workers/demoTasks'
 
-// Create system and hooks in the component file
 const demoSystem = {
   demoTasks: clientResource,
-};
+}
 
-const manager = createSystemManager(demoSystem);
-const { useResource } = createSystemHooks(manager);
+const manager = createSystemManager(demoSystem)
+const { useResource } = createSystemHooks(manager)
 
 function WorkerTasksDemoInner() {
-  const demoTasks = useResource("demoTasks");
+  const demoTasks = useResource('demoTasks')
 
-  // Input states
-  const [squareInput, setSquareInput] = useState("5");
-  const [factorialInput, setFactorialInput] = useState("10");
-  const [heavyIterations, setHeavyIterations] = useState("10000000");
-  const [errorMessage, setErrorMessage] = useState("Test error message");
+  const [squareInput, setSquareInput] = useState('5')
+  const [factorialInput, setFactorialInput] = useState('10')
+  const [heavyIterations, setHeavyIterations] = useState('10000000')
+  const [errorMessage, setErrorMessage] = useState('Test error message')
 
-  // Task dispatchers with automatic state management 🎉
-  const square = demoTasks.useTaskDispatcher("square");
-  const factorial = demoTasks.useTaskDispatcher("factorial");
-  const heavy = demoTasks.useTaskDispatcher("heavyComputation");
-  const throwError = demoTasks.useTaskDispatcher("throwError");
+  const square = demoTasks.useTaskDispatcher('square')
+  const factorial = demoTasks.useTaskDispatcher('factorial')
+  const heavy = demoTasks.useTaskDispatcher('heavyComputation')
+  const throwError = demoTasks.useTaskDispatcher('throwError')
 
-  // Handlers - much simpler now!
   const handleSquare = () => {
-    const n = parseInt(squareInput);
-    if (isNaN(n)) return;
-    square.dispatch(n);
-  };
+    const n = parseInt(squareInput)
+    if (isNaN(n)) return
+    square.dispatch(n)
+  }
 
   const handleFactorial = () => {
-    const n = parseInt(factorialInput);
-    if (isNaN(n)) return;
-    factorial.dispatch(n);
-  };
+    const n = parseInt(factorialInput)
+    if (isNaN(n)) return
+    factorial.dispatch(n)
+  }
 
   const handleHeavyComputation = () => {
-    const iterations = parseInt(heavyIterations);
-    if (isNaN(iterations)) return;
-    heavy.dispatch({ iterations });
-  };
+    const iterations = parseInt(heavyIterations)
+    if (isNaN(iterations)) return
+    heavy.dispatch({ iterations })
+  }
 
   const handleThrowError = () => {
-    throwError.dispatch({ message: errorMessage });
-  };
+    throwError.dispatch({ message: errorMessage })
+  }
 
   return (
     <div className="p-8 space-y-6">
@@ -94,7 +90,7 @@ function WorkerTasksDemoInner() {
           </div>
           {square.output !== null && (
             <div className="text-lg">
-              Result:{" "}
+              Result:{' '}
               <span className="font-mono font-bold">{square.output}</span>
             </div>
           )}
@@ -124,7 +120,7 @@ function WorkerTasksDemoInner() {
           </div>
           {factorial.output !== null && (
             <div className="text-lg">
-              Result:{" "}
+              Result:{' '}
               <span className="font-mono font-bold">
                 {factorial.output?.toExponential(2)}
               </span>
@@ -157,9 +153,9 @@ function WorkerTasksDemoInner() {
           {heavy.progress && (
             <div className="space-y-2">
               <div className="text-sm text-muted-foreground">
-                Progress:{" "}
+                Progress:{' '}
                 {Math.floor(
-                  (heavy.progress.current / heavy.progress.total) * 100,
+                  (heavy.progress.current / heavy.progress.total) * 100
                 )}
                 %
               </div>
@@ -176,7 +172,7 @@ function WorkerTasksDemoInner() {
           {heavy.output && (
             <div className="text-lg space-y-1">
               <div>
-                Result:{" "}
+                Result:{' '}
                 <span className="font-mono font-bold">
                   {heavy.output.result.toFixed(2)}
                 </span>
@@ -221,9 +217,9 @@ function WorkerTasksDemoInner() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
 
 export function WorkerTasksDemo() {
-  return <WorkerTasksDemoInner />;
+  return <WorkerTasksDemoInner />
 }

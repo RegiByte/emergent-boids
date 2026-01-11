@@ -1,5 +1,5 @@
-import { createAtom, useAtomState } from "@/lib/state.ts";
-import { defineResource } from "braided";
+import { createAtom, useAtomState } from '@/lib/state.ts'
+import { defineResource } from 'braided'
 
 /**
  * Time Resource - Centralized time management for the simulation
@@ -18,84 +18,58 @@ import { defineResource } from "braided";
  * and provides a single source of truth for all time-related operations.
  */
 
-// ============================================
-// Time State Schema
-// ============================================
-
 export type TimeState = {
-  // Simulation time (affected by pause/scale)
-  simulationFrame: number; // Current frame number (increments each engine update)
-  simulationElapsedMs: number; // Total simulation time elapsed (ms)
-  simulationElapsedSeconds: number; // Total simulation time elapsed (seconds)
+  simulationFrame: number // Current frame number (increments each engine update)
+  simulationElapsedMs: number // Total simulation time elapsed (ms)
+  simulationElapsedSeconds: number // Total simulation time elapsed (seconds)
 
-  // Real-world time (unaffected by pause/scale)
-  realWorldStartMs: number; // When simulation started (real time)
-  realWorldElapsedMs: number; // Real time since start
+  realWorldStartMs: number // When simulation started (real time)
+  realWorldElapsedMs: number // Real time since start
 
-  // Time control
-  isPaused: boolean; // Is simulation paused?
-  timeScale: number; // Speed multiplier (0.25x - 4x)
+  isPaused: boolean // Is simulation paused?
+  timeScale: number // Speed multiplier (0.25x - 4x)
 
-  // Step mode
-  stepRequested: boolean; // Request single simulation update
+  stepRequested: boolean // Request single simulation update
 
-  // Internal state
-  lastUpdateMs: number; // Last real-world update time (for delta calculation)
-};
-
-// ============================================
-// Time API
-// ============================================
+  lastUpdateMs: number // Last real-world update time (for delta calculation)
+}
 
 export type TimeAPI = {
-  // Query current time
-  getState: () => TimeState;
-  getFrame: () => number; // Get current simulation frame (engine update count)
-  getSimulationTime: () => number; // Simulation time in seconds
-  getRealWorldTime: () => number; // Real-world time in seconds
+  getState: () => TimeState
+  getFrame: () => number // Get current simulation frame (engine update count)
+  getSimulationTime: () => number // Simulation time in seconds
+  getRealWorldTime: () => number // Real-world time in seconds
 
-  // Generate timestamps (simulation-relative) - replaces Date.now()
-  now: () => number; // Current simulation time (ms)
-  nowSeconds: () => number; // Current simulation time (seconds)
+  now: () => number // Current simulation time (ms)
+  nowSeconds: () => number // Current simulation time (seconds)
 
-  // Time control
-  pause: () => void;
-  resume: () => void;
-  setTimeScale: (scale: number) => void;
-  step: () => void; // Advance one tick (when paused)
-  clearStepRequest: () => void; // Clear step request flag
+  pause: () => void
+  resume: () => void
+  setTimeScale: (scale: number) => void
+  step: () => void // Advance one tick (when paused)
+  clearStepRequest: () => void // Clear step request flag
 
-  // Update (called by renderer each frame)
-  update: (realDeltaMs: number) => void;
-  // Called by the engine to increment the frame counter
-  // with natural time passage only
-  // manual time passage is handled by tick()
-  incrementFrame: () => void;
+  update: (realDeltaMs: number) => void
+  incrementFrame: () => void
 
-  // Tick (called when a fixed timestep update occurs)
-  tick: (timestep?: number) => void;
-  
-  // Session 124: Sync time from worker stats (for parallel architecture)
-  // This allows the frontend time to mirror the worker's authoritative time
-  syncFromWorker: (workerStats: { frame: number; simulationTimeMs: number }) => void;
+  tick: (timestep?: number) => void
 
-  // Reset
-  reset: () => void;
+  syncFromWorker: (workerStats: {
+    frame: number
+    simulationTimeMs: number
+  }) => void
 
-  // React integration
-  useTime: () => TimeState;
-};
+  reset: () => void
 
-// ============================================
-// Time Resource Implementation
-// ============================================
+  useTime: () => TimeState
+}
 
-export type TimeResource = TimeAPI;
+export type TimeResource = TimeAPI
 
 export const time = defineResource({
   start: () => {
-    const realWorldStartMs = performance.now(); // Use performance.now() for precision
-    const FIXED_TIMESTEP = 33.334; // 30 FPS
+    const realWorldStartMs = performance.now() // Use performance.now() for precision
+    const FIXED_TIMESTEP = 33.334 // 30 FPS
 
     const initialState: TimeState = {
       simulationFrame: 0,
@@ -107,9 +81,9 @@ export const time = defineResource({
       timeScale: 1.0,
       stepRequested: false,
       lastUpdateMs: realWorldStartMs,
-    };
+    }
 
-    const stateAtom = createAtom(initialState);
+    const stateAtom = createAtom(initialState)
 
     const api = {
       getState: () => stateAtom.get(),
@@ -117,7 +91,6 @@ export const time = defineResource({
       getSimulationTime: () => stateAtom.get().simulationElapsedSeconds,
       getRealWorldTime: () => stateAtom.get().realWorldElapsedMs / 1000,
 
-      // Pure simulation time (replaces Date.now())
       now: () => stateAtom.get().simulationElapsedMs,
       nowSeconds: () => stateAtom.get().simulationElapsedSeconds,
 
@@ -126,8 +99,8 @@ export const time = defineResource({
           return {
             ...state,
             isPaused: true,
-          };
-        });
+          }
+        })
       },
 
       resume: () => {
@@ -135,31 +108,30 @@ export const time = defineResource({
           return {
             ...state,
             isPaused: false,
-          };
-        });
+          }
+        })
       },
 
       setTimeScale: (scale: number) => {
         if (scale < 0.1 || scale > 4.0) {
-          throw new Error("Time scale must be between 0.1 and 4.0");
+          throw new Error('Time scale must be between 0.1 and 4.0')
         }
         stateAtom.update((state) => {
           return {
             ...state,
             timeScale: scale,
-          };
-        });
+          }
+        })
       },
 
       step: () => {
-        if (!stateAtom.get().isPaused) return;
-        // Request simulation update (tick will be incremented by renderer via time.tick())
+        if (!stateAtom.get().isPaused) return
         stateAtom.update((state) => {
           return {
             ...state,
             stepRequested: true,
-          };
-        });
+          }
+        })
       },
 
       clearStepRequest: () => {
@@ -167,68 +139,63 @@ export const time = defineResource({
           return {
             ...state,
             stepRequested: false,
-          };
-        });
+          }
+        })
       },
 
       update: (realDeltaMs: number) => {
         stateAtom.update((draft) => {
-          // Update real-world time (always advances)
-          const updatedState = { ...draft };
-          updatedState.realWorldElapsedMs += realDeltaMs;
+          const updatedState = { ...draft }
+          updatedState.realWorldElapsedMs += realDeltaMs
 
-          // Update simulation time (only if not paused)
           if (!updatedState.isPaused) {
-            const scaledDelta = realDeltaMs * draft.timeScale;
-            updatedState.simulationElapsedMs += scaledDelta;
+            const scaledDelta = realDeltaMs * draft.timeScale
+            updatedState.simulationElapsedMs += scaledDelta
             updatedState.simulationElapsedSeconds =
-              updatedState.simulationElapsedMs / 1000;
+              updatedState.simulationElapsedMs / 1000
           }
 
-          return updatedState;
-        });
+          return updatedState
+        })
       },
 
-      // Called by the engine to increment the frame counter
       incrementFrame: () => {
         stateAtom.update((draft) => {
           return {
             ...draft,
             simulationFrame: draft.simulationFrame + 1,
-          };
-        });
+          }
+        })
       },
 
       tick: (timestep = FIXED_TIMESTEP) => {
-        // Called when a fixed timestep update occurs (one frame)
         stateAtom.update((draft) => {
-          // Also advance simulation time by one fixed timestep (16.67ms)
-          // This ensures lifecycle ticks work correctly in step mode
-          const elapsedMs = draft.simulationElapsedMs + timestep * draft.timeScale;
+          const elapsedMs =
+            draft.simulationElapsedMs + timestep * draft.timeScale
           return {
             ...draft,
-            // simulationFrame: draft.simulationFrame + 1,
             simulationElapsedMs: elapsedMs,
             simulationElapsedSeconds: elapsedMs / 1000,
-          };
-        });
+          }
+        })
       },
 
-      // Session 124: Sync time state from worker (for parallel architecture)
-      // The worker is the authoritative source of time in parallel mode
-      syncFromWorker: (workerStats: { frame: number; simulationTimeMs: number }) => {
+      syncFromWorker: (workerStats: {
+        frame: number
+        simulationTimeMs: number
+      }) => {
         stateAtom.update((draft) => {
           return {
             ...draft,
             simulationFrame: workerStats.frame,
             simulationElapsedMs: workerStats.simulationTimeMs,
             simulationElapsedSeconds: workerStats.simulationTimeMs / 1000,
-          };
-        });
+          }
+        })
       },
 
       reset: () => {
-        const now = performance.now();
+        const now = performance.now()
         const restoredState = {
           simulationFrame: 0,
           simulationElapsedMs: 0,
@@ -239,17 +206,14 @@ export const time = defineResource({
           timeScale: 1.0,
           stepRequested: false,
           lastUpdateMs: now,
-        };
-        stateAtom.set(restoredState);
+        }
+        stateAtom.set(restoredState)
       },
 
-      // React integration
       useTime: () => useAtomState(stateAtom),
-    } as TimeAPI;
+    } as TimeAPI
 
-    return api;
+    return api
   },
-  halt: () => {
-    // No cleanup needed
-  },
-});
+  halt: () => {},
+})

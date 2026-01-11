@@ -5,24 +5,24 @@
  * for visual comparison and debugging.
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Genome } from "@/boids/vocabulary/schemas/genetics";
-import type { SpeciesConfig } from "@/boids/vocabulary/schemas/species";
-import type { AtlasesResult } from "@/resources/browser/atlases.ts";
-import { useStaticBoid, type RenderMode } from "@/hooks/useStaticBoid";
-import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import type { Genome } from '@/boids/vocabulary/schemas/genetics'
+import type { SpeciesConfig } from '@/boids/vocabulary/schemas/species'
+import type { AtlasesResult } from '@/resources/browser/atlases.ts'
+import { useStaticBoid, type RenderMode } from '@/hooks/useStaticBoid'
+import { cn } from '@/lib/utils'
 
 export interface BoidComparisonProps {
-  genome: Pick<Genome, "traits" | "visual"> | Genome;
-  typeId?: string;
-  mode?: RenderMode;
-  rotation?: number;
-  scale?: number;
-  size?: number;
-  showLabels?: boolean;
-  className?: string;
-  speciesConfig?: SpeciesConfig;
-  atlases?: AtlasesResult; // Session 105: Pre-generated atlases
+  genome: Pick<Genome, 'traits' | 'visual'> | Genome
+  typeId?: string
+  mode?: RenderMode
+  rotation?: number
+  scale?: number
+  size?: number
+  showLabels?: boolean
+  className?: string
+  speciesConfig?: SpeciesConfig
+  atlases?: AtlasesResult
 }
 
 /**
@@ -30,8 +30,8 @@ export interface BoidComparisonProps {
  */
 export function BoidComparison({
   genome,
-  typeId = "unknown",
-  mode = "both",
+  typeId = 'unknown',
+  mode = 'both',
   rotation = 0,
   scale = 2,
   size = 200,
@@ -47,15 +47,14 @@ export function BoidComparison({
     scale,
     width: size,
     height: size,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: '#1a1a1a',
     speciesConfig,
     atlases,
-  });
+  })
 
-  // Single renderer mode
-  if (mode !== "both") {
-    const canvasRef = mode === "canvas2d" ? canvas2dRef : webglRef;
-    const title = mode === "canvas2d" ? "Canvas 2D" : "WebGL";
+  if (mode !== 'both') {
+    const canvasRef = mode === 'canvas2d' ? canvas2dRef : webglRef
+    const title = mode === 'canvas2d' ? 'Canvas 2D' : 'WebGL'
 
     return (
       <Card className={className}>
@@ -71,18 +70,17 @@ export function BoidComparison({
             height={size}
             className="rounded-lg border-2 border-border"
             style={{
-              imageRendering: "pixelated",
-              backgroundColor: "#1a1a1a",
+              imageRendering: 'pixelated',
+              backgroundColor: '#1a1a1a',
             }}
           />
         </CardContent>
       </Card>
-    );
+    )
   }
 
-  // Side-by-side comparison mode
   return (
-    <div className={cn("flex gap-4", className)}>
+    <div className={cn('flex gap-4', className)}>
       <Card className="flex-1">
         {showLabels && (
           <CardHeader>
@@ -96,8 +94,8 @@ export function BoidComparison({
             height={size}
             className="rounded-lg border-2 border-border"
             style={{
-              imageRendering: "pixelated",
-              backgroundColor: "#1a1a1a",
+              imageRendering: 'pixelated',
+              backgroundColor: '#1a1a1a',
             }}
           />
         </CardContent>
@@ -116,35 +114,35 @@ export function BoidComparison({
             height={size}
             className="rounded-lg border-2 border-border"
             style={{
-              imageRendering: "pixelated",
-              backgroundColor: "#1a1a1a",
+              imageRendering: 'pixelated',
+              backgroundColor: '#1a1a1a',
             }}
           />
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
 
 /**
  * Simple boid card with metadata
  */
 export interface BoidCardProps {
-  genome: Pick<Genome, "traits" | "visual"> | Genome;
-  typeId?: string;
-  mode?: RenderMode;
-  rotation?: number;
-  scale?: number;
-  size?: number;
-  className?: string;
-  speciesConfig?: SpeciesConfig;
-  atlases?: AtlasesResult; // Session 105: Pre-generated atlases
+  genome: Pick<Genome, 'traits' | 'visual'> | Genome
+  typeId?: string
+  mode?: RenderMode
+  rotation?: number
+  scale?: number
+  size?: number
+  className?: string
+  speciesConfig?: SpeciesConfig
+  atlases?: AtlasesResult
 }
 
 export function BoidCard({
   genome,
-  typeId = "unknown",
-  mode = "canvas2d",
+  typeId = 'unknown',
+  mode = 'canvas2d',
   rotation = 0,
   scale = 2,
   size = 200,
@@ -159,19 +157,18 @@ export function BoidCard({
     scale,
     width: size,
     height: size,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: '#1a1a1a',
     speciesConfig,
     atlases,
-  });
+  })
 
-  // Side-by-side comparison mode
-  if (mode === "both") {
+  if (mode === 'both') {
     return (
       <Card className={className}>
         <CardHeader>
           <CardTitle className="text-sm">Side-by-Side Comparison</CardTitle>
           <p className="text-xs text-muted-foreground">
-            Size: {genome.traits.size.toFixed(1)} | Speed:{" "}
+            Size: {genome.traits.size.toFixed(1)} | Speed:{' '}
             {genome.traits.speed.toFixed(1)}
           </p>
         </CardHeader>
@@ -187,8 +184,8 @@ export function BoidCard({
               height={size}
               className="rounded-lg border-2 border-border w-full"
               style={{
-                imageRendering: "pixelated",
-                backgroundColor: "#1a1a1a",
+                imageRendering: 'pixelated',
+                backgroundColor: '#1a1a1a',
               }}
             />
           </div>
@@ -203,23 +200,22 @@ export function BoidCard({
               height={size}
               className="rounded-lg border-2 border-border w-full"
               style={{
-                imageRendering: "pixelated",
-                backgroundColor: "#1a1a1a",
+                imageRendering: 'pixelated',
+                backgroundColor: '#1a1a1a',
               }}
             />
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
-  // Single renderer mode
   return (
     <Card className={className}>
       <CardHeader>
         <CardTitle className="text-sm">Boid</CardTitle>
         <p className="text-xs text-muted-foreground">
-          Size: {genome.traits.size.toFixed(1)} | Speed:{" "}
+          Size: {genome.traits.size.toFixed(1)} | Speed:{' '}
           {genome.traits.speed.toFixed(1)}
         </p>
       </CardHeader>
@@ -231,9 +227,9 @@ export function BoidCard({
           height={size}
           className="rounded-lg border-2 border-border"
           style={{
-            imageRendering: "pixelated",
-            backgroundColor: "#1a1a1a",
-            display: mode === "canvas2d" ? "block" : "none",
+            imageRendering: 'pixelated',
+            backgroundColor: '#1a1a1a',
+            display: mode === 'canvas2d' ? 'block' : 'none',
           }}
         />
         <canvas
@@ -242,12 +238,12 @@ export function BoidCard({
           height={size}
           className="rounded-lg border-2 border-border"
           style={{
-            imageRendering: "pixelated",
-            backgroundColor: "#1a1a1a",
-            display: mode === "webgl" ? "block" : "none",
+            imageRendering: 'pixelated',
+            backgroundColor: '#1a1a1a',
+            display: mode === 'webgl' ? 'block' : 'none',
           }}
         />
       </CardContent>
     </Card>
-  );
+  )
 }

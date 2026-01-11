@@ -2,24 +2,24 @@
  * WebGL Data Preparation - Food Sources
  *
  * Prepares instance data for food source rendering.
- * Session 130: Extended to include emoji overlays
+ *
  */
 
-import type { FoodSource } from "../../../../boids/vocabulary/schemas/entities.ts";
-import { toRgb } from "../../../../lib/colors.ts";
-import type { AtlasResult } from "../atlases/types.ts";
-import { foodEmojis } from "../atlases/emojiAtlas.ts";
+import type { FoodSource } from '../../../../boids/vocabulary/schemas/entities.ts'
+import { toRgb } from '../../../../lib/colors.ts'
+import type { AtlasResult } from '../atlases/types.ts'
+import { foodEmojis } from '../atlases/emojiAtlas.ts'
 
 /**
  * Instance data for food source rendering
  */
 export type FoodInstanceData = {
-  positions: Float32Array;
-  colors: Float32Array;
-  radii: Float32Array;
-  alphas: Float32Array;
-  count: number;
-};
+  positions: Float32Array
+  colors: Float32Array
+  radii: Float32Array
+  alphas: Float32Array
+  count: number
+}
 
 /**
  * Food source visual configuration
@@ -29,9 +29,9 @@ const FOOD_CONFIG = {
   maxRadius: 28,
   minAlpha: 0.5,
   maxAlpha: 1.0,
-  preyColor: "#4CAF50",
-  predatorColor: "#F44336",
-} as const;
+  preyColor: '#4CAF50',
+  predatorColor: '#F44336',
+} as const
 
 /**
  * Prepares food source instance data for GPU rendering
@@ -40,56 +40,52 @@ const FOOD_CONFIG = {
  * @returns Instance data ready for GPU upload
  */
 export const prepareFoodData = (
-  foodSources: FoodSource[],
+  foodSources: FoodSource[]
 ): FoodInstanceData => {
-  const count = foodSources.length;
-  const positions = new Float32Array(count * 2);
-  const colors = new Float32Array(count * 3);
-  const radii = new Float32Array(count);
-  const alphas = new Float32Array(count);
+  const count = foodSources.length
+  const positions = new Float32Array(count * 2)
+  const colors = new Float32Array(count * 3)
+  const radii = new Float32Array(count)
+  const alphas = new Float32Array(count)
 
   for (let i = 0; i < count; i++) {
-    const food = foodSources[i];
+    const food = foodSources[i]
 
-    // Position
-    positions[i * 2] = food.position.x;
-    positions[i * 2 + 1] = food.position.y;
+    positions[i * 2] = food.position.x
+    positions[i * 2 + 1] = food.position.y
 
-    // Color based on type (green for prey, red for predator)
     const color =
-      food.sourceType === "prey"
+      food.sourceType === 'prey'
         ? FOOD_CONFIG.preyColor
-        : FOOD_CONFIG.predatorColor;
-    const [r, g, b] = toRgb(color);
-    colors[i * 3] = r / 255;
-    colors[i * 3 + 1] = g / 255;
-    colors[i * 3 + 2] = b / 255;
+        : FOOD_CONFIG.predatorColor
+    const [r, g, b] = toRgb(color)
+    colors[i * 3] = r / 255
+    colors[i * 3 + 1] = g / 255
+    colors[i * 3 + 2] = b / 255
 
-    // Radius scales with energy (12-28px)
-    const energyRatio = food.energy / food.maxEnergy;
+    const energyRatio = food.energy / food.maxEnergy
     radii[i] =
       FOOD_CONFIG.minRadius +
-      energyRatio * (FOOD_CONFIG.maxRadius - FOOD_CONFIG.minRadius);
+      energyRatio * (FOOD_CONFIG.maxRadius - FOOD_CONFIG.minRadius)
 
-    // Alpha scales with energy (0.5-1.0)
-    alphas[i] = Math.max(FOOD_CONFIG.minAlpha, energyRatio);
+    alphas[i] = Math.max(FOOD_CONFIG.minAlpha, energyRatio)
   }
 
-  return { positions, colors, radii, alphas, count };
-};
+  return { positions, colors, radii, alphas, count }
+}
 
 /**
- * Instance data for food emoji overlays (Session 130)
+ * Instance data for food emoji overlays
  */
 export type FoodEmojiInstanceData = {
-  foodPositions: Float32Array;
-  uvOffsets: Float32Array;
-  alphas: Float32Array;
-  count: number;
-};
+  foodPositions: Float32Array
+  uvOffsets: Float32Array
+  alphas: Float32Array
+  count: number
+}
 
 /**
- * Prepares food emoji instance data for GPU rendering (Session 130)
+ * Prepares food emoji instance data for GPU rendering
  * Renders emoji symbols (🌿 for prey, 🥩 for predator) on top of food circles
  *
  * @param foodSources - Array of food sources to render
@@ -98,41 +94,38 @@ export type FoodEmojiInstanceData = {
  */
 export const prepareFoodEmojiData = (
   foodSources: FoodSource[],
-  emojiAtlas: AtlasResult,
+  emojiAtlas: AtlasResult
 ): FoodEmojiInstanceData | null => {
   if (foodSources.length === 0) {
-    return null;
+    return null
   }
 
-  const count = foodSources.length;
-  const foodPositions = new Float32Array(count * 2);
-  const uvOffsets = new Float32Array(count * 2);
-  const alphas = new Float32Array(count);
+  const count = foodSources.length
+  const foodPositions = new Float32Array(count * 2)
+  const uvOffsets = new Float32Array(count * 2)
+  const alphas = new Float32Array(count)
 
   for (let i = 0; i < count; i++) {
-    const food = foodSources[i];
+    const food = foodSources[i]
 
-    // Position (same as food circle)
-    foodPositions[i * 2] = food.position.x;
-    foodPositions[i * 2 + 1] = food.position.y;
+    foodPositions[i * 2] = food.position.x
+    foodPositions[i * 2 + 1] = food.position.y
 
-    // Get emoji for this food type
-    const emoji = food.sourceType === "prey" ? foodEmojis.prey : foodEmojis.predator;
-    const uvCoords = emojiAtlas.uvMap.get(emoji);
+    const emoji =
+      food.sourceType === 'prey' ? foodEmojis.prey : foodEmojis.predator
+    const uvCoords = emojiAtlas.uvMap.get(emoji)
 
     if (uvCoords) {
-      uvOffsets[i * 2] = uvCoords.u;
-      uvOffsets[i * 2 + 1] = uvCoords.v;
+      uvOffsets[i * 2] = uvCoords.u
+      uvOffsets[i * 2 + 1] = uvCoords.v
     } else {
-      // Fallback to 0,0 if emoji not found
-      uvOffsets[i * 2] = 0;
-      uvOffsets[i * 2 + 1] = 0;
+      uvOffsets[i * 2] = 0
+      uvOffsets[i * 2 + 1] = 0
     }
 
-    // Alpha scales with energy (same as circle)
-    const energyRatio = food.energy / food.maxEnergy;
-    alphas[i] = Math.max(FOOD_CONFIG.minAlpha, energyRatio);
+    const energyRatio = food.energy / food.maxEnergy
+    alphas[i] = Math.max(FOOD_CONFIG.minAlpha, energyRatio)
   }
 
-  return { foodPositions, uvOffsets, alphas, count };
-};
+  return { foodPositions, uvOffsets, alphas, count }
+}

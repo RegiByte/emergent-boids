@@ -1,19 +1,17 @@
-import { defineResource, StartedResource } from "braided";
-import { WorkerStoreResource } from "./workerStore";
+import { defineResource, StartedResource } from 'braided'
+import { WorkerStoreResource } from './workerStore'
 
 /**
  * Compatibility resource to replace runtimeStore for randomness seed collection
  */
 export const workerRuntimeStore = defineResource({
-  dependencies: ["workerStore"],
+  dependencies: ['workerStore'],
   start: ({ workerStore }: { workerStore: WorkerStoreResource }) => {
-    return workerStore;
+    return workerStore
   },
-  halt: () => {
-    // nothing to do, worker store will be halted by the worker system
-  },
-});
+  halt: () => {},
+})
 
 export type WorkerRuntimeStoreResource = StartedResource<
   typeof workerRuntimeStore
->;
+>

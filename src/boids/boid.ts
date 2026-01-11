@@ -1,67 +1,68 @@
-import { defaultWorldPhysics } from "@/boids/defaultPhysics.ts";
-import type { DomainRNG } from "@/lib/seededRandom";
+import { defaultWorldPhysics } from '@/boids/defaultPhysics.ts'
+import type { DomainRNG } from '@/lib/seededRandom'
 import {
   calculateEatingSpeedFactor,
   calculateEnergySpeedFactor,
   calculateFearSpeedBoost,
   calculatePredatorChaseWeight,
   calculatePreyCohesionWeight,
-} from "./calculations";
-import { BoidUpdateContext } from "./context.ts";
-import { FOOD_CONSTANTS } from "./food";
-import { DEFAULT_MUTATION_CONFIG, inheritGenome } from "./genetics/inheritance";
-import { computePhenotype, createGenesisGenome } from "./genetics/phenotype";
-import * as rules from "./rules";
-import { ItemWithDistance } from "./spatialHash.ts";
-import * as vec from "./vector";
+} from './calculations'
+import { BoidUpdateContext } from './context.ts'
+import { FOOD_CONSTANTS } from './food'
+import { DEFAULT_MUTATION_CONFIG, inheritGenome } from './genetics/inheritance'
+import { computePhenotype, createGenesisGenome } from './genetics/phenotype'
+import * as rules from './rules'
+import { ItemWithDistance } from './spatialHash.ts'
+import * as vec from './vector'
 import {
   profilerKeywords,
   roleKeywords,
   ruleKeywords,
   stanceKeywords,
-} from "./vocabulary/keywords.ts";
-import { Boid } from "./vocabulary/schemas/entities";
-import type { Genome, MutationConfig } from "./vocabulary/schemas/genetics";
+} from './vocabulary/keywords.ts'
+import { Boid } from './vocabulary/schemas/entities'
+import type { Genome, MutationConfig } from './vocabulary/schemas/genetics'
 import type {
   PredatorStance,
   PreyStance,
   Vector2,
-} from "./vocabulary/schemas/primitives";
-import type { SpeciesConfig } from "./vocabulary/schemas/species";
+} from './vocabulary/schemas/primitives'
+import type { SpeciesConfig } from './vocabulary/schemas/species'
 import type {
   SimulationParameters,
   WorldPhysics,
-} from "./vocabulary/schemas/world";
+} from './vocabulary/schemas/world'
 
-let boidIdCounter = 0;
+let boidIdCounter = 0
 
 /**
- * Session 124: Sync boid ID counter based on existing boids
+ *
  * This is CRITICAL when loading boids from another source (e.g., worker receiving from browser)
  * Without this, new boids would get duplicate IDs!
  */
 export function syncBoidIdCounter(boids: { id: string }[]) {
-  let maxId = 0;
+  let maxId = 0
   for (const boid of boids) {
-    // Extract number from "boid-123" format
-    const match = boid.id.match(/^boid-(\d+)$/);
+    const match = boid.id.match(/^boid-(\d+)$/)
     if (match) {
-      const id = parseInt(match[1], 10);
+      const id = parseInt(match[1], 10)
       if (id >= maxId) {
-        maxId = id + 1;
+        maxId = id + 1
       }
     }
   }
   if (maxId > boidIdCounter) {
-    console.log(`[syncBoidIdCounter] Updating counter from ${boidIdCounter} to ${maxId}`);
-    boidIdCounter = maxId;
+    console.log(
+      `[syncBoidIdCounter] Updating counter from ${boidIdCounter} to ${maxId}`
+    )
+    boidIdCounter = maxId
   }
 }
 
 export type Force = {
-  force: Vector2;
-  weight: number;
-};
+  force: Vector2
+  weight: number
+}
 
 /**
  * Apply weighted forces to boid acceleration
@@ -71,15 +72,14 @@ export type Force = {
  *
  * Philosophy: Simple rules compose. Weighted forces create emergent behavior.
  *
- * PERFORMANCE OPTIMIZATION (Session 71):
+ * PERFORMANCE OPTIMIZATION:
  * Inline vector operations to avoid function call overhead
  * Reduces ~8-10 function calls per boid per frame to 0
  */
 function applyWeightedForces(boid: Boid, forces: Array<Force>): void {
   for (const { force, weight } of forces) {
-    // Inline vec.multiply and vec.add to avoid function calls
-    boid.acceleration.x += force.x * weight;
-    boid.acceleration.y += force.y * weight;
+    boid.acceleration.x += force.x * weight
+    boid.acceleration.y += force.y * weight
   }
 }
 
@@ -87,11 +87,11 @@ function applyWeightedForces(boid: Boid, forces: Array<Force>): void {
  * Boid creation context - provides world and species configuration
  */
 export type BoidCreationContext = {
-  world: { width: number; height: number };
-  species: Record<string, SpeciesConfig>;
-  rng: DomainRNG; // Seeded RNG for reproducibility
-  physics?: WorldPhysics; // Optional physics (uses defaults if not provided)
-};
+  world: { width: number; height: number }
+  species: Record<string, SpeciesConfig>
+  rng: DomainRNG // Seeded RNG for reproducibility
+  physics?: WorldPhysics // Optional physics (uses defaults if not provided)
+}
 
 /**
  * Create a new boid with random position, velocity, and type
@@ -102,26 +102,21 @@ export function createBoid(
   age: number | null = null,
   index: number
 ): Boid {
-  const { world, species, rng, physics = defaultWorldPhysics } = context;
+  const { world, species, rng, physics = defaultWorldPhysics } = context
 
-  // Pick a random type
-  const typeId = rng.pick(typeIds);
-  const speciesConfig = species[typeId];
+  const typeId = rng.pick(typeIds)
+  const speciesConfig = species[typeId]
 
-  const role = speciesConfig?.role || roleKeywords.prey;
+  const role = speciesConfig?.role || roleKeywords.prey
 
-  // Start all genesis boids at age 0 to prevent immediate reproduction explosion
-  // Age diversity will naturally emerge over time through births/deaths
-  const effectiveAge = age !== null ? age : 0;
+  const effectiveAge = age !== null ? age : 0
 
-  // Create genome from species config
   const genome = createGenesisGenome(
     speciesConfig.baseGenome.traits,
     speciesConfig.baseGenome.visual
-  );
+  )
 
-  // Compute phenotype from genome + physics
-  const phenotype = computePhenotype(genome, physics);
+  const phenotype = computePhenotype(genome, physics)
 
   return {
     id: `boid-${boidIdCounter++}`,
@@ -138,11 +133,9 @@ export function createBoid(
     acceleration: { x: 0, y: 0 },
     typeId,
 
-    // Genetics (NEW)
     genome,
     phenotype,
 
-    // Resources (UPDATED)
     energy: phenotype.maxEnergy / 2, // Start at half energy
     health: phenotype.maxHealth, // Start at full health
 
@@ -153,26 +146,22 @@ export function createBoid(
     matingBuildupFrames: 0, // No buildup initially
     eatingCooldownFrames: 0, // Not eating initially
     attackCooldownFrames: 0, // Not attacking initially
-    stance: role === "predator" ? "hunting" : "flocking", // Initial stance based on role
+    stance: role === 'predator' ? 'hunting' : 'flocking', // Initial stance based on role
     previousStance: null, // No previous stance
     positionHistory: [], // Empty trail initially
 
-    // Target tracking (NEW - Session 74)
     targetId: null, // No target initially
     targetLockFrame: 0, // No lock time
     targetLockStrength: 0, // No lock strength
 
-    // Mate commitment tracking (NEW - Session 75)
     mateCommitmentFrames: 0, // No mate commitment initially
 
-    // Stance transition tracking (NEW - Session 74)
     stanceEnteredAtFrame: 0, // Entered at tick 0
     substate: null, // No substate initially
 
-    // Knockback tracking
     knockbackVelocity: null, // No knockback velocity initially
     knockbackFramesRemaining: 0, // No knockback frames remaining initially
-  };
+  }
 }
 
 /**
@@ -191,30 +180,26 @@ export function createBoidOfType(
   index: number,
   parentGenomes?: { parent1: Genome; parent2?: Genome } // Optional parent genomes for inheritance
 ): {
-  boid: Boid;
+  boid: Boid
   mutationMetadata: {
-    hadTraitMutation: boolean;
-    hadColorMutation: boolean;
-    hadBodyPartMutation: boolean;
-  } | null;
+    hadTraitMutation: boolean
+    hadColorMutation: boolean
+    hadBodyPartMutation: boolean
+  } | null
 } {
-  const { world, species, rng, physics = defaultWorldPhysics } = context;
-  const speciesConfig = species[typeId];
+  const { world, species, rng, physics = defaultWorldPhysics } = context
+  const speciesConfig = species[typeId]
 
-  // Spawn near parent with slight offset
-  const offset = 20;
+  const offset = 20
 
-  // Create genome: Inherit from parents OR create genesis genome
-  let genome: Genome;
+  let genome: Genome
   let mutationMetadata: {
-    hadTraitMutation: boolean;
-    hadColorMutation: boolean;
-    hadBodyPartMutation: boolean;
-  } | null = null;
+    hadTraitMutation: boolean
+    hadColorMutation: boolean
+    hadBodyPartMutation: boolean
+  } | null = null
 
   if (parentGenomes) {
-    // Offspring: Inherit genome from parent(s) with mutations
-    // Use species mutation config (top-level) or defaults
     const mutationConfig: MutationConfig = {
       traitRate:
         speciesConfig.mutation?.traitRate ?? DEFAULT_MUTATION_CONFIG.traitRate,
@@ -226,10 +211,9 @@ export function createBoidOfType(
         DEFAULT_MUTATION_CONFIG.visualRate,
       colorRate:
         speciesConfig.mutation?.colorRate ?? DEFAULT_MUTATION_CONFIG.colorRate,
-    };
+    }
 
-    // Enable logging for inheritance (temporary for debugging)
-    const enableLogging = false;
+    const enableLogging = false
 
     const inheritanceResult = inheritGenome(
       parentGenomes.parent1,
@@ -237,31 +221,25 @@ export function createBoidOfType(
       mutationConfig,
       rng,
       enableLogging
-    );
-    genome = inheritanceResult.genome;
+    )
+    genome = inheritanceResult.genome
     mutationMetadata = {
       hadTraitMutation: inheritanceResult.hadTraitMutation,
       hadColorMutation: inheritanceResult.hadColorMutation,
       hadBodyPartMutation: inheritanceResult.hadBodyPartMutation,
-    };
+    }
   } else {
-    // Genesis: Create genome from species config
     genome = createGenesisGenome(
       speciesConfig.baseGenome.traits,
       speciesConfig.baseGenome.visual
-    );
+    )
   }
 
-  // Compute phenotype from genome + physics
-  const phenotype = computePhenotype(genome, physics);
+  const phenotype = computePhenotype(genome, physics)
 
-  // Calculate starting energy with bonus
-  const baseEnergy = phenotype.maxEnergy / 2; // Start at half energy
-  const bonusEnergy = phenotype.maxEnergy * energyBonus;
-  const startingEnergy = Math.min(
-    baseEnergy + bonusEnergy,
-    phenotype.maxEnergy
-  );
+  const baseEnergy = phenotype.maxEnergy / 2 // Start at half energy
+  const bonusEnergy = phenotype.maxEnergy * energyBonus
+  const startingEnergy = Math.min(baseEnergy + bonusEnergy, phenotype.maxEnergy)
 
   const boid: Boid = {
     id: `boid-${boidIdCounter++}`,
@@ -282,11 +260,9 @@ export function createBoidOfType(
     acceleration: { x: 0, y: 0 },
     typeId,
 
-    // Genetics (NEW)
     genome,
     phenotype,
 
-    // Resources (UPDATED)
     energy: startingEnergy, // Start with base + bonus energy
     health: phenotype.maxHealth, // Start at full health
 
@@ -297,28 +273,24 @@ export function createBoidOfType(
     matingBuildupFrames: 0, // No buildup initially
     eatingCooldownFrames: 0, // Not eating initially
     attackCooldownFrames: 0, // Not attacking initially
-    stance: speciesConfig.role === "predator" ? "hunting" : "flocking", // Initial stance based on role
+    stance: speciesConfig.role === 'predator' ? 'hunting' : 'flocking', // Initial stance based on role
     previousStance: null, // No previous stance
     positionHistory: [], // Empty trail initially
 
-    // Target tracking (NEW - Session 74)
     targetId: null, // No target initially
     targetLockFrame: 0, // No lock time
     targetLockStrength: 0, // No lock strength
 
-    // Mate commitment tracking (NEW - Session 75)
     mateCommitmentFrames: 0, // No mate commitment initially
 
-    // Stance transition tracking (NEW - Session 74)
     stanceEnteredAtFrame: 0, // Entered at tick 0
     substate: null, // No substate initially
 
-    // Knockback tracking
     knockbackVelocity: null, // No knockback velocity initially
     knockbackFramesRemaining: 0, // No knockback frames remaining initially
-  };
+  }
 
-  return { boid, mutationMetadata };
+  return { boid, mutationMetadata }
 }
 
 const stanceRules = {
@@ -327,7 +299,7 @@ const stanceRules = {
     ruleKeywords.alignment,
     ruleKeywords.cohesion,
     ruleKeywords.avoidObstacles,
-    ruleKeywords.seekFood
+    ruleKeywords.seekFood,
   ],
   [stanceKeywords.hunting]: [
     ruleKeywords.seekFood,
@@ -359,148 +331,136 @@ const stanceRules = {
     ruleKeywords.separation,
     ruleKeywords.avoidObstacles,
   ],
-};
+}
 
 /**
  * Update a predator boid
  */
 function updatePredator(boid: Boid, context: BoidUpdateContext): void {
-  const { forcesCollector } = context;
-  // Extract context for convenience
-  const foodSources = context.simulation.foodSources;
-  const parameters = context.config.parameters;
-  const speciesTypes = context.config.species;
-  const stance = boid.stance as PredatorStance;
+  const { forcesCollector } = context
+  const foodSources = context.simulation.foodSources
+  const parameters = context.config.parameters
+  const speciesTypes = context.config.species
+  const stance = boid.stance as PredatorStance
   const activeRules = stanceRules[
     stance
-  ] as (typeof ruleKeywords)[keyof typeof ruleKeywords][];
+  ] as (typeof ruleKeywords)[keyof typeof ruleKeywords][]
 
-  // Find all prey (using pure filter)
-  const speciesConfig = speciesTypes[boid.typeId];
+  const speciesConfig = speciesTypes[boid.typeId]
   if (!speciesConfig) {
-    console.warn(`Unknown species: ${boid.typeId}`);
-    return;
+    console.warn(`Unknown species: ${boid.typeId}`)
+    return
   }
-
-  // Stance-based behavior
 
   const energySpeedFactor = calculateEnergySpeedFactor(
     boid.energy,
     boid.phenotype.maxEnergy
-  );
-  let effectiveMaxSpeed = boid.phenotype.maxSpeed * energySpeedFactor;
+  )
+  let effectiveMaxSpeed = boid.phenotype.maxSpeed * energySpeedFactor
 
   for (const rule of activeRules) {
     switch (rule) {
       case ruleKeywords.seekFood: {
-        // Session 121: Seek food to recover energy (only if hungry)
-        // While hunting: seek food if energy < 70% (opportunistic)
-        // While idle: always seek food (dedicated foraging)
-        const shouldSeekFood = stance === stanceKeywords.idle || 
-          (boid.energy / boid.phenotype.maxEnergy) < 0.7;
-        
+        const shouldSeekFood =
+          stance === stanceKeywords.idle ||
+          boid.energy / boid.phenotype.maxEnergy < 0.7
+
         if (shouldSeekFood) {
-          const foodSeek = rules.seekFood(boid, context);
+          const foodSeek = rules.seekFood(boid, context)
           if (foodSeek.targetFoodId) {
-            const foodSeekingForce = foodSeek.force;
-            // Higher weight when idle (dedicated foraging), lower when hunting (opportunistic)
-            const weight = stance === stanceKeywords.idle ? 2.5 : 1.5;
+            const foodSeekingForce = foodSeek.force
+            const weight = stance === stanceKeywords.idle ? 2.5 : 1.5
             forcesCollector.collect({
               force: foodSeekingForce,
               weight,
-            });
+            })
           }
         }
-        break;
+        break
       }
       case ruleKeywords.orbitFood: {
-        // Find food source we're eating from and orbit it
         const targetFood = foodSources.find((food) => {
           if (food.sourceType !== roleKeywords.predator || food.energy <= 0)
-            return false;
-          const dx = boid.position.x - food.position.x;
-          const dy = boid.position.y - food.position.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          return dist < FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5;
-        });
+            return false
+          const dx = boid.position.x - food.position.x
+          const dy = boid.position.y - food.position.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          return dist < FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5
+        })
 
         if (targetFood) {
-          // Session 123: Use CONSUMPTION radius so boids get close enough to actually eat!
           const orbitForce = rules.orbitFood(
             boid,
             targetFood.position,
             FOOD_CONSTANTS.FOOD_CONSUMPTION_RADIUS, // Was FOOD_EATING_RADIUS (30px), now 20px
             context
-          );
+          )
           forcesCollector.collect({
             force: orbitForce,
             weight: 3.0,
-          });
-          // slow down while eating
-          effectiveMaxSpeed *= calculateEatingSpeedFactor();
+          })
+          effectiveMaxSpeed *= calculateEatingSpeedFactor()
         }
-        break;
+        break
       }
       case ruleKeywords.chase: {
-        const chaseWeight = calculatePredatorChaseWeight(stance);
-        // Chase prey
-        const chaseForce = rules.chase(boid, context);
+        const chaseWeight = calculatePredatorChaseWeight(stance)
+        const chaseForce = rules.chase(boid, context)
         forcesCollector.collect({
           force: chaseForce,
           weight: chaseWeight,
-        });
-        break;
+        })
+        break
       }
       case ruleKeywords.seekMate: {
-        const mateSeekingForce = rules.seekMate(boid, context);
+        const mateSeekingForce = rules.seekMate(boid, context)
         forcesCollector.collect({
           force: mateSeekingForce,
           weight: 2.5,
-        });
-        break;
+        })
+        break
       }
       case ruleKeywords.avoidObstacles: {
-        const avoidance = rules.avoidObstacles(boid, context);
+        const avoidance = rules.avoidObstacles(boid, context)
         forcesCollector.collect({
           force: avoidance,
           weight: parameters.obstacleAvoidanceWeight,
-        });
-        break;
+        })
+        break
       }
       case ruleKeywords.avoidCrowdedAreas: {
-        const crowdAvoidance = rules.avoidCrowdedAreas(boid, context);
+        const crowdAvoidance = rules.avoidCrowdedAreas(boid, context)
         forcesCollector.collect({
           force: crowdAvoidance,
           weight: 1.0,
-        });
-        break;
+        })
+        break
       }
       case ruleKeywords.separation: {
-        const sep = rules.separation(boid, context);
+        const sep = rules.separation(boid, context)
         forcesCollector.collect({
           force: sep,
           weight: boid.phenotype.separationWeight,
-        });
-        break;
+        })
+        break
       }
     }
   }
 
   const forces = forcesCollector.items.filter(
     (force) => force.weight > 0 && force.force.x !== 0 && force.force.y !== 0
-  );
+  )
 
-  applyWeightedForces(boid, forces);
+  applyWeightedForces(boid, forces)
 
-  // Update velocity with energy-based speed scaling
-  const newVecX = boid.velocity.x + boid.acceleration.x;
-  const newVecY = boid.velocity.y + boid.acceleration.y;
+  const newVecX = boid.velocity.x + boid.acceleration.x
+  const newVecY = boid.velocity.y + boid.acceleration.y
   const limitedVelocity = vec.limit(
     { x: newVecX, y: newVecY },
     effectiveMaxSpeed
-  );
-  boid.velocity.x = limitedVelocity.x;
-  boid.velocity.y = limitedVelocity.y;
+  )
+  boid.velocity.x = limitedVelocity.x
+  boid.velocity.y = limitedVelocity.y
 }
 
 /**
@@ -508,194 +468,179 @@ function updatePredator(boid: Boid, context: BoidUpdateContext): void {
  * PERFORMANCE OPTIMIZATION: Only calculates forces needed for current stance
  */
 function updatePrey(boid: Boid, context: BoidUpdateContext): void {
-  const { forcesCollector } = context;
-  // Extract context for convenience
-  const { simulation, config } = context;
-  const { foodSources } = simulation;
-  const { parameters, species: speciesTypes } = config;
-  const stance = boid.stance as PreyStance;
+  const { forcesCollector } = context
+  const { simulation, config } = context
+  const { foodSources } = simulation
+  const { parameters, species: speciesTypes } = config
+  const stance = boid.stance as PreyStance
   const activeRules = stanceRules[
     stance
-  ] as (typeof ruleKeywords)[keyof typeof ruleKeywords][];
+  ] as (typeof ruleKeywords)[keyof typeof ruleKeywords][]
 
-  const speciesConfig = speciesTypes[boid.typeId];
+  const speciesConfig = speciesTypes[boid.typeId]
   if (!speciesConfig) {
-    console.warn(`Unknown species: ${boid.typeId}`);
-    return;
+    console.warn(`Unknown species: ${boid.typeId}`)
+    return
   }
 
-  // Calculate effective speed modifiers
   const energySpeedFactor = calculateEnergySpeedFactor(
     boid.energy,
     boid.phenotype.maxEnergy
-  );
-  let effectiveMaxSpeed = boid.phenotype.maxSpeed * energySpeedFactor;
+  )
+  let effectiveMaxSpeed = boid.phenotype.maxSpeed * energySpeedFactor
 
-  // Always calculate fear-based forces (critical for survival)
-  const fearResponse = rules.fear(boid, context);
-  const fearFactor = boid.phenotype.fearFactor;
+  const fearResponse = rules.fear(boid, context)
+  const fearFactor = boid.phenotype.fearFactor
 
-  // Always critical avoidance behaviors
-  const deathAvoidance = rules.avoidDeathMarkers(boid, context);
-  const predatorFoodAvoidance = rules.avoidPredatorFood(boid, context);
-  const crowdAvoidance = rules.avoidCrowdedAreas(boid, context);
+  const deathAvoidance = rules.avoidDeathMarkers(boid, context)
+  const predatorFoodAvoidance = rules.avoidPredatorFood(boid, context)
+  const crowdAvoidance = rules.avoidCrowdedAreas(boid, context)
 
-  // Apply fear-based forces first (always active)
   forcesCollector.collect({
     force: fearResponse.force,
     weight: fearFactor * 3.0,
-  });
+  })
   forcesCollector.collect({
     force: deathAvoidance,
     weight: fearFactor * 1.5,
-  });
+  })
   forcesCollector.collect({
     force: predatorFoodAvoidance,
     weight: fearFactor * 2.5,
-  });
+  })
   forcesCollector.collect({
     force: crowdAvoidance,
     weight: 1.0,
-  });
+  })
 
-  // Stance-specific force calculation
-  const flockingMultiplier = stance === stanceKeywords.eating ? 0.3 : 1.0;
+  const flockingMultiplier = stance === stanceKeywords.eating ? 0.3 : 1.0
   const cohesionWeight = calculatePreyCohesionWeight(
     boid.phenotype.cohesionWeight,
     stance
-  );
+  )
 
   for (const rule of activeRules) {
     switch (rule) {
       case ruleKeywords.separation: {
-        const sep = rules.separation(boid, context);
+        const sep = rules.separation(boid, context)
         forcesCollector.collect({
           force: sep,
           weight: boid.phenotype.separationWeight * flockingMultiplier,
-        });
-        break;
+        })
+        break
       }
       case ruleKeywords.alignment: {
-        const ali = rules.alignment(boid, context);
+        const ali = rules.alignment(boid, context)
         forcesCollector.collect({
           force: ali,
           weight: boid.phenotype.alignmentWeight * flockingMultiplier,
-        });
-        break;
+        })
+        break
       }
       case ruleKeywords.cohesion: {
-        const coh = rules.cohesion(boid, context);
+        const coh = rules.cohesion(boid, context)
         forcesCollector.collect({
           force: coh,
           weight: cohesionWeight * flockingMultiplier,
-        });
-        break;
+        })
+        break
       }
       case ruleKeywords.avoidObstacles: {
-        const avoidance = rules.avoidObstacles(boid, context);
+        const avoidance = rules.avoidObstacles(boid, context)
         forcesCollector.collect({
           force: avoidance,
           weight: parameters.obstacleAvoidanceWeight,
-        });
-        break;
+        })
+        break
       }
       case ruleKeywords.seekFood: {
-        // Conditional: only seek when hungry in flocking/idle stance
         if (boid.energy < boid.phenotype.maxEnergy * 0.7) {
-          const foodSeek = rules.seekFood(boid, context);
+          const foodSeek = rules.seekFood(boid, context)
           if (foodSeek.targetFoodId) {
             forcesCollector.collect({
               force: foodSeek.force,
               weight: 2.0,
-            });
+            })
           }
         }
-        break;
+        break
       }
       case ruleKeywords.orbitFood: {
-        // Find food source we're eating from
         const targetFood = foodSources.find((food) => {
           if (food.sourceType !== roleKeywords.prey || food.energy <= 0)
-            return false;
-          const dx = boid.position.x - food.position.x;
-          const dy = boid.position.y - food.position.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          return dist < FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5;
-        });
+            return false
+          const dx = boid.position.x - food.position.x
+          const dy = boid.position.y - food.position.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          return dist < FOOD_CONSTANTS.FOOD_EATING_RADIUS * 1.5
+        })
 
         if (targetFood) {
-          // Session 123: Use CONSUMPTION radius so boids get close enough to actually eat!
           const orbitForce = rules.orbitFood(
             boid,
             targetFood.position,
             FOOD_CONSTANTS.FOOD_CONSUMPTION_RADIUS, // Was FOOD_EATING_RADIUS (30px), now 20px
             context
-          );
+          )
           forcesCollector.collect({
             force: orbitForce,
             weight: 3.0,
-          });
-          // Slow down while eating
-          effectiveMaxSpeed *= calculateEatingSpeedFactor();
+          })
+          effectiveMaxSpeed *= calculateEatingSpeedFactor()
         }
-        break;
+        break
       }
       case ruleKeywords.seekMate: {
-        // SEEKING_MATE: Actively search for potential mates
-        // MATING: seekMate rule keeps boids together without spiraling
-        const mateSeekingForce = rules.seekMate(boid, context);
+        const mateSeekingForce = rules.seekMate(boid, context)
         forcesCollector.collect({
           force: mateSeekingForce,
           weight: 2.5,
-        });
-        break;
+        })
+        break
       }
     }
   }
 
-  // Filter and apply all collected forces
   const forces = forcesCollector.items.filter(
     (force) => force.weight > 0 && (force.force.x !== 0 || force.force.y !== 0)
-  );
+  )
 
-  applyWeightedForces(boid, forces);
+  applyWeightedForces(boid, forces)
 
-  // Update velocity with fear-induced speed boost
-  const newVecX = boid.velocity.x + boid.acceleration.x;
-  const newVecY = boid.velocity.y + boid.acceleration.y;
+  const newVecX = boid.velocity.x + boid.acceleration.x
+  const newVecY = boid.velocity.y + boid.acceleration.y
 
-  // Apply adrenaline rush for fear response
   if (fearResponse.isAfraid) {
-    const speedBoost = calculateFearSpeedBoost(fearFactor);
-    effectiveMaxSpeed = boid.phenotype.maxSpeed * speedBoost;
+    const speedBoost = calculateFearSpeedBoost(fearFactor)
+    effectiveMaxSpeed = boid.phenotype.maxSpeed * speedBoost
   }
 
   const limitedVelocity = vec.limit(
     { x: newVecX, y: newVecY },
     effectiveMaxSpeed
-  );
-  boid.velocity.x = limitedVelocity.x;
-  boid.velocity.y = limitedVelocity.y;
+  )
+  boid.velocity.x = limitedVelocity.x
+  boid.velocity.y = limitedVelocity.y
 }
 
 function updateKnockback(boid: Boid, context: BoidUpdateContext): void {
   if (boid.knockbackVelocity) {
-    const velocityX = boid.knockbackVelocity.x;
-    const velocityY = boid.knockbackVelocity.y;
-    boid.velocity.x = velocityX;
-    boid.velocity.y = velocityY;
+    const velocityX = boid.knockbackVelocity.x
+    const velocityY = boid.knockbackVelocity.y
+    boid.velocity.x = velocityX
+    boid.velocity.y = velocityY
 
-    const decayFactor = 0.8; // reduce knockback gradually over time
-    boid.knockbackVelocity.x *= decayFactor;
-    boid.knockbackVelocity.y *= decayFactor;
-    boid.knockbackFramesRemaining--;
+    const decayFactor = 0.8 // reduce knockback gradually over time
+    boid.knockbackVelocity.x *= decayFactor
+    boid.knockbackVelocity.y *= decayFactor
+    boid.knockbackFramesRemaining--
     if (boid.knockbackFramesRemaining <= 0) {
-      boid.knockbackVelocity = null;
+      boid.knockbackVelocity = null
     }
 
-    boid.position.x += velocityX * context.scaledTime;
-    boid.position.y += velocityY * context.scaledTime;
-    wrapEdges(boid, context.config.world.width, context.config.world.height);
+    boid.position.x += velocityX * context.scaledTime
+    boid.position.y += velocityY * context.scaledTime
+    wrapEdges(boid, context.config.world.width, context.config.world.height)
   }
 }
 
@@ -704,43 +649,35 @@ function updateKnockback(boid: Boid, context: BoidUpdateContext): void {
  * Dispatches to role-specific update functions
  */
 export function updateBoid(boid: Boid, context: BoidUpdateContext): void {
-  const profiler = context.profiler;
-  // Get this boid's type config
-  const speciesConfig = context.config.species[boid.typeId];
+  const profiler = context.profiler
+  const speciesConfig = context.config.species[boid.typeId]
   if (!speciesConfig) {
-    console.warn(`Unknown boid type: ${boid.typeId}`);
-    return;
+    console.warn(`Unknown boid type: ${boid.typeId}`)
+    return
   }
 
-  // Reset acceleration
-  boid.acceleration = { x: 0, y: 0 };
-  context.forcesCollector.reset();
+  boid.acceleration = { x: 0, y: 0 }
+  context.forcesCollector.reset()
 
   if (boid.knockbackFramesRemaining > 0) {
-    updateKnockback(boid, context);
+    updateKnockback(boid, context)
   }
 
-  // Dispatch to role-specific update function
   if (speciesConfig.role === roleKeywords.predator) {
-    profiler?.start(profilerKeywords.engine.updatePredator);
-    updatePredator(boid, context);
-    profiler?.end(profilerKeywords.engine.updatePredator);
+    profiler?.start(profilerKeywords.engine.updatePredator)
+    updatePredator(boid, context)
+    profiler?.end(profilerKeywords.engine.updatePredator)
   } else {
-    profiler?.start(profilerKeywords.engine.updatePrey);
-    updatePrey(boid, context);
-    profiler?.end(profilerKeywords.engine.updatePrey);
+    profiler?.start(profilerKeywords.engine.updatePrey)
+    updatePrey(boid, context)
+    profiler?.end(profilerKeywords.engine.updatePrey)
   }
 
-  // Update position (common for all boids)
-  // Scale velocity by deltaSeconds for frame-rate independent movement
-  // PERFORMANCE OPTIMIZATION: Inline vector operations
-  boid.position.x += boid.velocity.x * context.scaledTime;
-  boid.position.y += boid.velocity.y * context.scaledTime;
+  boid.position.x += boid.velocity.x * context.scaledTime
+  boid.position.y += boid.velocity.y * context.scaledTime
 
-  // Wrap around edges (toroidal space)
-  wrapEdges(boid, context.config.world.width, context.config.world.height);
+  wrapEdges(boid, context.config.world.width, context.config.world.height)
 
-  // Enforce minimum distance (prevent overlap/stacking)
   enforceMinimumDistance(
     boid,
     context.nearbyBoids,
@@ -750,17 +687,17 @@ export function updateBoid(boid: Boid, context: BoidUpdateContext): void {
     },
     context.config.parameters,
     context.config.species
-  );
+  )
 }
 
 /**
  * Wrap boid position around canvas edges
  */
 function wrapEdges(boid: Boid, width: number, height: number): void {
-  if (boid.position.x < 0) boid.position.x = width;
-  if (boid.position.x > width) boid.position.x = 0;
-  if (boid.position.y < 0) boid.position.y = height;
-  if (boid.position.y > height) boid.position.y = 0;
+  if (boid.position.x < 0) boid.position.x = width
+  if (boid.position.x > width) boid.position.x = 0
+  if (boid.position.y < 0) boid.position.y = height
+  if (boid.position.y > height) boid.position.y = 0
 }
 
 /**
@@ -774,53 +711,48 @@ function enforceMinimumDistance(
   parameters: SimulationParameters,
   speciesTypes: Record<string, SpeciesConfig>
 ): void {
-  const speciesConfig = speciesTypes[boid.typeId];
+  const speciesConfig = speciesTypes[boid.typeId]
   const minDist =
-    speciesConfig?.overrides?.minDistance || parameters.minDistance;
+    speciesConfig?.overrides?.minDistance || parameters.minDistance
   if (!speciesConfig) {
-    console.warn(`Unknown species: ${boid.typeId}`);
-    return;
+    console.warn(`Unknown species: ${boid.typeId}`)
+    return
   }
 
   for (const { item: other, distance } of nearbyBoids) {
-    if (other.id === boid.id) continue;
+    if (other.id === boid.id) continue
 
-    // Get other boid's type
-    const otherSpeciesConfig = speciesTypes[other.typeId];
+    const otherSpeciesConfig = speciesTypes[other.typeId]
     if (!otherSpeciesConfig) {
-      console.warn(`Unknown species: ${other.typeId}`);
-      continue;
+      console.warn(`Unknown species: ${other.typeId}`)
+      continue
     }
 
-    // Allow predators to overlap with prey (for catching)
     if (
       speciesConfig.role === roleKeywords.predator &&
       otherSpeciesConfig.role === roleKeywords.prey
     )
-      continue;
+      continue
     if (
       speciesConfig.role === roleKeywords.prey &&
       otherSpeciesConfig.role === roleKeywords.predator
     )
-      continue;
+      continue
 
-    // If too close, push apart
     if (distance < minDist && distance > 0) {
-      const overlap = minDist - distance;
+      const overlap = minDist - distance
 
-      // Get toroidal direction vector
       const diff = vec.toroidalSubtract(
         boid.position,
         other.position,
         worldSize.width,
         worldSize.height
-      );
+      )
 
-      // Normalize and scale by half the overlap
-      const pushVector = vec.setMagnitude(diff, overlap * 0.5);
+      const pushVector = vec.setMagnitude(diff, overlap * 0.5)
 
-      boid.position.x += pushVector.x;
-      boid.position.y += pushVector.y;
+      boid.position.x += pushVector.x
+      boid.position.y += pushVector.y
     }
   }
 }
