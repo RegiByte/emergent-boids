@@ -205,6 +205,14 @@ The multi-rate export includes multiple sampling rates (1x, 3x, 10x, 50x, 100x) 
 - Craig Reynolds for the original Boids algorithm (1987)
 - "Flocks, Herds, and Schools: A Distributed Behavioral Model" - SIGGRAPH '87
 
+## LLM Usage Disclaimer
+
+This project made heavy use of LLMs to generate code, refactor, plan the architecture, run experiments, cleanup unused code and other tasks. While the LLMs were a huge help, they are not a substitute for human understanding and oversight. The code is not perfect and there are likely bugs and inefficiencies.
+
+Despite the use of LLMs, the ideas of the project are mine, the research of the boids algorithm and the genetics system are mine, the libraries used for the architecture foundation are mine, and the discipline to refactor and clean up when necessary are also mine. The LLM does not replace my capability to think, reason, and make decisions, therefore I consider it my execution partner, not my replacement.
+
+Model used: Claude 4.5 Sonnet (no thinking mode)
+
 ## License
 
 ISC
