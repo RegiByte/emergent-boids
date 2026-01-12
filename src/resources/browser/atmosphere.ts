@@ -1,5 +1,5 @@
 import { defineResource } from 'braided'
-import type { SimulationGateway } from './simulationController.ts'
+import type { SimulationGateway } from './simulationGateway.ts'
 import type { RuntimeStoreResource } from './runtimeStore.ts'
 import type { AnalyticsStoreResource } from './analyticsStore.ts'
 import type { TimeResource } from '../shared/time.ts'
@@ -23,14 +23,14 @@ import { produce } from 'immer'
  * - Starvation crisis: Average energy <30% across all species
  */
 export const atmosphere = defineResource({
-  dependencies: ['runtimeController', 'runtimeStore', 'analyticsStore', 'time'],
+  dependencies: ['simulationGateway', 'runtimeStore', 'analyticsStore', 'time'],
   start: ({
-    runtimeController,
+    simulationGateway,
     runtimeStore,
     analyticsStore,
     time,
   }: {
-    runtimeController: SimulationGateway
+    simulationGateway: SimulationGateway
     runtimeStore: RuntimeStoreResource
     analyticsStore: AnalyticsStoreResource
     time: TimeResource
@@ -45,7 +45,7 @@ export const atmosphere = defineResource({
       windowStart: time.now(), // Use simulation time
     }
 
-    const unsubscribe = runtimeController.subscribe((event) => {
+    const unsubscribe = simulationGateway.subscribe((event) => {
       if (event.type === simulationKeywords.events.boidsReproduced) {
         for (const reproduction of event.boids) {
           for (const offspring of reproduction.offspring) {
@@ -89,7 +89,7 @@ export const atmosphere = defineResource({
       })
 
       if (activeEvent && activeEvent.minDurationTicks <= 0) {
-        runtimeController.dispatch({
+        simulationGateway.dispatch({
           type: eventKeywords.atmosphere.eventEnded,
           eventType: activeEvent.eventType,
         })
@@ -125,7 +125,7 @@ export const atmosphere = defineResource({
       const predatorPop = snapshot.populations['predator'] || 0
 
       if (totalDeaths > totalPop * 0.15 && totalPop > 50) {
-        runtimeController.dispatch({
+        simulationGateway.dispatch({
           type: eventKeywords.atmosphere.eventStarted,
           eventType: 'mass-extinction',
           settings: {
@@ -138,7 +138,7 @@ export const atmosphere = defineResource({
       }
 
       if (totalBirths > totalPop * 0.1 && totalPop > 50) {
-        runtimeController.dispatch({
+        simulationGateway.dispatch({
           type: eventKeywords.atmosphere.eventStarted,
           eventType: 'mating-season',
           settings: {
@@ -151,7 +151,7 @@ export const atmosphere = defineResource({
       }
 
       if (totalPop > 0 && predatorPop / totalPop > 0.3) {
-        runtimeController.dispatch({
+        simulationGateway.dispatch({
           type: eventKeywords.atmosphere.eventStarted,
           eventType: 'predator-dominance',
           settings: {
@@ -164,7 +164,7 @@ export const atmosphere = defineResource({
       }
 
       if (avgEnergy < 30 && totalPop > 50) {
-        runtimeController.dispatch({
+        simulationGateway.dispatch({
           type: eventKeywords.atmosphere.eventStarted,
           eventType: 'starvation-crisis',
           settings: {
@@ -177,7 +177,7 @@ export const atmosphere = defineResource({
       }
 
       if (totalPop > initialPop * 1.5 && totalPop > 100) {
-        runtimeController.dispatch({
+        simulationGateway.dispatch({
           type: eventKeywords.atmosphere.eventStarted,
           eventType: 'population-boom',
           settings: {

@@ -438,7 +438,7 @@ const handlers = {
     return []
   },
   [simulationKeywords.events.error]: (_state, event) => {
-    console.error('[RuntimeController] Simulation error:', event)
+    console.error('[SimulationGateway] Simulation error:', event)
     return []
   },
 } satisfies EventHandlerMap<AllEvents, AllEffects, RuntimeStore, HandlerContext>

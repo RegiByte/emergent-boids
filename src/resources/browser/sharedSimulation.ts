@@ -15,6 +15,7 @@ import { RendererResource } from './renderer'
 import { RuntimeStoreResource } from './runtimeStore'
 import { SharedEngineResource } from './sharedEngine'
 import { WorkerTasksResource } from './workerTasks'
+import { SimulationGateway } from './simulationGateway'
 
 /**
  * Shared Simulation Resource
@@ -28,7 +29,7 @@ export const sharedSimulation = defineResource({
     'workerTasks',
     'camera',
     'runtimeStore',
-    'runtimeController',
+    'simulationGateway',
     'renderer',
     'time',
   ],
@@ -37,7 +38,7 @@ export const sharedSimulation = defineResource({
     workerTasks,
     camera,
     runtimeStore,
-    runtimeController,
+    simulationGateway,
     renderer,
     time,
   }: {
@@ -45,7 +46,7 @@ export const sharedSimulation = defineResource({
     workerTasks: WorkerTasksResource
     camera: CameraAPI
     runtimeStore: RuntimeStoreResource
-    runtimeController: any // RuntimeController type
+    simulationGateway: SimulationGateway
     renderer: RendererResource
     time: TimeAPI
   }) => {
@@ -205,7 +206,7 @@ export const sharedSimulation = defineResource({
     simulation.initialize()
 
     channel.watch((event) => {
-      runtimeController.dispatch(event)
+      simulationGateway.dispatch(event)
     })
 
     const commands = {

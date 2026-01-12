@@ -263,7 +263,7 @@ function aggregateEvents(
 export function EventsPanel() {
   const { useStore: useRuntimeStore } = useResource('runtimeStore')
   const { useStore: useAnalyticsStore } = useResource('analyticsStore')
-  const runtimeController = useResource('runtimeController')
+  const gateway = useResource('simulationGateway')
   const recentEvents = useAnalyticsStore((state) => {
     return state.events.data.recentEvents
   })
@@ -336,7 +336,7 @@ export function EventsPanel() {
 
   const handleMaxEventsChange = (value: number | readonly number[]) => {
     const maxEvents = Array.isArray(value) ? value[0] : value
-    runtimeController.dispatch({
+    gateway.dispatch({
       type: eventKeywords.analytics.filterChanged,
       maxEvents,
       allowedEventTypes: allowedEventTypes ?? undefined,
@@ -357,7 +357,7 @@ export function EventsPanel() {
       newTypes = [...currentTypes, categoryId]
     }
 
-    runtimeController.dispatch({
+    gateway.dispatch({
       type: eventKeywords.analytics.filterChanged,
       maxEvents: maxEventsCaptured,
       allowedEventTypes: newTypes ?? undefined,
@@ -365,14 +365,14 @@ export function EventsPanel() {
   }
 
   const clearCustomFilter = () => {
-    runtimeController.dispatch({
+    gateway.dispatch({
       type: eventKeywords.analytics.filterCleared,
     })
     toast.info('Filter reset to default')
   }
 
   const enableAllCategories = () => {
-    runtimeController.dispatch({
+    gateway.dispatch({
       type: eventKeywords.analytics.filterChanged,
       maxEvents: maxEventsCaptured,
       allowedEventTypes: EVENT_CATEGORIES.map((c) => c.id),

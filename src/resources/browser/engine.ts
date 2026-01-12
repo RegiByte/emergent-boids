@@ -1,17 +1,8 @@
-import { createBoidOfType } from '@/boids/boid.ts'
 import {
   createForceCollector,
   createLifecycleCollector,
 } from '@/boids/collectors.ts'
 import { fadeDeathMarkers } from '@/boids/deathMarkers.ts'
-import { countBoidsByRole } from '@/boids/filters.ts'
-import {
-  canCreatePredatorFood,
-  createPredatorFood,
-  generatePreyFood,
-} from '@/boids/foodManager.ts'
-import { filterBoidsWhere } from '@/boids/iterators.ts'
-import { canSpawnOffspring } from '@/boids/lifecycle/population.ts'
 import type {
   AllEvents,
   CatchEvent,
@@ -37,29 +28,15 @@ import {
 import { createSubscription } from '@/lib/state.ts'
 import { sharedMemoryKeywords } from '@/lib/workerTasks/vocabulary.ts'
 import { defineResource } from 'braided'
-import {
-  applyBehaviorDecision,
-  buildBehaviorContext,
-  evaluateBehavior,
-} from '../../boids/behavior/evaluator.ts'
-import {
-  createBehaviorRuleset,
-  MINIMUM_STANCE_DURATION_FRAMES,
-} from '../../boids/behavior/rules'
+import { createBehaviorRuleset } from '../../boids/behavior/rules'
 import { createBoid, updateBoid } from '../../boids/boid.ts'
 import type { BoidUpdateContext } from '../../boids/context.ts'
 import { defaultWorldPhysics } from '../../boids/defaultPhysics.ts'
-import { getPredators, getPrey } from '../../boids/filters.ts'
 import { FOOD_CONSTANTS } from '../../boids/food.ts'
-import { isDead } from '../../boids/lifecycle/health.ts'
-import { isReadyToMate, isWithinRadius } from '../../boids/predicates.ts'
-import { createSpatialHash, ItemWithDistance } from '../../boids/spatialHash.ts'
-import * as vec from '../../boids/vector.ts'
+import { createSpatialHash } from '../../boids/spatialHash.ts'
 import {
   eventKeywords,
-  lifecycleKeywords,
   profilerKeywords,
-  roleKeywords,
 } from '../../boids/vocabulary/keywords.ts'
 import {
   Boid,
@@ -71,6 +48,14 @@ import type { Profiler } from '../shared/profiler.ts'
 import { RandomnessResource } from '../shared/randomness.ts'
 import { SharedMemoryManager } from '../shared/sharedMemoryManager.ts'
 import type { TimeResource } from '../shared/time.ts'
+import {
+  applyLifecycleEventsCore,
+  checkCatchesCore,
+  evaluateBoidBehaviorCore,
+  generatePreyFoodBatch,
+  createPredatorFoodFromCatch,
+  updateBoidCooldowns,
+} from '@/boids/engine/core'
 import {
   checkBoidLifecycle,
   computeOpsLayout,
@@ -267,39 +252,46 @@ export const engine = defineResource({
      */
     const applyLifecycleEvents = (events: LifecycleEvent[]) => {
       profiler.start('lifecycle.applyEvents')
-      const { config } = runtimeStore.store.getState()
-      const speciesTypes = config.species
+      const { config, simulation: currentSimulation } = runtimeStore.store.getState()
+
+      const result = applyLifecycleEventsCore(events, {
+        boids: boidsStore.boids,
+        config:         {
+          parameters: config.parameters,
+          species: config.species,
+          world: config.world,
+          physics: config.physics,
+        },
+        currentFrame: time.getFrame(),
+        rng: randomness.domain('reproduction'),
+        getNextBoidIndex: () => boidsStore.nextIndex(),
+      })
 
       profiler.start('lifecycle.processDeaths')
-      for (const event of events) {
-        if (event.type === 'lifecycle:death') {
-          const boid = boidsStore.getBoidById(event.boidId)
-          if (boid) {
+      for (const boidId of result.boidsToRemove) {
+        const boid = boidsStore.getBoidById(boidId)
+        if (boid) {
+          const deathEvent = events.find(
+            (e) => e.type === 'lifecycle:death' && e.boidId === boidId
+          ) as Extract<LifecycleEvent, { type: 'lifecycle:death' }> | undefined
+
+          if (deathEvent) {
             engineEventSubscription.notify({
               type: eventKeywords.boids.died,
-              boidId: event.boidId,
-              typeId: event.typeId,
-              reason: event.reason,
+              boidId: deathEvent.boidId,
+              typeId: deathEvent.typeId,
+              reason: deathEvent.reason,
             })
           }
-          removeBoid(event.boidId)
         }
+        removeBoid(boidId)
       }
       profiler.end('lifecycle.processDeaths')
 
       profiler.start('lifecycle.processFoodConsumption')
-      const foodConsumptionMap = new Map<string, number>()
-      for (const event of events) {
-        if (event.type === lifecycleKeywords.events.foodConsumed) {
-          const current = foodConsumptionMap.get(event.foodId) || 0
-          foodConsumptionMap.set(event.foodId, current + event.energyConsumed)
-        }
-      }
-
-      if (foodConsumptionMap.size > 0) {
-        const { simulation: currentSimulation } = runtimeStore.store.getState()
+      if (result.foodConsumption.size > 0) {
         const updatedFoodSources = currentSimulation.foodSources.map((food) => {
-          const consumed = foodConsumptionMap.get(food.id)
+          const consumed = result.foodConsumption.get(food.id)
           if (consumed) {
             return {
               ...food,
@@ -319,95 +311,19 @@ export const engine = defineResource({
       profiler.end('lifecycle.processFoodConsumption')
 
       profiler.start('lifecycle.processReproductions')
-      const counts = countBoidsByRole(boidsStore.boids, speciesTypes)
-      let currentPreyCount = counts.prey
-      let currentPredatorCount = counts.predator
+      for (const newBoid of result.boidsToAdd) {
+        addBoid(newBoid)
+      }
 
-      for (const event of events) {
-        if (event.type === 'lifecycle:reproduction') {
-          const offspring = event.offspring
-          const speciesConfig = speciesTypes[offspring.typeId]
-          const offspringCount = speciesConfig.reproduction.offspringCount || 1
-          const energyBonus =
-            speciesConfig.reproduction.offspringEnergyBonus || 0
-
-          const parent1 = boidsStore.getBoidById(offspring.parent1Id)
-          const parent2 = offspring.parent2Id
-            ? boidsStore.getBoidById(offspring.parent2Id)
-            : undefined
-
-          for (let i = 0; i < offspringCount; i++) {
-            const currentTypeCount = filterBoidsWhere(
-              boidsStore.boids,
-              (b) => b.typeId === offspring.typeId
-            ).length
-
-            const canSpawn = canSpawnOffspring(
-              offspring.typeId,
-              speciesTypes,
-              {
-                maxBoids: config.parameters.maxBoids,
-                maxPreyBoids: config.parameters.maxPreyBoids,
-                maxPredatorBoids: config.parameters.maxPredatorBoids,
-              },
-              {
-                totalBoids: boidsStore.count(),
-                totalPrey: currentPreyCount,
-                totalPredators: currentPredatorCount,
-              },
-              currentTypeCount
-            )
-
-            if (canSpawn) {
-              const { width, height } = config.world
-              const physics = config.physics || defaultWorldPhysics
-              const creationContext = {
-                world: { width, height },
-                species: speciesTypes,
-                rng: randomness.domain('reproduction'),
-                physics,
-              }
-
-              const parentGenomes =
-                parent1 && parent1.genome
-                  ? {
-                      parent1: parent1.genome,
-                      parent2: parent2?.genome,
-                    }
-                  : undefined
-
-              const result = createBoidOfType(
-                offspring.position,
-                offspring.typeId,
-                creationContext,
-                energyBonus,
-                boidsStore.nextIndex(),
-                parentGenomes
-              )
-              const newBoid = result.boid
-              addBoid(newBoid)
-
-              if (speciesConfig.role === 'prey') {
-                currentPreyCount++
-              } else if (speciesConfig.role === 'predator') {
-                currentPredatorCount++
-              }
-
-              if (i === 0) {
-                engineEventSubscription.notify({
-                  type: eventKeywords.boids.reproduced,
-                  parentId: offspring.parent1Id,
-                  childId: newBoid.id,
-                  typeId: offspring.typeId,
-                  offspringCount,
-                  ...(offspring.parent2Id && {
-                    parent2Id: offspring.parent2Id,
-                  }),
-                })
-              }
-            }
-          }
-        }
+      for (const reproEvent of result.reproductionEvents) {
+        engineEventSubscription.notify({
+          type: eventKeywords.boids.reproduced,
+          parentId: reproEvent.parentId,
+          childId: reproEvent.childId,
+          typeId: reproEvent.typeId,
+          offspringCount: reproEvent.offspringCount,
+          ...(reproEvent.parent2Id && { parent2Id: reproEvent.parent2Id }),
+        })
       }
       profiler.end('lifecycle.processReproductions')
       profiler.end('lifecycle.applyEvents')
@@ -464,6 +380,12 @@ export const engine = defineResource({
         {
           updateBoid: (boid: Boid, context: BoidUpdateContext) => {
             updateBoid(boid, context)
+            updateBoidCooldowns(boid, {
+            parameters: config.parameters,
+            species: config.species,
+            world: config.world,
+            physics: config.physics,
+          })
           },
           updateTrail: (boid: Boid, position: Vector2) => {
             boid.positionHistory.push({
@@ -496,7 +418,7 @@ export const engine = defineResource({
 
       if (foodSpawnExecutor.shouldExecute(deltaSeconds * 1000)) {
         profiler.start('lifecycle.spawnFood')
-        const { newFoodSources, shouldUpdate } = generatePreyFood(
+        const newFoodSources = generatePreyFoodBatch(
           simulation.foodSources,
           config.world,
           tickCounter,
@@ -504,7 +426,7 @@ export const engine = defineResource({
           time.now()
         )
 
-        if (shouldUpdate) {
+        if (newFoodSources.length > 0) {
           runtimeStore.store.setState({
             simulation: {
               ...simulation,
@@ -564,14 +486,15 @@ export const engine = defineResource({
         const allFood = [...currentFoodSources]
 
         for (const catchEvent of catches) {
-          if (canCreatePredatorFood(allFood)) {
-            const foodSource = createPredatorFood(
-              catchEvent.preyEnergy,
-              catchEvent.preyPosition,
-              tickCounter,
-              randomness.domain('food'),
-              time.now()
-            )
+          const foodSource = createPredatorFoodFromCatch(
+            catchEvent,
+            allFood,
+            tickCounter,
+            randomness.domain('food'),
+            time.now()
+          )
+
+          if (foodSource) {
             newFoodFromCatches.push(foodSource)
             allFood.push(foodSource)
 
@@ -598,157 +521,33 @@ export const engine = defineResource({
     }
 
     const evaluateBoidBehavior = (boid: Boid, context: BoidUpdateContext) => {
-      const {
-        config,
-        currentFrame,
-        nearbyPrey: prey,
-        nearbyPredators: predators,
-      } = context
-      const speciesConfig = config.species[boid.typeId]
-      if (!speciesConfig) return
-
-      const role = speciesConfig.role
-      const parameters = config.parameters
-
-      const nearbyPredators =
-        role === roleKeywords.prey
-          ? predators.filter((p) => {
-              const fearRadius =
-                speciesConfig.limits.fearRadius ?? parameters.fearRadius
-              return isWithinRadius(boid.position, p.item.position, fearRadius)
-            })
-          : []
-
-      const nearbyPrey =
-        role === roleKeywords.predator
-          ? prey.filter((p) =>
-              isWithinRadius(
-                boid.position,
-                p.item.position,
-                parameters.chaseRadius
-              )
-            )
-          : []
-
-      const nearbyFlock: ItemWithDistance<Boid>[] = []
-      const boidsToCheck = role === roleKeywords.predator ? predators : prey // Use context boids!
-
-      for (const nearbyBoid of boidsToCheck) {
-        if (
-          nearbyBoid.item.typeId === boid.typeId && // same species
-          nearbyBoid.item.id !== boid.id // not self
-        ) {
-          nearbyFlock.push(nearbyBoid)
-        }
-      }
-
-      const populationRatio = boidsStore.count() / parameters.maxBoids
-      const readyToMate = isReadyToMate(boid, parameters, speciesConfig)
-
-      const behaviorContext = buildBehaviorContext(boid, speciesConfig, {
-        frame: time.getFrame(),
-        populationRatio,
-        readyToMate,
-        nearbyPredators,
-        nearbyPrey,
-        nearbyFood: context.nearbyFoodSources,
-        nearbyFlock,
-      })
-
-      const decision = evaluateBehavior(behaviorContext, behaviorRuleset, role)
-
-      if (decision) {
-        applyBehaviorDecision(
-          boid,
-          decision,
-          currentFrame, // Use frame for stance tracking!
-          MINIMUM_STANCE_DURATION_FRAMES,
-          profiler
-        )
-      }
+      evaluateBoidBehaviorCore(
+        boid,
+        context,
+        {
+          parameters: context.config.parameters,
+          species: context.config.species,
+          world: context.config.world,
+        },
+        behaviorRuleset,
+        time.getFrame(),
+        boidsStore.count(),
+        profiler
+      )
     }
 
     const checkCatches = (): CatchEvent[] => {
       const { config: cfg } = runtimeStore.store.getState()
-      const { parameters } = cfg
       const boids = boidsStore.boids
 
-      const predators = getPredators(boids, cfg.species)
-      const prey = getPrey(boids, cfg.species)
+      const catches = checkCatchesCore(boids, {
+        parameters: cfg.parameters,
+        species: cfg.species,
+        world: cfg.world,
+      })
 
-      const catches: CatchEvent[] = []
-      const caughtPreyIds: string[] = []
-
-      for (const predator of predators) {
-        if (predator.attackCooldownFrames > 0) continue
-
-        for (const preyBoid of prey) {
-          if (caughtPreyIds.includes(preyBoid.id)) continue
-
-          const dist = vec.toroidalDistance(
-            predator.position,
-            preyBoid.position,
-            cfg.world.width,
-            cfg.world.height
-          )
-
-          if (dist < parameters.catchRadius) {
-            const damage = predator.phenotype.attackDamage
-
-            preyBoid.health -= damage
-
-            const knockbackDirection = vec.toroidalSubtract(
-              preyBoid.position,
-              predator.position,
-              cfg.world.width,
-              cfg.world.height
-            )
-            const pushDist = vec.magnitude(knockbackDirection)
-            if (pushDist > 0) {
-              const nx = knockbackDirection.x / pushDist
-              const ny = knockbackDirection.y / pushDist
-
-              const sizeRatio =
-                predator.phenotype.baseSize / preyBoid.phenotype.baseSize
-              const baseKnockback = predator.phenotype.maxSpeed * 1.5 // slightly faster than predator
-              const damageMultipler =
-                1 + (damage / preyBoid.phenotype.maxHealth) * 3 // up to 3x
-              const knockbackStrength =
-                baseKnockback * damageMultipler * sizeRatio
-
-              preyBoid.knockbackVelocity = {
-                x: nx * knockbackStrength,
-                y: ny * knockbackStrength,
-              }
-              preyBoid.knockbackFramesRemaining = 3
-            }
-
-            predator.attackCooldownFrames = parameters.attackCooldownFrames
-
-            if (isDead(preyBoid)) {
-              const preyEnergy = preyBoid.phenotype.maxEnergy
-              const preyPosition = {
-                x: preyBoid.position.x,
-                y: preyBoid.position.y,
-              }
-              const preyTypeId = preyBoid.typeId
-
-              removeBoid(preyBoid.id)
-              caughtPreyIds.push(preyBoid.id)
-
-              catches.push({
-                type: eventKeywords.boids.caught,
-                predatorId: predator.id,
-                preyId: preyBoid.id,
-                preyTypeId,
-                preyEnergy,
-                preyPosition,
-              })
-            }
-
-            break // Predator can only attack one prey per frame
-          }
-        }
+      for (const catchEvent of catches) {
+        removeBoid(catchEvent.preyId)
       }
 
       return catches

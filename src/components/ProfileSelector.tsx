@@ -2,7 +2,7 @@
  * Profile Selector - Dropdown for switching simulation profiles
  *
  * Displays available profiles and dispatches profile/switched event on selection.
- * Uses profileStore for profile data and runtimeController for event dispatch.
+ * Uses profileStore for profile data and simulationGateway for event dispatch.
  */
 
 import { useResource } from '@/systems/standard.ts'
@@ -17,7 +17,7 @@ import { IconWorld } from '@tabler/icons-react'
 
 export function ProfileSelector() {
   const profileStore = useResource('profileStore')
-  const runtimeController = useResource('runtimeController')
+  const gateway = useResource('simulationGateway')
 
   const activeProfileId = profileStore.useStore(
     (state) => state.profiles.data.activeProfileId
@@ -26,7 +26,7 @@ export function ProfileSelector() {
   const allProfiles = profileStore.getAllProfiles()
 
   const handleProfileChange = (profileId: string) => {
-    runtimeController.dispatch({
+    gateway.dispatch({
       type: 'profile/switched',
       profileId,
     })

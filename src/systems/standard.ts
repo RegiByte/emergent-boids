@@ -11,7 +11,7 @@ import { canvas } from '../resources/browser/canvas.ts'
 import { engine } from '../resources/browser/engine.ts'
 import { profileStore } from '../resources/browser/profileStore.ts'
 import { renderer } from '../resources/browser/renderer.ts'
-import { simulationGateway } from '../resources/browser/simulationController.ts'
+import { simulationGateway } from '../resources/browser/simulationGateway.ts'
 import { runtimeStore } from '../resources/browser/runtimeStore.ts'
 import { webglRenderer } from '../resources/browser/webglRenderer.ts'
 import { profiler } from '../resources/shared/profiler.ts'
@@ -49,7 +49,7 @@ export const systemConfig = {
   webglRenderer,
   analyticsStore,
   localBoidStore,
-  runtimeController: simulationGateway,
+  simulationGateway,
   sharedMemoryManager,
 }
 

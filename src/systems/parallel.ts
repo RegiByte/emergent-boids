@@ -16,7 +16,7 @@ import { camera } from '@/resources/browser/camera.ts'
 import { canvas } from '@/resources/browser/canvas.ts'
 import { profileStore } from '@/resources/browser/profileStore.ts'
 import { renderer } from '@/resources/browser/renderer.ts'
-import { simulationGateway } from '@/resources/browser/simulationController'
+import { simulationGateway } from '@/resources/browser/simulationGateway'
 import { runtimeStore } from '@/resources/browser/runtimeStore.ts'
 import { webglRenderer } from '@/resources/browser/webglRenderer.ts'
 import { profiler } from '@/resources/shared/profiler.ts'
@@ -66,7 +66,7 @@ export const parallelSystemConfig = {
   webglRenderer,
   analyticsStore,
   localBoidStore,
-  runtimeController: simulationGateway,
+  simulationGateway,
   sharedMemoryManager,
   workerTasks: workerTasksResource,
 }

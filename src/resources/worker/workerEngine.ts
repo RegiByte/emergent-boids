@@ -1,30 +1,20 @@
 import { getMaxCrowdTolerance } from '@/boids/affinity'
-import {
-  applyBehaviorDecision,
-  buildBehaviorContext,
-  evaluateBehavior,
-} from '@/boids/behavior/evaluator'
-import {
-  createBehaviorRuleset,
-  MINIMUM_STANCE_DURATION_FRAMES,
-} from '@/boids/behavior/rules'
+import { createBehaviorRuleset } from '@/boids/behavior/rules'
 import { createBoidOfType, updateBoid } from '@/boids/boid'
 import { createEventCollector, createForceCollector } from '@/boids/collectors'
 import { BoidUpdateContext, EngineUpdateContext } from '@/boids/context'
 import { defaultWorldPhysics } from '@/boids/defaultPhysics'
 import { getBoidsByRole } from '@/boids/filters'
 import { FOOD_CONSTANTS } from '@/boids/food'
-import { isDead } from '@/boids/lifecycle/health'
+import { iterateBoids } from '@/boids/iterators'
 import { canSpawnOffspring } from '@/boids/lifecycle/population'
-import { isReadyToMate } from '@/boids/predicates'
-import { createSpatialHash, ItemWithDistance } from '@/boids/spatialHash'
+import { createSpatialHash } from '@/boids/spatialHash'
 import {
   eventKeywords,
   lifecycleKeywords,
   profilerKeywords,
   simulationKeywords,
 } from '@/boids/vocabulary/keywords'
-import * as vec from '@/boids/vector'
 import {
   Boid,
   DeathMarker,
@@ -38,6 +28,15 @@ import {
   swapBuffers,
 } from '@/lib/sharedMemory'
 import { defineResource, StartedResource } from 'braided'
+import {
+  evaluateBoidBehaviorCore,
+  processPredatorAttack,
+  updateBoidCooldowns,
+  generatePreyFoodBatch,
+  createPredatorFoodFromCatch,
+  consolidateDeathMarker,
+  decayDeathMarkers,
+} from '@/boids/engine/core'
 import { BoidEngine } from '../browser/engine'
 import {
   checkBoidLifecycle,
@@ -59,7 +58,6 @@ import {
   SimulationEvent,
 } from '@/boids/vocabulary/schemas/simulation'
 import { Channel } from '@/lib/channels'
-import { iterateBoids } from '@/boids/iterators'
 import { FrameRaterAPI } from '../shared/frameRater'
 
 /**
@@ -219,6 +217,7 @@ export const workerEngine = defineResource({
           parameters: config.parameters,
           world: config.world,
           species: config.species,
+          physics: config.physics,
         },
         deltaSeconds,
         profiler: workerProfiler,
@@ -263,30 +262,12 @@ export const workerEngine = defineResource({
         {
           updateBoid: (boid: Boid, context: BoidUpdateContext) => {
             updateBoid(boid, context)
-
-            if (boid.attackCooldownFrames > 0) {
-              boid.attackCooldownFrames--
-            }
-            if (boid.eatingCooldownFrames > 0) {
-              boid.eatingCooldownFrames--
-            }
-            if (boid.reproductionCooldown > 0) {
-              boid.reproductionCooldown--
-
-              if (boid.reproductionCooldown === 0) {
-                const speciesConfig = config.species[boid.typeId]
-                if (speciesConfig) {
-                  boid.seekingMate = isReadyToMate(
-                    boid,
-                    config.parameters,
-                    speciesConfig
-                  )
-                }
-              }
-            }
-            if (boid.knockbackFramesRemaining > 0) {
-              boid.knockbackFramesRemaining--
-            }
+            updateBoidCooldowns(boid, {
+              parameters: config.parameters,
+              species: config.species,
+              world: config.world,
+              physics: config.physics,
+            })
           },
           updateTrail: (boid: Boid, position: { x: number; y: number }) => {
             boid.positionHistory.push({
@@ -303,122 +284,34 @@ export const workerEngine = defineResource({
             }
           },
           evaluateBoidBehavior: (boid: Boid, context: BoidUpdateContext) => {
-            const speciesConfig = config.species[boid.typeId]
-            if (!speciesConfig) return
-
-            const role = speciesConfig.role
-            const parameters = config.parameters
-
-            const nearbyPredators =
-              role === 'prey'
-                ? context.nearbyPredators.filter((p) => {
-                    const fearRadius =
-                      speciesConfig.limits.fearRadius ?? parameters.fearRadius
-                    return p.distance < fearRadius
-                  })
-                : []
-
-            const nearbyPrey =
-              role === 'predator'
-                ? context.nearbyPrey.filter(
-                    (p) => p.distance < parameters.chaseRadius
-                  )
-                : []
-
-            const nearbyFlock: ItemWithDistance<Boid>[] = []
-            const boidsToCheck =
-              role === 'predator' ? context.nearbyPredators : context.nearbyPrey
-
-            for (const nearbyBoid of boidsToCheck) {
-              if (
-                nearbyBoid.item.typeId === boid.typeId && // same species
-                nearbyBoid.item.id !== boid.id // not self
-              ) {
-                nearbyFlock.push(nearbyBoid)
-              }
-            }
-
-            const populationRatio = boidsStore.count() / parameters.maxBoids
-            const readyToMate = isReadyToMate(boid, parameters, speciesConfig)
-
-            const behaviorContext = buildBehaviorContext(boid, speciesConfig, {
-              frame: currentFrame,
-              populationRatio,
-              readyToMate,
-              nearbyPredators,
-              nearbyPrey,
-              nearbyFood: context.nearbyFoodSources,
-              nearbyFlock,
-            })
-
-            const decision = evaluateBehavior(
-              behaviorContext,
+            evaluateBoidBehaviorCore(
+              boid,
+              context,
+              {
+                parameters: config.parameters,
+                species: config.species,
+                world: config.world,
+                physics: config.physics,
+              },
               behaviorRuleset,
-              role
+              currentFrame,
+              boidsStore.count(),
+              workerProfiler
             )
 
-            if (decision) {
-              applyBehaviorDecision(
+            const speciesConfig = config.species[boid.typeId]
+            if (speciesConfig?.role === 'predator') {
+              processPredatorAttack(
                 boid,
-                decision,
-                currentFrame,
-                MINIMUM_STANCE_DURATION_FRAMES,
-                workerProfiler
+                context.nearbyPrey,
+                {
+                  parameters: config.parameters,
+                  species: config.species,
+                  world: config.world,
+                  physics: config.physics,
+                },
+                lifecycleCollector
               )
-            }
-
-            if (
-              speciesConfig.role === 'predator' &&
-              boid.attackCooldownFrames === 0
-            ) {
-              for (const {
-                item: potentialPrey,
-                distance,
-              } of context.nearbyPrey) {
-                if (distance < config.parameters.catchRadius) {
-                  const damage = boid.phenotype.attackDamage
-                  potentialPrey.health -= damage
-
-                  const knockbackDirection = vec.toroidalSubtract(
-                    potentialPrey.position,
-                    boid.position,
-                    config.world.width,
-                    config.world.height
-                  )
-                  const pushDist = vec.magnitude(knockbackDirection)
-                  if (pushDist > 0) {
-                    const nx = knockbackDirection.x / pushDist
-                    const ny = knockbackDirection.y / pushDist
-                    const sizeRatio =
-                      boid.phenotype.baseSize / potentialPrey.phenotype.baseSize
-                    const baseKnockback = boid.phenotype.maxSpeed * 2.2
-                    const damageMultiplier =
-                      1 + (damage / potentialPrey.phenotype.maxHealth) * 3
-                    const knockbackStrength =
-                      baseKnockback * damageMultiplier * sizeRatio
-
-                    potentialPrey.knockbackVelocity = {
-                      x: nx * knockbackStrength,
-                      y: ny * knockbackStrength,
-                    }
-                    potentialPrey.knockbackFramesRemaining = 3
-                  }
-
-                  boid.attackCooldownFrames =
-                    config.parameters.attackCooldownFrames
-
-                  if (isDead(potentialPrey)) {
-                    lifecycleCollector.collect({
-                      type: lifecycleKeywords.events.death,
-                      boidId: potentialPrey.id,
-                      typeId: potentialPrey.typeId,
-                      reason: 'predation',
-                    })
-                  }
-
-                  break // One attack per frame
-                }
-              }
             }
           },
           checkBoidLifecycle: checkBoidLifecycle,
@@ -495,43 +388,16 @@ export const workerEngine = defineResource({
           })
 
           const newMarkers: DeathMarker[] = []
-          const CONSOLIDATION_RADIUS = 100 // Merge deaths within this radius
-          const MAX_LIFETIME_FRAMES = 600 // 20 seconds at 30 UPS
 
           for (const death of deathData) {
-            if (death.reason === 'predation') continue
+            const result = consolidateDeathMarker(
+              death,
+              simulation.deathMarkers,
+              currentFrame
+            )
 
-            const existingMarkers = simulation.deathMarkers
-            let consolidated = false
-
-            for (const marker of existingMarkers) {
-              const dx = death.position.x - marker.position.x
-              const dy = death.position.y - marker.position.y
-              const distance = Math.sqrt(dx * dx + dy * dy)
-
-              if (
-                distance < CONSOLIDATION_RADIUS &&
-                marker.typeId === death.typeId
-              ) {
-                marker.strength = Math.min(5.0, marker.strength + 0.5)
-                marker.remainingFrames = MAX_LIFETIME_FRAMES // Reset lifetime
-                consolidated = true
-                break
-              }
-            }
-
-            if (!consolidated) {
-              newMarkers.push({
-                id: `death-${currentFrame}-${death.id}`,
-                position: {
-                  x: death.position.x,
-                  y: death.position.y,
-                },
-                remainingFrames: MAX_LIFETIME_FRAMES,
-                strength: 1.0, // Initial strength
-                maxLifetimeFrames: MAX_LIFETIME_FRAMES,
-                typeId: death.typeId,
-              })
+            if (!result.consolidated && result.newMarker) {
+              newMarkers.push(result.newMarker)
             }
           }
 
@@ -670,72 +536,60 @@ export const workerEngine = defineResource({
         const foodState = workerStore.getState()
         const { simulation: foodSimulation } = foodState
 
-        const preyFoodCount = foodSimulation.foodSources.filter(
-          (f) => f.sourceType === 'prey'
-        ).length
+        const newFoodSources = generatePreyFoodBatch(
+          foodSimulation.foodSources,
+          config.world,
+          currentFrame,
+          workerRandomness.domain('food'),
+          workerTime.now()
+        )
 
-        if (preyFoodCount < 15) {
-          const toSpawn = Math.min(5, 15 - preyFoodCount) // Spawn 5, max cap 15
-          const newFoodSources: FoodSource[] = []
+        if (newFoodSources.length > 0) {
+          workerStore.setState({
+            ...foodState,
+            simulation: {
+              ...foodSimulation,
+              foodSources: [...foodSimulation.foodSources, ...newFoodSources],
+            },
+          })
 
-          for (let i = 0; i < toSpawn; i++) {
-            const rng = workerRandomness.domain('food')
-            newFoodSources.push({
-              id: `food-prey-${workerTime.now()}-${Math.floor(rng.next() * 1000000)}-${i}`,
-              position: {
-                x: rng.range(0, config.world.width),
-                y: rng.range(0, config.world.height),
-              },
-              energy: 80, // PREY_FOOD_INITIAL_ENERGY
-              maxEnergy: 80,
-              sourceType: 'prey',
-              createdFrame: currentFrame,
-            })
-          }
-
-          if (newFoodSources.length > 0) {
-            workerStore.setState({
-              ...foodState,
-              simulation: {
-                ...foodSimulation,
-                foodSources: [...foodSimulation.foodSources, ...newFoodSources],
-              },
-            })
-
-            simulationChannel?.out.notify({
-              type: simulationKeywords.events.foodSourcesCreated,
-              foodSources: newFoodSources,
-            })
-          }
+          simulationChannel?.out.notify({
+            type: simulationKeywords.events.foodSourcesCreated,
+            foodSources: newFoodSources,
+          })
         }
       }
 
       if (catchData.length > 0) {
         const predatorFoodState = workerStore.getState()
         const { simulation: predatorFoodSimulation } = predatorFoodState
-        const predatorFoodCount = predatorFoodSimulation.foodSources.filter(
-          (f) => f.sourceType === 'predator'
-        ).length
         const newPredatorFood: FoodSource[] = []
 
         for (const catchEvent of catchData) {
-          if (predatorFoodCount + newPredatorFood.length < 25) {
-            const rng = workerRandomness.domain('food')
-            const preyBoid = deathData.find(
-              (d: { id: string }) => d.id === catchEvent.preyId
+          const preyBoid = deathData.find(
+            (d: { id: string }) => d.id === catchEvent.preyId
+          )
+
+          if (preyBoid) {
+            const catchEventWithEnergy: CatchEvent = {
+              type: eventKeywords.boids.caught,
+              predatorId: catchEvent.predatorId,
+              preyId: catchEvent.preyId,
+              preyTypeId: catchEvent.preyTypeId,
+              preyEnergy: 50,
+              preyPosition: catchEvent.position,
+            }
+
+            const foodSource = createPredatorFoodFromCatch(
+              catchEventWithEnergy,
+              [...predatorFoodSimulation.foodSources, ...newPredatorFood],
+              currentFrame,
+              workerRandomness.domain('food'),
+              workerTime.now()
             )
 
-            if (preyBoid) {
-              const foodEnergy = 50 * 0.8 // 80% of prey energy
-
-              newPredatorFood.push({
-                id: `food-predator-${workerTime.now()}-${Math.floor(rng.next() * 1000000)}`,
-                position: catchEvent.position,
-                energy: foodEnergy,
-                maxEnergy: foodEnergy,
-                sourceType: 'predator',
-                createdFrame: currentFrame,
-              })
+            if (foodSource) {
+              newPredatorFood.push(foodSource)
             }
           }
         }
@@ -824,24 +678,12 @@ export const workerEngine = defineResource({
 
       workerProfiler.start('lifecycle.deathMarkerDecay')
       const currentSimulation = workerStore.getState().simulation
-      const updatedMarkers: DeathMarker[] = []
-      const expiredMarkerIds: string[] = []
-
-      for (const marker of currentSimulation.deathMarkers) {
-        const remainingFrames = marker.remainingFrames - 1
-
-        if (remainingFrames <= 0) {
-          expiredMarkerIds.push(marker.id)
-        } else {
-          updatedMarkers.push({
-            ...marker,
-            remainingFrames,
-          })
-        }
-      }
+      const { updatedMarkers, expiredIds } = decayDeathMarkers(
+        currentSimulation.deathMarkers
+      )
 
       if (
-        expiredMarkerIds.length > 0 ||
+        expiredIds.length > 0 ||
         updatedMarkers.length !== currentSimulation.deathMarkers.length
       ) {
         workerStore.updateState((state) => ({

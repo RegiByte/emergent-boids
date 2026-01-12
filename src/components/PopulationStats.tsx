@@ -10,21 +10,21 @@ export function PopulationStats() {
   const { useStore } = useResource('runtimeStore')
   const { store: boidStore } = useResource('localBoidStore')
   const species = useStore((state) => state.config.species)
-  const { subscribe } = useResource('runtimeController')
+  const gateway = useResource('simulationGateway')
   const simulation = useStore((state) => state.simulation)
   const parameters = useStore((state) => state.config.parameters)
 
   const [, setTick] = useState(0)
 
   useEffect(() => {
-    const unsubscribe = subscribe((event) => {
+    const unsubscribe = gateway.subscribe((event) => {
       if (event.type === eventKeywords.time.passed) {
         setTick((prev) => (prev > 500 ? 0 : prev + 1))
       }
     })
 
     return () => unsubscribe()
-  }, [subscribe])
+  }, [gateway])
 
   const allBoids = boidStore.boids
 

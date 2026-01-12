@@ -14,7 +14,7 @@ type EventLogEntry = {
 let eventCounter = 0
 
 export function DebugPanel() {
-  const runtimeController = useResource('runtimeController')
+  const gateway = useResource('simulationGateway')
   const { store: boidStore } = useResource('localBoidStore')
   const [eventLog, setEventLog] = useState<EventLogEntry[]>([])
   const [maxEntries] = useState(20)
@@ -22,7 +22,7 @@ export function DebugPanel() {
   const species = useRuntimeStore((state) => state.config.species)
 
   useEffect(() => {
-    const unsubscribe = runtimeController.subscribe((event, effects) => {
+    const unsubscribe = gateway.subscribe((event, effects) => {
       setEventLog((prev) => {
         const newEntry = {
           id: `event-${Date.now()}-${eventCounter++}`, // Unique ID
@@ -35,7 +35,7 @@ export function DebugPanel() {
     })
 
     return () => unsubscribe()
-  }, [runtimeController, maxEntries])
+  }, [gateway, maxEntries])
 
   const predators = filterBoidsWhere(boidStore.boids, (b) => {
     const typeConfig = species[b.typeId]

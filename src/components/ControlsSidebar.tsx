@@ -69,7 +69,7 @@ export function ControlsSidebar({
   const runtimeStore = useRuntimeStore((state) => state)
   const { config, simulation: simulationState } = runtimeStore
   const analytics = useAnalyticsStore((state) => state.evolution.data)
-  const runtimeController = useResource('runtimeController')
+  const gateway = useResource('simulationGateway')
   const randomness = useResource('randomness')
   const time = useResource('time')
   const timeState = time.useTime()
@@ -362,7 +362,7 @@ export function ControlsSidebar({
                       size="sm"
                       className="w-full"
                       onClick={() => {
-                        runtimeController.dispatch({
+                        gateway.dispatch({
                           type: eventKeywords.obstacles.cleared,
                         })
                         toast.success('All obstacles cleared')

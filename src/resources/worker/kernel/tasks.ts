@@ -14,7 +14,7 @@
 
 import { boidSchema } from '@/boids/vocabulary/schemas/entities.ts'
 import { defineTask } from '@/lib/workerTasks/core.ts'
-import { haltSystem, startSystem } from 'braided'
+import { haltSystem, startSystem, toDot } from 'braided'
 import { z } from 'zod'
 import { WorkerSystem, workerSystemConfig } from '@/systems/worker.ts'
 import { runtimeStoreSchema } from '../../../boids/vocabulary/schemas/state.ts'
@@ -90,6 +90,10 @@ export const initializeWorker = defineTask({
     }
 
     workerSystem = systemResult.system
+
+    const topology = systemResult.topology
+    console.log('Worker System Topology:')
+    console.log(toDot(topology))
 
     workerSystem.workerEngine.attach({
       buffer: input.buffer,

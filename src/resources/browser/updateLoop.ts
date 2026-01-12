@@ -5,7 +5,7 @@ import { BoidEngine } from './engine'
 import { TimeAPI } from '../shared/time'
 import z from 'zod'
 import { allEventSchema } from '@/boids/vocabulary/schemas/events'
-import { SimulationGateway } from './simulationController'
+import { SimulationGateway } from './simulationGateway'
 import { eventKeywords } from '@/boids/vocabulary/keywords'
 import { createUpdateLoop } from '@/lib/updateLoop'
 
@@ -27,17 +27,17 @@ export type UpdateLoopFrameUpdate = Extract<UpdateLoopUpdate, { type: 'frame' }>
 export type UpdateLoopEventUpdate = Extract<UpdateLoopUpdate, { type: 'event' }>
 
 export const updateLoopResource = defineResource({
-  dependencies: ['frameRater', 'engine', 'time', 'runtimeController'],
+  dependencies: ['frameRater', 'engine', 'time', 'simulationGateway'],
   start: ({
     frameRater,
     engine,
     time,
-    runtimeController,
+    simulationGateway,
   }: {
     frameRater: FrameRaterAPI
     engine: BoidEngine
     time: TimeAPI
-    runtimeController: SimulationGateway
+    simulationGateway: SimulationGateway
   }) => {
     const simulationRater = frameRater.fixed('simulation', {
       targetFPS: 30, // 30 UPS for deterministic physics
@@ -97,7 +97,7 @@ export const updateLoopResource = defineResource({
         simulationRater.recordExecution(updates, droppedFrames)
 
         if (lifecycleRater.shouldExecute(scaledDeltaMs)) {
-          runtimeController.dispatch({
+          simulationGateway.dispatch({
             type: eventKeywords.time.passed,
             deltaMs: 1000,
           })
@@ -107,7 +107,7 @@ export const updateLoopResource = defineResource({
         if (catchesRater.shouldExecute(scaledDeltaMs)) {
           const events = engine.checkCatches()
           for (const event of events) {
-            runtimeController.dispatch(event)
+            simulationGateway.dispatch(event)
           }
           catchesRater.recordExecution()
         }

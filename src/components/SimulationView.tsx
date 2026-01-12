@@ -26,7 +26,7 @@ import { CameraMode } from '@/resources/browser/camera.ts'
 import { iterateBoids } from '@/boids/iterators'
 
 function SimulationView() {
-  const runtimeController = useResource('runtimeController')
+  const gateway = useResource('simulationGateway')
   const runtimeStore = useResource('runtimeStore')
   const { store: boidStore } = useResource('localBoidStore')
   const simulation = useResource('simulation')
@@ -288,7 +288,7 @@ function SimulationView() {
     spawnMode,
     canvas,
     webglRenderer,
-    runtimeController,
+    gateway,
     camera,
     boidStore,
     updateLoop,
@@ -341,7 +341,7 @@ function SimulationView() {
       open={sidebarOpen}
       onOpenChange={(open) => {
         console.log('sidebar open changed', open)
-        runtimeController.dispatch({
+        gateway.dispatch({
           type: eventKeywords.ui.sidebarToggled,
           open,
         })
@@ -393,7 +393,7 @@ function SimulationView() {
                     showGraphs={true} // Always show graphs when header expanded
                     collapsed={false}
                     onToggleCollapse={() => {
-                      runtimeController.dispatch({
+                      gateway.dispatch({
                         type: eventKeywords.ui.headerToggled,
                         collapsed: true,
                       })
@@ -434,7 +434,7 @@ function SimulationView() {
                       showGraphs={false}
                       collapsed={true}
                       onToggleCollapse={() => {
-                        runtimeController.dispatch({
+                        gateway.dispatch({
                           type: eventKeywords.ui.headerToggled,
                           collapsed: false,
                         })

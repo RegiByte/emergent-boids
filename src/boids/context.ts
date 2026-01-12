@@ -14,6 +14,7 @@ import type { SpeciesRecord } from './vocabulary/schemas/species'
 import type {
   SimulationParameters,
   WorldConfig,
+  WorldPhysics,
 } from './vocabulary/schemas/world'
 
 /**
@@ -32,6 +33,7 @@ export type ConfigContext = {
   parameters: SimulationParameters
   world: WorldConfig
   species: SpeciesRecord
+  physics?: WorldPhysics
 }
 
 export type FrameUpdateContext = {

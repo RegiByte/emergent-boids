@@ -6,7 +6,7 @@ import {
 import type { AnalyticsStoreResource } from './analyticsStore.ts'
 import type { BoidEngine } from './engine.ts'
 import { LocalBoidStoreResource } from './localBoidStore.ts'
-import type { SimulationGateway } from './simulationController.ts'
+import type { SimulationGateway } from './simulationGateway.ts'
 import { iterateBoids } from '@/boids/iterators.ts'
 import { RuntimeStoreResource } from './runtimeStore.ts'
 import {
@@ -45,25 +45,24 @@ import { computeGeneticsStatsBySpecies } from '@/boids/analytics/genetics.ts'
  */
 export const analytics = defineResource({
   dependencies: [
-    'runtimeController',
+    'simulationGateway',
     'runtimeStore',
     'analyticsStore',
     'localBoidStore',
   ],
   start: ({
-    runtimeController,
+    simulationGateway,
     runtimeStore,
     analyticsStore,
     localBoidStore,
   }: {
     engine: BoidEngine
-    runtimeController: SimulationGateway
+    simulationGateway: SimulationGateway
     runtimeStore: RuntimeStoreResource
     analyticsStore: AnalyticsStoreResource
     localBoidStore: LocalBoidStoreResource
   }) => {
     let tickCounter = 0
-    console.log('[Analytics] Starting', runtimeController)
     let lastSnapshotTime = Date.now()
     let isFirstSnapshot = true // Track if this is the first snapshot
     let snapshotCount = 0 // Track total snapshots for genetics sampling
@@ -95,7 +94,7 @@ export const analytics = defineResource({
       }
     > = {}
 
-    const unsubscribe = runtimeController.subscribe((event) => {
+    const unsubscribe = simulationGateway.subscribe((event) => {
       analyticsStore.trackEvent(event, tickCounter)
 
       if (event.type === simulationKeywords.events.boidsReproduced) {
